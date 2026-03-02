@@ -2,7 +2,7 @@
   <img src="images/logo.svg" alt="KumikoUI logo" width="120" />
   <h1 align="center">.NET KumikoUI</h1>
   <p align="center">
-    A high-performance, fully canvas-drawn KumikoUI for .NET MAUI — zero native controls, pixel-perfect on every platform.
+    A high-performance, fully canvas-drawn DataGrid for .NET — zero native controls, pixel-perfect on every platform.
   </p>
   <p align="center">
     <a href="#-getting-started">Getting Started</a> ·

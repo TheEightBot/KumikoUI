@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
+    <PackageId>MauiKumikoUI.Core</PackageId>
+    <Version>1.0.0</Version>
+    <Description>Core data models, abstractions, and data-source logic for the MauiKumikoUI control. Platform-independent — no rendering or UI framework references.</Description>
+    <PackageTags>maui;datagrid;data;grid;table;core</PackageTags>
+  </PropertyGroup>
+
+</Project>

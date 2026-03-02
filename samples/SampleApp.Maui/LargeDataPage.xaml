@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.LargeDataPage"
+             Title="Large Data (100K Rows)">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+        <Label Text="Large Data — Virtual Scrolling Performance"
+               FontSize="20"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+            <Button x:Name="btn10K" Text="Load 10K" Clicked="OnLoad10KClicked" Margin="4,0,0,4" />
+            <Button x:Name="btn50K" Text="Load 50K" Clicked="OnLoad50KClicked" Margin="4,0,0,4" />
+            <Button x:Name="btn100K" Text="Load 100K" Clicked="OnLoad100KClicked" Margin="4,0,0,4" />
+            <Button x:Name="btnClear" Text="Clear" Clicked="OnClearClicked" Margin="4,0,0,4" />
+            <Button x:Name="btnUpdateRandom" Text="Update Random" Clicked="OnUpdateRandomClicked" Margin="4,0,0,4" />
+            <Label x:Name="statusLabel" Text="No data loaded" VerticalOptions="Center" Margin="8,0" />
+        </FlexLayout>
+
+        <dg:DataGridView x:Name="kumiko"
+                         Grid.Row="2"
+                         ItemsSource="{Binding Items}"
+                         AllowSorting="True"
+                         AllowFiltering="True"
+                         RowHeight="34"
+                         HeaderHeight="38"
+                         GridDescription="Large data performance test grid"
+                         HorizontalOptions="Fill"
+                         VerticalOptions="Fill">
+
+            <dg:DataGridView.Columns>
+                <core:DataGridColumn Header="Row #"
+                                     PropertyName="RowNumber"
+                                     Width="80"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right"
+                                     IsReadOnly="True"
+                                     IsFrozen="True" />
+
+                <core:DataGridColumn Header="Name"
+                                     PropertyName="FullName"
+                                     Width="180" />
+
+                <core:DataGridColumn Header="Category"
+                                     PropertyName="Category"
+                                     Width="120" />
+
+                <core:DataGridColumn Header="Value"
+                                     PropertyName="Value"
+                                     Width="100"
+                                     Format="N2"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right" />
+
+                <core:DataGridColumn Header="Amount"
+                                     PropertyName="Amount"
+                                     Width="110"
+                                     Format="C0"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right" />
+
+                <core:DataGridColumn Header="Date"
+                                     PropertyName="CreatedDate"
+                                     Width="110"
+                                     Format="yyyy-MM-dd"
+                                     ColumnType="Date" />
+
+                <core:DataGridColumn Header="Enabled"
+                                     PropertyName="IsEnabled"
+                                     Width="80"
+                                     ColumnType="Boolean" />
+
+                <core:DataGridColumn Header="Region"
+                                     PropertyName="Region"
+                                     Width="120" />
+
+                <core:DataGridColumn Header="Score"
+                                     PropertyName="Score"
+                                     Width="80"
+                                     Format="N1"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right" />
+
+                <core:DataGridColumn Header="Notes"
+                                     PropertyName="Notes"
+                                     Width="200" />
+            </dg:DataGridView.Columns>
+
+            <dg:DataGridView.TableSummaryRows>
+                <core:TableSummaryRow Name="Stats" Position="Bottom" Title="Stats">
+                    <core:TableSummaryRow.Columns>
+                        <core:SummaryColumnDescription PropertyName="RowNumber"
+                                                       SummaryType="Count"
+                                                       Label="Total: " />
+                        <core:SummaryColumnDescription PropertyName="Amount"
+                                                       SummaryType="Sum"
+                                                       Format="C0" />
+                        <core:SummaryColumnDescription PropertyName="Score"
+                                                       SummaryType="Average"
+                                                       Format="N1" />
+                    </core:TableSummaryRow.Columns>
+                </core:TableSummaryRow>
+            </dg:DataGridView.TableSummaryRows>
+
+        </dg:DataGridView>
+    </Grid>
+
+</ContentPage>

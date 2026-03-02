@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
+             xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.MainPage"
+             Title="SkiaSharp KumikoUI — All Components">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+        <Label Text="SkiaSharp KumikoUI — All Components"
+               FontSize="20"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+            <Button Text="Add Row" Clicked="OnAddRowClicked" Margin="4,0,0,4" />
+            <Button Text="Remove Last Row" Clicked="OnRemoveLastRowClicked" Margin="4,0,0,4" />
+            <Button Text="Update Random Salary" Clicked="OnUpdateRandomSalaryClicked" Margin="4,0,0,4" />
+            <Button Text="Randomize Ratings" Clicked="OnRandomizeRatingsClicked" Margin="4,0,0,4" />
+            <Button x:Name="rowDragToggle" Text="Row Drag: Handle" Clicked="OnToggleRowDragClicked" Margin="4,0,0,4" />
+            <Button x:Name="handlePosToggle" Text="Handle: Left" Clicked="OnToggleHandlePositionClicked" Margin="4,0,0,4" />
+            <Button x:Name="dismissKbToggle" Text="Enter Dismisses KB: ON" Clicked="OnToggleDismissKeyboardClicked" Margin="4,0,0,4" />
+            <Button x:Name="themeToggle" Text="Theme: Light" Clicked="OnToggleThemeClicked" Margin="4,0,0,4" />
+            <Button x:Name="editTriggerToggle" Text="Edit: Double Tap" Clicked="OnToggleEditTriggerClicked" Margin="4,0,0,4" />
+            <Button x:Name="selectionModeToggle" Text="Select: All" Clicked="OnToggleSelectionModeClicked" Margin="4,0,0,4" />
+        </FlexLayout>
+
+        <dg:DataGridView x:Name="kumiko"
+                         Grid.Row="2"
+                         ItemsSource="{Binding Employees}"
+                         EditTriggers="DoubleTap,F2Key,Typing"
+                         EditTextSelectionMode="SelectAll"
+                         DismissKeyboardOnEnter="True"
+                         FrozenRowCount="2"
+                         RowHeight="36"
+                         HeaderHeight="40"
+                         GridDescription="Employee data grid with all component types"
+                         HorizontalOptions="Fill"
+                         VerticalOptions="Fill">
+
+            <!-- Column definitions — showcasing every column/component type -->
+            <dg:DataGridView.Columns>
+
+                <!-- NUMERIC column (frozen left) -->
+                <core:DataGridColumn Header="Id"
+                                     PropertyName="Id"
+                                     Width="60"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right"
+                                     IsReadOnly="True"
+                                     AllowTabStop="False"
+                                     IsFrozen="True" />
+
+                <!-- TEXT column (frozen left) -->
+                <core:DataGridColumn Header="Name"
+                                     PropertyName="Name"
+                                     Width="160"
+                                     IsFrozen="True" />
+
+                <!-- COMBOBOX column — dropdown editor with items declared in XAML -->
+                <core:DataGridColumn Header="Department"
+                                     PropertyName="Department"
+                                     Width="140"
+                                     ColumnType="ComboBox"
+                                     EditorItemsString="Engineering,Marketing,Sales,HR,Finance,Design,Support" />
+
+                <!-- NUMERIC column with currency format -->
+                <core:DataGridColumn Header="Salary"
+                                     PropertyName="Salary"
+                                     Width="120"
+                                     Format="C0"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right" />
+
+                <!-- DATE column — calendar picker editor -->
+                <core:DataGridColumn Header="Hire Date"
+                                     PropertyName="HireDate"
+                                     Width="120"
+                                     Format="yyyy-MM-dd"
+                                     ColumnType="Date" />
+
+                <!-- BOOLEAN column — checkbox toggle (skipped during tab navigation) -->
+                <core:DataGridColumn Header="Active"
+                                     PropertyName="IsActive"
+                                     Width="80"
+                                     ColumnType="Boolean"
+                                     AllowTabStop="False" />
+
+                <!-- PICKER column — scroll-wheel picker with items declared in XAML -->
+                <core:DataGridColumn Header="Level"
+                                     PropertyName="Level"
+                                     Width="120"
+                                     ColumnType="Picker"
+                                     EditorItemsString="Junior,Mid,Senior,Staff,Principal,Director" />
+
+                <!-- TEMPLATE column — progress bar display for Performance (fully declarative) -->
+                <core:DataGridColumn Header="Performance"
+                                     PropertyName="Performance"
+                                     Width="140"
+                                     ColumnType="Template"
+                                     IsReadOnly="True">
+                    <core:DataGridColumn.CustomCellRenderer>
+                        <render:ProgressBarCellRenderer Minimum="0"
+                                                        Maximum="100"
+                                                        TrackHeight="12"
+                                                        CornerRadius="6"
+                                                        ShowText="True"
+                                                        TextFormat="N0" />
+                    </core:DataGridColumn.CustomCellRenderer>
+                </core:DataGridColumn>
+
+                <!-- TEMPLATE column — numeric up/down for Rating (fully declarative) -->
+                <core:DataGridColumn Header="Rating"
+                                     PropertyName="Rating"
+                                     Width="100"
+                                     ColumnType="Template">
+                    <core:DataGridColumn.EditorDescriptor>
+                        <editing:NumericUpDownEditorDescriptor Minimum="1"
+                                                               Maximum="5"
+                                                               Step="1"
+                                                               DecimalPlaces="0" />
+                    </core:DataGridColumn.EditorDescriptor>
+                </core:DataGridColumn>
+
+                <!-- TEXT column (frozen right) -->
+                <core:DataGridColumn Header="City"
+                                     PropertyName="City"
+                                     Width="130"
+                                     FreezeMode="Right" />
+            </dg:DataGridView.Columns>
+
+            <!-- Table summary rows -->
+            <dg:DataGridView.TableSummaryRows>
+                <core:TableSummaryRow Name="Averages" Position="Top" Title="Averages">
+                    <core:TableSummaryRow.Columns>
+                        <core:SummaryColumnDescription PropertyName="Salary"
+                                                       SummaryType="Average"
+                                                       Format="C0" />
+                        <core:SummaryColumnDescription PropertyName="Performance"
+                                                       SummaryType="Average"
+                                                       Format="N1" />
+                        <core:SummaryColumnDescription PropertyName="Rating"
+                                                       SummaryType="Average"
+                                                       Format="N1" />
+                    </core:TableSummaryRow.Columns>
+                </core:TableSummaryRow>
+
+                <core:TableSummaryRow Name="Totals" Position="Bottom" Title="Totals">
+                    <core:TableSummaryRow.Columns>
+                        <core:SummaryColumnDescription PropertyName="Salary"
+                                                       SummaryType="Sum"
+                                                       Format="C0" />
+                        <core:SummaryColumnDescription PropertyName="Id"
+                                                       SummaryType="Count"
+                                                       Label="Rows: " />
+                        <core:SummaryColumnDescription PropertyName="Rating"
+                                                       SummaryType="Max"
+                                                       Label="Best: " />
+                    </core:TableSummaryRow.Columns>
+                </core:TableSummaryRow>
+            </dg:DataGridView.TableSummaryRows>
+
+        </dg:DataGridView>
+    </Grid>
+
+</ContentPage>

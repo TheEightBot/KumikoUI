@@ -1,0 +1,257 @@
+name: Publish NuGet Packages
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'          # e.g. v1.2.3
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'         # e.g. v1.2.3-beta.1
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version (e.g. 1.2.3 or 1.2.3-beta.1) — overrides the tag'
+        required: true
+
+permissions:
+  contents: write   # needed to create the GitHub Release
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Resolve the version string from tag or manual input
+  # ─────────────────────────────────────────────────────────────────────────────
+  resolve-version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+
+    steps:
+      - name: Determine version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Strip leading 'v' from tag (v1.2.3 → 1.2.3)
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "Resolved version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. Pack KumikoUI.Core and KumikoUI.SkiaSharp  (plain net9.0 — Linux is fine)
+  # ─────────────────────────────────────────────────────────────────────────────
+  pack-core:
+    name: Pack Core & SkiaSharp
+    runs-on: ubuntu-latest
+    needs: resolve-version
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore
+        run: |
+          dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
+          dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
+
+      - name: Pack — MauiKumikoUI.Core
+        run: |
+          dotnet pack src/KumikoUI.Core/KumikoUI.Core.csproj \
+            --no-restore \
+            -c Release \
+            -p:Version=${{ env.VERSION }} \
+            --include-symbols \
+            -p:SymbolPackageFormat=snupkg \
+            -o ./artifacts
+
+      - name: Pack — MauiKumikoUI.SkiaSharp
+        run: |
+          dotnet pack src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj \
+            --no-restore \
+            -c Release \
+            -p:Version=${{ env.VERSION }} \
+            --include-symbols \
+            -p:SymbolPackageFormat=snupkg \
+            -o ./artifacts
+
+      - name: List artifacts
+        run: ls -lh artifacts/
+
+      - name: Upload Core + SkiaSharp packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-core-skiasharp
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      - name: Upload Core + SkiaSharp symbol packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: snupkg-core-skiasharp
+          path: artifacts/*.snupkg
+          if-no-files-found: warn
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. Pack KumikoUI.Maui (multi-target MAUI — needs Windows for Windows TFM)
+  # ─────────────────────────────────────────────────────────────────────────────
+  pack-maui:
+    name: Pack KumikoUI.Maui (all TFMs)
+    runs-on: windows-latest
+    needs: resolve-version
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9 + 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.x
+            10.x
+
+      - name: Cache MAUI workloads
+        uses: actions/cache@v4
+        id: workload-cache
+        with:
+          path: |
+            ${{ env.USERPROFILE }}\.dotnet\toolResolverCache
+            ${{ env.PROGRAMFILES }}\dotnet\packs
+            ${{ env.PROGRAMFILES }}\dotnet\metadata\workloads
+            ${{ env.PROGRAMFILES }}\dotnet\sdk-manifests
+          key: maui-workloads-win-${{ hashFiles('**/KumikoUI.Maui.csproj') }}
+          restore-keys: maui-workloads-win-
+
+      - name: Install MAUI workloads
+        if: steps.workload-cache.outputs.cache-hit != 'true'
+        run: dotnet workload install maui --source https://api.nuget.org/v3/index.json
+
+      - name: Restore
+        run: dotnet restore src/KumikoUI.Maui/KumikoUI.Maui.csproj
+
+      - name: Pack — KumikoUI.Maui
+        run: |
+          dotnet pack src/KumikoUI.Maui/KumikoUI.Maui.csproj `
+            --no-restore `
+            -c Release `
+            -p:Version=${{ env.VERSION }} `
+            --include-symbols `
+            -p:SymbolPackageFormat=snupkg `
+            -o ./artifacts
+
+      - name: List artifacts
+        run: Get-ChildItem artifacts -Recurse | Format-Table Name, Length
+
+      - name: Upload Maui package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-maui
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      - name: Upload Maui symbol package
+        uses: actions/upload-artifact@v4
+        with:
+          name: snupkg-maui
+          path: artifacts/*.snupkg
+          if-no-files-found: warn
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 4. Run tests before publishing (gate publish on green tests)
+  # ─────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    needs: resolve-version
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore & Test
+        run: |
+          dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
+          dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj \
+            -c Release --logger "github-actions"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 5. Publish all packages to NuGet.org and create a GitHub Release
+  # ─────────────────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish to NuGet.org
+    runs-on: ubuntu-latest
+    needs: [ pack-core, pack-maui, test ]
+    environment: nuget-publish      # optional: require manual approval in repo settings
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Download all package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nuget-*
+          path: ./publish
+          merge-multiple: true
+
+      - name: Download all symbol artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: snupkg-*
+          path: ./publish
+          merge-multiple: true
+
+      - name: List packages to publish
+        run: ls -lh publish/
+
+      - name: Push .nupkg packages to NuGet.org
+        run: |
+          for f in publish/*.nupkg; do
+            echo "Pushing $f …"
+            dotnet nuget push "$f" \
+              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
+
+      - name: Push .snupkg symbol packages to NuGet.org
+        run: |
+          for f in publish/*.snupkg; do
+            [ -f "$f" ] || continue
+            echo "Pushing symbol package $f …"
+            dotnet nuget push "$f" \
+              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
+
+      # ── GitHub Release ─────────────────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: publish/*.nupkg

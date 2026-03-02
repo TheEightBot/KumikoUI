@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.ThemingPage"
+             Title="Theming">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="0">
+        <Label Text="Theme Customization"
+               FontSize="20"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <!-- Built-in theme buttons -->
+        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+            <Button Text="Light" Clicked="OnLightThemeClicked" Margin="4,0,0,4" />
+            <Button Text="Dark" Clicked="OnDarkThemeClicked" Margin="4,0,0,4" />
+            <Button Text="High Contrast" Clicked="OnHighContrastThemeClicked" Margin="4,0,0,4" />
+            <Button Text="Ocean Blue" Clicked="OnOceanBlueClicked" Margin="4,0,0,4" />
+            <Button Text="Forest Green" Clicked="OnForestGreenClicked" Margin="4,0,0,4" />
+            <Button Text="Sunset" Clicked="OnSunsetClicked" Margin="4,0,0,4" />
+        </FlexLayout>
+
+        <!-- Custom color sliders -->
+        <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*" Padding="16,4" Grid.Row="2">
+            <Label Text="Header R:" VerticalOptions="Center" Grid.Column="0" />
+            <Slider x:Name="sliderR" Minimum="0" Maximum="255" Value="60"
+                    ValueChanged="OnColorSliderChanged" Grid.Column="1" />
+            <Label Text="Header G:" VerticalOptions="Center" Grid.Column="2" />
+            <Slider x:Name="sliderG" Minimum="0" Maximum="255" Value="120"
+                    ValueChanged="OnColorSliderChanged" Grid.Column="3" />
+            <Label Text="Header B:" VerticalOptions="Center" Grid.Column="4" />
+            <Slider x:Name="sliderB" Minimum="0" Maximum="255" Value="215"
+                    ValueChanged="OnColorSliderChanged" Grid.Column="5" />
+        </Grid>
+
+        <dg:DataGridView x:Name="kumiko"
+                         Grid.Row="3"
+                         ItemsSource="{Binding Products}"
+                         RowHeight="36"
+                         HeaderHeight="40"
+                         GridDescription="Product data grid for theming demo"
+                         HorizontalOptions="Fill"
+                         VerticalOptions="Fill">
+
+            <dg:DataGridView.Columns>
+                <core:DataGridColumn Header="SKU"
+                                     PropertyName="Sku"
+                                     Width="100"
+                                     IsReadOnly="True"
+                                     IsFrozen="True" />
+
+                <core:DataGridColumn Header="Product"
+                                     PropertyName="ProductName"
+                                     Width="200" />
+
+                <core:DataGridColumn Header="Category"
+                                     PropertyName="Category"
+                                     Width="130"
+                                     ColumnType="ComboBox"
+                                     EditorItemsString="Electronics,Clothing,Home,Sports,Books,Food,Auto,Garden" />
+
+                <core:DataGridColumn Header="Price"
+                                     PropertyName="Price"
+                                     Width="100"
+                                     Format="C2"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right" />
+
+                <core:DataGridColumn Header="Stock"
+                                     PropertyName="Stock"
+                                     Width="80"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right" />
+
+                <core:DataGridColumn Header="In Stock"
+                                     PropertyName="InStock"
+                                     Width="80"
+                                     ColumnType="Boolean" />
+
+                <core:DataGridColumn Header="Rating"
+                                     PropertyName="Rating"
+                                     Width="80"
+                                     Format="N1"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right" />
+
+                <core:DataGridColumn Header="Supplier"
+                                     PropertyName="Supplier"
+                                     Width="150" />
+            </dg:DataGridView.Columns>
+
+            <dg:DataGridView.TableSummaryRows>
+                <core:TableSummaryRow Name="Stats" Position="Bottom" Title="Stats">
+                    <core:TableSummaryRow.Columns>
+                        <core:SummaryColumnDescription PropertyName="Price"
+                                                       SummaryType="Average"
+                                                       Format="C2" />
+                        <core:SummaryColumnDescription PropertyName="Stock"
+                                                       SummaryType="Sum"
+                                                       Label="Total Stock: " />
+                    </core:TableSummaryRow.Columns>
+                </core:TableSummaryRow>
+            </dg:DataGridView.TableSummaryRows>
+
+        </dg:DataGridView>
+    </Grid>
+
+</ContentPage>

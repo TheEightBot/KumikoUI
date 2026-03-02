@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="SampleApp.Maui.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:SampleApp.Maui"
+    Title="SampleApp.Maui">
+
+    <TabBar>
+        <ShellContent
+            Title="All Components"
+            Icon="icon_grid.png"
+            ContentTemplate="{DataTemplate local:MainPage}"
+            Route="MainPage" />
+
+        <ShellContent
+            Title="Grouping"
+            Icon="icon_group.png"
+            ContentTemplate="{DataTemplate local:GroupingPage}"
+            Route="GroupingPage" />
+
+        <ShellContent
+            Title="Large Data"
+            Icon="icon_data.png"
+            ContentTemplate="{DataTemplate local:LargeDataPage}"
+            Route="LargeDataPage" />
+
+        <ShellContent
+            Title="Theming"
+            Icon="icon_theme.png"
+            ContentTemplate="{DataTemplate local:ThemingPage}"
+            Route="ThemingPage" />
+    </TabBar>
+
+</Shell>

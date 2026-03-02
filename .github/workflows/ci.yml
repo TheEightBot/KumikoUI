@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Build + test KumikoUI.Core and KumikoUI.SkiaSharp (platform-agnostic) ───
+  build-core:
+    name: Build & Test (Core + SkiaSharp)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore
+        run: dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
+          && dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
+          && dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
+
+      - name: Build — Core
+        run: dotnet build src/KumikoUI.Core/KumikoUI.Core.csproj
+          --no-restore -c Release
+
+      - name: Build — SkiaSharp
+        run: dotnet build src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
+          --no-restore -c Release
+
+      - name: Test
+        run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
+          --no-restore -c Release --logger "github-actions" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/
+
+      # Validate that packages are packable (dry run — no push)
+      - name: Pack — Core (dry run)
+        run: dotnet pack src/KumikoUI.Core/KumikoUI.Core.csproj
+          --no-restore -c Release -p:Version=0.0.0-ci -o /tmp/ci-pack
+
+      - name: Pack — SkiaSharp (dry run)
+        run: dotnet pack src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
+          --no-restore -c Release -p:Version=0.0.0-ci -o /tmp/ci-pack
+
+  # ─── Build KumikoUI.Maui (all TFMs including Windows requires Windows runner) ─
+  build-maui:
+    name: Build (KumikoUI.Maui — all TFMs)
+    runs-on: windows-latest
+    needs: build-core
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9 + 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.x
+            10.x
+
+      - name: Cache MAUI workloads
+        uses: actions/cache@v4
+        id: workload-cache
+        with:
+          path: |
+            ${{ env.USERPROFILE }}\.dotnet\toolResolverCache
+            ${{ env.PROGRAMFILES }}\dotnet\packs
+            ${{ env.PROGRAMFILES }}\dotnet\metadata\workloads
+            ${{ env.PROGRAMFILES }}\dotnet\sdk-manifests
+          key: maui-workloads-win-${{ hashFiles('**/KumikoUI.Maui.csproj') }}
+          restore-keys: maui-workloads-win-
+
+      - name: Install MAUI workloads
+        if: steps.workload-cache.outputs.cache-hit != 'true'
+        run: dotnet workload install maui --source https://api.nuget.org/v3/index.json
+
+      - name: Restore
+        run: dotnet restore src/KumikoUI.Maui/KumikoUI.Maui.csproj
+
+      - name: Build — Maui
+        run: dotnet build src/KumikoUI.Maui/KumikoUI.Maui.csproj
+          --no-restore -c Release
+
+      # Validate packability (dry run)
+      - name: Pack — Maui (dry run)
+        run: dotnet pack src/KumikoUI.Maui/KumikoUI.Maui.csproj
+          --no-restore -c Release -p:Version=0.0.0-ci -o C:\ci-pack
