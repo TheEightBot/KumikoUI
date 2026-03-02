@@ -256,653 +256,647 @@ public class DataGridSourceTests
 
     [Fact]
     public void SetFilter_Null_ClearsFilter()
-
-
-
-
-
-
-}
-    }
-        Assert.Null(ex);
-        var ex = Record.Exception(() => source.Refresh());
+    {
         var source = MakeSource(SamplePeople());
-    {
-    public void Refresh_DoesNotThrow()
-    [Fact]
-
-    // ── Refresh ───────────────────────────────────────────────────
-
-    }
-        Assert.Equal("42", DataGridSource.FormatCellValue(42, col));
-        var col = new DataGridColumn();
-    {
-    public void FormatCellValue_NoFormat_UsestoString()
-    [Fact]
-
-    }
-        Assert.Equal("3.14", DataGridSource.FormatCellValue(3.14159265, col));
-        var col = new DataGridColumn { Format = "N2" };
-    {
-    public void FormatCellValue_WithFormat_FormatsValue()
-    [Fact]
-
-    }
-        Assert.Equal("", DataGridSource.FormatCellValue(null, col));
-        var col = new DataGridColumn();
-    {
-    public void FormatCellValue_NullValue_ReturnsEmpty()
-    [Fact]
-
-    // ── FormatCellValue static ────────────────────────────────────
-
-    }
-        Assert.True(source.IsMultiSortActive);
-        source.ToggleMultiSort(ageCol);
-        source.ToggleSort(nameCol);
-        var ageCol = source.Columns.First(c => c.PropertyName == "Age");
-        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
-        var source = MakeSource(SamplePeople());
-    {
-    public void IsMultiSortActive_ReturnsTrueWhenMultipleColumnsSorted()
-    [Fact]
-
-    }
-        Assert.Single(source.Columns);
-        source.SetColumns(new[] { new DataGridColumn { PropertyName = "Name" } });
-        var source = MakeSource(SamplePeople());
-    {
-    public void SetColumns_ReplacesExistingColumns()
-    [Fact]
-
-    // ── Columns ───────────────────────────────────────────────────
-
-    }
-        Assert.Equal(rowsBefore, source.RowCount);
-        Assert.Null(ex);
-        var ex = Record.Exception(() => source.ReorderRow(0, 1));
-        int rowsBefore = source.RowCount;
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void ReorderRow_WithGrouping_DoesNothing()
-    [Fact]
-
-    }
-        Assert.Equal(firstName, ((Person)source.GetItem(0)).Name);
-        source.ReorderRow(0, 0);
-        string firstName = ((Person)source.GetItem(0)).Name;
-        var source = MakeSource(people);
-        var people = SamplePeople().ToList();
-    {
-    public void ReorderRow_SameIndex_DoesNothing()
-    [Fact]
-
-    }
-        Assert.Equal(firstName, ((Person)source.GetItem(1)).Name);
-        Assert.Equal(secondName, ((Person)source.GetItem(0)).Name);
-        source.ReorderRow(0, 1);
-        string secondName = ((Person)source.GetItem(1)).Name;
-        string firstName = ((Person)source.GetItem(0)).Name;
-        var source = MakeSource(people);
-        var people = SamplePeople().ToList();
-    {
-    public void ReorderRow_MovesItemInUnderlying()
-    [Fact]
-
-    // ── Row reorder ───────────────────────────────────────────────
-
-    }
-        Assert.Null(source.GetCellValue(0, col));
-        var col = source.Columns[0];
-        source.SetItems(new List<Person> { new Person { Name = "Test" } });
-        });
-            new DataGridColumn { PropertyName = "NonExistentProp", ColumnType = DataGridColumnType.Text }
-        {
-        source.SetColumns(new[]
-        var source = new DataGridSource();
-    {
-    public void GetCellValue_UnknownProperty_ReturnsNull()
-    [Fact]
-
-    }
-        Assert.Equal("Seattle", source.GetCellValue(0, col));
-        var col = source.Columns[0];
-        source.SetItems(items);
-        });
-            new DataGridColumn { PropertyName = "Address.City", ColumnType = DataGridColumnType.Text }
-        {
-        source.SetColumns(new[]
-        var source = new DataGridSource();
-        };
-            new NestedItem { Title = "HQ", Address = new Address { City = "Seattle" } }
-        {
-        var items = new List<NestedItem>
-    {
-    public void GetCellValue_NestedProperty_ReturnsCorrectValue()
-    [Fact]
-
-    // ── Nested property access ────────────────────────────────────
-
-    }
-        Assert.Equal(1, source.RowCount); // new source only has 1 item
-        Assert.Equal(0, eventCount); // old collection no longer wired
-        old.Add(new Person { Name = "Ghost", Age = 1, Department = "X" });
-        source.DataChanged += () => eventCount++;
-        int eventCount = 0;
-        source.SetItems(newPeople);
-        };
-            new Person { Name = "NewPerson", Age = 99, Department = "IT" }
-        {
-        var newPeople = new List<Person>
-        var source = MakeSource(old);
-        var old = new ObservableCollection<Person>(SamplePeople());
-    {
-    public void SetItems_ReplacingSource_UnsubscribesFromOldCollection()
-    [Fact]
-
-    }
-        Assert.True(dataChangedCount > 0);
-        people[0].Name = "AliceUpdated"; // fires PropertyChanged
-        source.DataChanged += () => dataChangedCount++;
-        int dataChangedCount = 0;
-        var source = MakeSource(people);
-        var people = SamplePeople();
-    {
-    public void SetItems_PropertyChanged_TriggersDataChanged()
-    [Fact]
-
-    }
-        Assert.Equal(4, source.RowCount);
-        people.RemoveAt(0);
-        source.SetItems(people);
-        });
-            new DataGridColumn { PropertyName = "Department", ColumnType = DataGridColumnType.Text }
-            new DataGridColumn { PropertyName = "Age", ColumnType = DataGridColumnType.Numeric },
-            new DataGridColumn { PropertyName = "Name", ColumnType = DataGridColumnType.Text },
-        {
-        source.SetColumns(new[]
-        var source = new DataGridSource();
-        var people = new ObservableCollection<Person>(SamplePeople());
-    {
-    public void SetItems_ObservableCollection_RemoveItem_UpdatesRowCount()
-    [Fact]
-
-    }
-        Assert.Equal(6, source.RowCount);
-        Assert.True(dataChangedCount > 0);
-        people.Add(new Person { Name = "Frank", Age = 22, Department = "HR" });
-        source.DataChanged += () => dataChangedCount++;
-        int dataChangedCount = 0;
-        source.SetItems(people);
-        });
-            new DataGridColumn { PropertyName = "Department", ColumnType = DataGridColumnType.Text }
-            new DataGridColumn { PropertyName = "Age", ColumnType = DataGridColumnType.Numeric },
-            new DataGridColumn { PropertyName = "Name", ColumnType = DataGridColumnType.Text },
-        {
-        source.SetColumns(new[]
-        var source = new DataGridSource();
-        var people = new ObservableCollection<Person>(SamplePeople());
-    {
-    public void SetItems_ObservableCollection_SubscribesToChanges()
-    [Fact]
-
-    // ── INCC support ──────────────────────────────────────────────
-
-    }
-        Assert.True(source.HasGroupSummaries);
-        });
-            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
-        {
-        source.AddGroupSummaryRow(new GroupSummaryRow("Total")
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void GroupSummaryRow_ComputesForEachGroup()
-    [Fact]
-
-    }
-        Assert.Equal(105.0, (double)row.RawValues["Age"]!);
-        var row = source.ComputedBottomSummaries[0];
-        // Engineering: Alice(30), Charlie(35), Eve(40) = 105
-        source.SetFilter(item => ((Person)item).Department == "Engineering");
-        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
-        });
-            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Bottom)
-        var source = MakeSource(SamplePeople());
-    {
-    public void Summary_WithFilter_OnlyCountsVisibleRows()
-    [Fact]
-
-    }
-        Assert.Equal(0, source.BottomSummaryCount);
-        source.ClearTableSummaryRows();
-        });
-            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Bottom)
-        var source = MakeSource(SamplePeople());
-    {
-    public void ClearTableSummaryRows_RemovesAllRows()
-    [Fact]
-
-    }
-        Assert.Equal(0, source.BottomSummaryCount);
-        source.RemoveTableSummaryRow("Total");
-        });
-            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Bottom)
-        var source = MakeSource(SamplePeople());
-    {
-    public void RemoveTableSummaryRow_RemovesRow()
-    [Fact]
-
-    }
-        Assert.Equal(0, source.BottomSummaryCount);
-        Assert.Equal(1, source.TopSummaryCount);
-        });
-            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Top)
-        var source = MakeSource(SamplePeople());
-    {
-    public void AddTableSummaryRow_Top_AppearsInTopSummaries()
-    [Fact]
-
-    }
-        Assert.Equal(5, (int)row.RawValues["Age"]!);
-        var row = source.ComputedBottomSummaries[0];
-        });
-            }
-                }
-                    CustomAggregate = values => values.Count(v => v != null)
-                {
-                new SummaryColumnDescription("Age", SummaryType.Custom)
-            {
-            Columns =
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Custom", SummaryPosition.Bottom)
-        var source = MakeSource(SamplePeople());
-    {
-    public void AddTableSummaryRow_Custom_UsesCustomFunction()
-    [Fact]
-
-    }
-        Assert.Equal(40, (int)(row.RawValues["Age"] as IComparable)!);
-        var row = source.ComputedBottomSummaries[0];
-        });
-            Columns = { new SummaryColumnDescription("Age", SummaryType.Max) }
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Max", SummaryPosition.Bottom)
-        var source = MakeSource(SamplePeople());
-    {
-    public void AddTableSummaryRow_Max_FindsMaximum()
-    [Fact]
-
-    }
-        Assert.Equal(25, (int)(row.RawValues["Age"] as IComparable)!);
-        var row = source.ComputedBottomSummaries[0];
-        });
-            Columns = { new SummaryColumnDescription("Age", SummaryType.Min) }
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Min", SummaryPosition.Bottom)
-        var source = MakeSource(SamplePeople());
-    {
-    public void AddTableSummaryRow_Min_FindsMinimum()
-    [Fact]
-
-    }
-        Assert.Equal(5, (int)row.RawValues["Name"]!);
-        var row = source.ComputedBottomSummaries[0];
-        });
-            Columns = { new SummaryColumnDescription("Name", SummaryType.Count) }
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Count", SummaryPosition.Bottom)
-        var source = MakeSource(SamplePeople());
-    {
-    public void AddTableSummaryRow_Count_CountsRows()
-    [Fact]
-
-    }
-        Assert.Equal(31.6, (double)row.RawValues["Age"]!, 5);
-        var row = source.ComputedBottomSummaries[0];
-        });
-            Columns = { new SummaryColumnDescription("Age", SummaryType.Average) }
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Avg", SummaryPosition.Bottom)
-        var source = MakeSource(SamplePeople());
-    {
-    public void AddTableSummaryRow_Average_ComputesCorrectly()
-    [Fact]
-
-    }
-        Assert.Equal(158.0, (double)row.RawValues["Age"]!);
-        Assert.True(row.RawValues.ContainsKey("Age"));
-        var row = source.ComputedBottomSummaries[0];
-        // 30 + 25 + 35 + 28 + 40 = 158
-        });
-            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
-        {
-        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Bottom)
-        var source = MakeSource(SamplePeople());
-    {
-    public void AddTableSummaryRow_Sum_ComputesCorrectly()
-    [Fact]
-
-    // ── Summary ───────────────────────────────────────────────────
-
-    }
-        Assert.Equal(source.RowCount, source.EffectiveFrozenRowCount);
-        source.FrozenRowCount = 100;
-        var source = MakeSource(SamplePeople());
-    {
-    public void EffectiveFrozenRowCount_ClampsToRowCount()
-    [Fact]
-
-    }
-        Assert.Equal(2, source.FrozenRowCount);
-        source.FrozenRowCount = 2;
-        var source = MakeSource(SamplePeople());
-    {
-    public void FrozenRowCount_WithoutGrouping_ReturnsSetValue()
-    [Fact]
-
-    }
-        Assert.Equal(0, source.FrozenRowCount);
-        source.AddGroupDescription(new GroupDescription("Department"));
-        source.FrozenRowCount = 2;
-        var source = MakeSource(SamplePeople());
-    {
-    public void FrozenRowCount_WithGrouping_ReturnsZero()
-    [Fact]
-
-    }
-        Assert.NotNull(eventArgs);
-        source.ToggleGroupExpansion(0);
-        source.GroupCollapsed += (_, e) => eventArgs = e;
-        GroupCollapsedEventArgs? eventArgs = null;
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void GroupCollapsed_RaisedAfterToggle()
-    [Fact]
-
-    }
-        Assert.Equal(rowsBefore, source.RowCount);
-        source.ToggleGroupExpansion(0); // should be cancelled
-        source.GroupExpanding += (_, e) => e.Cancel = true;
-        int rowsBefore = source.RowCount;
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void GroupExpanding_CanBeCancelled()
-    [Fact]
-
-    }
-        Assert.False(source.IsGroupingActive);
-        source.ClearGroupDescriptions();
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void ClearGroupDescriptions_ClearsAllGrouping()
-    [Fact]
-
-    }
+        source.SetFilter(item => ((Person)item).Age > 30);
+        source.SetFilter(null);
         Assert.Equal(5, source.RowCount);
-        Assert.False(source.IsGroupingActive);
-        source.RemoveGroupDescription("Department");
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void RemoveGroupDescription_ClearsGrouping()
-    [Fact]
-
     }
-        Assert.Equal(7, source.RowCount); // 2 headers + 5 data
-        source.ExpandAllGroups();
-        source.CollapseAllGroups();
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void ExpandAllGroups_ExpandsAllGroups()
+
     [Fact]
-
-    }
-        Assert.Equal(2, source.RowCount);
-        // Only 2 group headers remain
-        source.CollapseAllGroups();
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
+    public void SetColumnFilter_TextContains_FiltersRows()
     {
-    public void CollapseAllGroups_CollapsesAllGroups()
-    [Fact]
-
-    }
-        Assert.True(source.RowCount > collapsed);
-        source.ToggleGroupExpansion(0); // Expand
-        int collapsed = source.RowCount;
-        source.ToggleGroupExpansion(0); // Collapse
-        source.AddGroupDescription(new GroupDescription("Department"));
         var source = MakeSource(SamplePeople());
-    {
-    public void ToggleGroupExpansion_ExpandsCollapsedGroup()
-    [Fact]
-
-    }
-        Assert.True(rowCountAfter < rowCountBefore);
-        int rowCountAfter = source.RowCount;
-        source.ToggleGroupExpansion(0); // Collapse first group
-        int rowCountBefore = source.RowCount;
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void ToggleGroupExpansion_CollapsesGroup()
-    [Fact]
-
-    }
-        Assert.Throws<InvalidOperationException>(() => source.GetItem(0));
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void GetItem_GroupHeaderRow_Throws()
-    [Fact]
-
-    }
-        Assert.Equal(0, info!.Level);
-        Assert.NotNull(info);
-        var info = source.GetGroupHeaderInfo(0);
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void GetGroupHeaderInfo_ReturnsInfoForGroupHeader()
-    [Fact]
-
-    }
-        Assert.False(source.IsGroupHeaderRow(1));
-        // Second row (after first group header) should be a data row
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void IsGroupHeaderRow_ReturnsFalseForDataRows()
-    [Fact]
-
-    }
-        Assert.True(source.IsGroupHeaderRow(0));
-        // First row should be a group header
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void IsGroupHeaderRow_ReturnsTrueForGroupHeaders()
-    [Fact]
-
-    }
-        Assert.Equal(7, source.RowCount);
-        // 2 groups (Engineering, Marketing) + 5 data rows = 7 rows
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void AddGroupDescription_RowCountIncludesGroupHeaders()
-    [Fact]
-
-    }
-        Assert.True(source.IsGroupingActive);
-        source.AddGroupDescription(new GroupDescription("Department"));
-        var source = MakeSource(SamplePeople());
-    {
-    public void AddGroupDescription_ActivatesGrouping()
-    [Fact]
-
-    // ── Grouping ──────────────────────────────────────────────────
-
-    }
-        Assert.Equal("Updated", people[0].Name);
-        source.SetCellValue(0, nameCol, "Updated");
         var nameCol = source.Columns.First(c => c.PropertyName == "Name");
-        var source = MakeSource(people);
-        var people = SamplePeople();
-    {
-    public void SetCellValue_UpdatesItemProperty()
-    [Fact]
-
-    // ── SetCellValue ──────────────────────────────────────────────
-
+        // "ice" uniquely appears in "Alice" but not in any other sample name
+        var filter = new FilterDescription(nameCol)
+        {
+            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "ice" }
+        };
+        source.SetColumnFilter(nameCol, filter);
+        Assert.Equal(1, source.RowCount); // Alice only
+        Assert.Equal("Alice", ((Person)source.GetItem(0)).Name);
     }
-        Assert.Null(ex);
-        var ex = Record.Exception(() => source.ReorderColumn(100, 0));
-        var source = MakeSource(SamplePeople());
-    {
-    public void ReorderColumn_OutOfRange_DoesNotThrow()
-    [Fact]
 
-    }
-        Assert.Equal(originalOrder, newOrder);
-        var newOrder = source.Columns.Select(c => c.PropertyName).ToList();
-        source.ReorderColumn(1, 1);
-        var originalOrder = source.Columns.Select(c => c.PropertyName).ToList();
-        var source = MakeSource(SamplePeople());
-    {
-    public void ReorderColumn_SameIndex_DoesNothing()
     [Fact]
+    public void SetColumnFilter_Null_ClearsFilter()
+    {
+        var source = MakeSource(SamplePeople());
+        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
+        var filter = new FilterDescription(nameCol)
+        {
+            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "li" }
+        };
+        source.SetColumnFilter(nameCol, filter);
+        source.SetColumnFilter(nameCol, null);
+        Assert.Equal(5, source.RowCount);
+    }
 
-    }
-        Assert.Equal(firstCol, source.Columns[1].PropertyName);
-        Assert.Equal(secondCol, source.Columns[0].PropertyName);
-        source.ReorderColumn(0, 1);
-        var secondCol = source.Columns[1].PropertyName;
-        var firstCol = source.Columns[0].PropertyName;
-        var source = MakeSource(SamplePeople());
-    {
-    public void ReorderColumn_ChangesColumnOrder()
     [Fact]
+    public void ClearAllFilters_RemovesAllFilters()
+    {
+        var source = MakeSource(SamplePeople());
+        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
+        source.SetColumnFilter(nameCol, new FilterDescription(nameCol)
+        {
+            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "Alice" }
+        });
+        source.ClearAllFilters();
+        Assert.Equal(5, source.RowCount);
+        Assert.Empty(source.ActiveFilters);
+    }
+
+    [Fact]
+    public void FilterChanging_CanBeCancelled()
+    {
+        var source = MakeSource(SamplePeople());
+        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
+        source.FilterChanging += (_, e) => e.Cancel = true;
+        source.SetColumnFilter(nameCol, new FilterDescription(nameCol)
+        {
+            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "Alice" }
+        });
+        Assert.Equal(5, source.RowCount); // Filter was cancelled
+    }
+
+    [Fact]
+    public void FilterChanged_RaisedAfterFilter()
+    {
+        var source = MakeSource(SamplePeople());
+        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
+        FilterChangedEventArgs? eventArgs = null;
+        source.FilterChanged += (_, e) => eventArgs = e;
+        source.SetColumnFilter(nameCol, new FilterDescription(nameCol)
+        {
+            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "Alice" }
+        });
+        Assert.NotNull(eventArgs);
+        Assert.Same(nameCol, eventArgs!.Column);
+    }
+
+    [Fact]
+    public void GetUniqueColumnValues_ReturnsDistinctSortedValues()
+    {
+        var source = MakeSource(SamplePeople());
+        var deptCol = source.Columns.First(c => c.PropertyName == "Department");
+        var values = source.GetUniqueColumnValues(deptCol);
+        Assert.Equal(2, values.Count);
+        Assert.Contains("Engineering", values);
+        Assert.Contains("Marketing", values);
+        // Sorted alphabetically
+        Assert.Equal("Engineering", values[0]);
+        Assert.Equal("Marketing", values[1]);
+    }
+
+    [Fact]
+    public void ActiveFilters_ReflectsActiveColumnFilters()
+    {
+        var source = MakeSource(SamplePeople());
+        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
+        Assert.Empty(source.ActiveFilters);
+
+        source.SetColumnFilter(nameCol, new FilterDescription(nameCol)
+        {
+            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "A" }
+        });
+        Assert.NotEmpty(source.ActiveFilters);
+        Assert.Single(source.ActiveFilters);
+    }
 
     // ── Column reorder ────────────────────────────────────────────
 
+    [Fact]
+    public void ReorderColumn_ChangesColumnOrder()
+    {
+        var source = MakeSource(SamplePeople());
+        var firstCol = source.Columns[0].PropertyName;
+        var secondCol = source.Columns[1].PropertyName;
+        source.ReorderColumn(0, 1);
+        Assert.Equal(secondCol, source.Columns[0].PropertyName);
+        Assert.Equal(firstCol, source.Columns[1].PropertyName);
     }
-        Assert.Single(source.ActiveFilters);
-        Assert.NotEmpty(source.ActiveFilters);
-        });
-            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "A" }
-        {
-        source.SetColumnFilter(nameCol, new FilterDescription(nameCol)
 
-        Assert.Empty(source.ActiveFilters);
+    [Fact]
+    public void ReorderColumn_SameIndex_DoesNothing()
+    {
+        var source = MakeSource(SamplePeople());
+        var originalOrder = source.Columns.Select(c => c.PropertyName).ToList();
+        source.ReorderColumn(1, 1);
+        var newOrder = source.Columns.Select(c => c.PropertyName).ToList();
+        Assert.Equal(originalOrder, newOrder);
+    }
+
+    [Fact]
+    public void ReorderColumn_OutOfRange_DoesNotThrow()
+    {
+        var source = MakeSource(SamplePeople());
+        var ex = Record.Exception(() => source.ReorderColumn(100, 0));
+        Assert.Null(ex);
+    }
+
+    // ── SetCellValue ──────────────────────────────────────────────
+
+    [Fact]
+    public void SetCellValue_UpdatesItemProperty()
+    {
+        var people = SamplePeople();
+        var source = MakeSource(people);
         var nameCol = source.Columns.First(c => c.PropertyName == "Name");
-        var source = MakeSource(SamplePeople());
-    {
-    public void ActiveFilters_ReflectsActiveColumnFilters()
-    [Fact]
-
+        source.SetCellValue(0, nameCol, "Updated");
+        Assert.Equal("Updated", people[0].Name);
     }
-        Assert.Equal("Marketing", values[1]);
-        Assert.Equal("Engineering", values[0]);
-        // Sorted alphabetically
-        Assert.Contains("Marketing", values);
-        Assert.Contains("Engineering", values);
-        Assert.Equal(2, values.Count);
-        var values = source.GetUniqueColumnValues(deptCol);
-        var deptCol = source.Columns.First(c => c.PropertyName == "Department");
-        var source = MakeSource(SamplePeople());
-    {
-    public void GetUniqueColumnValues_ReturnsDistinctSortedValues()
-    [Fact]
 
+    // ── Grouping ──────────────────────────────────────────────────
+
+    [Fact]
+    public void AddGroupDescription_ActivatesGrouping()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        Assert.True(source.IsGroupingActive);
     }
-        Assert.Same(nameCol, eventArgs!.Column);
+
+    [Fact]
+    public void AddGroupDescription_RowCountIncludesGroupHeaders()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        // 2 groups (Engineering, Marketing) + 5 data rows = 7 rows
+        Assert.Equal(7, source.RowCount);
+    }
+
+    [Fact]
+    public void IsGroupHeaderRow_ReturnsTrueForGroupHeaders()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        // First row should be a group header
+        Assert.True(source.IsGroupHeaderRow(0));
+    }
+
+    [Fact]
+    public void IsGroupHeaderRow_ReturnsFalseForDataRows()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        // Second row (after first group header) should be a data row
+        Assert.False(source.IsGroupHeaderRow(1));
+    }
+
+    [Fact]
+    public void GetGroupHeaderInfo_ReturnsInfoForGroupHeader()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        var info = source.GetGroupHeaderInfo(0);
+        Assert.NotNull(info);
+        Assert.Equal(0, info!.Level);
+    }
+
+    [Fact]
+    public void GetItem_GroupHeaderRow_Throws()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        Assert.Throws<InvalidOperationException>(() => source.GetItem(0));
+    }
+
+    [Fact]
+    public void ToggleGroupExpansion_CollapsesGroup()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        int rowCountBefore = source.RowCount;
+        source.ToggleGroupExpansion(0); // Collapse first group
+        int rowCountAfter = source.RowCount;
+        Assert.True(rowCountAfter < rowCountBefore);
+    }
+
+    [Fact]
+    public void ToggleGroupExpansion_ExpandsCollapsedGroup()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        source.ToggleGroupExpansion(0); // Collapse
+        int collapsed = source.RowCount;
+        source.ToggleGroupExpansion(0); // Expand
+        Assert.True(source.RowCount > collapsed);
+    }
+
+    [Fact]
+    public void CollapseAllGroups_CollapsesAllGroups()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        source.CollapseAllGroups();
+        // Only 2 group headers remain
+        Assert.Equal(2, source.RowCount);
+    }
+
+    [Fact]
+    public void ExpandAllGroups_ExpandsAllGroups()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        source.CollapseAllGroups();
+        source.ExpandAllGroups();
+        Assert.Equal(7, source.RowCount); // 2 headers + 5 data
+    }
+
+    [Fact]
+    public void RemoveGroupDescription_ClearsGrouping()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        source.RemoveGroupDescription("Department");
+        Assert.False(source.IsGroupingActive);
+        Assert.Equal(5, source.RowCount);
+    }
+
+    [Fact]
+    public void ClearGroupDescriptions_ClearsAllGrouping()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        source.ClearGroupDescriptions();
+        Assert.False(source.IsGroupingActive);
+    }
+
+    [Fact]
+    public void GroupExpanding_CanBeCancelled()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        int rowsBefore = source.RowCount;
+        source.GroupExpanding += (_, e) => e.Cancel = true;
+        source.ToggleGroupExpansion(0); // should be cancelled
+        Assert.Equal(rowsBefore, source.RowCount);
+    }
+
+    [Fact]
+    public void GroupCollapsed_RaisedAfterToggle()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        GroupCollapsedEventArgs? eventArgs = null;
+        source.GroupCollapsed += (_, e) => eventArgs = e;
+        source.ToggleGroupExpansion(0);
         Assert.NotNull(eventArgs);
-        });
-            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "Alice" }
-        {
-        source.SetColumnFilter(nameCol, new FilterDescription(nameCol)
-        source.FilterChanged += (_, e) => eventArgs = e;
-        FilterChangedEventArgs? eventArgs = null;
-        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
-        var source = MakeSource(SamplePeople());
-    {
-    public void FilterChanged_RaisedAfterFilter()
-    [Fact]
-
     }
-        Assert.Equal(5, source.RowCount); // Filter was cancelled
-        });
-            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "Alice" }
-        {
-        source.SetColumnFilter(nameCol, new FilterDescription(nameCol)
-        source.FilterChanging += (_, e) => e.Cancel = true;
-        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
-        var source = MakeSource(SamplePeople());
-    {
-    public void FilterChanging_CanBeCancelled()
-    [Fact]
 
-    }
-        Assert.Empty(source.ActiveFilters);
-        Assert.Equal(5, source.RowCount);
-        source.ClearAllFilters();
-        });
-            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "Alice" }
-        {
-        source.SetColumnFilter(nameCol, new FilterDescription(nameCol)
-        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
-        var source = MakeSource(SamplePeople());
-    {
-    public void ClearAllFilters_RemovesAllFilters()
     [Fact]
-
+    public void FrozenRowCount_WithGrouping_ReturnsZero()
+    {
+        var source = MakeSource(SamplePeople());
+        source.FrozenRowCount = 2;
+        source.AddGroupDescription(new GroupDescription("Department"));
+        Assert.Equal(0, source.FrozenRowCount);
     }
-        Assert.Equal(5, source.RowCount);
-        source.SetColumnFilter(nameCol, null);
-        source.SetColumnFilter(nameCol, filter);
+
+    [Fact]
+    public void FrozenRowCount_WithoutGrouping_ReturnsSetValue()
+    {
+        var source = MakeSource(SamplePeople());
+        source.FrozenRowCount = 2;
+        Assert.Equal(2, source.FrozenRowCount);
+    }
+
+    [Fact]
+    public void EffectiveFrozenRowCount_ClampsToRowCount()
+    {
+        var source = MakeSource(SamplePeople());
+        source.FrozenRowCount = 100;
+        Assert.Equal(source.RowCount, source.EffectiveFrozenRowCount);
+    }
+
+    // ── Summary ───────────────────────────────────────────────────
+
+    [Fact]
+    public void AddTableSummaryRow_Sum_ComputesCorrectly()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Bottom)
+        {
+            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
+        });
+        // 30 + 25 + 35 + 28 + 40 = 158
+        var row = source.ComputedBottomSummaries[0];
+        Assert.True(row.RawValues.ContainsKey("Age"));
+        Assert.Equal(158.0, (double)row.RawValues["Age"]!);
+    }
+
+    [Fact]
+    public void AddTableSummaryRow_Average_ComputesCorrectly()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Avg", SummaryPosition.Bottom)
+        {
+            Columns = { new SummaryColumnDescription("Age", SummaryType.Average) }
+        });
+        var row = source.ComputedBottomSummaries[0];
+        Assert.Equal(31.6, (double)row.RawValues["Age"]!, 5);
+    }
+
+    [Fact]
+    public void AddTableSummaryRow_Count_CountsRows()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Count", SummaryPosition.Bottom)
+        {
+            Columns = { new SummaryColumnDescription("Name", SummaryType.Count) }
+        });
+        var row = source.ComputedBottomSummaries[0];
+        Assert.Equal(5, (int)row.RawValues["Name"]!);
+    }
+
+    [Fact]
+    public void AddTableSummaryRow_Min_FindsMinimum()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Min", SummaryPosition.Bottom)
+        {
+            Columns = { new SummaryColumnDescription("Age", SummaryType.Min) }
+        });
+        var row = source.ComputedBottomSummaries[0];
+        Assert.Equal(25, (int)(row.RawValues["Age"] as IComparable)!);
+    }
+
+    [Fact]
+    public void AddTableSummaryRow_Max_FindsMaximum()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Max", SummaryPosition.Bottom)
+        {
+            Columns = { new SummaryColumnDescription("Age", SummaryType.Max) }
+        });
+        var row = source.ComputedBottomSummaries[0];
+        Assert.Equal(40, (int)(row.RawValues["Age"] as IComparable)!);
+    }
+
+    [Fact]
+    public void AddTableSummaryRow_Custom_UsesCustomFunction()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Custom", SummaryPosition.Bottom)
+        {
+            Columns =
+            {
+                new SummaryColumnDescription("Age", SummaryType.Custom)
+                {
+                    CustomAggregate = values => values.Count(v => v != null)
+                }
+            }
+        });
+        var row = source.ComputedBottomSummaries[0];
+        Assert.Equal(5, (int)row.RawValues["Age"]!);
+    }
+
+    [Fact]
+    public void AddTableSummaryRow_Top_AppearsInTopSummaries()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Top)
+        {
+            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
+        });
+        Assert.Equal(1, source.TopSummaryCount);
+        Assert.Equal(0, source.BottomSummaryCount);
+    }
+
+    [Fact]
+    public void RemoveTableSummaryRow_RemovesRow()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Bottom)
+        {
+            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
+        });
+        source.RemoveTableSummaryRow("Total");
+        Assert.Equal(0, source.BottomSummaryCount);
+    }
+
+    [Fact]
+    public void ClearTableSummaryRows_RemovesAllRows()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Bottom)
+        {
+            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
+        });
+        source.ClearTableSummaryRows();
+        Assert.Equal(0, source.BottomSummaryCount);
+    }
+
+    [Fact]
+    public void Summary_WithFilter_OnlyCountsVisibleRows()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddTableSummaryRow(new TableSummaryRow("Total", SummaryPosition.Bottom)
+        {
+            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
+        });
+        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
+        source.SetFilter(item => ((Person)item).Department == "Engineering");
+        // Engineering: Alice(30), Charlie(35), Eve(40) = 105
+        var row = source.ComputedBottomSummaries[0];
+        Assert.Equal(105.0, (double)row.RawValues["Age"]!);
+    }
+
+    [Fact]
+    public void GroupSummaryRow_ComputesForEachGroup()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        source.AddGroupSummaryRow(new GroupSummaryRow("Total")
+        {
+            Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) }
+        });
+        Assert.True(source.HasGroupSummaries);
+    }
+
+    // ── INCC support ──────────────────────────────────────────────
+
+    [Fact]
+    public void SetItems_ObservableCollection_SubscribesToChanges()
+    {
+        var people = new ObservableCollection<Person>(SamplePeople());
+        var source = new DataGridSource();
+        source.SetColumns(new[]
+        {
+            new DataGridColumn { PropertyName = "Name", ColumnType = DataGridColumnType.Text },
+            new DataGridColumn { PropertyName = "Age", ColumnType = DataGridColumnType.Numeric },
+            new DataGridColumn { PropertyName = "Department", ColumnType = DataGridColumnType.Text }
+        });
+        source.SetItems(people);
+        int dataChangedCount = 0;
+        source.DataChanged += () => dataChangedCount++;
+        people.Add(new Person { Name = "Frank", Age = 22, Department = "HR" });
+        Assert.True(dataChangedCount > 0);
+        Assert.Equal(6, source.RowCount);
+    }
+
+    [Fact]
+    public void SetItems_ObservableCollection_RemoveItem_UpdatesRowCount()
+    {
+        var people = new ObservableCollection<Person>(SamplePeople());
+        var source = new DataGridSource();
+        source.SetColumns(new[]
+        {
+            new DataGridColumn { PropertyName = "Name", ColumnType = DataGridColumnType.Text },
+            new DataGridColumn { PropertyName = "Age", ColumnType = DataGridColumnType.Numeric },
+            new DataGridColumn { PropertyName = "Department", ColumnType = DataGridColumnType.Text }
+        });
+        source.SetItems(people);
+        people.RemoveAt(0);
+        Assert.Equal(4, source.RowCount);
+    }
+
+    [Fact]
+    public void SetItems_PropertyChanged_TriggersDataChanged()
+    {
+        var people = SamplePeople();
+        var source = MakeSource(people);
+        int dataChangedCount = 0;
+        source.DataChanged += () => dataChangedCount++;
+        people[0].Name = "AliceUpdated"; // fires PropertyChanged
+        Assert.True(dataChangedCount > 0);
+    }
+
+    [Fact]
+    public void SetItems_ReplacingSource_UnsubscribesFromOldCollection()
+    {
+        var old = new ObservableCollection<Person>(SamplePeople());
+        var source = MakeSource(old);
+        var newPeople = new List<Person>
+        {
+            new Person { Name = "NewPerson", Age = 99, Department = "IT" }
         };
-            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "li" }
-        {
-        var filter = new FilterDescription(nameCol)
-        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
-        var source = MakeSource(SamplePeople());
-    {
-    public void SetColumnFilter_Null_ClearsFilter()
-    [Fact]
-
+        source.SetItems(newPeople);
+        int eventCount = 0;
+        source.DataChanged += () => eventCount++;
+        old.Add(new Person { Name = "Ghost", Age = 1, Department = "X" });
+        Assert.Equal(0, eventCount); // old collection no longer wired
+        Assert.Equal(1, source.RowCount); // new source only has 1 item
     }
-        Assert.Equal("Alice", ((Person)source.GetItem(0)).Name);
-        Assert.Equal(1, source.RowCount); // Alice only
-        source.SetColumnFilter(nameCol, filter);
+
+    // ── Nested property access ────────────────────────────────────
+
+    [Fact]
+    public void GetCellValue_NestedProperty_ReturnsCorrectValue()
+    {
+        var items = new List<NestedItem>
+        {
+            new NestedItem { Title = "HQ", Address = new Address { City = "Seattle" } }
         };
-            Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "ice" }
+        var source = new DataGridSource();
+        source.SetColumns(new[]
         {
-        var filter = new FilterDescription(nameCol)
-        // "ice" uniquely appears in "Alice" but not in any other sample name
-        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
-        var source = MakeSource(SamplePeople());
-    {
-    public void SetColumnFilter_TextContains_FiltersRows()
-    [Fact]
-
+            new DataGridColumn { PropertyName = "Address.City", ColumnType = DataGridColumnType.Text }
+        });
+        source.SetItems(items);
+        var col = source.Columns[0];
+        Assert.Equal("Seattle", source.GetCellValue(0, col));
     }
-        Assert.Equal(5, source.RowCount);
-        source.SetFilter(null);
-        source.SetFilter(item => ((Person)item).Age > 30);
-        var source = MakeSource(SamplePeople());
+
+    [Fact]
+    public void GetCellValue_UnknownProperty_ReturnsNull()
     {
+        var source = new DataGridSource();
+        source.SetColumns(new[]
+        {
+            new DataGridColumn { PropertyName = "NonExistentProp", ColumnType = DataGridColumnType.Text }
+        });
+        source.SetItems(new List<Person> { new Person { Name = "Test" } });
+        var col = source.Columns[0];
+        Assert.Null(source.GetCellValue(0, col));
+    }
+
+    // ── Row reorder ───────────────────────────────────────────────
+
+    [Fact]
+    public void ReorderRow_MovesItemInUnderlying()
+    {
+        var people = SamplePeople().ToList();
+        var source = MakeSource(people);
+        string firstName = ((Person)source.GetItem(0)).Name;
+        string secondName = ((Person)source.GetItem(1)).Name;
+        source.ReorderRow(0, 1);
+        Assert.Equal(secondName, ((Person)source.GetItem(0)).Name);
+        Assert.Equal(firstName, ((Person)source.GetItem(1)).Name);
+    }
+
+    [Fact]
+    public void ReorderRow_SameIndex_DoesNothing()
+    {
+        var people = SamplePeople().ToList();
+        var source = MakeSource(people);
+        string firstName = ((Person)source.GetItem(0)).Name;
+        source.ReorderRow(0, 0);
+        Assert.Equal(firstName, ((Person)source.GetItem(0)).Name);
+    }
+
+    [Fact]
+    public void ReorderRow_WithGrouping_DoesNothing()
+    {
+        var source = MakeSource(SamplePeople());
+        source.AddGroupDescription(new GroupDescription("Department"));
+        int rowsBefore = source.RowCount;
+        var ex = Record.Exception(() => source.ReorderRow(0, 1));
+        Assert.Null(ex);
+        Assert.Equal(rowsBefore, source.RowCount);
+    }
+
+    // ── Columns ───────────────────────────────────────────────────
+
+    [Fact]
+    public void SetColumns_ReplacesExistingColumns()
+    {
+        var source = MakeSource(SamplePeople());
+        source.SetColumns(new[] { new DataGridColumn { PropertyName = "Name" } });
+        Assert.Single(source.Columns);
+    }
+
+    [Fact]
+    public void IsMultiSortActive_ReturnsTrueWhenMultipleColumnsSorted()
+    {
+        var source = MakeSource(SamplePeople());
+        var nameCol = source.Columns.First(c => c.PropertyName == "Name");
+        var ageCol = source.Columns.First(c => c.PropertyName == "Age");
+        source.ToggleSort(nameCol);
+        source.ToggleMultiSort(ageCol);
+        Assert.True(source.IsMultiSortActive);
+    }
+
+    // ── FormatCellValue static ────────────────────────────────────
+
+    [Fact]
+    public void FormatCellValue_NullValue_ReturnsEmpty()
+    {
+        var col = new DataGridColumn();
+        Assert.Equal("", DataGridSource.FormatCellValue(null, col));
+    }
+
+    [Fact]
+    public void FormatCellValue_WithFormat_FormatsValue()
+    {
+        var col = new DataGridColumn { Format = "N2" };
+        Assert.Equal("3.14", DataGridSource.FormatCellValue(3.14159265, col));
+    }
+
+    [Fact]
+    public void FormatCellValue_NoFormat_UsestoString()
+    {
+        var col = new DataGridColumn();
+        Assert.Equal("42", DataGridSource.FormatCellValue(42, col));
+    }
+
+    // ── Refresh ───────────────────────────────────────────────────
+
+    [Fact]
+    public void Refresh_DoesNotThrow()
+    {
+        var source = MakeSource(SamplePeople());
+        var ex = Record.Exception(() => source.Refresh());
+        Assert.Null(ex);
+    }
+}
