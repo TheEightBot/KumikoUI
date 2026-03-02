@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.GroupingPage"
+             Title="Grouping and Filtering">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+        <Label Text="Grouping and Filtering"
+               FontSize="20"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+            <Button Text="Group by Department" Clicked="OnGroupByDepartmentClicked" Margin="4,0,0,4" />
+            <Button Text="Group by Level" Clicked="OnGroupByLevelClicked" Margin="4,0,0,4" />
+            <Button Text="Group by Both" Clicked="OnGroupByBothClicked" Margin="4,0,0,4" />
+            <Button Text="Clear Groups" Clicked="OnClearGroupsClicked" Margin="4,0,0,4" />
+            <Button Text="Expand All" Clicked="OnExpandAllClicked" Margin="4,0,0,4" />
+            <Button Text="Collapse All" Clicked="OnCollapseAllClicked" Margin="4,0,0,4" />
+            <Button Text="Add Group Summary" Clicked="OnAddGroupSummaryClicked" Margin="4,0,0,4" />
+            <Button Text="Toggle Filtering" Clicked="OnToggleFilteringClicked" Margin="4,0,0,4" />
+        </FlexLayout>
+
+        <dg:DataGridView x:Name="kumiko"
+                         Grid.Row="2"
+                         ItemsSource="{Binding Employees}"
+                         AllowFiltering="True"
+                         AllowSorting="True"
+                         RowHeight="36"
+                         HeaderHeight="40"
+                         GridDescription="Employee data grid demonstrating grouping and filtering"
+                         HorizontalOptions="Fill"
+                         VerticalOptions="Fill">
+
+            <dg:DataGridView.Columns>
+                <core:DataGridColumn Header="Id"
+                                     PropertyName="Id"
+                                     Width="60"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right"
+                                     IsReadOnly="True" />
+
+                <core:DataGridColumn Header="Name"
+                                     PropertyName="Name"
+                                     Width="160" />
+
+                <core:DataGridColumn Header="Department"
+                                     PropertyName="Department"
+                                     Width="140"
+                                     ColumnType="ComboBox"
+                                     EditorItemsString="Engineering,Marketing,Sales,HR,Finance,Design,Support" />
+
+                <core:DataGridColumn Header="Salary"
+                                     PropertyName="Salary"
+                                     Width="120"
+                                     Format="C0"
+                                     ColumnType="Numeric"
+                                     TextAlignment="Right" />
+
+                <core:DataGridColumn Header="Level"
+                                     PropertyName="Level"
+                                     Width="120"
+                                     ColumnType="ComboBox"
+                                     EditorItemsString="Junior,Mid,Senior,Staff,Principal,Director" />
+
+                <core:DataGridColumn Header="Active"
+                                     PropertyName="IsActive"
+                                     Width="80"
+                                     ColumnType="Boolean" />
+
+                <core:DataGridColumn Header="City"
+                                     PropertyName="City"
+                                     Width="130" />
+            </dg:DataGridView.Columns>
+
+            <dg:DataGridView.TableSummaryRows>
+                <core:TableSummaryRow Name="Totals" Position="Bottom" Title="Totals">
+                    <core:TableSummaryRow.Columns>
+                        <core:SummaryColumnDescription PropertyName="Salary"
+                                                       SummaryType="Sum"
+                                                       Format="C0" />
+                        <core:SummaryColumnDescription PropertyName="Id"
+                                                       SummaryType="Count"
+                                                       Label="Rows: " />
+                    </core:TableSummaryRow.Columns>
+                </core:TableSummaryRow>
+            </dg:DataGridView.TableSummaryRows>
+
+        </dg:DataGridView>
+    </Grid>
+
+</ContentPage>
