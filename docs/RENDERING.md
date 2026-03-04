@@ -11,7 +11,7 @@ SKCanvasView.InvalidateSurface()
   ↓
 OnPaintSurface(SKPaintSurfaceEventArgs)
   ↓
-KumikoRenderer.Render(IDrawingContext, width, height)
+DataGridRenderer.Render(IDrawingContext, width, height)
   ↓
 ┌──────────────────────────────────────────────────────┐
 │ 1. Compute effective grouping & summary descriptors  │
@@ -54,7 +54,7 @@ The grid calls `InvalidateSurface()` in response to:
 | Editing | Cell editor open/close, commit |
 | Resize | Column resize drag, viewport size change |
 | Sort / Filter / Group | Header tap, filter popup close |
-| Style change | BindableProperty change on KumikoView |
+| Style change | BindableProperty change on DataGridView |
 | Expand / Collapse | Group header chevron tap |
 | Drag & Drop | Row drag in progress |
 
@@ -127,7 +127,7 @@ Each column type selects an `ICellRenderer`:
 `PaintCache` eliminates per-frame allocation of paint objects:
 
 ```
-KumikoStyle (immutable input)
+DataGridStyle (immutable input)
        ↓
 PaintCache.Update()
        ↓
