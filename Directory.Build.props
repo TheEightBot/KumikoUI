@@ -8,13 +8,13 @@
     (done automatically by the GitHub Actions publish workflow).
   -->
   <PropertyGroup>
-    <Authors>MauiKumikoUI Contributors</Authors>
-    <Company>MauiKumikoUI Contributors</Company>
-    <Copyright>Copyright © MauiKumikoUI Contributors $([System.DateTime]::UtcNow.Year)</Copyright>
+    <Authors>Eight-Bot, Inc.; Michael Stonis</Authors>
+    <Company>Eight-Bot, Inc.</Company>
+    <Copyright>Copyright © Eight-Bot, Inc. $([System.DateTime]::UtcNow.Year)</Copyright>
 
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/nickreddyhoff/MauiKumikoUI</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/nickreddyhoff/MauiKumikoUI</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/TheEightBot/KumikoUI</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/TheEightBot/KumikoUI</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
 
     <!-- Embed the README in every package (path relative to each project) -->

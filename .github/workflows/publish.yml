@@ -64,7 +64,7 @@ jobs:
           dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
           dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
 
-      - name: Pack — MauiKumikoUI.Core
+      - name: Pack — KumikoUI.Core
         run: |
           dotnet pack src/KumikoUI.Core/KumikoUI.Core.csproj \
             --no-restore \
@@ -74,7 +74,7 @@ jobs:
             -p:SymbolPackageFormat=snupkg \
             -o ./artifacts
 
-      - name: Pack — MauiKumikoUI.SkiaSharp
+      - name: Pack — KumikoUI.SkiaSharp
         run: |
           dotnet pack src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj \
             --no-restore \

@@ -7,9 +7,9 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
-    <PackageId>MauiKumikoUI.Core</PackageId>
+    <PackageId>KumikoUI.Core</PackageId>
     <Version>1.0.0</Version>
-    <Description>Core data models, abstractions, and data-source logic for the MauiKumikoUI control. Platform-independent — no rendering or UI framework references.</Description>
+    <Description>Core data models, abstractions, and data-source logic for the KumikoUI control. Platform-independent — no rendering or UI framework references.</Description>
     <PackageTags>maui;datagrid;data;grid;table;core</PackageTags>
   </PropertyGroup>
 
