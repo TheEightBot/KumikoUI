@@ -228,7 +228,7 @@ jobs:
           for f in publish/*.nupkg; do
             echo "Pushing $f …"
             dotnet nuget push "$f" \
-              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --api-key ${{ secrets.EIGHTBOT_NUGET_APIKEY }} \
               --source https://api.nuget.org/v3/index.json \
               --skip-duplicate
           done
@@ -239,7 +239,7 @@ jobs:
             [ -f "$f" ] || continue
             echo "Pushing symbol package $f …"
             dotnet nuget push "$f" \
-              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --api-key ${{ secrets.EIGHTBOT_NUGET_APIKEY }} \
               --source https://api.nuget.org/v3/index.json \
               --skip-duplicate
           done
