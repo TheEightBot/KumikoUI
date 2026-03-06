@@ -21,7 +21,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <!-- NuGet package icon -->
-    <PackageIcon>logo.svg</PackageIcon>
+    <PackageIcon>logo.png</PackageIcon>
 
     <!-- Deterministic builds for reproducibility -->
     <Deterministic>true</Deterministic>
@@ -38,7 +38,7 @@
   <!-- Include README and icon in every package -->
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\"/>
-    <None Include="$(MSBuildThisFileDirectory)images/logo.svg" Pack="true" PackagePath="\"/>
+    <None Include="$(MSBuildThisFileDirectory)images/logo.png" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
   <!-- SourceLink for GitHub (requires Microsoft.SourceLink.GitHub package) -->
