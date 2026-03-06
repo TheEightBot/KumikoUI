@@ -19,6 +19,11 @@
     <img alt="Platforms" src="https://img.shields.io/badge/platforms-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows-blue" />
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
   </p>
+  <p align="center">
+    <a href="https://www.nuget.org/packages/KumikoUI.Maui"><img alt="KumikoUI.Maui on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Maui?label=KumikoUI.Maui&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.SkiaSharp"><img alt="KumikoUI.SkiaSharp on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.SkiaSharp?label=KumikoUI.SkiaSharp&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.Core"><img alt="KumikoUI.Core on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Core?label=KumikoUI.Core&color=512BD4" /></a>
+  </p>
 </p>
 
 ---
@@ -82,6 +87,22 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 ---
 
 ## 🚀 Getting Started
+
+### 0. Install NuGet packages
+
+For a .NET MAUI app, add **KumikoUI.Maui** (which transitively brings in `KumikoUI.Core` and `KumikoUI.SkiaSharp`):
+
+```shell
+dotnet add package KumikoUI.Maui
+```
+
+| Package | Description |
+|---|---|
+| [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `DataGridView` MAUI control + MAUI hosting extensions |
+| [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | SkiaSharp drawing context implementation |
+| [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Platform-agnostic layout, rendering pipeline, and models |
+
+---
 
 ### 1. Register the KumikoUI
 
