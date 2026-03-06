@@ -154,7 +154,7 @@ Each column is a `DataGridColumn` with a `ColumnType` that controls both the rea
 | `Date` | Formatted date | `DrawnDatePicker` | Calendar popup with month navigation |
 | `ComboBox` | Selected value | `DrawnComboBox` | Searchable dropdown; set `EditorItemsString` |
 | `Picker` | Selected value | `DrawnScrollPicker` | Mobile-style scroll wheel with physics snap |
-| `Image` | Centred image | — (read-only) | Aspect-ratio preserving |
+| `Image` | Centered image | — (read-only) | Aspect-ratio preserving |
 | `ProgressBar` | Progress bar | `DrawnProgressBar` | Interactive slider when editable |
 | `Template` | Custom | Custom (`EditorDescriptor`) | Provide your own `ICellRenderer` |
 
@@ -180,7 +180,7 @@ Each column is a `DataGridColumn` with a `ColumnType` that controls both the rea
                      ColumnType="ProgressBar" />
 ```
 
-### Read-only and tab behaviour
+### Read-only and tab behavior
 
 ```xml
 <core:DataGridColumn Header="Id" PropertyName="Id"
@@ -194,7 +194,7 @@ Each column is a `DataGridColumn` with a `ColumnType` that controls both the rea
 
 Columns support three sizing modes controlled by the `SizeMode` property.
 
-| `SizeMode` | Behaviour |
+| `SizeMode` | Behavior |
 |---|---|
 | `Fixed` | Exact pixel width set via `Width` (default) |
 | `Auto` | Measures header text + visible cell content; respects a `MinWidth`/`MaxWidth` clamp |
@@ -384,13 +384,13 @@ var column = new DataGridColumn
 <dg:DataGridView GridSelectionMode="Multiple" />
 ```
 
-| `SelectionMode` | Behaviour |
+| `SelectionMode` | Behavior |
 |---|---|
 | `Single` | One item at a time |
 | `Multiple` | Each tap toggles the item |
 | `Extended` | Click + Shift/Ctrl range/toggle (desktop-style) |
 
-| `SelectionUnit` | Behaviour |
+| `SelectionUnit` | Behavior |
 |---|---|
 | `Row` | Whole row is selected |
 | `Cell` | Individual cell is selected |
@@ -463,12 +463,12 @@ A visual overlay tracks the dragged row. The row list is updated on drop.
 
 ### Custom style
 
-Every colour, font, size, and line width is configurable through the `DataGridStyle` object:
+Every color, font, size, and line width is configurable through the `DataGridStyle` object:
 
 ```csharp
 var style = kumiko.GridStyle;
 
-// Colours
+// Colors
 style.BackgroundColor        = new GridColor(0.95f, 0.95f, 0.97f);
 style.AlternateRowColor      = new GridColor(0.90f, 0.90f, 0.93f);
 style.HeaderBackgroundColor  = new GridColor(0.20f, 0.40f, 0.80f);
@@ -628,7 +628,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor gui
 | **All Components** | Every column type, frozen columns, frozen rows, edit triggers, selection modes, drag & drop, summaries, theme toggle |
 | **Grouping & Filtering** | Interactive group panel, nested groups, filter popups, group summaries |
 | **Large Data** | 100K-row stress test with virtual scrolling performance metrics |
-| **Theming** | Live Light / Dark / HighContrast switching, custom colour picker |
+| **Theming** | Live Light / Dark / HighContrast switching, custom color picker |
 
 <table>
   <tr>
