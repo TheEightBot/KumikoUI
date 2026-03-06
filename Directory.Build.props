@@ -20,6 +20,9 @@
     <!-- Embed the README in every package (path relative to each project) -->
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
+    <!-- NuGet package icon -->
+    <PackageIcon>logo.svg</PackageIcon>
+
     <!-- Deterministic builds for reproducibility -->
     <Deterministic>true</Deterministic>
 
@@ -32,9 +35,10 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
-  <!-- Include README in every package -->
+  <!-- Include README and icon in every package -->
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\"/>
+    <None Include="$(MSBuildThisFileDirectory)images/logo.svg" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
   <!-- SourceLink for GitHub (requires Microsoft.SourceLink.GitHub package) -->
