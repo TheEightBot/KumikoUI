@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
@@ -242,6 +243,8 @@ public class EditSession
     /// <summary>
     /// Try to begin editing a cell.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "EditSession is part of the library and operates on columns configured by the consuming app. Reflection use is intentional.")]
     public bool BeginEdit(
         int rowIndex, int columnIndex,
         DataGridColumn column, DataGridSource dataSource,
@@ -292,6 +295,8 @@ public class EditSession
     /// Commit the current edit, writing the value back.
     /// Returns true if the commit succeeded.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "EditSession is part of the library and operates on columns configured by the consuming app. Reflection use is intentional.")]
     public bool CommitEdit(DataGridSource dataSource)
     {
         if (!_isEditing || _activeEditor == null || _editColumn == null) return false;
@@ -344,6 +349,8 @@ public class EditSession
     /// <summary>
     /// Toggle a boolean cell directly (no editor needed).
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "EditSession is part of the library and operates on columns configured by the consuming app. Reflection use is intentional.")]
     public void ToggleBooleanCell(int row, int col, DataGridColumn column, DataGridSource dataSource)
     {
         if (column.IsReadOnly) return;

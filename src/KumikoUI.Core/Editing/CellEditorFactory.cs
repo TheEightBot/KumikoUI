@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -146,6 +147,8 @@ public static class CellEditorFactory
         return picker;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "CellEditorFactory is part of the library and operates on columns configured by the consuming app. Reflection use is intentional.")]
     private static DrawnComboBox CreateComboBoxEditor(
         DataGridColumn column, object? value, GridRect cellBounds)
     {

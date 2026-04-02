@@ -712,8 +712,7 @@ public class DataGridSource
     {
         if (IsGroupHeaderRow(visibleRow)) return null;
         var item = GetItem(visibleRow);
-        var accessor = GetOrCreateAccessor(item.GetType(), column.PropertyName);
-        return accessor(item);
+        return GetValueFromItem(item, column);
     }
 
     /// <summary>
@@ -775,6 +774,8 @@ public class DataGridSource
     /// Get unique display values for a column (for Excel-style checkbox filter).
     /// Returns sorted distinct values as strings.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridSource uses reflection by design. Callers must configure trimming to preserve data item types.")]
     public List<string> GetUniqueColumnValues(DataGridColumn column)
     {
         var values = new HashSet<string>();
@@ -912,13 +913,17 @@ public class DataGridSource
     }
 
     /// <summary>
-    /// Set a cell value for a visible row and column via reflection.
+    /// Set a cell value for a visible row and column.
+    /// Uses <see cref="DataGridColumn.ValueSetter"/> when available; otherwise falls back to reflection.
     /// </summary>
     [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     public void SetCellValue(int visibleRow, DataGridColumn column, object? value)
     {
         var item = GetItem(visibleRow);
-        SetPropertyValue(item, column.PropertyName, value);
+        if (column.ValueSetter != null)
+            column.ValueSetter(item, value);
+        else
+            SetPropertyValue(item, column.PropertyName, value);
         DataChanged?.Invoke();
     }
 
@@ -1025,6 +1030,18 @@ public class DataGridSource
     [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     private object? GetCellValueDirect(object item, DataGridColumn column)
     {
+        return GetValueFromItem(item, column);
+    }
+
+    /// <summary>
+    /// Core value read: uses <see cref="DataGridColumn.ValueAccessor"/> when available,
+    /// otherwise falls back to the reflection-based property accessor cache.
+    /// </summary>
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
+    private object? GetValueFromItem(object item, DataGridColumn column)
+    {
+        if (column.ValueAccessor != null)
+            return column.ValueAccessor(item);
         var accessor = GetOrCreateAccessor(item.GetType(), column.PropertyName);
         return accessor(item);
     }
@@ -1144,10 +1161,11 @@ public class DataGridSource
         {
             var itemType = _sourceItems[0]!.GetType();
 
-            // Pre-build accessors and comparers for each sort column
+            // Pre-build accessors and comparers for each sort column.
+            // Prefer column.ValueAccessor (AOT-safe); fall back to reflection cache.
             var sortSpecs = sortedColumns.Select(col => new
             {
-                Accessor = GetOrCreateAccessor(itemType, col.PropertyName),
+                Accessor = col.ValueAccessor ?? GetOrCreateAccessor(itemType, col.PropertyName),
                 Comparer = col.CustomComparer ?? Comparer<object>.Default,
                 Direction = col.SortDirection == SortDirection.Ascending ? 1 : -1
             }).ToList();
@@ -1223,8 +1241,8 @@ public class DataGridSource
             object? rawValue;
             if (column != null)
             {
-                var accessor = GetOrCreateAccessor(item.GetType(), groupDesc.PropertyName);
-                rawValue = accessor(item);
+                // Use column.ValueAccessor (AOT-safe) when available; otherwise reflection.
+                rawValue = GetValueFromItem(item, column);
             }
             else
             {
@@ -1430,10 +1448,17 @@ public class DataGridSource
 
         if (column == null || _sourceItems.Count == 0) return result;
 
-        var accessor = GetOrCreateAccessor(_sourceItems[0]!.GetType(), propertyName);
-        foreach (var idx in sourceIndices)
+        // Use ValueAccessor (AOT-safe) when present; otherwise build a reflection accessor once.
+        if (column.ValueAccessor != null)
         {
-            result.Add(accessor(_sourceItems[idx]!));
+            foreach (var idx in sourceIndices)
+                result.Add(column.ValueAccessor(_sourceItems[idx]!));
+        }
+        else
+        {
+            var accessor = GetOrCreateAccessor(_sourceItems[0]!.GetType(), propertyName);
+            foreach (var idx in sourceIndices)
+                result.Add(accessor(_sourceItems[idx]!));
         }
         return result;
     }

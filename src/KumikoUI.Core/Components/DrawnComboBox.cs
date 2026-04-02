@@ -122,6 +122,28 @@ public class DrawnComboBox : DrawnComponent
     /// </summary>
     public string? ValueMemberPath { get; set; }
 
+    /// <summary>
+    /// AOT-safe alternative to <see cref="DisplayMemberPath"/>.
+    /// When set, <see cref="SetItemsFromSource"/> calls this delegate instead of using reflection.
+    /// <example>
+    /// <code>
+    /// combo.DisplaySelector = item => ((Country)item).Name;
+    /// </code>
+    /// </example>
+    /// </summary>
+    public Func<object, string>? DisplaySelector { get; set; }
+
+    /// <summary>
+    /// AOT-safe alternative to <see cref="ValueMemberPath"/>.
+    /// When set, <see cref="SetItemsFromSource"/> calls this delegate instead of using reflection.
+    /// <example>
+    /// <code>
+    /// combo.ValueSelector = item => ((Country)item).Code;
+    /// </code>
+    /// </example>
+    /// </summary>
+    public Func<object, object?>? ValueSelector { get; set; }
+
     // ── Events ──────────────────────────────────────────────────
 
     /// <summary>Raised when the selected item changes.</summary>
@@ -170,10 +192,11 @@ public class DrawnComboBox : DrawnComponent
     }
 
     /// <summary>
-    /// Populate items from a data source using DisplayMemberPath and ValueMemberPath.
-    /// Falls back to ToString() if paths are not set.
+    /// Populate items from a data source.
+    /// Prefers <see cref="DisplaySelector"/>/<see cref="ValueSelector"/> (AOT-safe) when set;
+    /// otherwise falls back to <see cref="DisplayMemberPath"/>/<see cref="ValueMemberPath"/> via reflection.
     /// </summary>
-    [RequiresUnreferencedCode("Accesses properties on data item types by name via DisplayMemberPath/ValueMemberPath. Ensure the public properties of your data types are preserved when trimming.")]
+    [RequiresUnreferencedCode("Accesses properties on data item types by name via DisplayMemberPath/ValueMemberPath. Ensure the public properties of your data types are preserved when trimming, or use DisplaySelector/ValueSelector instead.")]
     public void SetItemsFromSource(System.Collections.IEnumerable source)
     {
         _items.Clear();
@@ -184,13 +207,21 @@ public class DrawnComboBox : DrawnComponent
         {
             if (item == null) continue;
 
-            string displayText = DisplayMemberPath != null
-                ? GetPropertyValue(item, DisplayMemberPath)?.ToString() ?? string.Empty
-                : item.ToString() ?? string.Empty;
+            string displayText;
+            if (DisplaySelector != null)
+                displayText = DisplaySelector(item);
+            else if (DisplayMemberPath != null)
+                displayText = GetPropertyValue(item, DisplayMemberPath)?.ToString() ?? string.Empty;
+            else
+                displayText = item.ToString() ?? string.Empty;
 
-            object? value = ValueMemberPath != null
-                ? GetPropertyValue(item, ValueMemberPath)
-                : item;
+            object? value;
+            if (ValueSelector != null)
+                value = ValueSelector(item);
+            else if (ValueMemberPath != null)
+                value = GetPropertyValue(item, ValueMemberPath);
+            else
+                value = item;
 
             _items.Add(new ComboBoxItem(displayText, value));
         }
