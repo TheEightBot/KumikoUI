@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -172,6 +173,7 @@ public class DrawnComboBox : DrawnComponent
     /// Populate items from a data source using DisplayMemberPath and ValueMemberPath.
     /// Falls back to ToString() if paths are not set.
     /// </summary>
+    [RequiresUnreferencedCode("Accesses properties on data item types by name via DisplayMemberPath/ValueMemberPath. Ensure the public properties of your data types are preserved when trimming.")]
     public void SetItemsFromSource(System.Collections.IEnumerable source)
     {
         _items.Clear();
@@ -212,6 +214,7 @@ public class DrawnComboBox : DrawnComponent
         SelectedIndex = -1;
     }
 
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     private static object? GetPropertyValue(object obj, string propertyPath)
     {
         object? current = obj;
