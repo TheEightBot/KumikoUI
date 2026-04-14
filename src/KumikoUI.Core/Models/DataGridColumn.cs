@@ -82,6 +82,30 @@ public class DataGridColumn
     /// <summary>Property path on the data item (supports nested: "Address.City").</summary>
     public string PropertyName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Optional AOT-safe delegate for reading a cell value from a data item.
+    /// When set, this is used instead of the reflection-based <see cref="PropertyName"/> accessor.
+    /// Prefer this over <see cref="PropertyName"/> in NativeAOT or trimmed applications.
+    /// <example>
+    /// <code>
+    /// new DataGridColumn { ValueAccessor = item => ((Person)item).FirstName }
+    /// </code>
+    /// </example>
+    /// </summary>
+    public Func<object, object?>? ValueAccessor { get; set; }
+
+    /// <summary>
+    /// Optional AOT-safe delegate for writing a cell value back to a data item.
+    /// When set, this is used instead of the reflection-based <see cref="PropertyName"/> setter.
+    /// Prefer this over <see cref="PropertyName"/> in NativeAOT or trimmed applications.
+    /// <example>
+    /// <code>
+    /// new DataGridColumn { ValueSetter = (item, value) => ((Person)item).FirstName = (string?)value }
+    /// </code>
+    /// </example>
+    /// </summary>
+    public Action<object, object?>? ValueSetter { get; set; }
+
     /// <summary>Type of column for rendering dispatch.</summary>
     public DataGridColumnType ColumnType { get; set; } = DataGridColumnType.Text;
 

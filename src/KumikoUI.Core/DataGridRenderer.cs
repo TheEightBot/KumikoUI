@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Layout;
@@ -467,6 +468,8 @@ public class DataGridRenderer
             frozenWidth, editSession, topSummaryHeight, frozenRowCount);
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridRenderer is part of the library and operates on columns configured by the consuming app. Reflection use is intentional.")]
     private void DrawRows(
         IDrawingContext ctx,
         DataGridSource dataSource,
@@ -619,6 +622,8 @@ public class DataGridRenderer
             isFrozenCol ? ColumnFreezeMode.Left : ColumnFreezeMode.None, frozenWidth, editSession, topSummaryHeight);
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridRenderer is part of the library and operates on columns configured by the consuming app. Reflection use is intentional.")]
     private void DrawFrozenRows(
         IDrawingContext ctx,
         DataGridSource dataSource,
@@ -1648,6 +1653,8 @@ public class DataGridRenderer
     /// <summary>
     /// Draws a ghost row at the drag position and an insertion indicator line at the drop target.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridRenderer is part of the library and operates on columns configured by the consuming app. Reflection use is intentional.")]
     private void DrawRowDragOverlay(
         IDrawingContext ctx,
         DataGridSource dataSource,

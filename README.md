@@ -580,7 +580,7 @@ public class Employee : INotifyPropertyChanged
 <core:DataGridColumn Header="City" PropertyName="Address.City" Width="120" />
 ```
 
-Accessors are compiled once via `Expression.Property` chains and cached.
+The `PropertyInfo` chain is resolved once via reflection and captured in a closure that is cached per `"{TypeName}.{propertyPath}"` key — subsequent accesses on the same column are allocation-free.
 
 ---
 
@@ -652,6 +652,56 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor gui
     </td>
   </tr>
 </table>
+
+---
+
+## 🔧 NativeAOT & Trimming
+
+`KumikoUI.Core` and `KumikoUI.SkiaSharp` are declared `<IsAotCompatible>true</IsAotCompatible>`. The trimmer and AOT analyzers run on both libraries at build time.
+
+### Default behaviour (reflection-based)
+
+Column binding via `PropertyName` / `DisplayMemberPath` uses a `PropertyInfo`-based accessor that is cached on first use. This path is annotated `[RequiresUnreferencedCode]` and will produce a trimmer warning in a trimmed/AOT app. The reflection itself is safe at runtime as long as the data item's public properties are not trimmed away.
+
+### AOT-safe delegate path
+
+Provide delegates instead of string property paths and **no reflection is used at all**:
+
+```csharp
+// DataGridColumn — fully AOT-safe getter + setter
+var nameColumn = new DataGridColumn
+{
+    Header       = "Name",
+    ValueAccessor = item => ((Employee)item).Name,
+    ValueSetter   = (item, v) => ((Employee)item).Name = (string?)v,
+};
+
+// DrawnComboBox — fully AOT-safe display/value selectors
+comboBox.DisplaySelector = item => ((Department)item).Name;
+comboBox.ValueSelector   = item => ((Department)item).Id;
+comboBox.SetItemsFromSource(departments);
+```
+
+When `ValueAccessor` is set, all internal paths — sorting, filtering, grouping, summaries, auto-fit — use the delegate directly. `ValueSetter` is used by `SetCellValue` (inline cell editing write-back).
+
+`DisplaySelector` / `ValueSelector` on `DrawnComboBox` are checked before `DisplayMemberPath` / `ValueMemberPath`, so they can be mixed with existing string-based columns.
+
+### Trimming guidance
+
+If you continue to use `PropertyName`-based binding in a trimmed app, preserve the public properties of your data types — for example in the project file:
+
+```xml
+<TrimmerRootDescriptor Include="TrimmerRoots.xml" />
+```
+
+```xml
+<!-- TrimmerRoots.xml -->
+<linker>
+  <assembly fullname="MyApp">
+    <type fullname="MyApp.Models.Employee" preserve="all" />
+  </assembly>
+</linker>
+```
 
 ---
 

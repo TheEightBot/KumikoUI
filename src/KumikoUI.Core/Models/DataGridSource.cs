@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq.Expressions;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace KumikoUI.Core.Models;
@@ -707,18 +707,19 @@ public class DataGridSource
     /// Get a cell value for a visible row and column.
     /// Returns null for group header rows.
     /// </summary>
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     public object? GetCellValue(int visibleRow, DataGridColumn column)
     {
         if (IsGroupHeaderRow(visibleRow)) return null;
         var item = GetItem(visibleRow);
-        var accessor = GetOrCreateAccessor(item.GetType(), column.PropertyName);
-        return accessor(item);
+        return GetValueFromItem(item, column);
     }
 
     /// <summary>
     /// Format a cell value as a display string.
     /// Returns empty for group header rows.
     /// </summary>
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     public string GetCellDisplayText(int visibleRow, DataGridColumn column)
     {
         if (IsGroupHeaderRow(visibleRow)) return string.Empty;
@@ -773,6 +774,8 @@ public class DataGridSource
     /// Get unique display values for a column (for Excel-style checkbox filter).
     /// Returns sorted distinct values as strings.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridSource uses reflection by design. Callers must configure trimming to preserve data item types.")]
     public List<string> GetUniqueColumnValues(DataGridColumn column)
     {
         var values = new HashSet<string>();
@@ -910,18 +913,24 @@ public class DataGridSource
     }
 
     /// <summary>
-    /// Set a cell value for a visible row and column via reflection.
+    /// Set a cell value for a visible row and column.
+    /// Uses <see cref="DataGridColumn.ValueSetter"/> when available; otherwise falls back to reflection.
     /// </summary>
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     public void SetCellValue(int visibleRow, DataGridColumn column, object? value)
     {
         var item = GetItem(visibleRow);
-        SetPropertyValue(item, column.PropertyName, value);
+        if (column.ValueSetter != null)
+            column.ValueSetter(item, value);
+        else
+            SetPropertyValue(item, column.PropertyName, value);
         DataChanged?.Invoke();
     }
 
     /// <summary>
     /// Set a property value on an object using reflection. Supports dotted paths.
     /// </summary>
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     private static void SetPropertyValue(object target, string propertyPath, object? value)
     {
         var parts = propertyPath.Split('.');
@@ -964,6 +973,8 @@ public class DataGridSource
     /// <summary>
     /// Check if an item passes the global filter predicate AND all per-column filters.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridSource uses reflection by design. Callers must configure trimming to preserve data item types.")]
     private bool PassesAllFilters(object item)
     {
         // Global predicate filter
@@ -990,6 +1001,8 @@ public class DataGridSource
     /// Check if an item passes all filters EXCEPT the specified column's filter.
     /// Used for computing unique value lists.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridSource uses reflection by design. Callers must configure trimming to preserve data item types.")]
     private bool PassesOtherFilters(object item, DataGridColumn excludeColumn)
     {
         if (_filterPredicate != null && !_filterPredicate(item))
@@ -1014,8 +1027,21 @@ public class DataGridSource
     /// <summary>
     /// Get a cell value directly from an item (bypasses view indices).
     /// </summary>
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     private object? GetCellValueDirect(object item, DataGridColumn column)
     {
+        return GetValueFromItem(item, column);
+    }
+
+    /// <summary>
+    /// Core value read: uses <see cref="DataGridColumn.ValueAccessor"/> when available,
+    /// otherwise falls back to the reflection-based property accessor cache.
+    /// </summary>
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
+    private object? GetValueFromItem(object item, DataGridColumn column)
+    {
+        if (column.ValueAccessor != null)
+            return column.ValueAccessor(item);
         var accessor = GetOrCreateAccessor(item.GetType(), column.PropertyName);
         return accessor(item);
     }
@@ -1100,6 +1126,8 @@ public class DataGridSource
         return false;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridSource uses reflection by design. Callers must configure trimming to preserve data item types.")]
     internal void RebuildView()
     {
         _viewIndices.Clear();
@@ -1133,10 +1161,11 @@ public class DataGridSource
         {
             var itemType = _sourceItems[0]!.GetType();
 
-            // Pre-build accessors and comparers for each sort column
+            // Pre-build accessors and comparers for each sort column.
+            // Prefer column.ValueAccessor (AOT-safe); fall back to reflection cache.
             var sortSpecs = sortedColumns.Select(col => new
             {
-                Accessor = GetOrCreateAccessor(itemType, col.PropertyName),
+                Accessor = col.ValueAccessor ?? GetOrCreateAccessor(itemType, col.PropertyName),
                 Comparer = col.CustomComparer ?? Comparer<object>.Default,
                 Direction = col.SortDirection == SortDirection.Ascending ? 1 : -1
             }).ToList();
@@ -1184,6 +1213,8 @@ public class DataGridSource
     /// <summary>
     /// Recursively build the flat view by grouping source indices at the given level.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridSource uses reflection by design. Callers must configure trimming to preserve data item types.")]
     private void BuildGroupedFlatView(List<int> sourceIndices, int level, string parentPath)
     {
         if (level >= _groupDescriptions.Count)
@@ -1210,8 +1241,8 @@ public class DataGridSource
             object? rawValue;
             if (column != null)
             {
-                var accessor = GetOrCreateAccessor(item.GetType(), groupDesc.PropertyName);
-                rawValue = accessor(item);
+                // Use column.ValueAccessor (AOT-safe) when available; otherwise reflection.
+                rawValue = GetValueFromItem(item, column);
             }
             else
             {
@@ -1406,6 +1437,8 @@ public class DataGridSource
     /// <summary>
     /// Collect raw cell values for a column from a set of source indices.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DataGridSource uses reflection by design. Callers must configure trimming to preserve data item types.")]
     private List<object?> CollectColumnValues(string propertyName, List<int> sourceIndices)
     {
         var column = _columns.FirstOrDefault(c =>
@@ -1415,10 +1448,17 @@ public class DataGridSource
 
         if (column == null || _sourceItems.Count == 0) return result;
 
-        var accessor = GetOrCreateAccessor(_sourceItems[0]!.GetType(), propertyName);
-        foreach (var idx in sourceIndices)
+        // Use ValueAccessor (AOT-safe) when present; otherwise build a reflection accessor once.
+        if (column.ValueAccessor != null)
         {
-            result.Add(accessor(_sourceItems[idx]!));
+            foreach (var idx in sourceIndices)
+                result.Add(column.ValueAccessor(_sourceItems[idx]!));
+        }
+        else
+        {
+            var accessor = GetOrCreateAccessor(_sourceItems[0]!.GetType(), propertyName);
+            foreach (var idx in sourceIndices)
+                result.Add(accessor(_sourceItems[idx]!));
         }
         return result;
     }
@@ -1556,6 +1596,7 @@ public class DataGridSource
         };
     }
 
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     private Func<object, object?> GetOrCreateAccessor(Type type, string propertyPath)
     {
         var key = $"{type.FullName}.{propertyPath}";
@@ -1568,27 +1609,38 @@ public class DataGridSource
     }
 
     /// <summary>
-    /// Build a compiled expression tree accessor for fast property access.
+    /// Build a cached property accessor for fast repeated access.
     /// Supports dotted paths: "Address.City".
+    /// Resolves the PropertyInfo chain once and captures it in a closure.
     /// </summary>
+    [RequiresUnreferencedCode("Accesses properties on data item types by name. Ensure the public properties of your data types are preserved when trimming.")]
     private static Func<object, object?> BuildAccessor(Type type, string propertyPath)
     {
-        var param = Expression.Parameter(typeof(object), "item");
-        Expression body = Expression.Convert(param, type);
+        var parts = propertyPath.Split('.');
+        var props = new PropertyInfo[parts.Length];
+        Type currentType = type;
 
-        foreach (var part in propertyPath.Split('.'))
+        for (int i = 0; i < parts.Length; i++)
         {
-            var prop = body.Type.GetProperty(part,
+            var prop = currentType.GetProperty(parts[i],
                 BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
             if (prop == null)
-                return _ => null; // Graceful fallback
-            body = Expression.Property(body, prop);
+                return _ => null; // Graceful fallback for unknown property
+            props[i] = prop;
+            currentType = prop.PropertyType;
         }
 
-        // Box value types
-        if (body.Type.IsValueType)
-            body = Expression.Convert(body, typeof(object));
-
-        return Expression.Lambda<Func<object, object?>>(body, param).Compile();
+        // Capture the resolved PropertyInfo chain in a closure to avoid
+        // repeated GetProperty calls on every access.
+        return item =>
+        {
+            object? current = item;
+            foreach (var prop in props)
+            {
+                if (current == null) return null;
+                current = prop.GetValue(current);
+            }
+            return current;
+        };
     }
 }

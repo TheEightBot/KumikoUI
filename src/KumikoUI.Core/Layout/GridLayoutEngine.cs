@@ -1,5 +1,6 @@
 namespace KumikoUI.Core.Layout;
 
+using System.Diagnostics.CodeAnalysis;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
 
@@ -316,6 +317,8 @@ public class GridLayoutEngine
     /// Measures the header text and all visible cell display text, then returns
     /// the maximum width plus padding, clamped to MinWidth/MaxWidth.
     /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "GridLayoutEngine is part of the library and operates on columns configured by the consuming app. Reflection use is intentional.")]
     public float CalculateAutoFitWidth(
         DataGridColumn column,
         DataGridSource dataSource,
