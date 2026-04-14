@@ -41,7 +41,7 @@ public class InertialScroller
     private float _smoothVelocityX;
     private float _smoothVelocityY;
 
-    /// <summary>Configurable scroll settings. Shared with KumikoUIView.</summary>
+    /// <summary>Configurable scroll settings. Shared with DataGridView.</summary>
     public ScrollSettings Settings { get; set; } = new();
 
     /// <summary>Is inertial scroll currently animating?</summary>

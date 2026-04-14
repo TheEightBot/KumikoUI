@@ -19,6 +19,11 @@
     <img alt="Platforms" src="https://img.shields.io/badge/platforms-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows-blue" />
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
   </p>
+  <p align="center">
+    <a href="https://www.nuget.org/packages/KumikoUI.Maui"><img alt="KumikoUI.Maui on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Maui?label=KumikoUI.Maui&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.SkiaSharp"><img alt="KumikoUI.SkiaSharp on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.SkiaSharp?label=KumikoUI.SkiaSharp&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.Core"><img alt="KumikoUI.Core on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Core?label=KumikoUI.Core&color=512BD4" /></a>
+  </p>
 </p>
 
 ---
@@ -83,6 +88,22 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 
 ## 🚀 Getting Started
 
+### 0. Install NuGet packages
+
+For a .NET MAUI app, add **KumikoUI.Maui** (which transitively brings in `KumikoUI.Core` and `KumikoUI.SkiaSharp`):
+
+```shell
+dotnet add package KumikoUI.Maui
+```
+
+| Package | Description |
+|---|---|
+| [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `DataGridView` MAUI control + MAUI hosting extensions |
+| [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | SkiaSharp drawing context implementation |
+| [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Platform-agnostic layout, rendering pipeline, and models |
+
+---
+
 ### 1. Register the KumikoUI
 
 In `MauiProgram.cs`, call `UseSkiaKumikoUI()`:
@@ -102,28 +123,28 @@ builder
     xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core">
 ```
 
-### 3. Declare the KumikoUIView
+### 3. Declare the DataGridView
 
 ```xml
-<dg:KumikoUIView x:Name="kumiko"
+<dg:DataGridView x:Name="kumiko"
                  ItemsSource="{Binding Items}"
                  RowHeight="36"
                  HeaderHeight="40">
-    <dg:KumikoUIView.Columns>
-        <core:KumikoUIColumn Header="Name"   PropertyName="Name"     Width="180" />
-        <core:KumikoUIColumn Header="Age"    PropertyName="Age"      Width="80"
+    <dg:DataGridView.Columns>
+        <core:DataGridColumn Header="Name"   PropertyName="Name"     Width="180" />
+        <core:DataGridColumn Header="Age"    PropertyName="Age"      Width="80"
                              ColumnType="Numeric" TextAlignment="Right" />
-        <core:KumikoUIColumn Header="Active" PropertyName="IsActive" Width="80"
+        <core:DataGridColumn Header="Active" PropertyName="IsActive" Width="80"
                              ColumnType="Boolean" />
-    </dg:KumikoUIView.Columns>
-</dg:KumikoUIView>
+    </dg:DataGridView.Columns>
+</dg:DataGridView>
 ```
 
 ---
 
 ## 📋 Column Types
 
-Each column is a `KumikoUIColumn` with a `ColumnType` that controls both the read-only cell renderer and the inline editor.
+Each column is a `DataGridColumn` with a `ColumnType` that controls both the read-only cell renderer and the inline editor.
 
 | `ColumnType` | Cell Renderer | Editor | Notes |
 |---|---|---|---|
@@ -133,36 +154,36 @@ Each column is a `KumikoUIColumn` with a `ColumnType` that controls both the rea
 | `Date` | Formatted date | `DrawnDatePicker` | Calendar popup with month navigation |
 | `ComboBox` | Selected value | `DrawnComboBox` | Searchable dropdown; set `EditorItemsString` |
 | `Picker` | Selected value | `DrawnScrollPicker` | Mobile-style scroll wheel with physics snap |
-| `Image` | Centred image | — (read-only) | Aspect-ratio preserving |
+| `Image` | Centered image | — (read-only) | Aspect-ratio preserving |
 | `ProgressBar` | Progress bar | `DrawnProgressBar` | Interactive slider when editable |
 | `Template` | Custom | Custom (`EditorDescriptor`) | Provide your own `ICellRenderer` |
 
 ### Column declaration example
 
 ```xml
-<core:KumikoUIColumn Header="Department"
+<core:DataGridColumn Header="Department"
                      PropertyName="Department"
                      Width="140"
                      ColumnType="ComboBox"
                      EditorItemsString="Engineering,Marketing,Sales,HR,Finance" />
 
-<core:KumikoUIColumn Header="Salary"
+<core:DataGridColumn Header="Salary"
                      PropertyName="Salary"
                      Width="120"
                      ColumnType="Numeric"
                      Format="C0"
                      TextAlignment="Right" />
 
-<core:KumikoUIColumn Header="Rating"
+<core:DataGridColumn Header="Rating"
                      PropertyName="Rating"
                      Width="120"
                      ColumnType="ProgressBar" />
 ```
 
-### Read-only and tab behaviour
+### Read-only and tab behavior
 
 ```xml
-<core:KumikoUIColumn Header="Id" PropertyName="Id"
+<core:DataGridColumn Header="Id" PropertyName="Id"
                      IsReadOnly="True"
                      AllowTabStop="False" />
 ```
@@ -173,7 +194,7 @@ Each column is a `KumikoUIColumn` with a `ColumnType` that controls both the rea
 
 Columns support three sizing modes controlled by the `SizeMode` property.
 
-| `SizeMode` | Behaviour |
+| `SizeMode` | Behavior |
 |---|---|
 | `Fixed` | Exact pixel width set via `Width` (default) |
 | `Auto` | Measures header text + visible cell content; respects a `MinWidth`/`MaxWidth` clamp |
@@ -191,11 +212,11 @@ Columns can be pinned to the left or right edge and will never scroll out of vie
 
 ```xml
 <!-- Pin to left (default freeze side) -->
-<core:KumikoUIColumn Header="Id"    PropertyName="Id"    IsFrozen="True" />
-<core:KumikoUIColumn Header="Name"  PropertyName="Name"  IsFrozen="True" />
+<core:DataGridColumn Header="Id"    PropertyName="Id"    IsFrozen="True" />
+<core:DataGridColumn Header="Name"  PropertyName="Name"  IsFrozen="True" />
 
 <!-- Pin to right -->
-<core:KumikoUIColumn Header="Total" PropertyName="Total" FreezeMode="Right" />
+<core:DataGridColumn Header="Total" PropertyName="Total" FreezeMode="Right" />
 ```
 
 The renderer uses 3-pass clip regions so frozen columns naturally overlay scrollable content with correct z-ordering.
@@ -205,7 +226,7 @@ The renderer uses 3-pass clip regions so frozen columns naturally overlay scroll
 Pin the first N rows so they remain visible while the rest of the data scrolls:
 
 ```xml
-<dg:KumikoUIView FrozenRowCount="2" ... />
+<dg:DataGridView FrozenRowCount="2" ... />
 ```
 
 ---
@@ -217,7 +238,9 @@ Pin the first N rows so they remain visible while the rest of the data scrolls:
 Tap any column header to sort. The indicator cycles through **Ascending → Descending → None**. Multi-column sort is supported — hold the sort state on multiple columns simultaneously via code:
 
 ```csharp
-KumikoUI.DataSource.SetSort(new SortDescription("LastName", SortDirection.Ascending));
+// Set ascending sort on a column, then refresh:
+lastNameColumn.SortDirection = SortDirection.Ascending;
+kumiko.DataSource.Refresh();
 ```
 
 ### Filtering
@@ -237,21 +260,21 @@ Filters are applied immediately on close and stacked across columns. Remove a fi
 Add one or more `GroupDescription` objects to enable a collapsible group hierarchy with an interactive drag-and-drop group panel above the header.
 
 ```csharp
-KumikoUI.DataSource.AddGroupDescription(new GroupDescription("Department"));
-KumikoUI.DataSource.AddGroupDescription(new GroupDescription("Level"));
+kumiko.DataSource.AddGroupDescription(new GroupDescription("Department"));
+kumiko.DataSource.AddGroupDescription(new GroupDescription("Level"));
 ```
 
 Groups are expanded by default. You can bulk-expand or collapse:
 
 ```csharp
-KumikoUI.ExpandAllGroups();
-KumikoUI.CollapseAllGroups();
+kumiko.DataSource.ExpandAllGroups();
+kumiko.DataSource.CollapseAllGroups();
 ```
 
 Remove grouping:
 
 ```csharp
-KumikoUI.DataSource.ClearGroupDescriptions();
+kumiko.DataSource.ClearGroupDescriptions();
 ```
 
 Group summaries (aggregate values per group) are declared with `AddGroupSummaryRow()` — see [Summaries](#-summaries) below.
@@ -265,7 +288,7 @@ Summaries appear as pinned rows at the top or bottom of the grid (table summarie
 ### Table summaries (XAML)
 
 ```xml
-<dg:KumikoUIView.TableSummaryRows>
+<dg:DataGridView.TableSummaryRows>
     <core:TableSummaryRow Name="Totals" Position="Bottom" Title="Totals">
         <core:TableSummaryRow.Columns>
             <core:SummaryColumnDescription PropertyName="Salary"
@@ -277,13 +300,13 @@ Summaries appear as pinned rows at the top or bottom of the grid (table summarie
                                            Label="Avg: " />
         </core:TableSummaryRow.Columns>
     </core:TableSummaryRow>
-</dg:KumikoUIView.TableSummaryRows>
+</dg:DataGridView.TableSummaryRows>
 ```
 
 ### Group summaries (code)
 
 ```csharp
-KumikoUI.DataSource.AddGroupSummaryRow(new SummaryDescription
+kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
 {
     Columns =
     {
@@ -306,7 +329,7 @@ KumikoUI.DataSource.AddGroupSummaryRow(new SummaryDescription
 Configure which gestures or keys open the inline editor:
 
 ```xml
-<dg:KumikoUIView EditTriggers="DoubleTap,F2Key,Typing"
+<dg:DataGridView EditTriggers="DoubleTap,F2Key,Typing"
                  EditTextSelectionMode="SelectAll"
                  DismissKeyboardOnEnter="True" />
 ```
@@ -325,10 +348,10 @@ Triggers are flags — combine freely: `"DoubleTap,F2Key,Typing"`.
 
 ```xml
 <!-- Select all existing text when the editor opens -->
-<dg:KumikoUIView EditTextSelectionMode="SelectAll" />
+<dg:DataGridView EditTextSelectionMode="SelectAll" />
 
 <!-- Or keep cursor at end -->
-<dg:KumikoUIView EditTextSelectionMode="End" />
+<dg:DataGridView EditTextSelectionMode="End" />
 ```
 
 ### Commit / cancel
@@ -342,11 +365,11 @@ Triggers are flags — combine freely: `"DoubleTap,F2Key,Typing"`.
 For `Template` columns supply an `EditorDescriptor`:
 
 ```csharp
-var column = new KumikoUIColumn
+var column = new DataGridColumn
 {
     Header = "Rating",
     PropertyName = "Rating",
-    ColumnType = KumikoUIColumnType.Template,
+    ColumnType = DataGridColumnType.Template,
     EditorDescriptor = new NumericUpDownEditorDescriptor { Min = 0, Max = 10, Step = 1 }
 };
 ```
@@ -358,16 +381,16 @@ var column = new KumikoUIColumn
 ### Selection mode
 
 ```xml
-<dg:KumikoUIView SelectionMode="Multiple" SelectionUnit="Row" />
+<dg:DataGridView GridSelectionMode="Multiple" />
 ```
 
-| `SelectionMode` | Behaviour |
+| `SelectionMode` | Behavior |
 |---|---|
 | `Single` | One item at a time |
 | `Multiple` | Each tap toggles the item |
 | `Extended` | Click + Shift/Ctrl range/toggle (desktop-style) |
 
-| `SelectionUnit` | Behaviour |
+| `SelectionUnit` | Behavior |
 |---|---|
 | `Row` | Whole row is selected |
 | `Cell` | Individual cell is selected |
@@ -375,8 +398,8 @@ var column = new KumikoUIColumn
 ### Reading selections (code)
 
 ```csharp
-var selectedRows = KumikoUI.SelectedItems;   // IReadOnlyList<object>
-var selectedCell = KumikoUI.SelectedCell;    // (RowIndex, ColumnIndex) or null
+var selectedRows = kumiko.Selection.SelectedRows;   // HashSet<int> of row indices
+var selectedCells = kumiko.Selection.SelectedCells;  // HashSet<CellPosition>
 ```
 
 ---
@@ -408,10 +431,10 @@ Rows can be reordered by the user via two modes.
 A dedicated grab-handle column appears as the first (or last) column:
 
 ```csharp
-var style = KumikoUI.GridStyle;
+var style = kumiko.GridStyle;
 style.ShowRowDragHandle = true;
 style.RowDragHandlePosition = DragHandlePosition.Left;  // or Right
-KumikoUI.GridStyle = style;
+kumiko.GridStyle = style;
 ```
 
 ### Full-row drag
@@ -421,7 +444,7 @@ Long-press any row to begin dragging (no handle column required):
 ```csharp
 style.AllowRowDragDrop = true;
 style.ShowRowDragHandle = false;
-KumikoUI.GridStyle = style;
+kumiko.GridStyle = style;
 ```
 
 A visual overlay tracks the dragged row. The row list is updated on drop.
@@ -433,19 +456,19 @@ A visual overlay tracks the dragged row. The row list is updated on drop.
 ### Built-in themes
 
 ```xml
-<dg:KumikoUIView Theme="Light" />        <!-- default -->
-<dg:KumikoUIView Theme="Dark" />
-<dg:KumikoUIView Theme="HighContrast" />
+<dg:DataGridView Theme="Light" />        <!-- default -->
+<dg:DataGridView Theme="Dark" />
+<dg:DataGridView Theme="HighContrast" />
 ```
 
 ### Custom style
 
-Every colour, font, size, and line width is configurable through the `KumikoUIStyle` object:
+Every color, font, size, and line width is configurable through the `DataGridStyle` object:
 
 ```csharp
-var style = KumikoUI.GridStyle;
+var style = kumiko.GridStyle;
 
-// Colours
+// Colors
 style.BackgroundColor        = new GridColor(0.95f, 0.95f, 0.97f);
 style.AlternateRowColor      = new GridColor(0.90f, 0.90f, 0.93f);
 style.HeaderBackgroundColor  = new GridColor(0.20f, 0.40f, 0.80f);
@@ -464,23 +487,25 @@ style.HeaderFontBold  = true;
 style.ShowHorizontalGridLines = true;
 style.ShowVerticalGridLines   = false;
 
-KumikoUI.GridStyle = style;
+kumiko.GridStyle = style;
 ```
 
 ### Per-cell dynamic style
 
-Apply a `CellStyleResolver` delegate to override the style of individual cells at render time:
+Apply a `CellStyleResolver` delegate to the `DataGridStyle` to override the style of individual cells at render time:
 
 ```csharp
-KumikoUI.CellStyleResolver = (item, column) =>
+var style = kumiko.GridStyle;
+style.CellStyleResolver = (item, column) =>
 {
     if (column.PropertyName == "Salary" && item is Employee e && e.Salary > 100_000)
         return new CellStyle { TextColor = new GridColor(0.8f, 0.1f, 0.1f), Bold = true };
     return null;
 };
+kumiko.GridStyle = style;
 ```
 
-Style resolution cascades: **per-cell resolver → column `CellStyle` → grid `KumikoUIStyle`**.
+Style resolution cascades: **per-cell resolver → column `CellStyle` → grid `DataGridStyle`**.
 
 ---
 
@@ -503,7 +528,7 @@ Touch-based scrolling uses **physics-based inertia** — a velocity tracker samp
 
 ### PaintCache
 
-~60 `GridPaint` objects are pre-computed once per frame from `KumikoUIStyle` so there are zero per-cell paint allocations during rendering.
+~60 `GridPaint` objects are pre-computed once per frame from `DataGridStyle` so there are zero per-cell paint allocations during rendering.
 
 ### SkiaDrawingContext caching
 
@@ -523,7 +548,7 @@ The grid automatically reacts to standard .NET data-change notifications.
 
 ```csharp
 var employees = new ObservableCollection<Employee>(initialList);
-KumikoUI.ItemsSource = employees;
+kumiko.ItemsSource = employees;
 
 // These automatically update the grid:
 employees.Add(new Employee { Name = "Alice" });
@@ -552,7 +577,7 @@ public class Employee : INotifyPropertyChanged
 `PropertyName` supports dotted paths for nested objects:
 
 ```xml
-<core:KumikoUIColumn Header="City" PropertyName="Address.City" Width="120" />
+<core:DataGridColumn Header="City" PropertyName="Address.City" Width="120" />
 ```
 
 Accessors are compiled once via `Expression.Property` chains and cached.
@@ -575,11 +600,11 @@ KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 
 | Class | Responsibility |
 |---|---|
-| `KumikoUIRenderer` | Orchestrates the 18-step draw pipeline (layout → background → headers → rows → overlays → popups) |
-| `KumikoUISource` | Data management: filtering, sorting, grouping, summaries, `INotifyCollectionChanged` observation |
+| `DataGridRenderer` | Orchestrates the 18-step draw pipeline (layout → background → headers → rows → overlays → popups) |
+| `DataGridSource` | Data management: filtering, sorting, grouping, summaries, `INotifyCollectionChanged` observation |
 | `GridLayoutEngine` | Column width computation (Fixed / Auto / Star), visible row/column range |
-| `HitTesting` | Resolves pointer coordinates to one of 14 `HitRegion` types across 3 column panes |
-| `PaintCache` | Pre-computes ~60 `GridPaint` objects per frame from `KumikoUIStyle` |
+| `GridHitTester` | Resolves pointer coordinates to one of 14 `HitRegion` types across 3 column panes |
+| `PaintCache` | Pre-computes ~60 `GridPaint` objects per frame from `DataGridStyle` |
 | `GridInputController` | Routes pointer and keyboard events to selection, editing, resizing, drag handlers |
 | `SelectionModel` | Row/cell selection state, Single / Multiple / Extended modes |
 | `EditSession` | Cell edit lifecycle — begin, commit, cancel, validation, write-back |
@@ -588,7 +613,7 @@ KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 | `PopupManager` | Popup z-order and input priority routing (filter, ComboBox, DatePicker) |
 | `IDrawingContext` | Platform-independent drawing API: fill, stroke, text, images, clipping |
 | `SkiaDrawingContext` | `SKCanvas` implementation with 3-tier native object caching |
-| `KumikoUIView` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
+| `DataGridView` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor guide and [docs/RENDERING.md](docs/RENDERING.md) for the full 18-step rendering pipeline.
 
@@ -603,7 +628,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor gui
 | **All Components** | Every column type, frozen columns, frozen rows, edit triggers, selection modes, drag & drop, summaries, theme toggle |
 | **Grouping & Filtering** | Interactive group panel, nested groups, filter popups, group summaries |
 | **Large Data** | 100K-row stress test with virtual scrolling performance metrics |
-| **Theming** | Live Light / Dark / HighContrast switching, custom colour picker |
+| **Theming** | Live Light / Dark / HighContrast switching, custom color picker |
 
 <table>
   <tr>
@@ -649,7 +674,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor gui
 Contributions are welcome! Please open an issue before submitting a large pull request so we can discuss the approach.
 
 1. Fork the repository and create your branch from `main`.
-2. Build the solution: `dotnet build MauiKumikoUI.sln`
+2. Build the solution: `dotnet build KumikoUI.sln`
 3. Run the tests: `dotnet test`
 4. Submit a pull request with a clear description of the change.
 

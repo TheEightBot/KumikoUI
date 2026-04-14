@@ -1,45 +1,70 @@
 <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#68217A" />
-      <stop offset="100%" style="stop-color:#512BD4" />
+      <stop offset="0%" stop-color="#7B2FBF"/>
+      <stop offset="50%" stop-color="#512BD4"/>
+      <stop offset="100%" stop-color="#3B1AAF"/>
     </linearGradient>
-    
     <linearGradient id="gloss" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:white; stop-opacity:0.3" />
-      <stop offset="50%" style="stop-color:white; stop-opacity:0" />
+      <stop offset="0%" stop-color="white" stop-opacity="0.35"/>
+      <stop offset="40%" stop-color="white" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
     </linearGradient>
-    
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-      <feOffset dx="0" dy="1" result="offsetblur" />
-      <feComponentTransfer>
-        <feFuncA type="linear" slope="0.3" />
-      </feComponentTransfer>
-      <feMerge>
-        <feMergeNode />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E0D4FF"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <linearGradient id="cellGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="white" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#D4C4FF" stop-opacity="0.7"/>
+    </linearGradient>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="1.5" result="offsetblur"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3"/>
+      <feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.2  0 0 0 0 0.9  0 0 0 0.4 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
-  <rect x="10" y="10" width="108" height="108" rx="20" fill="url(#bgGradient)" />
-  
-  <path d="M10 30C10 20 20 10 30 10H98C108 10 118 20 118 30V60C60 60 10 90 10 30Z" fill="url(#gloss)" />
+  <!-- Outer glow -->
+  <rect x="8" y="8" width="112" height="112" rx="22" fill="#512BD4" opacity="0.15" filter="url(#glow)"/>
 
-  <rect x="22" y="28" width="84" height="16" rx="6" fill="white" filter="url(#shadow)" />
-  
+  <!-- Background -->
+  <rect x="10" y="10" width="108" height="108" rx="20" fill="url(#bgGradient)"/>
+
+  <!-- Subtle border -->
+  <rect x="10" y="10" width="108" height="108" rx="20" fill="none" stroke="white" stroke-opacity="0.15" stroke-width="1"/>
+
+  <!-- Gloss -->
+  <clipPath id="roundClip"><rect x="10" y="10" width="108" height="108" rx="20"/></clipPath>
+  <path d="M10 30C10 20 20 10 30 10H98C108 10 118 20 118 30V55C90 65 10 75 10 30Z" fill="url(#gloss)" clip-path="url(#roundClip)"/>
+
+  <!-- Header bar -->
+  <rect x="22" y="28" width="84" height="16" rx="6" fill="url(#headerGrad)" filter="url(#shadow)"/>
+  <!-- Header accent dot -->
+  <circle cx="30" cy="36" r="3" fill="#512BD4" opacity="0.5"/>
+
+  <!-- Grid cells with gradient fill -->
   <g filter="url(#shadow)">
-    <rect x="22" y="52" width="24" height="16" rx="4" fill="white" fill-opacity="0.8" />
-    <rect x="52" y="52" width="24" height="16" rx="4" fill="white" fill-opacity="0.8" />
-    <rect x="82" y="52" width="24" height="16" rx="4" fill="white" fill-opacity="0.8" />
-    
-    <rect x="22" y="74" width="24" height="16" rx="4" fill="white" fill-opacity="0.6" />
-    <rect x="52" y="74" width="24" height="16" rx="4" fill="white" fill-opacity="0.6" />
-    <rect x="82" y="74" width="24" height="16" rx="4" fill="white" fill-opacity="0.6" />
-    
-    <rect x="22" y="96" width="24" height="16" rx="4" fill="white" fill-opacity="0.4" />
-    <rect x="52" y="96" width="24" height="16" rx="4" fill="white" fill-opacity="0.4" />
-    <rect x="82" y="96" width="24" height="16" rx="4" fill="white" fill-opacity="0.4" />
+    <rect x="22" y="52" width="24" height="16" rx="5" fill="url(#cellGlow)" opacity="0.9"/>
+    <rect x="52" y="52" width="24" height="16" rx="5" fill="url(#cellGlow)" opacity="0.9"/>
+    <rect x="82" y="52" width="24" height="16" rx="5" fill="url(#cellGlow)" opacity="0.9"/>
+
+    <rect x="22" y="74" width="24" height="16" rx="5" fill="url(#cellGlow)" opacity="0.65"/>
+    <rect x="52" y="74" width="24" height="16" rx="5" fill="url(#cellGlow)" opacity="0.65"/>
+    <rect x="82" y="74" width="24" height="16" rx="5" fill="url(#cellGlow)" opacity="0.65"/>
+
+    <rect x="22" y="96" width="24" height="16" rx="5" fill="url(#cellGlow)" opacity="0.4"/>
+    <rect x="52" y="96" width="24" height="16" rx="5" fill="url(#cellGlow)" opacity="0.4"/>
+    <rect x="82" y="96" width="24" height="16" rx="5" fill="url(#cellGlow)" opacity="0.4"/>
   </g>
+
+  <!-- Subtle sparkle accent -->
+  <circle cx="100" cy="34" r="1.5" fill="white" opacity="0.7"/>
+  <circle cx="96" cy="30" r="1" fill="white" opacity="0.5"/>
 </svg>

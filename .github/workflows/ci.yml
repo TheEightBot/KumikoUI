@@ -45,7 +45,7 @@ jobs:
 
       - name: Test
         run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
-          --no-restore -c Release --logger "github-actions" --results-directory TestResults
+          --no-restore -c Release --logger "trx" --results-directory TestResults
 
       - name: Upload test results
         if: always()

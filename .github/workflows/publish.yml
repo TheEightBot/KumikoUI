@@ -64,7 +64,7 @@ jobs:
           dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
           dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
 
-      - name: Pack — MauiKumikoUI.Core
+      - name: Pack — KumikoUI.Core
         run: |
           dotnet pack src/KumikoUI.Core/KumikoUI.Core.csproj \
             --no-restore \
@@ -74,7 +74,7 @@ jobs:
             -p:SymbolPackageFormat=snupkg \
             -o ./artifacts
 
-      - name: Pack — MauiKumikoUI.SkiaSharp
+      - name: Pack — KumikoUI.SkiaSharp
         run: |
           dotnet pack src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj \
             --no-restore \
@@ -187,7 +187,7 @@ jobs:
         run: |
           dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj \
-            -c Release --logger "github-actions"
+            -c Release --logger "trx" --results-directory TestResults
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 5. Publish all packages to NuGet.org and create a GitHub Release
@@ -228,7 +228,7 @@ jobs:
           for f in publish/*.nupkg; do
             echo "Pushing $f …"
             dotnet nuget push "$f" \
-              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --api-key ${{ secrets.EIGHTBOT_NUGET_APIKEY }} \
               --source https://api.nuget.org/v3/index.json \
               --skip-duplicate
           done
@@ -239,7 +239,7 @@ jobs:
             [ -f "$f" ] || continue
             echo "Pushing symbol package $f …"
             dotnet nuget push "$f" \
-              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --api-key ${{ secrets.EIGHTBOT_NUGET_APIKEY }} \
               --source https://api.nuget.org/v3/index.json \
               --skip-duplicate
           done
