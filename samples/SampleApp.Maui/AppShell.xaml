@@ -30,6 +30,12 @@
             Icon="icon_theme.png"
             ContentTemplate="{DataTemplate local:ThemingPage}"
             Route="ThemingPage" />
+
+        <ShellContent
+            Title="MVVM Actions"
+            Icon="icon_actions.png"
+            ContentTemplate="{DataTemplate local:MvvmActionsPage}"
+            Route="MvvmActionsPage" />
     </TabBar>
 
 </Shell>

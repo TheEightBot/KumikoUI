@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.MvvmActionsPage"
+             Title="MVVM Row Actions">
+
+    <Grid RowDefinitions="Auto,*" Padding="0">
+        <Label Text="MVVM Row Actions — Tap Delete or Details on any row"
+               FontSize="18"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <!--
+            x:Name="actionsGrid" is referenced below by the command bindings.
+            actionsGrid.BindingContext = MvvmActionsViewModel (set in code-behind).
+        -->
+        <dg:DataGridView x:Name="actionsGrid"
+                         Grid.Row="1"
+                         ItemsSource="{Binding Employees}"
+                         EditTriggers="SingleTap,F2Key"
+                         RowHeight="44"
+                         HeaderHeight="40">
+            <dg:DataGridView.Columns>
+                <core:DataGridColumn Header="Id"
+                                     PropertyName="Id"
+                                     ColumnType="Numeric"
+                                     Width="52"
+                                     IsReadOnly="True"
+                                     AllowTabStop="False" />
+
+                <core:DataGridColumn Header="Name"
+                                     PropertyName="Name"
+                                     Width="160"
+                                     IsReadOnly="True" />
+
+                <core:DataGridColumn Header="Department"
+                                     PropertyName="Department"
+                                     Width="130"
+                                     IsReadOnly="True" />
+
+                <core:DataGridColumn Header="Level"
+                                     PropertyName="Level"
+                                     Width="90"
+                                     IsReadOnly="True" />
+
+                <core:DataGridColumn Header="Salary"
+                                     PropertyName="Salary"
+                                     ColumnType="Numeric"
+                                     Format="C0"
+                                     Width="110"
+                                     IsReadOnly="True"
+                                     TextAlignment="Right" />
+
+                <core:DataGridColumn Header="Active"
+                                     PropertyName="IsActive"
+                                     ColumnType="Boolean"
+                                     Width="60"
+                                     IsReadOnly="True"
+                                     AllowTabStop="False" />
+
+                <!--
+                    Actions column.
+                    PropertyName="" short-circuits DataGridSource.BuildAccessor to
+                    return item => item, so both the renderer and the editor factory
+                    receive the full Employee object as their 'value' argument.
+
+                    CustomCellRenderer is fully declared here in XAML.
+                    MauiActionButtonDefinition is a BindableObject, so Command accepts
+                    {Binding} expressions.  MauiActionButtonDefinition is NOT in the
+                    visual tree, so BindingContext is NOT inherited automatically —
+                    use Source={x:Reference actionsGrid} to resolve the ViewModel.
+
+                    The editor factory (in code-behind) reuses this same Buttons list,
+                    so commands are already bound when a row is tapped.
+                -->
+                <core:DataGridColumn x:Name="actionsColumn"
+                                     Header="Actions"
+                                     PropertyName=""
+                                     ColumnType="Template"
+                                     Width="200"
+                                     IsReadOnly="False"
+                                     AllowSorting="False"
+                                     AllowFiltering="False"
+                                     AllowTabStop="False"
+                                     SizeMode="Star"
+                                     StarWeight="1">
+                    <core:DataGridColumn.CustomCellRenderer>
+                        <render:ActionButtonsCellRenderer>
+                            <render:ActionButtonsCellRenderer.Buttons>
+                                <dg:MauiActionButtonDefinition
+                                    Label="Details"
+                                    BackgroundColor="13,110,253"
+                                    Command="{Binding Path=BindingContext.ViewDetailsCommand,
+                                                      Source={x:Reference actionsGrid}}" />
+                                <dg:MauiActionButtonDefinition
+                                    Label="Delete"
+                                    BackgroundColor="220,53,69"
+                                    Command="{Binding Path=BindingContext.DeleteCommand,
+                                                      Source={x:Reference actionsGrid}}" />
+                            </render:ActionButtonsCellRenderer.Buttons>
+                        </render:ActionButtonsCellRenderer>
+                    </core:DataGridColumn.CustomCellRenderer>
+                </core:DataGridColumn>
+            </dg:DataGridView.Columns>
+        </dg:DataGridView>
+    </Grid>
+
+</ContentPage>

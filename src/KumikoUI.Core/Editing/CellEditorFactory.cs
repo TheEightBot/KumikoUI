@@ -61,6 +61,7 @@ public static class CellEditorFactory
             case DrawnNumericUpDown numeric: numeric.ApplyTheme(style); break;
             case DrawnDatePicker datePicker: datePicker.ApplyTheme(style); break;
             case DrawnScrollPicker picker: picker.ApplyTheme(style); break;
+            case DrawnActionButtons actionButtons: actionButtons.ApplyTheme(style); break;
         }
     }
 
@@ -211,12 +212,15 @@ public static class CellEditorFactory
     private static DrawnComponent? CreateTemplateEditor(
         DataGridColumn column, object? value, GridRect cellBounds)
     {
-        // Template columns: prefer CustomEditorFactory, then EditorDescriptor, then text fallback
+        // Priority: explicit factory → EditorDescriptor → renderer self-creates → text fallback
         if (column.CustomEditorFactory != null)
             return column.CustomEditorFactory(value, cellBounds);
 
         if (column.EditorDescriptor != null)
             return column.EditorDescriptor.CreateEditor(value, cellBounds);
+
+        if (column.CustomCellRenderer is ICellEditorProvider editorProvider)
+            return editorProvider.CreateEditor(value, cellBounds);
 
         // Fallback to text editor
         return CreateTextEditor(column, value, cellBounds, null, EditTextSelectionMode.SelectAll);
