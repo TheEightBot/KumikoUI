@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- cursor arrow -->
+  <polygon points="80,80 80,380 180,300 220,420 280,400 240,280 360,280" 
+           fill="black" />
+  <!-- small squares representing buttons -->
+  <rect x="300" y="100" width="150" height="55" rx="10" fill="black" opacity="0.7"/>
+  <rect x="300" y="175" width="150" height="55" rx="10" fill="black" opacity="0.5"/>
+</svg>

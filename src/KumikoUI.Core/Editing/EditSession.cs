@@ -455,6 +455,38 @@ public class EditSession
         return false;
     }
 
+    /// <summary>
+    /// Immediately forwards the activating tap to an editor that has
+    /// <see cref="DrawnComponent.ActivatesImmediately"/> set to <c>true</c>
+    /// (e.g. <c>DrawnActionButtons</c>).
+    /// Synthesizes a <c>Pressed</c> event at the same coordinates and then
+    /// dispatches the original <c>Released</c> event so the editor sees a
+    /// complete press–release cycle without requiring a second tap.
+    /// Does nothing if the session is not currently editing or the active
+    /// editor does not have <c>ActivatesImmediately == true</c>.
+    /// </summary>
+    /// <param name="releasedEvent">
+    /// The original <c>Released</c> pointer event that triggered <c>BeginEdit</c>.
+    /// </param>
+    public void TryForwardInitialTap(GridPointerEventArgs releasedEvent)
+    {
+        if (!_isEditing || _activeEditor == null) return;
+        if (!_activeEditor.ActivatesImmediately) return;
+        if (!_activeEditor.HitTest(releasedEvent.X, releasedEvent.Y)) return;
+
+        var syntheticDown = new GridPointerEventArgs
+        {
+            X = releasedEvent.X,
+            Y = releasedEvent.Y,
+            Action = InputAction.Pressed,
+            Button = releasedEvent.Button,
+            Modifiers = releasedEvent.Modifiers
+        };
+
+        _focusManager.DispatchPointer(syntheticDown);
+        _focusManager.DispatchPointer(releasedEvent);
+    }
+
     // ── Validation ──────────────────────────────────────────────
 
     private CellValidationResult? ValidateValue(int row, int col, object? value, DataGridSource dataSource)

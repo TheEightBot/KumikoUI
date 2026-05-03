@@ -795,7 +795,7 @@ public class GridInputController
                 else if (_editSession != null &&
                     (_editSession.EditTriggers & EditTrigger.SingleTap) != 0)
                 {
-                    TryBeginEdit(selection, dataSource, scroll, style, null);
+                    TryBeginEdit(selection, dataSource, scroll, style, null, e);
                 }
             }
 
@@ -1201,7 +1201,8 @@ public class GridInputController
     /// </summary>
     private void TryBeginEdit(
         SelectionModel selection, DataGridSource dataSource,
-        ScrollState scroll, DataGridStyle style, char? initialCharacter)
+        ScrollState scroll, DataGridStyle style, char? initialCharacter,
+        GridPointerEventArgs? triggeringTap = null)
     {
         if (_editSession == null || !selection.CurrentCell.IsValid) return;
 
@@ -1224,6 +1225,16 @@ public class GridInputController
         if (_editSession.BeginEdit(row, col, column, dataSource, cellBounds, initialCharacter))
         {
             selection.IsEditing = true;
+
+            // For editors that activate immediately (e.g. DrawnActionButtons), forward
+            // the triggering tap so the button fires on the very first touch.
+            if (triggeringTap != null)
+            {
+                _editSession.TryForwardInitialTap(triggeringTap);
+                // Sync selection state in case the editor committed itself (e.g. button fired)
+                selection.IsEditing = _editSession.IsEditing;
+            }
+
             Redraw();
         }
     }
