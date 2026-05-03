@@ -82,6 +82,15 @@ public abstract class DrawnComponent
     /// <summary>Draw this component. Override in derived classes.</summary>
     public abstract void OnDraw(IDrawingContext ctx);
 
+    /// <summary>
+    /// When <see langword="true"/>, the grid immediately forwards the activating tap
+    /// to the editor as a synthetic press + release after <c>BeginEdit</c> is called.
+    /// This allows editors like <c>DrawnActionButtons</c> to respond on the very
+    /// first tap rather than requiring a second tap to interact.
+    /// Default: <see langword="false"/>.
+    /// </summary>
+    public virtual bool ActivatesImmediately => false;
+
     /// <summary>Request a redraw of the hosting surface.</summary>
     public void InvalidateVisual() => RedrawRequested?.Invoke();
 

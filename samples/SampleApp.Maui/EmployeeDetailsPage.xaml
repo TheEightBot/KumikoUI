@@ -1,0 +1,164 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SampleApp.Maui.EmployeeDetailsPage"
+             Title="Employee Details"
+             BackgroundColor="#F8F9FA">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24,24" Spacing="0">
+
+            <!-- Avatar + name header -->
+            <VerticalStackLayout HorizontalOptions="Center" Spacing="8" Margin="0,0,0,24">
+                <Border x:Name="avatarBorder"
+                        WidthRequest="80" HeightRequest="80"
+                        StrokeShape="RoundRectangle 40"
+                        Stroke="Transparent"
+                        BackgroundColor="#0D6EFD"
+                        HorizontalOptions="Center">
+                    <Label x:Name="initialsLabel"
+                           FontSize="28"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           HorizontalTextAlignment="Center"
+                           VerticalTextAlignment="Center" />
+                </Border>
+
+                <Label x:Name="nameLabel"
+                       FontSize="22"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center" />
+
+                <Label x:Name="subtitleLabel"
+                       FontSize="14"
+                       TextColor="#6C757D"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <!-- Details card -->
+            <Border StrokeShape="RoundRectangle 12"
+                    Stroke="#DEE2E6"
+                    BackgroundColor="White"
+                    Padding="20,16"
+                    Margin="0,0,0,16">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Employee Details"
+                           FontAttributes="Bold"
+                           FontSize="15"
+                           Margin="0,0,0,4" />
+
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                          ColumnDefinitions="110,*"
+                          RowSpacing="10"
+                          ColumnSpacing="16">
+
+                        <Label Grid.Row="0" Grid.Column="0"
+                               Text="Employee ID"
+                               TextColor="#6C757D"
+                               FontSize="13" />
+                        <Label x:Name="idLabel"
+                               Grid.Row="0" Grid.Column="1"
+                               FontAttributes="Bold"
+                               FontSize="13" />
+
+                        <Label Grid.Row="1" Grid.Column="0"
+                               Text="Department"
+                               TextColor="#6C757D"
+                               FontSize="13" />
+                        <Label x:Name="deptLabel"
+                               Grid.Row="1" Grid.Column="1"
+                               FontAttributes="Bold"
+                               FontSize="13" />
+
+                        <Label Grid.Row="2" Grid.Column="0"
+                               Text="Level"
+                               TextColor="#6C757D"
+                               FontSize="13" />
+                        <Label x:Name="levelLabel"
+                               Grid.Row="2" Grid.Column="1"
+                               FontAttributes="Bold"
+                               FontSize="13" />
+
+                        <Label Grid.Row="3" Grid.Column="0"
+                               Text="Salary"
+                               TextColor="#6C757D"
+                               FontSize="13" />
+                        <Label x:Name="salaryLabel"
+                               Grid.Row="3" Grid.Column="1"
+                               FontAttributes="Bold"
+                               FontSize="13" />
+
+                        <Label Grid.Row="4" Grid.Column="0"
+                               Text="Hire Date"
+                               TextColor="#6C757D"
+                               FontSize="13" />
+                        <Label x:Name="hireDateLabel"
+                               Grid.Row="4" Grid.Column="1"
+                               FontAttributes="Bold"
+                               FontSize="13" />
+
+                        <Label Grid.Row="5" Grid.Column="0"
+                               Text="Status"
+                               TextColor="#6C757D"
+                               FontSize="13" />
+                        <Label x:Name="statusLabel"
+                               Grid.Row="5" Grid.Column="1"
+                               FontAttributes="Bold"
+                               FontSize="13" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Performance card -->
+            <Border StrokeShape="RoundRectangle 12"
+                    Stroke="#DEE2E6"
+                    BackgroundColor="White"
+                    Padding="20,16"
+                    Margin="0,0,0,28">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Performance"
+                           FontAttributes="Bold"
+                           FontSize="15"
+                           Margin="0,0,0,2" />
+
+                    <Grid ColumnDefinitions="110,*" ColumnSpacing="16">
+                        <Label Grid.Column="0"
+                               Text="Score"
+                               TextColor="#6C757D"
+                               FontSize="13" />
+                        <Label x:Name="perfLabel"
+                               Grid.Column="1"
+                               FontAttributes="Bold"
+                               FontSize="13" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="110,*" ColumnSpacing="16">
+                        <Label Grid.Column="0"
+                               Text="Rating"
+                               TextColor="#6C757D"
+                               FontSize="13" />
+                        <Label x:Name="ratingLabel"
+                               Grid.Column="1"
+                               FontAttributes="Bold"
+                               FontSize="13" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Close button -->
+            <Button Text="Close"
+                    Clicked="OnCloseClicked"
+                    BackgroundColor="#6C757D"
+                    TextColor="White"
+                    CornerRadius="8"
+                    HeightRequest="48"
+                    HorizontalOptions="Fill" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

@@ -1573,6 +1573,11 @@ public class DataGridSource
     /// </summary>
     private static Func<object, object?> BuildAccessor(Type type, string propertyPath)
     {
+        // Empty path: return the item itself. Useful for Template/action columns
+        // that need the whole row object as the cell value (e.g. CustomEditorFactory).
+        if (string.IsNullOrEmpty(propertyPath))
+            return item => item;
+
         var param = Expression.Parameter(typeof(object), "item");
         Expression body = Expression.Convert(param, type);
 
