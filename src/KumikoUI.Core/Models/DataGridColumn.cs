@@ -232,6 +232,18 @@ public class DataGridColumn
     /// </summary>
     public Rendering.ICellRenderer? CustomCellRenderer { get; set; }
 
+    // ── Per-column editing behaviour ───────────────────────────────
+
+    /// <summary>
+    /// Optional column-level edit trigger override.
+    /// When set, this column uses its own <see cref="Editing.EditTrigger"/> flags instead of
+    /// the grid-level <c>EditSession.EditTriggers</c> value.
+    /// Set to <see cref="Editing.EditTrigger.None"/> to disable all trigger-based editing for
+    /// this column without making it fully read-only via <see cref="IsReadOnly"/>.
+    /// <c>null</c> (default) means inherit from the grid-level setting.
+    /// </summary>
+    public Editing.EditTrigger? EditTriggers { get; set; }
+
     // ── Per-column styling ─────────────────────────────────────────
 
     /// <summary>
