@@ -253,7 +253,7 @@ internal sealed class IconFontCellRenderer : ICellRenderer
         if (string.IsNullOrEmpty(displayText))
             return;
 
-        var textColor = isSelected ? style.SelectedTextColor : style.CellTextColor;
+        var textColor = isSelected ? style.SelectionTextColor : style.CellTextColor;
         var paint = new GridPaint
         {
             Color = textColor,
