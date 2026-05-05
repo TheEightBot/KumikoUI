@@ -36,6 +36,12 @@
             Icon="icon_actions.png"
             ContentTemplate="{DataTemplate local:MvvmActionsPage}"
             Route="MvvmActionsPage" />
+
+        <ShellContent
+            Title="Custom Fonts"
+            Icon="icon_font.png"
+            ContentTemplate="{DataTemplate local:CustomFontsPage}"
+            Route="CustomFontsPage" />
     </TabBar>
 
 </Shell>

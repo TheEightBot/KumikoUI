@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.CustomFontsPage"
+             Title="Custom Fonts Demo">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,*" Padding="0">
+
+        <!-- ── Japanese headers section ───────────────────────────────── -->
+        <Label Text="Japanese Column Headers (NotoSansJP font registered at startup)"
+               FontSize="16"
+               FontAttributes="Bold"
+               Padding="16,12,16,4"
+               Grid.Row="0" />
+
+        <Label Text="Headers: Hinpyo-ID / RFID / Hinban / Suryo — drawn from the NotoSansJP typeface via SkiaFontRegistrar."
+               FontSize="13"
+               TextColor="Gray"
+               Padding="16,0,16,6"
+               Grid.Row="1" />
+
+        <!-- Grid with Japanese headers — uses NotoSansJP via DataGridStyle.HeaderFont -->
+        <dg:DataGridView x:Name="japaneseGrid"
+                         Grid.Row="2"
+                         RowHeight="36"
+                         HeaderHeight="44"
+                         EditTriggers="DoubleTap,F2Key"
+                         HorizontalOptions="Fill"
+                         VerticalOptions="Fill" />
+
+        <!-- ── Icon font section ───────────────────────────────────────── -->
+        <Label Text="Icon Font Column (MaterialIcons)"
+               FontSize="16"
+               FontAttributes="Bold"
+               Padding="16,12,16,4"
+               Grid.Row="3" />
+
+        <!-- Grid with a status column rendered as Material Design icon glyphs -->
+        <dg:DataGridView x:Name="iconGrid"
+                         Grid.Row="4"
+                         RowHeight="40"
+                         HeaderHeight="44"
+                         EditTriggers="None"
+                         HorizontalOptions="Fill"
+                         VerticalOptions="Fill" />
+
+    </Grid>
+
+</ContentPage>

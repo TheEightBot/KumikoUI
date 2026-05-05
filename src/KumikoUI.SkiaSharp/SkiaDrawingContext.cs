@@ -263,13 +263,21 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     /// <summary>
     /// Get or create a cached SKTypeface for the given family and style.
     /// Typefaces are expensive to resolve from family names; caching avoids repeated lookups.
+    /// The <see cref="SkiaFontRegistrar"/> is consulted first so that custom fonts registered
+    /// by the host application (e.g. CJK fonts, icon fonts) take priority over system fonts.
     /// </summary>
     private SKTypeface GetOrCreateTypeface(string family, bool isBold, bool isItalic)
     {
         var key = new TypefaceKey(family, isBold, isItalic);
         if (!_typefaceCache.TryGetValue(key, out var typeface))
         {
-            if (isBold || isItalic || family != "Default")
+            // Check the custom font registrar first — this allows host apps to supply fonts
+            // that the system font manager cannot resolve (e.g. CJK fonts on Android, icon fonts).
+            if (SkiaFontRegistrar.TryGetTypeface(family, out var registeredTypeface))
+            {
+                typeface = registeredTypeface;
+            }
+            else if (isBold || isItalic || family != "Default")
             {
                 var weight = isBold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal;
                 var slant = isItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
@@ -323,10 +331,11 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
             font.Dispose();
         _fontCache.Clear();
 
-        // Don't dispose SKTypeface.Default — only dispose custom typefaces
+        // Don't dispose SKTypeface.Default or any typeface registered in SkiaFontRegistrar
+        // (those are externally owned). Only dispose typefaces we created dynamically.
         foreach (var (key, typeface) in _typefaceCache)
         {
-            if (typeface != SKTypeface.Default)
+            if (typeface != SKTypeface.Default && !SkiaFontRegistrar.IsRegistered(typeface))
                 typeface.Dispose();
         }
         _typefaceCache.Clear();
