@@ -159,5 +159,57 @@ public class DataGridColumnTests
         var items = col.EditorItems!.Cast<string>().ToList();
         Assert.Equal(3, items.Count);
     }
+
+    // ── EditTriggers ──────────────────────────────────────────────
+
+    [Fact]
+    public void EditTriggers_Default_IsNull()
+    {
+        var col = new DataGridColumn();
+        Assert.Null(col.EditTriggers);
+    }
+
+    [Fact]
+    public void EditTriggers_SetToNone_StoresNone()
+    {
+        var col = new DataGridColumn();
+        col.EditTriggers = KumikoUI.Core.Editing.EditTrigger.None;
+        Assert.Equal(KumikoUI.Core.Editing.EditTrigger.None, col.EditTriggers);
+    }
+
+    [Fact]
+    public void EditTriggers_SetToSingleTap_StoresSingleTap()
+    {
+        var col = new DataGridColumn();
+        col.EditTriggers = KumikoUI.Core.Editing.EditTrigger.SingleTap;
+        Assert.Equal(KumikoUI.Core.Editing.EditTrigger.SingleTap, col.EditTriggers);
+    }
+
+    [Fact]
+    public void EditTriggers_SetToCombinedFlags_StoresCombinedFlags()
+    {
+        var col = new DataGridColumn();
+        col.EditTriggers = KumikoUI.Core.Editing.EditTrigger.DoubleTap | KumikoUI.Core.Editing.EditTrigger.F2Key;
+        Assert.Equal(
+            KumikoUI.Core.Editing.EditTrigger.DoubleTap | KumikoUI.Core.Editing.EditTrigger.F2Key,
+            col.EditTriggers);
+    }
+
+    [Fact]
+    public void EditTriggers_SetThenClearedToNull_IsNull()
+    {
+        var col = new DataGridColumn { EditTriggers = KumikoUI.Core.Editing.EditTrigger.SingleTap };
+        col.EditTriggers = null;
+        Assert.Null(col.EditTriggers);
+    }
+
+    [Fact]
+    public void EditTriggers_TwoColumns_IndependentValues()
+    {
+        var col1 = new DataGridColumn { EditTriggers = KumikoUI.Core.Editing.EditTrigger.SingleTap };
+        var col2 = new DataGridColumn { EditTriggers = KumikoUI.Core.Editing.EditTrigger.None };
+        Assert.Equal(KumikoUI.Core.Editing.EditTrigger.SingleTap, col1.EditTriggers);
+        Assert.Equal(KumikoUI.Core.Editing.EditTrigger.None, col2.EditTriggers);
+    }
 }
 

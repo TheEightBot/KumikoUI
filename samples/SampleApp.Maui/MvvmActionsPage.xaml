@@ -1,30 +1,67 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
              xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
              xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
+             xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
              x:Class="SampleApp.Maui.MvvmActionsPage"
-             Title="MVVM Row Actions">
+             Title="MVVM + Column EditTriggers">
 
-    <Grid RowDefinitions="Auto,*" Padding="0">
-        <Label Text="MVVM Row Actions — Tap Delete or Details on any row"
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+
+        <Label Text="Column-Level EditTriggers"
                FontSize="18"
                FontAttributes="Bold"
-               Padding="16,12"
+               Padding="16,12,16,2"
                Grid.Row="0" />
 
+        <!--  Per-column trigger legend  -->
+        <VerticalStackLayout Grid.Row="1" Padding="16,0,16,8" Spacing="2">
+            <Label FontSize="12" TextColor="Gray">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="Name " FontAttributes="Bold" />
+                        <Span Text="Single-tap, F2, or type to edit" FontAttributes="Italic" />
+                        <Span Text="   " FontAttributes="Bold" />
+                        <Span Text="Department " FontAttributes="Bold" />
+                        <Span Text="Double-tap or F2 only" FontAttributes="Italic" />
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+            <Label FontSize="12" TextColor="Gray">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="Level " FontAttributes="Bold" />
+                        <Span Text="Double-tap only" FontAttributes="Italic" />
+                        <Span Text="   " FontAttributes="Bold" />
+                        <Span Text="Salary " FontAttributes="Bold" />
+                        <Span Text="F2 key only (most protected)" FontAttributes="Italic" />
+                        <Span Text="   " FontAttributes="Bold" />
+                        <Span Text="Actions " FontAttributes="Bold" />
+                        <Span Text="Single-tap (column override)" FontAttributes="Italic" />
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+        </VerticalStackLayout>
+
         <!--
-            x:Name="actionsGrid" is referenced below by the command bindings.
-            actionsGrid.BindingContext = MvvmActionsViewModel (set in code-behind).
+            Grid-level EditTriggers = Default (DoubleTap | F2Key | Typing).
+            Each column below overrides this with its own EditTriggers value,
+            demonstrating the full range of per-column trigger configurations.
+
+            x:Name="actionsGrid" is referenced by the command bindings below.
+            BindingContext = MvvmActionsViewModel (set in code-behind).
         -->
         <dg:DataGridView x:Name="actionsGrid"
-                         Grid.Row="1"
+                         Grid.Row="2"
                          ItemsSource="{Binding Employees}"
-                         EditTriggers="SingleTap,F2Key"
+                         EditTriggers="DoubleTap, F2Key, Typing"
                          RowHeight="44"
                          HeaderHeight="40">
             <dg:DataGridView.Columns>
+
+                <!-- Id \u2014 read-only; no EditTriggers needed -->
                 <core:DataGridColumn Header="Id"
                                      PropertyName="Id"
                                      ColumnType="Numeric"
@@ -32,50 +69,72 @@
                                      IsReadOnly="True"
                                      AllowTabStop="False" />
 
+                <!--
+                    Name \u2014 single-tap, F2, OR typing starts editing.
+                    Most accessible column; overrides the grid-level Default.
+                -->
                 <core:DataGridColumn Header="Name"
                                      PropertyName="Name"
                                      Width="160"
-                                     IsReadOnly="True" />
+                                     EditTriggers="SingleTap, F2Key, Typing" />
 
+                <!--
+                    Department \u2014 double-tap or F2 only.
+                    Typing excluded to prevent accidental edits on a ComboBox.
+                -->
                 <core:DataGridColumn Header="Department"
                                      PropertyName="Department"
+                                     ColumnType="ComboBox"
                                      Width="130"
-                                     IsReadOnly="True" />
+                                     EditorItemsString="Engineering,Marketing,Finance,HR,Design,Product,Sales"
+                                     EditTriggers="DoubleTap, F2Key" />
 
+                <!--
+                    Level \u2014 double-tap ONLY; no F2, no typing.
+                    Picker columns benefit from explicit intent before opening a scroll wheel.
+                -->
                 <core:DataGridColumn Header="Level"
                                      PropertyName="Level"
+                                     ColumnType="Picker"
                                      Width="90"
-                                     IsReadOnly="True" />
+                                     EditorItemsString="Junior,Mid,Senior,Lead,Principal"
+                                     EditTriggers="DoubleTap" />
 
+                <!--
+                    Salary \u2014 F2 key ONLY.
+                    Protects financial data: pointer gestures cannot open the editor;
+                    the user must deliberately press F2 on a keyboard-attached device.
+                -->
                 <core:DataGridColumn Header="Salary"
                                      PropertyName="Salary"
                                      ColumnType="Numeric"
                                      Format="C0"
                                      Width="110"
-                                     IsReadOnly="True"
-                                     TextAlignment="Right" />
+                                     TextAlignment="Right"
+                                     EditTriggers="F2Key" />
 
+                <!--
+                    Active \u2014 Boolean; toggles on single-tap regardless of EditTriggers.
+                    No EditTriggers override needed; inherits grid default (unused for booleans).
+                -->
                 <core:DataGridColumn Header="Active"
                                      PropertyName="IsActive"
                                      ColumnType="Boolean"
                                      Width="60"
-                                     IsReadOnly="True"
                                      AllowTabStop="False" />
 
                 <!--
-                    Actions column.
+                    Actions column \u2014 Template with inline action buttons.
+                    Column-level EditTriggers="SingleTap" ensures buttons are always
+                    activatable with a single tap even though the grid default is DoubleTap.
+                    This is the primary use-case for the column-level override feature.
+
                     PropertyName="" short-circuits DataGridSource.BuildAccessor to
-                    return item => item, so both the renderer and the editor factory
-                    receive the full Employee object as their 'value' argument.
+                    return item => item, so both the renderer and editor factory
+                    receive the full Employee object as their value argument.
 
-                    CustomCellRenderer is fully declared here in XAML.
-                    MauiActionButtonDefinition is a BindableObject, so Command accepts
-                    {Binding} expressions.  MauiActionButtonDefinition is NOT in the
-                    visual tree, so BindingContext is NOT inherited automatically —
-                    use Source={x:Reference actionsGrid} to resolve the ViewModel.
-
-                    The editor factory (in code-behind) reuses this same Buttons list,
-                    so commands are already bound when a row is tapped.
+                    MauiActionButtonDefinition is NOT in the visual tree so BindingContext
+                    is not inherited \u2014 use Source={x:Reference actionsGrid} to resolve the VM.
                 -->
                 <core:DataGridColumn x:Name="actionsColumn"
                                      Header="Actions"
@@ -87,7 +146,8 @@
                                      AllowFiltering="False"
                                      AllowTabStop="False"
                                      SizeMode="Star"
-                                     StarWeight="1">
+                                     StarWeight="1"
+                                     EditTriggers="SingleTap">
                     <core:DataGridColumn.CustomCellRenderer>
                         <render:ActionButtonsCellRenderer>
                             <render:ActionButtonsCellRenderer.Buttons>
@@ -105,6 +165,7 @@
                         </render:ActionButtonsCellRenderer>
                     </core:DataGridColumn.CustomCellRenderer>
                 </core:DataGridColumn>
+
             </dg:DataGridView.Columns>
         </dg:DataGridView>
     </Grid>

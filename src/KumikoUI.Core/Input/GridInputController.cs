@@ -275,11 +275,17 @@ public class GridInputController
         switch (e.Key)
         {
             case GridKey.F2:
-                // F2 → begin editing the current cell
+                // F2 → begin editing the current cell (honours column- and grid-level F2Key flag)
                 if (_editSession != null && selection.CurrentCell.IsValid)
                 {
-                    TryBeginEdit(selection, dataSource, scroll, style, null);
-                    e.Handled = true;
+                    int f2Col = selection.CurrentCell.Column;
+                    var f2Column = f2Col >= 0 && f2Col < dataSource.Columns.Count
+                        ? dataSource.Columns[f2Col] : null;
+                    if ((GetEffectiveEditTriggers(f2Column) & EditTrigger.F2Key) != 0)
+                    {
+                        TryBeginEdit(selection, dataSource, scroll, style, null);
+                        e.Handled = true;
+                    }
                 }
                 break;
             case GridKey.Up:
@@ -370,14 +376,19 @@ public class GridInputController
             default:
                 // Typing trigger: printable character starts editing
                 if (_editSession != null && e.Character.HasValue && selection.CurrentCell.IsValid &&
-                    !e.HasControl && !e.HasAlt &&
-                    (_editSession.EditTriggers & EditTrigger.Typing) != 0)
+                    !e.HasControl && !e.HasAlt)
                 {
-                    char c = e.Character.Value;
-                    if (!char.IsControl(c))
+                    int typingCol = selection.CurrentCell.Column;
+                    var typingColumn = typingCol >= 0 && typingCol < dataSource.Columns.Count
+                        ? dataSource.Columns[typingCol] : null;
+                    if ((GetEffectiveEditTriggers(typingColumn) & EditTrigger.Typing) != 0)
                     {
-                        TryBeginEdit(selection, dataSource, scroll, style, c);
-                        e.Handled = true;
+                        char c = e.Character.Value;
+                        if (!char.IsControl(c))
+                        {
+                            TryBeginEdit(selection, dataSource, scroll, style, c);
+                            e.Handled = true;
+                        }
                     }
                 }
                 break;
@@ -769,7 +780,7 @@ public class GridInputController
 
                 // Double-tap edit trigger
                 if (_editSession != null && hit.Column != null &&
-                    (_editSession.EditTriggers & EditTrigger.DoubleTap) != 0)
+                    (GetEffectiveEditTriggers(hit.Column) & EditTrigger.DoubleTap) != 0)
                 {
                     // Boolean toggle on double-tap
                     if (hit.Column.ColumnType == DataGridColumnType.Boolean)
@@ -793,7 +804,7 @@ public class GridInputController
                 }
                 // Single-tap edit trigger for non-boolean cells
                 else if (_editSession != null &&
-                    (_editSession.EditTriggers & EditTrigger.SingleTap) != 0)
+                    (GetEffectiveEditTriggers(hit.Column) & EditTrigger.SingleTap) != 0)
                 {
                     TryBeginEdit(selection, dataSource, scroll, style, null, e);
                 }
@@ -875,7 +886,7 @@ public class GridInputController
         selection.CurrentCell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
 
         if (_editSession != null && hit.Column != null &&
-            (_editSession.EditTriggers & EditTrigger.LongPress) != 0)
+            (GetEffectiveEditTriggers(hit.Column) & EditTrigger.LongPress) != 0)
         {
             if (hit.Column.ColumnType == DataGridColumnType.Boolean)
             {
@@ -1195,6 +1206,15 @@ public class GridInputController
     }
 
     // ── Edit helpers ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Resolves the effective <see cref="EditTrigger"/> for <paramref name="column"/>.
+    /// When the column has its own <see cref="DataGridColumn.EditTriggers"/> override it is
+    /// returned directly; otherwise the grid-level <see cref="EditSession.EditTriggers"/> is
+    /// used, falling back to <see cref="EditTrigger.Default"/> if the session is null.
+    /// </summary>
+    private EditTrigger GetEffectiveEditTriggers(DataGridColumn? column)
+        => column?.EditTriggers ?? _editSession?.EditTriggers ?? EditTrigger.Default;
 
     /// <summary>
     /// Try to begin editing the current cell.
