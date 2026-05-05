@@ -7,6 +7,7 @@
   <p align="center">
     <a href="#-getting-started">Getting Started</a> ·
     <a href="#-column-types">Columns</a> ·
+    <a href="#-action-button-columns">Action Buttons</a> ·
     <a href="#-sorting--filtering">Sorting & Filtering</a> ·
     <a href="#-grouping">Grouping</a> ·
     <a href="#-editing">Editing</a> ·
@@ -35,6 +36,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 - [Features at a Glance](#-features-at-a-glance)
 - [Getting Started](#-getting-started)
 - [Column Types](#-column-types)
+- [Action Button Columns](#-action-button-columns)
 - [Column Sizing](#-column-sizing)
 - [Frozen Columns & Rows](#-frozen-columns--rows)
 - [Sorting & Filtering](#-sorting--filtering)
@@ -68,6 +70,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 | **Rendering** | 100% SkiaSharp canvas, zero native controls, 60 fps |
 | **Virtual scrolling** | Only visible rows/columns rendered — tested with 100K+ rows |
 | **Column types** | Text, Numeric, Boolean, Date, ComboBox, Picker, ProgressBar, Image, Template |
+| **Action buttons** | Pill-button columns with `ICommand` / callback support; activate on first tap |
 | **Column sizing** | Fixed, Star (proportional), Auto (content-sized) |
 | **Frozen columns** | Pin columns to left or right edge |
 | **Frozen rows** | Pin top N rows to viewport |
@@ -75,7 +78,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 | **Filtering** | Excel-style popup with search, value checklist, and sort controls |
 | **Grouping** | Drag-and-drop group panel, expandable groups, nested groups |
 | **Summaries** | Table-level and per-group aggregates (Sum, Avg, Count, Min, Max) |
-| **Editing** | Configurable triggers (tap, double-tap, long-press, F2, typing) |
+| **Editing** | Configurable triggers (tap, double-tap, long-press, F2, typing); per-column override |
 | **Selection** | Single / Multiple / Extended modes; Row or Cell unit |
 | **Keyboard nav** | Arrows, Tab/Shift+Tab, Enter, Home/End, Page Up/Down |
 | **Row drag & drop** | Handle column or full-row drag reorder |
@@ -187,6 +190,104 @@ Each column is a `DataGridColumn` with a `ColumnType` that controls both the rea
                      IsReadOnly="True"
                      AllowTabStop="False" />
 ```
+
+---
+
+## 🖱️ Action Button Columns
+
+Action button columns render a row of clickable pill-buttons directly inside every cell. Any number of buttons can be declared; they are distributed with equal widths across the cell area. Buttons support both `ICommand` (for MVVM data-binding) and an `Action` callback (for code-behind).
+
+Action buttons use the **Template** column type with `ActionButtonsCellRenderer` as the `CustomCellRenderer`. The renderer also implements `ICellEditorProvider`, so no separate `CustomEditorFactory` is required — the same button definitions handle both display and interaction.
+
+> **Tip:** Set the column's `EditTriggers="SingleTap"` so buttons respond on the first touch, even when the grid's default trigger is `DoubleTap`. See [Per-column edit trigger override](#per-column-edit-trigger-override).
+
+### XAML declaration (MVVM)
+
+Set `PropertyName=""` so the full row item is passed as the value to both the renderer and the editor.
+`MauiActionButtonDefinition` is a `BindableObject` that supports `{Binding}` on every property, including `Command`.
+
+```xml
+xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
+
+<dg:DataGridView x:Name="actionsGrid" ...>
+    <dg:DataGridView.Columns>
+        <core:DataGridColumn Header="Actions"
+                             PropertyName=""
+                             ColumnType="Template"
+                             Width="200"
+                             AllowSorting="False"
+                             AllowFiltering="False"
+                             AllowTabStop="False"
+                             EditTriggers="SingleTap">
+            <core:DataGridColumn.CustomCellRenderer>
+                <render:ActionButtonsCellRenderer>
+                    <render:ActionButtonsCellRenderer.Buttons>
+                        <dg:MauiActionButtonDefinition
+                            Label="Details"
+                            BackgroundColor="13,110,253"
+                            Command="{Binding Path=BindingContext.ViewDetailsCommand,
+                                              Source={x:Reference actionsGrid}}" />
+                        <dg:MauiActionButtonDefinition
+                            Label="Delete"
+                            BackgroundColor="220,53,69"
+                            Command="{Binding Path=BindingContext.DeleteCommand,
+                                              Source={x:Reference actionsGrid}}" />
+                    </render:ActionButtonsCellRenderer.Buttons>
+                </render:ActionButtonsCellRenderer>
+            </core:DataGridColumn.CustomCellRenderer>
+        </core:DataGridColumn>
+    </dg:DataGridView.Columns>
+</dg:DataGridView>
+```
+
+> **Note:** `MauiActionButtonDefinition` is not in the visual tree, so it does **not** inherit `BindingContext` automatically. Use `Source={x:Reference …}` or `Source={RelativeSource …}` to point bindings at the correct source object.
+
+### Code-behind factory
+
+Use `ActionButtonDefinition` (in `KumikoUI.Core`) when you want a code-behind closure per row:
+
+```csharp
+actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
+{
+    Bounds  = bounds,
+    RowItem = value,
+    Buttons =
+    [
+        new ActionButtonDefinition
+        {
+            Label           = "Edit",
+            BackgroundColor = new GridColor(13, 110, 253),
+            Command         = vm.EditCommand   // row item is CommandParameter by default
+        },
+        new ActionButtonDefinition
+        {
+            Label           = "Delete",
+            BackgroundColor = new GridColor(220, 53, 69),
+            Action          = () => vm.DeleteEmployee((Employee)value!)
+        }
+    ]
+};
+```
+
+### Button properties
+
+| Property | Type | Description |
+|---|---|---|
+| `Label` | `string` | Text displayed on the button face |
+| `BackgroundColor` | `GridColor` | Pill background color (`R,G,B` string format in XAML) |
+| `TextColor` | `GridColor` | Label text color (default: white) |
+| `Command` | `ICommand?` | Executed on tap; row item is the default `CommandParameter` |
+| `CommandParameter` | `object?` | Explicit command parameter; overrides the row item default |
+| `Action` | `Action?` | Code-behind callback; executed in addition to `Command` if both are set |
+
+Layout properties on `DrawnActionButtons` / `ActionButtonsCellRenderer`:
+
+| Property | Default | Description |
+|---|---|---|
+| `CornerRadius` | `5f` | Button pill corner radius (pixels) |
+| `ButtonSpacing` | `6f` | Horizontal gap between buttons (pixels) |
+| `CellPadding` | `4f` | Inset from all four cell edges (pixels) |
 
 ---
 
@@ -343,6 +444,40 @@ Configure which gestures or keys open the inline editor:
 | `Typing` | Start typing immediately to replace cell content |
 
 Triggers are flags — combine freely: `"DoubleTap,F2Key,Typing"`.
+
+### Per-column edit trigger override
+
+Each column can override the grid-level `EditTriggers` independently via its own `EditTriggers` property. When set, that column uses its own trigger flags; when `null` (the default), the column inherits the grid-level setting.
+
+```xml
+<dg:DataGridView EditTriggers="DoubleTap, F2Key, Typing">
+    <dg:DataGridView.Columns>
+
+        <!-- Most accessible: single-tap, F2, or typing to edit -->
+        <core:DataGridColumn Header="Name" PropertyName="Name"
+                             EditTriggers="SingleTap, F2Key, Typing" />
+
+        <!-- ComboBox: double-tap or F2 only (no accidental typing edits) -->
+        <core:DataGridColumn Header="Department" PropertyName="Department"
+                             ColumnType="ComboBox"
+                             EditorItemsString="Engineering,Marketing,Finance,HR"
+                             EditTriggers="DoubleTap, F2Key" />
+
+        <!-- Salary: keyboard-only — protects financial data from pointer gestures -->
+        <core:DataGridColumn Header="Salary" PropertyName="Salary"
+                             ColumnType="Numeric" Format="C0"
+                             EditTriggers="F2Key" />
+
+        <!-- Action buttons always activate on first tap -->
+        <core:DataGridColumn Header="Actions" PropertyName=""
+                             ColumnType="Template"
+                             EditTriggers="SingleTap" />
+
+    </dg:DataGridView.Columns>
+</dg:DataGridView>
+```
+
+Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column without making it fully read-only via `IsReadOnly`.
 
 ### Edit text selection
 
@@ -627,6 +762,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor gui
 |---|---|
 | **All Components** | Every column type, frozen columns, frozen rows, edit triggers, selection modes, drag & drop, summaries, theme toggle |
 | **Grouping & Filtering** | Interactive group panel, nested groups, filter popups, group summaries |
+| **MVVM + Column EditTriggers** | Action button columns with MVVM commands; per-column `EditTriggers` overrides across all trigger types |
 | **Large Data** | 100K-row stress test with virtual scrolling performance metrics |
 | **Theming** | Live Light / Dark / HighContrast switching, custom color picker |
 
