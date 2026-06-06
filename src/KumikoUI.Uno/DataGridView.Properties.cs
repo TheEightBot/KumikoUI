@@ -312,8 +312,8 @@ public partial class DataGridView
 
     private static void OnIsReadOnlyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        // Honored at edit time by the input controller / edit session (Phase 04
-        // wires the gesture path). MAUI exposes IsReadOnly as a plain flag too;
+        // Honored at edit time by the input controller / edit session (the gesture path is
+        // wired in DataGridView.Input.cs). MAUI exposes IsReadOnly as a plain flag too;
         // a repaint keeps any read-only affordance in sync.
         ((DataGridView)d).Invalidate();
     }

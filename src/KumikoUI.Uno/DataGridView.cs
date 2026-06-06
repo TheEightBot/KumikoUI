@@ -29,9 +29,11 @@ namespace KumikoUI.Uno;
 /// same way on both platforms.
 /// </summary>
 /// <remarks>
-/// Phase 03 scope: layout host + paint loop + DependencyProperty surface +
-/// lifecycle. Pointer / keyboard event wiring lives in Phase 04 (see the
-/// <c>// Phase 04:</c> seam in the constructor and <see cref="OnLoaded"/>).
+/// Layout host + paint loop + DependencyProperty surface + lifecycle live in this file and
+/// <c>DataGridView.Properties.cs</c>. Pointer / keyboard / focus event wiring and the
+/// input-driven repaint timers live in <c>DataGridView.Input.cs</c> (attached from
+/// <see cref="OnLoaded"/>, detached from <see cref="OnUnloaded"/>) and the mapping helpers in
+/// <c>Input/InputMapping.cs</c>.
 /// </remarks>
 public partial class DataGridView : Grid
 {
@@ -47,7 +49,7 @@ public partial class DataGridView : Grid
     /// <summary>
     /// Creates a new <see cref="DataGridView"/>, adds the Skia canvas child, and
     /// wires the Core redraw signals. Pointer / keyboard handlers are attached in
-    /// <see cref="OnLoaded"/> (Phase 04).
+    /// <see cref="OnLoaded"/> (see <c>DataGridView.Input.cs</c>).
     /// </summary>
     public DataGridView()
     {
@@ -77,11 +79,16 @@ public partial class DataGridView : Grid
         _editSession.Style = _style;
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
 
+        // Edit lifecycle drives the cursor-blink repaint timer (mirrors MAUI). These target the
+        // owned _editSession, so they're wired once in the ctor and don't leak the page.
+        _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
+        _editSession.CellEndEdit += OnEditSessionCellEndEdit;
+
         // Canvas paint loop.
         _canvasView.PaintSurface += OnPaintSurface;
 
-        // Loaded/Unloaded attach/detach handlers idempotently — Uno raises these
-        // on navigation. Pointer/keyboard wiring is added in Phase 04.
+        // Loaded/Unloaded attach/detach the paint loop and the pointer/keyboard handlers
+        // idempotently — Uno raises these on navigation (wiring in DataGridView.Input.cs).
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -201,23 +208,47 @@ public partial class DataGridView : Grid
         InvalidateSurface();
     }
 
-    // Phase 04: these are surfaced by the input controller but only become
-    // meaningful once pointer/keyboard events are wired. They are subscribed
-    // here so the controller can already drive the platform layer (e.g. show
-    // the soft keyboard); the no-op bodies are fleshed out in Phase 04.
-    private void OnKeyboardFocusRequested()
-    {
-        // Phase 04: focus the keyboard input sink so the soft keyboard appears.
-    }
+    // ── Core → platform callbacks (input wiring lives in DataGridView.Input.cs) ──
 
+    /// <summary>
+    /// Core asks for keyboard focus (e.g. a filter popup search box opened, or editing began on
+    /// mobile where the input pane must be shown). Focusing the control routes subsequent
+    /// <c>KeyDown</c>/<c>CharacterReceived</c> here. On WinUI the soft keyboard / input pane is
+    /// surfaced automatically by the focused, editable surface; there is no hidden Entry to focus
+    /// as in MAUI.
+    /// </summary>
+    private void OnKeyboardFocusRequested() => Focus(FocusState.Programmatic);
+
+    /// <summary>A filter popup opened: start the cursor-blink repaint timer so its search caret blinks.</summary>
     private void OnFilterPopupOpened()
     {
-        // Phase 04: start the cursor-blink repaint timer while the popup is open.
+        _filterPopupActive = true;
+        StartCursorBlinkTimer();
     }
 
+    /// <summary>The filter popup closed: stop the cursor-blink timer (unless a cell edit is still active).</summary>
     private void OnFilterPopupClosed()
     {
-        // Phase 04: stop the cursor-blink repaint timer.
+        _filterPopupActive = false;
+        if (!_editSession.IsEditing)
+            StopCursorBlinkTimer();
+    }
+
+    /// <summary>Begin-edit: start the cursor-blink timer and focus the control for key input (mirrors MAUI).</summary>
+    private void OnEditSessionCellBeginEdit(object? sender, CellBeginEditEventArgs e)
+    {
+        if (e.Cancel) return;
+        StartCursorBlinkTimer();
+        // Focus on edit start so typing flows to the editor — and, on mobile, so the input pane shows.
+        Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>End-edit: stop the cursor-blink timer (unless a filter popup is still open) and clear edit state.</summary>
+    private void OnEditSessionCellEndEdit(object? sender, CellEndEditEventArgs e)
+    {
+        _selection.IsEditing = false;
+        if (!_filterPopupActive)
+            StopCursorBlinkTimer();
     }
 
     // ── Public events (parity with MAUI) ──────────────────────────
@@ -269,9 +300,9 @@ public partial class DataGridView : Grid
         // Re-render with the current DPI now that we are in the visual tree.
         InvalidateSurface();
 
-        // Phase 04: (re)attach pointer + keyboard handlers here
-        //   (PointerPressed/PointerMoved/PointerReleased/PointerWheelChanged,
-        //    KeyDown, CharacterReceived) and start any input-driven timers.
+        // (Re)attach pointer + keyboard handlers and enable focusability. Idempotent —
+        // see AttachInputHandlers in DataGridView.Input.cs.
+        AttachInputHandlers();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -282,7 +313,8 @@ public partial class DataGridView : Grid
         // PaintSurface delegate roots `this`, so it must be released.
         _canvasView.PaintSurface -= OnPaintSurface;
 
-        // Phase 04: detach pointer + keyboard handlers and stop input-driven
-        //   timers (inertial scroll, cursor blink, long-press) here.
+        // Detach pointer + keyboard handlers and stop input-driven timers
+        // (inertial scroll, cursor blink) — see DetachInputHandlers in DataGridView.Input.cs.
+        DetachInputHandlers();
     }
 }
