@@ -1,0 +1,59 @@
+<Page x:Class="SampleApp.Uno.GroupingPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      xmlns:core="using:KumikoUI.Core.Models"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Grouping &amp; Summaries"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   Padding="16,12"
+                   Grid.Row="0" />
+
+        <StackPanel Orientation="Horizontal"
+                    Grid.Row="1"
+                    Padding="16,4"
+                    Spacing="8">
+            <Button Content="Group: Department" Click="OnGroupByDepartmentClicked" />
+            <Button Content="Group: Level" Click="OnGroupByLevelClicked" />
+            <Button Content="Group: Both" Click="OnGroupByBothClicked" />
+            <Button Content="Clear Groups" Click="OnClearGroupsClicked" />
+            <Button Content="Expand All" Click="OnExpandAllClicked" />
+            <Button Content="Collapse All" Click="OnCollapseAllClicked" />
+            <Button x:Name="groupSummaryToggle" Content="Add Group Summary" Click="OnAddGroupSummaryClicked" />
+            <Button x:Name="filterToggle" Content="Filtering: ON" Click="OnToggleFilteringClicked" />
+        </StackPanel>
+
+        <kumiko:DataGridView x:Name="kumiko"
+                             Grid.Row="2"
+                             ItemsSource="{Binding Employees}"
+                             RowHeight="34"
+                             HeaderHeight="40"
+                             GridDescription="Grouped employee data grid"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch">
+            <kumiko:DataGridView.Columns>
+                <core:DataGridColumn Header="Id" PropertyName="Id" Width="60"
+                                     ColumnType="Numeric" TextAlignment="Right"
+                                     IsReadOnly="True" AllowTabStop="False" />
+                <core:DataGridColumn Header="Name" PropertyName="Name" Width="170" />
+                <core:DataGridColumn Header="Department" PropertyName="Department" Width="140" />
+                <core:DataGridColumn Header="Level" PropertyName="Level" Width="120" />
+                <core:DataGridColumn Header="Salary" PropertyName="Salary" Width="120"
+                                     Format="C0" ColumnType="Numeric" TextAlignment="Right" />
+                <core:DataGridColumn Header="Active" PropertyName="IsActive" Width="80"
+                                     ColumnType="Boolean" AllowTabStop="False" />
+                <core:DataGridColumn Header="City" PropertyName="City" Width="140" />
+            </kumiko:DataGridView.Columns>
+        </kumiko:DataGridView>
+    </Grid>
+
+</Page>

@@ -1,0 +1,101 @@
+<!--
+  The Uno.Sdk version is pinned inline in the Sdk attribute (Uno.Sdk/6.5.31) rather than in a
+  global.json. The unoapp template normally writes that version into a repo-root global.json plus a
+  Directory.Packages.props (Central Package Management) and a Directory.Build.props at the output
+  root. KumikoUI intentionally keeps the repo SDK unpinned and does NOT use CPM, so those generated
+  files were removed during reconciliation and the pin lives here instead — local to this project and
+  out of the repo root. Mirrors src/KumikoUI.Uno/KumikoUI.Uno.csproj.
+-->
+<Project Sdk="Uno.Sdk/6.5.31">
+  <PropertyGroup>
+    <!--
+      Uno single-project head TFMs. The Windows (WinAppSDK) head is conditioned on Windows only so
+      non-Windows machines / CI don't try to build it (mirrors src/KumikoUI.Uno and
+      src/KumikoUI.Maui). Only net9.0-desktop is built/verified locally; the other heads are
+      CI-verified (Phase 08).
+    -->
+    <TargetFrameworks>net9.0-android;net9.0-ios;net9.0-browserwasm;net9.0-desktop</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.26100</TargetFrameworks>
+
+    <OutputType>Exe</OutputType>
+    <UnoSingleProject>true</UnoSingleProject>
+
+    <!--
+      The template put these in its generated Directory.Build.props; baked in here since that file
+      was removed (it also enabled CPM, which the repo does not use).
+    -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!--
+      NU1507: multiple package sources with CPM (N/A — CPM disabled); NETSDK1201: RID without
+      self-contained; PRI257: default language not in included resources. Suppress template noise.
+    -->
+    <NoWarn>$(NoWarn);NU1507;NETSDK1201;PRI257</NoWarn>
+
+    <!-- This is a sample app, not a NuGet package. -->
+    <IsPackable>false</IsPackable>
+
+    <!-- Display name -->
+    <ApplicationTitle>SampleApp.Uno</ApplicationTitle>
+    <!-- App Identifier -->
+    <ApplicationId>com.eightbot.kumikoui.sampleapp.uno</ApplicationId>
+    <!-- Versions -->
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <!-- Package Publisher -->
+    <ApplicationPublisher>Eight-Bot, Inc.</ApplicationPublisher>
+    <!-- Package Description -->
+    <Description>KumikoUI.Uno sample app — exercises the DataGridView control across every Uno head.</Description>
+
+    <!--
+      Pin the SkiaSharp implicit-package group to 3.119.2 to match KumikoUI.SkiaSharp,
+      KumikoUI.Maui and KumikoUI.Uno, avoiding native-binary version conflicts. This overrides the
+      version the Uno.Sdk would otherwise apply to the implicit SkiaSharp group (incl.
+      SkiaSharp.Views.Uno.WinUI brought in by the SkiaRenderer feature).
+    -->
+    <SkiaSharpVersion>3.119.2</SkiaSharpVersion>
+
+    <!--
+      UnoFeatures are used to quickly add and manage features enabled for your app.
+      https://aka.platform.uno/singleproject-features
+      SkiaRenderer brings in SkiaSharp.Views.Uno.WinUI (SKXamlCanvas) on every non-Windows head,
+      matching what KumikoUI.Uno hosts the grid on.
+    -->
+    <UnoFeatures>
+      SkiaRenderer;
+    </UnoFeatures>
+  </PropertyGroup>
+
+  <!--
+    The Windows (WinAppSDK) head's SkiaSharp.Views package (SkiaSharp.Views.WinUI) is NOT pulled in
+    by the SkiaRenderer UnoFeature, so reference it explicitly on the Windows head so SKXamlCanvas
+    (used by KumikoUI.Uno) resolves there too. Uno dedups implicit references against explicit ones,
+    keeping the version at 3.119.2.
+  -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <PackageReference Include="SkiaSharp.Views.WinUI" Version="3.119.2" />
+  </ItemGroup>
+
+  <!--
+    Reference the library under test. KumikoUI.Uno is itself a multi-head Uno project with the SAME
+    head TFMs as this app, so the per-head TargetFramework MUST flow through (no UndefineProperties)
+    for the app's net9.0-desktop to bind the library's matching net9.0-desktop output. KumikoUI.Uno
+    transitively brings in KumikoUI.Core + KumikoUI.SkiaSharp and already shields those single-TFM
+    (net9.0-only) dependencies via its own UndefineProperties, so nothing extra is needed here.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/KumikoUI.Uno/KumikoUI.Uno.csproj" />
+  </ItemGroup>
+
+  <!--
+    Demo fonts (copied from samples/SampleApp.Maui/Resources/Raw). Marked as Content so they are
+    packaged into the app and resolvable via the ms-appx:///Assets/Fonts/<file>.ttf scheme used by
+    KumikoFonts.RegisterFromAppPackageAsync in App.OnLaunched. KumikoUI.Uno itself ships no fonts —
+    the consuming app supplies and registers them (see docs/uno/05-fonts-and-assets.md §4).
+  -->
+  <ItemGroup>
+    <Content Include="Assets/Fonts/*.ttf" />
+  </ItemGroup>
+
+</Project>

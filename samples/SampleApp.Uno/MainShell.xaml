@@ -1,0 +1,28 @@
+<Page x:Class="SampleApp.Uno.MainShell"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="using:SampleApp.Uno"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <!--
+        Navigation shell hosting the demo pages — the Uno analogue of SampleApp.Maui's AppShell
+        TabBar. A NavigationView drives a Frame; selecting an item navigates the Frame to the
+        matching page. The first item is selected in code-behind so the basic grid shows on launch.
+    -->
+    <NavigationView x:Name="NavView"
+                    PaneDisplayMode="Left"
+                    IsBackButtonVisible="Collapsed"
+                    IsSettingsVisible="False"
+                    SelectionChanged="OnSelectionChanged">
+        <NavigationView.MenuItems>
+            <NavigationViewItem Content="All Components" Tag="BasicGrid" />
+            <NavigationViewItem Content="Grouping" Tag="Grouping" />
+            <NavigationViewItem Content="Large Data" Tag="LargeData" />
+            <NavigationViewItem Content="Theming" Tag="Theming" />
+            <NavigationViewItem Content="MVVM Actions" Tag="MvvmActions" />
+            <NavigationViewItem Content="Custom Fonts" Tag="CustomFonts" />
+        </NavigationView.MenuItems>
+
+        <Frame x:Name="ContentFrame" />
+    </NavigationView>
+</Page>
