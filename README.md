@@ -47,6 +47,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 - [Keyboard Navigation](#-keyboard-navigation)
 - [Row Drag & Drop](#-row-drag--drop)
 - [Theming & Styling](#-theming--styling)
+- [Custom Fonts](#-custom-fonts)
 - [Scrolling & Performance](#-scrolling--performance)
 - [Live Data](#-live-data)
 - [Architecture](#-architecture)
@@ -82,6 +83,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 | **Selection** | Single / Multiple / Extended modes; Row or Cell unit |
 | **Keyboard nav** | Arrows, Tab/Shift+Tab, Enter, Home/End, Page Up/Down |
 | **Row drag & drop** | Handle column or full-row drag reorder |
+| **Custom fonts** | Register any TTF/OTF typeface (CJK, icon fonts) via `SkiaFontRegistrar`; use by family name in `GridFont` |
 | **Theming** | Built-in Light / Dark / HighContrast; fully customisable style object |
 | **Momentum scrolling** | Physics-based inertial scroll with configurable friction |
 | **Live data** | `INotifyPropertyChanged` and `ObservableCollection` O(1) updates |
@@ -644,6 +646,103 @@ Style resolution cascades: **per-cell resolver → column `CellStyle` → grid `
 
 ---
 
+## 🔤 Custom Fonts
+
+`SkiaFontRegistrar` (in `KumikoUI.SkiaSharp`) is a static registry for custom `SKTypeface` instances. Register any TrueType or OpenType font by a family name string, and `SkiaDrawingContext` will resolve it by that name whenever a `GridFont` requests that family — bypassing the system font manager entirely.
+
+This is the recommended fix for two common problems on Android:
+- **CJK text (Japanese, Chinese, Korean)** renders as empty boxes because the Android system font manager doesn't surface CJK typefaces to SkiaSharp.
+- **Icon-font glyphs** (Material Icons, Font Awesome, etc.) appear garbled for the same reason.
+
+### Registering fonts at startup
+
+Register fonts in `MauiProgram.cs` before the MAUI UI loop starts. Place font files in `Resources/Raw/` so they are bundled with the app.
+
+```csharp
+// MauiProgram.cs
+using KumikoUI.SkiaSharp;
+
+public static MauiApp CreateMauiApp()
+{
+    var builder = MauiApp.CreateBuilder();
+    builder.UseMauiApp<App>().UseSkiaKumikoUI();
+
+    // Register CJK font
+    using var jpStream = await FileSystem.OpenAppPackageFileAsync("NotoSansJP-Regular.ttf");
+    SkiaFontRegistrar.RegisterTypefaceFromStream("NotoSansJP", jpStream);
+
+    // Register icon font
+    using var icStream = await FileSystem.OpenAppPackageFileAsync("MaterialIcons-Regular.ttf");
+    SkiaFontRegistrar.RegisterTypefaceFromStream("MaterialIcons", icStream);
+
+    return builder.Build();
+}
+```
+
+> **Note:** `RegisterTypefaceFromStream` takes ownership of the created typeface and disposes it when `SkiaFontRegistrar.Clear()` is called. The stream may be disposed after the call returns. Use `RegisterTypeface(family, typeface)` instead when you want to manage the typeface lifetime yourself.
+
+### Using registered fonts in the grid
+
+Reference the registered family name in `GridFont` on a `DataGridStyle` or directly in a custom renderer:
+
+```csharp
+// Apply a CJK font to all headers and cells
+var style = kumiko.GridStyle;
+style.HeaderFont = new GridFont("NotoSansJP", 14, bold: true);
+style.CellFont   = new GridFont("NotoSansJP", 13);
+kumiko.GridStyle = style;
+```
+
+### Icon-font columns
+
+Store the Unicode code-point string as the cell value and render it with a custom `ICellRenderer` that specifies the icon font family:
+
+```csharp
+// Renderer that draws cell text using a named icon-font typeface
+public class IconFontCellRenderer(string fontFamily, float fontSize) : ICellRenderer
+{
+    public void Render(IDrawingContext ctx, GridRect cellRect, object? value,
+        string displayText, DataGridColumn column,
+        DataGridStyle style, bool isSelected, CellStyle? cellStyle = null)
+    {
+        if (string.IsNullOrEmpty(displayText)) return;
+
+        ctx.DrawTextInRect(displayText, cellRect, new GridPaint
+        {
+            Color       = isSelected ? style.SelectionTextColor : style.CellTextColor,
+            Font        = new GridFont(fontFamily, fontSize),
+            IsAntiAlias = true
+        }, GridTextAlignment.Center, GridVerticalAlignment.Center);
+    }
+}
+```
+
+Attach it to a column:
+
+```csharp
+// "\uE876" = checkmark, "\uE5CD" = close, "\uE002" = warning in MaterialIcons
+new DataGridColumn
+{
+    Header             = "Status",
+    PropertyName       = nameof(Item.StatusIcon),   // returns e.g. "\uE876"
+    Width              = 60,
+    IsReadOnly         = true,
+    TextAlignment      = GridTextAlignment.Center,
+    CustomCellRenderer = new IconFontCellRenderer("MaterialIcons", 22f)
+}
+```
+
+### API reference
+
+| Method | Description |
+|---|---|
+| `SkiaFontRegistrar.RegisterTypefaceFromStream(family, stream)` | Creates a typeface from a stream and registers it. Registrar owns the typeface lifetime. |
+| `SkiaFontRegistrar.RegisterTypeface(family, typeface)` | Registers an existing `SKTypeface`. Caller retains ownership. |
+| `SkiaFontRegistrar.TryGetTypeface(family, out typeface)` | Looks up a registered typeface by family name. |
+| `SkiaFontRegistrar.Clear()` | Removes all registrations and disposes owned typefaces. |
+
+---
+
 ## ⚡ Scrolling & Performance
 
 ### Virtual scrolling
@@ -763,6 +862,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor gui
 | **All Components** | Every column type, frozen columns, frozen rows, edit triggers, selection modes, drag & drop, summaries, theme toggle |
 | **Grouping & Filtering** | Interactive group panel, nested groups, filter popups, group summaries |
 | **MVVM + Column EditTriggers** | Action button columns with MVVM commands; per-column `EditTriggers` overrides across all trigger types |
+| **Custom Fonts** | CJK (Japanese) column headers via NotoSansJP; Material Design icon-glyph columns via MaterialIcons |
 | **Large Data** | 100K-row stress test with virtual scrolling performance metrics |
 | **Theming** | Live Light / Dark / HighContrast switching, custom color picker |
 
