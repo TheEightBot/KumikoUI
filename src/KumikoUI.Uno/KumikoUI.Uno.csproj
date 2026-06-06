@@ -74,6 +74,17 @@
     <ProjectReference Include="../KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" UndefineProperties="TargetFramework;TargetFrameworks" />
   </ItemGroup>
 
+  <!--
+    KumikoUIHostingExtensions.UseKumikoUI extends Microsoft.Extensions.Hosting.IHostBuilder
+    (the host obtained from IApplicationBuilder in an Uno app's App.xaml.cs — see docs/uno/03).
+    The Uno.Sdk library head does not transitively reference the hosting abstractions, so add the
+    abstractions package directly (it carries only IHostBuilder, no runtime), keeping the extension
+    minimal and the documented signature intact.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.4" />
+  </ItemGroup>
+
   <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
     <!--
     If you encounter this error message:
