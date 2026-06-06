@@ -9,15 +9,17 @@ namespace KumikoUI.Uno;
 /// </summary>
 /// <remarks>
 /// Unlike MAUI, SkiaSharp needs no <c>UseSkiaSharp()</c> initializer on Uno —
-/// <c>SKXamlCanvas</c> self-hosts. This extension still earns its place as the
-/// documented spot for font registration (Phase 05) and keeps app startup
-/// symmetric with MAUI's <c>UseSkiaKumikoUI()</c>.
+/// <c>SKXamlCanvas</c> self-hosts. This extension keeps app startup symmetric with MAUI's
+/// <c>UseSkiaKumikoUI()</c>. Custom-font registration is handled separately by the awaitable
+/// <see cref="KumikoFonts"/> helper (called from <c>App.OnLaunched</c>), not on this synchronous
+/// host-builder path, to avoid blocking startup on font I/O.
 /// </remarks>
 public static class KumikoUIHostingExtensions
 {
     /// <summary>
-    /// Registers KumikoUI services with the Uno app host. Currently a no-op pass-through;
-    /// Phase 05 adds custom-font registration here.
+    /// Registers KumikoUI services with the Uno app host. Currently a no-op pass-through.
+    /// For custom typefaces, call <see cref="KumikoFonts.RegisterFromAppPackageAsync(string, string)"/>
+    /// during app startup.
     /// </summary>
     /// <param name="host">The host builder from <c>IApplicationBuilder.Configure(...)</c>.</param>
     /// <returns>The same <paramref name="host"/> for chaining.</returns>
