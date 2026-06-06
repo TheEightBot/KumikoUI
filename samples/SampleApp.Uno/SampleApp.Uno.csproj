@@ -9,13 +9,15 @@
 <Project Sdk="Uno.Sdk/6.5.31">
   <PropertyGroup>
     <!--
-      Uno single-project head TFMs. The Windows (WinAppSDK) head is conditioned on Windows only so
-      non-Windows machines / CI don't try to build it (mirrors src/KumikoUI.Uno and
-      src/KumikoUI.Maui). Only net9.0-desktop is built/verified locally; the other heads are
-      CI-verified (Phase 08).
+      Uno single-project head TFMs. The sample targets .NET 10 (the library KumikoUI.Uno stays on
+      net9.0 per docs/uno ADR-4; a net10.0 app binds the library's net9.0 heads via NuGet's
+      nearest-TFM match — verified on the desktop head). This lets the sample run natively on the
+      .NET 10 runtime (no DOTNET_ROLL_FORWARD). The Windows (WinAppSDK) head is conditioned on Windows
+      only so non-Windows machines / CI don't try to build it. Only net10.0-desktop is built/verified
+      locally; the other heads are CI-verified (Phase 08).
     -->
-    <TargetFrameworks>net9.0-android;net9.0-ios;net9.0-browserwasm;net9.0-desktop</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.26100</TargetFrameworks>
+    <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-browserwasm;net10.0-desktop</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.26100</TargetFrameworks>
 
     <OutputType>Exe</OutputType>
     <UnoSingleProject>true</UnoSingleProject>

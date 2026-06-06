@@ -102,37 +102,42 @@ XAML usage (declare the library namespace and drop the control in):
 
 ## 5. Run each head
 
+> **The sample targets .NET 10** (`net10.0-*` heads), while the library `KumikoUI.Uno` stays on `net9.0`
+> ([ADR-4](README.md#2-architecture-decision-record)). A `net10.0` app binds the library's `net9.0` heads via
+> NuGet's **nearest-TFM match** (verified on the desktop head). This lets the sample run **natively on the
+> .NET 10 runtime — no `DOTNET_ROLL_FORWARD` needed**, mirroring how `KumikoUI.Maui` (net10.0) consumes the
+> net9.0 Core/SkiaSharp.
+
 | Head | Command |
 |---|---|
-| Desktop (Skia) | `dotnet run --project samples/SampleApp.Uno -f net9.0-desktop` |
-| WebAssembly | `dotnet run --project samples/SampleApp.Uno -f net9.0-browserwasm` (serves a local URL) |
-| Windows (WinAppSDK) | `dotnet run --project samples/SampleApp.Uno -f net9.0-windows10.0.26100` (or run from the IDE; use an `x64`/`ARM64` config) |
-| Android | `dotnet build samples/SampleApp.Uno -t:Run -f net9.0-android` (emulator/device running) |
-| iOS | `dotnet build samples/SampleApp.Uno -t:Run -f net9.0-ios` (macOS + simulator) |
+| Desktop (Skia) | `dotnet run --project samples/SampleApp.Uno -f net10.0-desktop` |
+| WebAssembly | `dotnet run --project samples/SampleApp.Uno -f net10.0-browserwasm` (serves a local URL) |
+| Windows (WinAppSDK) | `dotnet run --project samples/SampleApp.Uno -f net10.0-windows10.0.26100` (or run from the IDE; use an `x64`/`ARM64` config) |
+| Android | `dotnet build samples/SampleApp.Uno -t:Run -f net10.0-android` (emulator/device running) |
+| iOS | `dotnet build samples/SampleApp.Uno -t:Run -f net10.0-ios` (macOS + simulator) |
 
 > macOS is served by the **Desktop (Skia)** head — the sample was scaffolded with `-platforms android ios wasm desktop windows` (no separate `maccatalyst` head, matching the library; see [02 §3](02-library-scaffold.md)).
-> On a machine without the .NET 9 **runtime** installed (only the SDK), prefix `run` with `DOTNET_ROLL_FORWARD=LatestMajor` to roll forward onto the .NET 10 runtime.
 
 > Start with **Desktop** — fastest inner loop and the reference for input behavior. Validate WASM next
 > (focus/keyboard), then the mobile heads (touch + soft keyboard), then Windows.
 
-### Desktop build + run — verified (Phase 06)
+### Desktop build + run — verified (.NET 10)
 
-- **Build:** `dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -c Debug -f net9.0-desktop` →
-  **Build succeeded, 0 Warning(s), 0 Error(s)** (also verified from a clean `obj`/`bin`).
-- **Run smoke test:** `dotnet run --project samples/SampleApp.Uno -f net9.0-desktop` →
-  the app process launched and **stayed alive through first render with zero exceptions**. The macOS Skia
-  windowing backend initialized (`Uno.UI.Runtime.Skia.MacOS.MacOSWindowNative`); the only log output was
-  non-fatal dev-server/HotReload connection warnings (no IDE dev-server attached in a headless launch) and a
-  cosmetic missing-`iconStoreLogo.png` warning (a generated `Package.appxmanifest` default). No XAML parse
-  error, no font/asset load failure, no grid-instantiation or first-paint crash. Terminated cleanly via
-  `SIGTERM`.
-  > **Environment note:** the local box has no `Microsoft.NETCore.App 9.0.x` shared runtime (only 6/7/8/**10.x**;
-  > SDK is 10.0.300), so the first `dotnet run` aborted with `app-launch-failed (framework 9.0.0 not found)`.
-  > Re-running with **`DOTNET_ROLL_FORWARD=LatestMajor`** rolled the 9.0-targeted app onto the installed 10.x
-  > runtime and it started cleanly. This is purely a local-runtime-availability quirk; the build artifact is
-  > correct and CI (Phase 08) provides the matching runtime.
-- Only `net9.0-desktop` is buildable/runnable locally (no android/wasm/ios workloads installed); the other
+- **Build:** `dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -c Debug -f net10.0-desktop` →
+  **Build succeeded, 0 Error(s)** (the sample's `net10.0-desktop` head binds `KumikoUI.Uno`'s `net9.0-desktop`
+  output via NuGet nearest-TFM match).
+- **Run smoke test:** `dotnet run --project samples/SampleApp.Uno -f net10.0-desktop` (**no
+  `DOTNET_ROLL_FORWARD`**) → the app launched and **ran natively on the installed .NET 10 runtime**, staying
+  alive through first render with zero exceptions. The macOS Skia windowing backend initialized
+  (`Uno.UI.Runtime.Skia.MacOS.MacOSWindowNative`); the only log output was non-fatal dev-server/HotReload
+  connection warnings (no IDE dev-server attached in a headless launch) and a cosmetic
+  missing-`iconStoreLogo.png` warning. No XAML parse error, no font/asset load failure, no grid-instantiation
+  or first-paint crash. Terminated cleanly via `SIGTERM` (exit 144).
+  > **Security note:** the `net10.0-desktop` head surfaces transitive `NU1903` advisories
+  > (`System.Security.Cryptography.Xml 10.0.2`, `Tmds.DBus.Protocol 0.21.2`) from the upstream Uno/.NET 10
+  > desktop stack — build warnings, not errors. Track upstream package updates or pin patched versions if
+  > required by policy.
+- Only `net10.0-desktop` is buildable/runnable locally (no android/wasm/ios workloads installed); the other
   heads are CI-verified in Phase 08.
 
 ---
