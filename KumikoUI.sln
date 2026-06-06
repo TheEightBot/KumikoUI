@@ -36,6 +36,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build", "Build", "{DFDD4E5D
 		.github\workflows\publish.yml = .github\workflows\publish.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KumikoUI.Uno.Tests", "tests\KumikoUI.Uno.Tests\KumikoUI.Uno.Tests.csproj", "{57855B3A-D369-4D2D-8B43-FA09549FF955}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -130,6 +132,18 @@ Global
 		{5565DAEA-A170-462E-B2F5-0BDD6878319C}.Release|x64.Build.0 = Release|Any CPU
 		{5565DAEA-A170-462E-B2F5-0BDD6878319C}.Release|x86.ActiveCfg = Release|Any CPU
 		{5565DAEA-A170-462E-B2F5-0BDD6878319C}.Release|x86.Build.0 = Release|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Debug|x64.Build.0 = Debug|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Debug|x86.Build.0 = Debug|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Release|x64.ActiveCfg = Release|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Release|x64.Build.0 = Release|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Release|x86.ActiveCfg = Release|Any CPU
+		{57855B3A-D369-4D2D-8B43-FA09549FF955}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -143,5 +157,6 @@ Global
 		{70A42A2C-0C67-4D56-9D61-AF5A6A11B913} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{5565DAEA-A170-462E-B2F5-0BDD6878319C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{DFDD4E5D-1418-41C2-A6CE-2A6397026499} = {17B595E7-34C1-4B92-9FD3-316E5A57E051}
+		{57855B3A-D369-4D2D-8B43-FA09549FF955} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,60 @@
+<!--
+  Unit tests for the Uno host's PURE input-mapping logic
+  (KumikoUI.Uno.Input.InputMapping.ToGridKey / ToInputModifiers).
+
+  Why an Uno.Sdk single-project (not a plain Microsoft.NET.Sdk xUnit project):
+  ToGridKey / ToInputModifiers reference WinUI/Uno enums (Windows.System.VirtualKey,
+  Windows.System.VirtualKeyModifiers). Those types only resolve when the project pulls the
+  Uno reference assemblies — i.e. when it is itself an Uno single-project head. So this project
+  uses the SAME Uno.Sdk pin (6.5.31) and the SAME SkiaRenderer feature as src/KumikoUI.Uno, but
+  is scoped to a SINGLE head (net9.0-desktop) for headless/CI test execution. The methods under
+  test are pure enum→enum switches/flag-folds, so no Uno runtime initialization is required to
+  exercise them; only the enum *types* need to resolve, which the desktop head provides.
+
+  GetLiveModifiers() is intentionally NOT tested here — it calls
+  InputKeyboardSource.GetKeyStateForCurrentThread, which needs a live Uno runtime/thread.
+-->
+<Project Sdk="Uno.Sdk/6.5.31">
+  <PropertyGroup>
+    <!-- Single desktop (Skia) head: the only one that builds/runs headlessly here and in CI. -->
+    <TargetFramework>net9.0-desktop</TargetFramework>
+
+    <UnoSingleProject>true</UnoSingleProject>
+    <!-- A test assembly is loaded by the VSTest host, so it is a Library, not an Exe. -->
+    <OutputType>Library</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+
+    <!-- Keep aligned with src/KumikoUI.Uno so the implicit SkiaSharp group versions match. -->
+    <SkiaSharpVersion>3.119.2</SkiaSharpVersion>
+
+    <!--
+      Match the host's UnoFeatures so this project resolves the identical Uno reference assemblies
+      (and therefore the same Windows.System.VirtualKey / VirtualKeyModifiers definitions) that
+      KumikoUI.Uno compiled against.
+    -->
+    <UnoFeatures>
+      SkiaRenderer;
+    </UnoFeatures>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- System under test. -->
+    <ProjectReference Include="../../src/KumikoUI.Uno/KumikoUI.Uno.csproj" />
+  </ItemGroup>
+
+</Project>
