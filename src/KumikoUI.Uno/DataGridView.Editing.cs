@@ -70,8 +70,11 @@ public partial class DataGridView
         IsTextPredictionEnabled = false,
         // Single-line; Enter/Tab/Backspace are handled in KeyDown before they reach the TextBox.
         AcceptsReturn = false,
-        // Suppress the default tab-stop behaviour — the grid controls focus via code.
-        IsTabStop = false,
+        // MUST be a tab stop — WinUI/Uno Focus() returns false on a non-tab-stop element, so with
+        // IsTabStop=false the proxy could never become the keyboard sink (the whole keyboard pipeline
+        // silently did nothing). TabIndex is pushed high so it's effectively last in tab order.
+        IsTabStop = true,
+        TabIndex = int.MaxValue,
         // Text starts at sentinel so the first Backspace is detectable.
         Text = ProxySentinel,
     };
@@ -200,17 +203,29 @@ public partial class DataGridView
 
     private void OnProxyKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        // Only handle navigation/command keys; printable chars are handled via TextChanged for
-        // correct IME/dead-key ordering. Setting e.Handled=true prevents the TextBox from acting
-        // on these keys (e.g. Backspace deleting the sentinel, Enter adding a newline, arrows
-        // moving the TextBox caret) — preventing double-handling with the TextChanged path.
+        // Navigation/command keys are forwarded to Core and marked Handled so the TextBox doesn't
+        // also act on them (move its caret, add a newline, delete the sentinel). Printable characters
+        // are handled via TextChanged for correct IME/dead-key ordering — so anything that maps to
+        // GridKey.None is left alone.
         var key = InputMapping.ToGridKey(e.Key);
-        if (key == GridKey.None) return; // Not a command key; let it flow to TextChanged.
+        if (key == GridKey.None) return; // ordinary printable key → flows to TextChanged
 
-        // Backspace is a special case: the TextChanged handler detects Backspace via sentinel
-        // deletion (for soft keyboards), but on hardware keyboards KeyDown fires first.
-        // We handle Backspace here and mark it Handled so the TextBox does not also delete the
-        // sentinel (which would trigger a spurious TextChanged Backspace on some platforms).
+        // CRITICAL: a few mapped keys double as TEXT and must reach TextChanged when typed plainly,
+        // otherwise the user literally cannot type them:
+        //   • A/C/V/X/Z map to GridKey only as Ctrl/Cmd clipboard & select-all shortcuts.
+        //   • Space is a literal space character while editing.
+        // Only intercept these when they carry their command meaning; otherwise let the TextBox type them.
+        if (key is GridKey.A or GridKey.C or GridKey.V or GridKey.X or GridKey.Z)
+        {
+            var mods = InputMapping.GetLiveModifiers();
+            if ((mods & (InputModifiers.Control | InputModifiers.Meta)) == 0)
+                return; // plain letter → let TextChanged type it
+        }
+        else if (key == GridKey.Space && _editSession.IsEditing)
+        {
+            return; // a typed space inside an edit → let TextChanged type it
+        }
+
         HandleEditKey(key);
         e.Handled = true;
     }
