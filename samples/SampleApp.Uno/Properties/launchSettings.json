@@ -8,9 +8,17 @@
     }
   },
   "profiles": {
-    // This profile is first in order for dotnet run to pick it up by default
+    // Desktop (Skia) is listed first so `dotnet run` and the IDE default to it.
+    "SampleApp.Uno (Desktop)": {
+      "commandName": "Project",
+      "compatibleTargetFramework": "desktop"
+    },
+    // Each profile MUST declare compatibleTargetFramework, otherwise Rider can't map the
+    // profile to a head and selecting "Desktop" launches the WebAssembly target instead
+    // (see https://github.com/unoplatform/uno/issues/21153).
     "SampleApp.Uno (WebAssembly)": {
       "commandName": "Project",
+      "compatibleTargetFramework": "browserwasm",
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "applicationUrl": "http://localhost:5000",
@@ -21,6 +29,7 @@
     },
     "SampleApp.Uno (WebAssembly IIS Express)": {
       "commandName": "IISExpress",
+      "compatibleTargetFramework": "browserwasm",
       "launchBrowser": true,
       "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
       "environmentVariables": {
@@ -35,10 +44,6 @@
     "SampleApp.Uno (WinAppSDK Packaged)": {
       "commandName": "MsixPackage",
       "compatibleTargetFramework": "windows"
-    },
-    "SampleApp.Uno (Desktop)": {
-      "commandName": "Project",
-      "compatibleTargetFramework": "desktop"
     },
     "SampleApp.Uno (Desktop WSL2)": {
       "commandName": "WSL2",
