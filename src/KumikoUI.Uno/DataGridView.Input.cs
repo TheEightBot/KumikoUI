@@ -236,7 +236,12 @@ public partial class DataGridView
                    : props.IsLeftButtonPressed   ? PointerButton.Primary
                    : PointerButton.None,
             // 120-unit notches → notch count; Core scales by RowHeight * WheelScrollMultiplier.
-            ScrollDeltaY = action == InputAction.Scroll ? props.MouseWheelDelta / WheelNotch : 0f,
+            // A horizontal wheel (Shift+wheel, or a tilt/trackpad horizontal scroll) reports
+            // IsHorizontalMouseWheel — route it to X only; a vertical wheel routes to Y only.
+            // (Previously ScrollDeltaY was set unconditionally, so a horizontal wheel scrolled
+            // both axes and appeared to scroll vertically.)
+            ScrollDeltaY = action == InputAction.Scroll && !props.IsHorizontalMouseWheel
+                ? props.MouseWheelDelta / WheelNotch : 0f,
             ScrollDeltaX = action == InputAction.Scroll && props.IsHorizontalMouseWheel
                 ? props.MouseWheelDelta / WheelNotch : 0f,
             Modifiers = InputMapping.ToInputModifiers(e.KeyModifiers),
