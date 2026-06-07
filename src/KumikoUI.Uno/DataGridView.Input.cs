@@ -86,6 +86,11 @@ public partial class DataGridView
         // ── Keyboard ──
         KeyDown -= OnKeyDown; KeyDown += OnKeyDown;
         CharacterReceived -= OnCharacterReceived; CharacterReceived += OnCharacterReceived;
+
+        // ── Soft-keyboard proxy (see DataGridView.Editing.cs) ──
+        // Idempotent re-attach: detach first so navigation-back never double-subscribes.
+        _inputProxy.TextChanged -= OnProxyTextChanged; _inputProxy.TextChanged += OnProxyTextChanged;
+        _inputProxy.KeyDown -= OnProxyKeyDown; _inputProxy.KeyDown += OnProxyKeyDown;
     }
 
     /// <summary>
@@ -107,6 +112,9 @@ public partial class DataGridView
         KeyDown -= OnKeyDown;
         CharacterReceived -= OnCharacterReceived;
 
+        // Detach the hidden TextBox proxy's events (see DataGridView.Editing.cs).
+        TeardownInputProxy();
+
         StopInertialScrollTimer();
         StopCursorBlinkTimer();
     }
@@ -118,7 +126,11 @@ public partial class DataGridView
         // Capture so drags (resize / reorder / pan / selection) keep tracking outside our bounds.
         CapturePointer(e.Pointer);
         // Focus on press so keyboard navigation works after a click (see OnKeyDown).
-        Focus(FocusState.Programmatic);
+        // During an active edit the proxy holds focus (and the soft keyboard is open on mobile);
+        // stealing focus here would prematurely dismiss the keyboard. The edit lifecycle
+        // (CellBeginEdit / CellEndEdit) owns proxy focus while editing is in progress.
+        if (!_editSession.IsEditing)
+            Focus(FocusState.Programmatic);
 
         var point = e.GetCurrentPoint(this);
 

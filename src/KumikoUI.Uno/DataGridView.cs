@@ -58,6 +58,11 @@ public partial class DataGridView : Grid
         _canvasView.VerticalAlignment = VerticalAlignment.Stretch;
         Children.Add(_canvasView);
 
+        // Add the hidden TextBox proxy for soft-keyboard input (iOS/Android/WASM).
+        // Must be added after the canvas so it sits on top in the z-order, though its
+        // Opacity=0 / 1×1px size means it is not visible regardless.
+        SetupInputProxy();
+
         // Auto-init the bindable collections so XAML can add items directly,
         // matching the MAUI control's ctor.
         Columns = new ObservableCollection<DataGridColumn>();
@@ -211,13 +216,12 @@ public partial class DataGridView : Grid
     // ── Core → platform callbacks (input wiring lives in DataGridView.Input.cs) ──
 
     /// <summary>
-    /// Core asks for keyboard focus (e.g. a filter popup search box opened, or editing began on
-    /// mobile where the input pane must be shown). Focusing the control routes subsequent
-    /// <c>KeyDown</c>/<c>CharacterReceived</c> here. On WinUI the soft keyboard / input pane is
-    /// surfaced automatically by the focused, editable surface; there is no hidden Entry to focus
-    /// as in MAUI.
+    /// Core asks for keyboard focus (e.g. editing began, or a filter popup opened on mobile where
+    /// the input pane must be shown). Delegates to <see cref="FocusKeyboardInput"/> which focuses the
+    /// hidden TextBox proxy — on iOS/Android that summons the soft keyboard; on desktop it routes
+    /// subsequent <c>KeyDown</c>/<c>CharacterReceived</c> to the proxy (which forwards to Core).
     /// </summary>
-    private void OnKeyboardFocusRequested() => Focus(FocusState.Programmatic);
+    private void OnKeyboardFocusRequested() => FocusKeyboardInput();
 
     /// <summary>A filter popup opened: start the cursor-blink repaint timer so its search caret blinks.</summary>
     private void OnFilterPopupOpened()
@@ -234,21 +238,34 @@ public partial class DataGridView : Grid
             StopCursorBlinkTimer();
     }
 
-    /// <summary>Begin-edit: start the cursor-blink timer and focus the control for key input (mirrors MAUI).</summary>
+    /// <summary>
+    /// Begin-edit: start the cursor-blink timer and focus the hidden TextBox proxy so the
+    /// soft keyboard appears on iOS/Android (mirrors MAUI's <c>FocusKeyboardInput</c> call).
+    /// </summary>
     private void OnEditSessionCellBeginEdit(object? sender, CellBeginEditEventArgs e)
     {
         if (e.Cancel) return;
         StartCursorBlinkTimer();
-        // Focus on edit start so typing flows to the editor — and, on mobile, so the input pane shows.
-        Focus(FocusState.Programmatic);
+        // FocusKeyboardInput resets the proxy sentinel and focuses the TextBox.
+        // On iOS/Android this summons the on-screen keyboard; on desktop it routes
+        // subsequent key events to the proxy → OnProxyKeyDown / OnProxyTextChanged.
+        FocusKeyboardInput();
     }
 
-    /// <summary>End-edit: stop the cursor-blink timer (unless a filter popup is still open) and clear edit state.</summary>
+    /// <summary>
+    /// End-edit: reset the proxy, stop the cursor-blink timer (unless a filter popup is still
+    /// open), and return focus to the grid — on mobile that dismisses the soft keyboard.
+    /// </summary>
     private void OnEditSessionCellEndEdit(object? sender, CellEndEditEventArgs e)
     {
         _selection.IsEditing = false;
+        // Reset proxy text so no stale characters linger if the same proxy is re-focused.
+        ResetProxy();
         if (!_filterPopupActive)
             StopCursorBlinkTimer();
+        // Return focus to the grid. On iOS/Android, focusing a non-text element dismisses
+        // the soft keyboard. WinUI has no Unfocus() — re-focusing the parent is the idiom.
+        Focus(FocusState.Programmatic);
     }
 
     // ── Public events (parity with MAUI) ──────────────────────────
