@@ -28,6 +28,13 @@ library's core tenets.
 
 See also: [../ARCHITECTURE.md](../ARCHITECTURE.md) and [../RENDERING.md](../RENDERING.md).
 
+> **Post-port Core change (1):** `KumikoUI.Core` was later extended with one shared rendering option —
+> `DataGridStyle.PinBottomSummaryRows` (default `true`), which pins `Position=Bottom` table summary rows
+> to the viewport bottom as a fixed footer. This is a deliberate feature (requested by the author) that
+> also changes `KumikoUI.Maui` behavior, since both share Core. The port's "Core unchanged" property
+> otherwise holds; this is the only Core edit, and it is additive (the `Render(...)` signature is
+> unchanged and the flag defaults on).
+
 ---
 
 ## 2. Architecture Decision Record

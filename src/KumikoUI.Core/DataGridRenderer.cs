@@ -238,7 +238,7 @@ public class DataGridRenderer
             DrawTableSummaryRows(ctx, dataSource, allCols, scroll, style, frozenWidth,
                 dataSource.ComputedTopSummaries, style.HeaderHeight, handleOffset);
 
-        if (dataSource.BottomSummaryCount > 0)
+        if (dataSource.BottomSummaryCount > 0 && !style.PinBottomSummaryRows)
         {
             float bottomSummaryY = dataAreaTop + dataSource.RowCount * style.RowHeight - scroll.OffsetY;
             DrawTableSummaryRows(ctx, dataSource, allCols, scroll, style, frozenWidth,
@@ -267,6 +267,16 @@ public class DataGridRenderer
             }
 
             ctx.Restore();
+        }
+
+        // Pinned bottom summary (footer): drawn on top of all scrolling data at the viewport bottom.
+        // Opaque SummaryRowBackgroundColor covers the data behind it; the scroll range already reserves
+        // bottomSummaryHeight so the last row scrolls to exactly the footer's top edge.
+        if (dataSource.BottomSummaryCount > 0 && style.PinBottomSummaryRows)
+        {
+            float pinnedBottomSummaryY = adjustedViewportHeight - bottomSummaryHeight;
+            DrawTableSummaryRows(ctx, dataSource, allCols, scroll, style, frozenWidth,
+                dataSource.ComputedBottomSummaries, pinnedBottomSummaryY, handleOffset);
         }
 
         // ── Draw drag handle column ──────────────────────────────
