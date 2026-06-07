@@ -148,7 +148,18 @@ public partial class DataGridView
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
-        => DispatchPointer(e, e.GetCurrentPoint(this), InputAction.Moved);
+    {
+        // WinUI/Uno raises PointerMoved on every hover, even with no button pressed. Core's
+        // GridInputController.HandlePointerMove expects Moved only while in contact (matching the
+        // MAUI SKCanvasView contract), so we filter out plain hover here. Only forward when the
+        // pointer is actually down — and, for a mouse, only the LEFT button drags/scrolls (a
+        // right/middle drag must not pan). Touch/pen contact reports IsInContact without a named
+        // mouse button, so the right/middle guard leaves mobile scrolling unaffected.
+        var point = e.GetCurrentPoint(this);
+        var props = point.Properties;
+        if (!point.IsInContact || props.IsRightButtonPressed || props.IsMiddleButtonPressed) return;
+        DispatchPointer(e, point, InputAction.Moved);
+    }
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
@@ -208,9 +219,10 @@ public partial class DataGridView
             X = (float)point.Position.X,
             Y = (float)point.Position.Y,
             Action = action,
-            Button = props.IsRightButtonPressed ? PointerButton.Secondary
+            Button = props.IsRightButtonPressed  ? PointerButton.Secondary
                    : props.IsMiddleButtonPressed ? PointerButton.Middle
-                   : PointerButton.Primary,
+                   : props.IsLeftButtonPressed   ? PointerButton.Primary
+                   : PointerButton.None,
             // 120-unit notches → notch count; Core scales by RowHeight * WheelScrollMultiplier.
             ScrollDeltaY = action == InputAction.Scroll ? props.MouseWheelDelta / WheelNotch : 0f,
             ScrollDeltaX = action == InputAction.Scroll && props.IsHorizontalMouseWheel

@@ -71,6 +71,15 @@ space the renderer was fed in [03 §4](03-datagridview-host.md#4-dpi--scaling), 
   > **Note:** `PointerRoutedEventArgs.KeyModifiers` **is** implemented on the Skia head (real backing
   > field), so pointer-event modifiers are read directly off the args — unlike `KeyRoutedEventArgs`
   > (see §2). `ScrollDeltaX` is populated only when `IsHorizontalMouseWheel` is set.
+- [x] **Hover vs. drag (desktop fix):** WinUI/Uno raises `PointerMoved` on every mouse hover, even
+  with no button pressed. Core's `GridInputController.HandlePointerMove` has no concept of pointer
+  contact — it assumes `Moved` only arrives while a button or finger is down (the MAUI
+  `SKCanvasView` contract). Without a guard, plain hover reaches Core and is mis-read as a pan/drag.
+  Fix: `OnPointerMoved` checks `PointerPoint.IsInContact` and returns early when `false`. Real drags
+  (column resize/reorder, selection, pan-scroll) and touch drags all occur while in contact, so they
+  continue to receive `Moved` unaffected. Correspondingly, `DispatchPointer` now reports
+  `PointerButton.None` (instead of falling through to `Primary`) when no button is pressed, so any
+  stray non-contact event that somehow reaches `DispatchPointer` cannot be mis-read as a left-drag.
 - [x] Map the action per event: `PointerPressed→Pressed`, `PointerMoved→Moved`,
   `PointerReleased→Released` (+ `ReleasePointerCapture`), `PointerCanceled`/`PointerCaptureLost→Cancelled`,
   `PointerWheelChanged→Scroll`. The fling timer is (re)started after `Released`/`Cancelled`/
