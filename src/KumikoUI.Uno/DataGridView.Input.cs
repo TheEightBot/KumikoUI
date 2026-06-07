@@ -48,6 +48,13 @@ public partial class DataGridView
     private const long DoubleTapThresholdMs = 400;
     private const float DoubleTapDistanceThreshold = 20f;
 
+    // ── Touch-vs-mouse tracking ──
+    // Tracks whether the last pointer press was a touch event. Used in OnPointerPressed and
+    // OnEditSessionCellEndEdit to decide whether to focus the proxy (desktop/pen: always keep the
+    // proxy focused so keyboard navigation continues) or the grid itself (touch: blurs the proxy
+    // and dismisses the soft keyboard when editing ends).
+    private bool _lastPointerWasTouch;
+
     // ── Wheel scaling ──
     // WinUI MouseWheelDelta is in 120-unit notches; Core's HandleScroll multiplies ScrollDeltaY
     // by (RowHeight * WheelScrollMultiplier). Normalizing one notch (120) to 1.0 makes a single
@@ -84,8 +91,11 @@ public partial class DataGridView
         IsHoldingEnabled = true;
 
         // ── Keyboard ──
+        // KeyDown is kept on the grid as a harmless fallback for tab-focus navigation. Printable
+        // character input flows ONLY through the proxy's TextChanged — removing CharacterReceived
+        // here avoids double-firing on Windows (where CharacterReceived bubbles up from the focused
+        // proxy to the grid, which would deliver every character twice).
         KeyDown -= OnKeyDown; KeyDown += OnKeyDown;
-        CharacterReceived -= OnCharacterReceived; CharacterReceived += OnCharacterReceived;
 
         // ── Soft-keyboard proxy (see DataGridView.Editing.cs) ──
         // Idempotent re-attach: detach first so navigation-back never double-subscribes.
@@ -110,7 +120,6 @@ public partial class DataGridView
         Holding -= OnHolding;
 
         KeyDown -= OnKeyDown;
-        CharacterReceived -= OnCharacterReceived;
 
         // Detach the hidden TextBox proxy's events (see DataGridView.Editing.cs).
         TeardownInputProxy();
@@ -125,12 +134,7 @@ public partial class DataGridView
     {
         // Capture so drags (resize / reorder / pan / selection) keep tracking outside our bounds.
         CapturePointer(e.Pointer);
-        // Focus on press so keyboard navigation works after a click (see OnKeyDown).
-        // During an active edit the proxy holds focus (and the soft keyboard is open on mobile);
-        // stealing focus here would prematurely dismiss the keyboard. The edit lifecycle
-        // (CellBeginEdit / CellEndEdit) owns proxy focus while editing is in progress.
-        if (!_editSession.IsEditing)
-            Focus(FocusState.Programmatic);
+        _lastPointerWasTouch = e.Pointer.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Touch;
 
         var point = e.GetCurrentPoint(this);
 
@@ -157,6 +161,15 @@ public partial class DataGridView
         _pendingClickCount = clickCount;
 
         DispatchPointer(e, point, InputAction.Pressed, clickCount);
+
+        // Route the keyboard to the hidden TextBox proxy for non-touch input (mouse/pen). The proxy
+        // is a real focusable element on every head, unlike this Grid-derived control whose KeyDown/
+        // CharacterReceived don't fire on WASM/Skia. Done AFTER DispatchPointer so it wins over any
+        // focus change made while Core handled the press (e.g. CellEndEdit). For touch we deliberately
+        // do NOT focus here — it would summon the soft keyboard on every tap; editing focuses the
+        // proxy on CellBeginEdit instead.
+        if (!_lastPointerWasTouch)
+            FocusKeyboardInput();
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
@@ -282,7 +295,7 @@ public partial class DataGridView
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
         var key = InputMapping.ToGridKey(e.Key);
-        if (key == GridKey.None) return; // printable text comes via CharacterReceived
+        if (key == GridKey.None) return; // printable text comes via the proxy's TextChanged
 
         // KeyRoutedEventArgs.KeyboardModifiers is [NotImplemented] on the Uno Skia/WASM heads (the
         // source generator strips it from the public surface there), so read the live modifier
@@ -290,21 +303,6 @@ public partial class DataGridView
         var evt = new GridKeyEventArgs
         {
             Key = key,
-            Modifiers = InputMapping.GetLiveModifiers(),
-            IsKeyDown = true,
-        };
-        _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
-        if (evt.Handled) e.Handled = true;
-    }
-
-    private void OnCharacterReceived(UIElement sender, CharacterReceivedRoutedEventArgs e)
-    {
-        // Drives cell editing with the resolved character (honours IME / dead keys). Cleaner than
-        // MAUI's hidden-Entry proxy: Core decides whether the char starts/continues an edit.
-        var evt = new GridKeyEventArgs
-        {
-            Key = GridKey.None,
-            Character = e.Character,
             Modifiers = InputMapping.GetLiveModifiers(),
             IsKeyDown = true,
         };

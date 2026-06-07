@@ -138,8 +138,10 @@ public partial class DataGridView
     {
         if (_suppressProxyTextChanged) return;
 
-        // Only handle text input while editing; outside editing, proxy focus isn't held.
-        if (!_editSession.IsEditing) return;
+        // Forward input even when NOT editing: a typed character reaches Core's Typing edit trigger,
+        // which starts an edit (type-to-edit). When editing is already in progress the same path
+        // continues the edit. HandleEditChar routes to Core.HandleKey in both cases — Core owns the
+        // "start edit vs. continue edit" decision; we are just the keyboard sink.
 
         string newText = _inputProxy.Text ?? string.Empty;
         string oldText = _lastProxyText;

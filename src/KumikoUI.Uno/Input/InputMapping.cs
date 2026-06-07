@@ -20,7 +20,7 @@ public static class InputMapping
     /// <summary>
     /// Maps a WinUI <see cref="VirtualKey"/> to KumikoUI.Core's <see cref="GridKey"/>.
     /// Returns <see cref="GridKey.None"/> for keys the grid does not handle as commands
-    /// (printable text arrives separately via <c>CharacterReceived</c>).
+    /// (printable text arrives separately via the proxy's <c>TextChanged</c> event).
     /// </summary>
     public static GridKey ToGridKey(VirtualKey key) => key switch
     {

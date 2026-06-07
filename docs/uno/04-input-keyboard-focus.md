@@ -9,13 +9,14 @@ Core entry points (unchanged):
 
 > **Status:** Implemented for all heads (desktop, iOS, Android, WASM). Wiring lives in
 > `src/KumikoUI.Uno/DataGridView.Input.cs` (pointer + keyboard + timer, a partial of `DataGridView`),
-> `src/KumikoUI.Uno/DataGridView.Editing.cs` (hidden-TextBox proxy for soft-keyboard input — see §3a),
-> and `src/KumikoUI.Uno/Input/InputMapping.cs` (pure enum mapping).
+> `src/KumikoUI.Uno/DataGridView.Editing.cs` (hidden-TextBox proxy — the keyboard sink on all heads;
+> see §3a), and `src/KumikoUI.Uno/Input/InputMapping.cs` (pure enum mapping).
 > Build verified: `dotnet build … -f net9.0-desktop` → **0 errors, 0 new warnings**;
-> `dotnet build … -f net9.0-ios` → **0 errors** (pre-existing `Uno0001` warnings for `CharacterReceived`
-> / `IsHoldingEnabled` on iOS; these are not caused by the fix and are safe no-ops on that head).
-> Soft-keyboard runtime behavior on iOS/Android cannot be verified headlessly (requires a
-> simulator/device), but the fix is structurally correct: see §3a for reasoning.
+> `dotnet build … -f net10.0-desktop` (sample) → **0 errors**.
+> WASM cannot be built locally (the `wasm-tools` workload is not installed in this environment);
+> however, the fix is platform-agnostic — the proxy is a real `TextBox` on every Uno head, and its
+> `TextChanged`/`KeyDown` fire reliably there. Actual WASM typing confirmation requires a browser
+> environment.
 
 ---
 
@@ -42,9 +43,12 @@ space the renderer was fed in [03 §4](03-datagridview-host.md#4-dpi--scaling), 
   private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
   {
       CapturePointer(e.Pointer);
-      Focus(FocusState.Programmatic);               // so keyboard works (see §3)
+      _lastPointerWasTouch = e.Pointer.PointerDeviceType == PointerDeviceType.Touch;
       // … press-timing double-tap detection …
       DispatchPointer(e, e.GetCurrentPoint(this), InputAction.Pressed, clickCount);
+      // Focus the proxy for non-touch input (see §3a).
+      if (!_lastPointerWasTouch)
+          FocusKeyboardInput();
   }
   ```
 - [x] Build `GridPointerEventArgs` (mirrors MAUI's `OnCanvasTouch`, just a different source type):
@@ -121,7 +125,7 @@ space the renderer was fed in [03 §4](03-datagridview-host.md#4-dpi--scaling), 
   ```
   > **Exact member names:** WinUI `VirtualKeyModifiers` = `None`/`Control`/`Menu`/`Shift`/`Windows`;
   > Core `InputModifiers` = `None`/`Shift`/`Control`/`Alt`/`Meta`. `Menu→Alt`, `Windows→Meta`.
-- [x] **Reading modifiers in `KeyDown`/`CharacterReceived`.**
+- [x] **Reading modifiers in `KeyDown`.**
   > **Major deviation from the spec's first suggestion:** `KeyRoutedEventArgs.KeyboardModifiers` is
   > marked **`[Uno.NotImplemented]`** on the Skia/WASM heads (the Uno source generator strips it from
   > the public API surface there → it does **not** compile: `CS1061`). So we use the spec's *fallback*
@@ -135,38 +139,89 @@ space the renderer was fed in [03 §4](03-datagridview-host.md#4-dpi--scaling), 
   > defensive `try/catch (NotImplementedException)` returning `None`, so a keystroke can never throw
   > on a head that lacks the lookup.
 
-## 3. Keyboard & focus
+## 3. Keyboard & focus — proxy-as-keyboard-sink design
 
-The control must be focusable to receive key events.
+### Why `CharacterReceived` and `Grid` focus don't work on WASM/Skia
 
-- [x] In `AttachInputHandlers` (called from `OnLoaded`): `IsTabStop = true;` and a default
-  `TabIndex = 0` (only set if still at the WinUI default `int.MaxValue`, so a XAML override is
-  respected). Focus the control on pointer press (when NOT editing — see §3a) and wire Core's request
-  to `FocusKeyboardInput()` (see §3a).
-  > **Note:** `IsTabStop` / `TabIndex` / `Focus(FocusState)` are defined on **`UIElement`** in
-  > WinUI/Uno (not `Control` as in WPF), so they are available on this `Grid`-derived control.
-- [x] **Navigation / command keys** — `KeyDown` on the **grid** (still active when not editing):
-  maps `VirtualKey` → `GridKey` → `HandleKey`. Navigation keys (arrows, Tab, Home/End, etc.), F2
-  to start edit, Escape, clipboard shortcuts — all flow through `OnKeyDown`. During an active edit
-  the proxy's `OnProxyKeyDown` handles these instead (see §3a), so `OnKeyDown` fires for the not-editing
-  case only (the proxy holds focus while editing, so grid `KeyDown` does not fire then).
-- [x] **Text entry (cell editing)** — the grid's `OnCharacterReceived` is still subscribed for the
-  **not-editing** case (type-to-start-edit on desktop, where the grid holds focus). However,
-  `CharacterReceived` is marked `[Uno.NotImplemented]` on the iOS head, so it is a no-op there —
-  this is the root cause confirmed by the iOS build warnings. The hidden-TextBox proxy (§3a) is the
-  correct cross-platform path for all soft-keyboard text entry.
+Two independent issues make a plain `Grid`-based keyboard approach fail on WASM (and Skia targets):
 
-### 3a. Hidden-TextBox soft-keyboard proxy (iOS/Android/WASM fix)
+1. **`UIElement.CharacterReceived` is `[Uno.NotImplemented]` on Skia/WASM heads.** Uno's source
+   generator marks it as a no-op stub there — it simply never fires. Any type-to-edit design that
+   relies on `CharacterReceived` is dead on WASM.
 
-**Root cause:** `DataGridView` derives from `Grid`, a non-text element. On iOS and Android, focusing a
-non-text element does NOT summon the on-screen keyboard, and `CharacterReceived`/`KeyDown` do not fire
-from on-screen keys (confirmed: `CharacterReceived` is `[Uno.NotImplemented]` on the iOS head).
-Desktop editing worked only because it has a hardware keyboard. This is the same problem MAUI solved
-with a hidden `Entry`; the fix mirrors that pattern using a WinUI `TextBox`.
+2. **`Grid` (a `Panel`) is not reliably keyboard-focusable on WASM.** WinUI/Uno's WASM focus model
+   does not guarantee `KeyDown` delivery to a `Panel`-derived element that has `IsTabStop = true`;
+   in practice `KeyDown` also fails to fire on WASM for a `Grid` host.
 
-**Implementation:** `src/KumikoUI.Uno/DataGridView.Editing.cs` (a new partial of `DataGridView`).
+Together these mean that when not editing: navigation keys are dead, and typed characters never reach
+Core's Typing trigger (type-to-edit is broken).
 
-**Proxy construction** (field initializer, added to Children in `SetupInputProxy()` called from ctor):
+### Solution: proxy-as-keyboard-sink at all times for non-touch input
+
+The existing `_inputProxy` (`TextBox`) is a real focusable text element on **every** head. Its
+`TextChanged` and `KeyDown` events fire reliably on WASM, Skia-desktop, Windows, iOS, and Android
+because Uno maps a WinUI `TextBox` to the platform's native text field on each head. We promote it
+from an edit-only sink to the **permanent keyboard sink for non-touch input**:
+
+- **Non-touch press (mouse/pen):** `OnPointerPressed` calls `FocusKeyboardInput()` *after*
+  `DispatchPointer` returns, so the proxy holds focus immediately after any click and stays focused
+  between interactions. Navigation arrows, command keys, and typed characters are all delivered there.
+- **Touch press:** `FocusKeyboardInput()` is deliberately NOT called on touch presses. Focusing a
+  `TextBox` on a touch tap would summon the soft keyboard on every tap, not just on edit-begin.
+  The edit lifecycle (`CellBeginEdit`) remains the sole path that focuses the proxy on touch.
+- **After edit ends (non-touch):** `OnEditSessionCellEndEdit` calls `FocusKeyboardInput()` instead of
+  `Focus(FocusState.Programmatic)` on the grid. This keeps the proxy focused, so arrow-key
+  navigation and type-to-edit work immediately without requiring another click.
+- **After edit ends (touch):** `Focus(FocusState.Programmatic)` on the grid is kept — blurring the
+  proxy dismisses the soft keyboard on mobile, which is the correct behavior.
+
+```csharp
+// OnPointerPressed (DataGridView.Input.cs)
+CapturePointer(e.Pointer);
+_lastPointerWasTouch = e.Pointer.PointerDeviceType == PointerDeviceType.Touch;
+// … double-tap detection …
+DispatchPointer(e, point, InputAction.Pressed, clickCount);
+if (!_lastPointerWasTouch)
+    FocusKeyboardInput();   // proxy becomes the keyboard sink for this and all subsequent events
+
+// OnEditSessionCellEndEdit (DataGridView.cs)
+ResetProxy();
+if (_lastPointerWasTouch)
+    Focus(FocusState.Programmatic);   // touch: blur proxy → soft keyboard dismisses
+else
+    FocusKeyboardInput();             // mouse/pen: proxy stays focused → arrows/typing keep working
+```
+
+### Why `CharacterReceived` is removed from the grid subscription
+
+`CharacterReceived` is now removed entirely from `AttachInputHandlers`/`DetachInputHandlers`. Two
+reasons:
+
+1. On WASM/Skia it is `[Uno.NotImplemented]` — keeping it is misleading and does nothing.
+2. On Windows/desktop it **bubbles**: a character typed while the proxy holds focus would travel up
+   the visual tree and fire *both* `OnProxyTextChanged` (correct) *and* the grid's
+   `OnCharacterReceived` (duplicate). Removing the grid subscription eliminates the double-fire.
+
+The grid's `KeyDown` handler is **kept** as a harmless fallback. `OnProxyKeyDown` marks all mapped
+keys `e.Handled = true`, so they don't bubble to the grid's `OnKeyDown`; only unmapped keys (none,
+in practice) would reach it.
+
+### `OnProxyTextChanged` — always-on forwarding (no edit-state guard)
+
+The previous `if (!_editSession.IsEditing) return;` guard has been removed. Text arriving at the
+proxy is now forwarded via `HandleEditChar` regardless of edit state. Core's `HandleKey` owns the
+"start edit vs. continue edit" decision:
+
+- Not editing: `HandleEditChar(ch)` → Core's Typing trigger → `CellBeginEdit` → proxy already
+  focused (the press focus-step already happened) → subsequent chars continue the edit via the
+  same `TextChanged` path.
+- Already editing: `HandleEditChar(ch)` → Core appends to the editor value. Identical behavior.
+
+The sentinel-diff algorithm, Backspace detection, and `ResetProxy()` call are unchanged.
+
+### 3a. Hidden-TextBox proxy — full design (DataGridView.Editing.cs)
+
+**Proxy construction** (field initializer, added to `Children` in `SetupInputProxy()` called from ctor):
 ```csharp
 private readonly TextBox _inputProxy = new TextBox
 {
@@ -202,7 +257,8 @@ private void ResetProxy()
 }
 ```
 
-**`FocusKeyboardInput()`** — called on `CellBeginEdit` and `OnKeyboardFocusRequested`:
+**`FocusKeyboardInput()`** — called on `CellBeginEdit`, `OnKeyboardFocusRequested`, non-touch press,
+and after edit-end on non-touch:
 ```csharp
 private void FocusKeyboardInput()
 {
@@ -210,11 +266,11 @@ private void FocusKeyboardInput()
     _inputProxy.Focus(FocusState.Programmatic);
 }
 ```
-On iOS/Android this summons the on-screen keyboard (focusing a `TextBox` triggers UIKit's `becomeFirstResponder`).
-On desktop it routes subsequent `KeyDown`/`TextChanged` events to the proxy.
+On iOS/Android this summons the on-screen keyboard (focusing a `TextBox` triggers the platform
+first-responder). On desktop/WASM it routes subsequent `KeyDown`/`TextChanged` events to the proxy.
 
-**`OnProxyTextChanged`** (soft-keyboard / IME path):
-1. Guard: `if (_suppressProxyTextChanged || !_editSession.IsEditing) return`.
+**`OnProxyTextChanged`** (soft-keyboard / IME / typed-char path):
+1. Guard: `if (_suppressProxyTextChanged) return`.
 2. Empty new text → Backspace (`HandleEditKey(GridKey.Backspace)`) + `ResetProxy()`.
 3. Otherwise, extract newly inserted characters via sentinel-diff:
    - Standard append (`sentinel + "a"`): take the suffix after `oldText`.
@@ -222,12 +278,13 @@ On desktop it routes subsequent `KeyDown`/`TextChanged` events to the proxy.
 4. For each extracted char: `\n`/`\r` → `HandleEditKey(GridKey.Enter)`, `\t` → `HandleEditKey(GridKey.Tab)`,
    otherwise → `HandleEditChar(ch)` which builds `GridKeyEventArgs { Key=None, Character=ch }`.
 5. `ResetProxy()`.
+6. **No edit-state guard** — Core decides whether to start or continue an edit.
 
-**`OnProxyKeyDown`** (hardware keyboard path):
+**`OnProxyKeyDown`** (hardware keyboard path — navigation and command keys):
 Maps `e.Key` via `InputMapping.ToGridKey` and calls `HandleEditKey`; sets `e.Handled = true` for all
 mapped keys. This prevents the TextBox from also acting on Backspace (deleting sentinel), Enter
-(adding newline), Tab (moving focus), arrows (moving caret), etc., and prevents double-handling
-with the TextChanged path.
+(adding newline), Tab (moving focus), arrows (moving caret), etc., and prevents the mapped keys
+from bubbling to the grid's `OnKeyDown`.
 
 **On `CellBeginEdit`:**
 ```csharp
@@ -238,37 +295,53 @@ FocusKeyboardInput();   // proxy gets focus → soft keyboard appears on mobile
 **On `CellEndEdit`:**
 ```csharp
 ResetProxy();
-Focus(FocusState.Programmatic);  // grid regains focus → soft keyboard dismisses on mobile
+if (_lastPointerWasTouch)
+    Focus(FocusState.Programmatic);   // touch: blur proxy → soft keyboard dismisses
+else
+    FocusKeyboardInput();             // mouse/pen: proxy stays focused → keyboard sink maintained
 ```
-WinUI has no `Unfocus()`; focusing another element is the idiom.
-
-**On `OnPointerPressed`:** now guards `if (!_editSession.IsEditing) Focus(FocusState.Programmatic)`.
-This prevents a tap during an active edit from stealing focus from the proxy and prematurely
-dismissing the keyboard. The edit lifecycle owns proxy focus.
 
 **Handler subscription:** proxy `TextChanged`/`KeyDown` are attached idempotently in
 `AttachInputHandlers` (detach-then-attach) and detached in `TeardownInputProxy` (called from
 `DetachInputHandlers`/`OnUnloaded`) so navigation-back never double-subscribes.
 
-**Desktop edit-not-regressed reasoning:**
-1. User types a character while the grid has focus (not editing yet): `OnCharacterReceived` fires on
-   the grid → `HandleKey` → Core starts an edit → `CellBeginEdit` → `FocusKeyboardInput()` → proxy
-   gets focus. The initial character is passed through via `CharacterReceived` before focus shifts,
-   so Core's `Typing` trigger sees it. On the next keystroke the proxy holds focus.
-2. Proxy `OnProxyTextChanged`: typed character appended after sentinel → `HandleEditChar(ch)` → Core
-   editor receives the character exactly as before.
-3. Proxy `OnProxyKeyDown`: Enter/Escape/Tab/arrows are handled and marked `e.Handled=true` so the
-   TextBox does not consume them.
-4. Edit ends → `Focus(FocusState.Programmatic)` on the grid → grid `OnKeyDown`/`OnCharacterReceived`
-   resume for navigation.
+## 4. Keyboard paths — walk-through
 
-**iOS/Android runtime caveat:** soft-keyboard behavior (keyboard appearance, dismissal, IME
-composition) cannot be verified headlessly and requires a simulator or device. The implementation is
-structurally correct: `TextBox` is a standard WinUI control that Uno maps to `UITextField` on iOS
-(which calls `becomeFirstResponder` on focus) and `EditText` on Android. The sentinel-diff algorithm
-and guard logic mirror MAUI's proven approach exactly.
+### Non-touch (mouse / pen / keyboard-only)
 
-## 4. Inertial scroll timer
+| Scenario | Keyboard path |
+|---|---|
+| **Click a cell** | `OnPointerPressed` → `DispatchPointer` (Core selects cell) → `FocusKeyboardInput()` → proxy focused |
+| **Arrow / Tab / Home / End** | `OnProxyKeyDown` → `InputMapping.ToGridKey` → `HandleEditKey` → Core navigates; `e.Handled=true` blocks TextBox caret movement |
+| **Type a character (type-to-edit)** | Char appears in proxy → `OnProxyTextChanged` → `HandleEditChar(ch)` → Core Typing trigger → `CellBeginEdit` → `FocusKeyboardInput()` (proxy already focused) → edit continues via same path |
+| **F2 (explicit edit start)** | `OnProxyKeyDown` → `HandleEditKey(GridKey.F2)` → Core → `CellBeginEdit` → `FocusKeyboardInput()` |
+| **Double-click (edit start)** | `DispatchPointer(ClickCount=2)` → Core → `CellBeginEdit` → `FocusKeyboardInput()` |
+| **Typing during edit** | Chars arrive at proxy `TextChanged` → `HandleEditChar(ch)` → Core editor appends |
+| **Backspace during edit** | `OnProxyKeyDown` → `HandleEditKey(Backspace)` → `e.Handled=true` (no sentinel deletion) |
+| **Enter / Escape / Tab during edit** | `OnProxyKeyDown` → `HandleEditKey` → Core commits/cancels → `CellEndEdit` → `ResetProxy()` + `FocusKeyboardInput()` (proxy stays focused) |
+| **Arrow after edit ends** | Proxy still focused → `OnProxyKeyDown` → navigation continues seamlessly |
+
+### Touch
+
+| Scenario | Keyboard path |
+|---|---|
+| **Tap a cell** | `OnPointerPressed` (`_lastPointerWasTouch=true`) → `DispatchPointer` → Core selects cell; proxy NOT focused (no soft keyboard summon) |
+| **Double-tap (edit start)** | `DispatchPointer(ClickCount=2)` → Core → `CellBeginEdit` → `FocusKeyboardInput()` → proxy focused → soft keyboard appears |
+| **Long-press** | `OnHolding` → `LongPress` → Core context action |
+| **Typing during edit** | Soft keyboard injects into proxy `TextChanged` → `HandleEditChar` → Core editor appends |
+| **Backspace on soft keyboard** | Proxy text becomes empty → `OnProxyTextChanged` → `HandleEditKey(Backspace)` |
+| **Done / Return on soft keyboard** | `\n` in `OnProxyTextChanged` → `HandleEditKey(GridKey.Enter)` → Core commits → `CellEndEdit` → `ResetProxy()` + `Focus(grid)` → soft keyboard dismisses |
+
+### No double-handling
+
+- `OnProxyKeyDown` sets `e.Handled = true` for every mapped key, so mapped keys don't bubble to
+  the grid's `OnKeyDown`.
+- `CharacterReceived` is unsubscribed from the grid entirely — typed characters flow only through
+  `OnProxyTextChanged`. No character is delivered twice.
+- `_suppressProxyTextChanged` and `_lastProxyText` guard `ResetProxy()`'s own `Text` assignment
+  from triggering another `TextChanged` round-trip.
+
+## 5. Inertial scroll timer
 
 - [x] A `Microsoft.UI.Xaml.DispatcherTimer` (~16 ms) pumps Core's physics and stops when it returns
   `false` (mirrors MAUI's `_scrollTimer`):
@@ -299,25 +372,26 @@ and guard logic mirror MAUI's proven approach exactly.
   > input-driven timers are the inertial-scroll and cursor-blink ones — **both stopped in
   > `DetachInputHandlers` (from `OnUnloaded`)**, so no timer roots the page across navigation.
 
-## 5. Per-target nuances
+## 6. Per-target nuances
 
 | Head | Pointer | Keyboard / Editing | Notes |
 |---|---|---|---|
-| Desktop (Skia) / Windows | mouse + touch + pen | full — hardware keyboard via `OnKeyDown`; proxy `TextChanged` also receives typed chars | Reference behavior. Grid `CharacterReceived` starts type-to-edit; proxy takes over once editing begins. |
-| WebAssembly | mouse/touch OK | proxy `TextChanged` for typing; `OnKeyDown` for navigation | Browser soft keyboard (on touch devices) summons on proxy focus. `GetLiveModifiers` wrapped in try/catch. |
-| Android | touch only, no hover | **proxy-only** — `CharacterReceived` is not reliable on Android IME | TextBox proxy handles all text input via `TextChanged`; sentinel-diff handles IME full-replacement. |
-| iOS | touch only, no hover | **proxy-only** — `CharacterReceived` is `[Uno.NotImplemented]` on iOS | TextBox (`UITextField`) gains focus → `becomeFirstResponder` → soft keyboard. `Holding` provides long-press (if implemented on the iOS head). |
+| Desktop (Skia) / Windows | mouse + touch + pen | proxy `TextChanged` for all typing; proxy `KeyDown` for navigation/command keys; grid `KeyDown` as harmless fallback | Reference behavior. Non-touch press focuses proxy immediately; proxy is the keyboard sink at all times. |
+| WebAssembly | mouse/touch OK | **proxy-only** — `CharacterReceived` is `[Uno.NotImplemented]`; grid focus unreliable for `KeyDown` | Proxy `TextChanged`/`KeyDown` fire on WASM. `GetLiveModifiers` wrapped in try/catch. |
+| Android | touch only, no hover | **proxy-only** — `CharacterReceived` not reliable on Android IME | TextBox proxy handles all text input via `TextChanged`; sentinel-diff handles IME full-replacement. |
+| iOS | touch only, no hover | **proxy-only** — `CharacterReceived` is `[Uno.NotImplemented]` on iOS | TextBox (`UITextField`) gains focus → `becomeFirstResponder` → soft keyboard. `Holding` provides long-press. |
 | Mac Catalyst | trackpad + keyboard | full — same as desktop | Like desktop; validate momentum-scroll feel vs. the inertial timer. |
 
-> **Note on `CharacterReceived` on iOS:** Uno's iOS head marks `UIElement.CharacterReceived` as
-> `[Uno.NotImplemented]` — it is a no-op stub. This is the confirmed root cause of the original bug.
-> The hidden-TextBox proxy (§3a) fully replaces `CharacterReceived` for all soft-keyboard input,
-> and desktop/WASM hardware-keyboard paths continue to use `OnKeyDown` (for command keys) and the
-> proxy's `TextChanged` (for printable chars).
+> **Root cause note:** `UIElement.CharacterReceived` is `[Uno.NotImplemented]` on iOS (and WASM) —
+> confirmed by Uno build warnings (`Uno0001`) on those heads. Additionally, `DataGridView` derives
+> from `Grid` (a `Panel`), which is not reliably keyboard-focusable on WASM. The hidden-TextBox
+> proxy (`_inputProxy`) fully replaces `CharacterReceived` and the `Grid`-focus approach for all
+> heads. Since the proxy is a real `TextBox`, Uno maps its `TextChanged`/`KeyDown` to the native
+> text-event pipeline on every platform — the fix is structurally correct and platform-agnostic.
 
 - [ ] Verify selection, keyboard navigation, editing, wheel + inertial scroll, column resize/reorder,
   and row drag on **each** head's smoke test (see [07](07-tests.md)). *(Behavioral/visual
-  verification requires a simulator/device for iOS/Android; WASM requires a browser environment.)*
+  verification requires a simulator/device for iOS/Android and a browser for WASM.)*
 
 ---
 
@@ -329,10 +403,16 @@ and guard logic mirror MAUI's proven approach exactly.
   Every input path constructs `GridPointerEventArgs`/`GridKeyEventArgs` correctly and calls the right
   Core method; `VirtualKey→GridKey` mapping is complete; handlers attach on `Loaded` and fully detach
   on `Unloaded`; all timers stop on `Unloaded`.
+- [x] `CharacterReceived` removed from grid subscription — no double-fire risk on Windows; no dead
+  stub on WASM/iOS. All character input flows through `OnProxyTextChanged` only.
+- [x] Proxy is the keyboard sink for non-touch input at all times (focused on every mouse/pen press
+  and after every edit-end); `OnProxyTextChanged` forwards characters regardless of edit state so
+  type-to-edit works without a separate `CharacterReceived` path.
+- [x] Touch behavior is unchanged: proxy focused only on `CellBeginEdit`; soft keyboard dismissed
+  on `CellEndEdit` by re-focusing the grid.
 - [ ] *(Phase 06/07)* Mouse/touch select, scroll (wheel + inertial), resize, reorder, and drag all
   work behaviorally on `net9.0-desktop`.
-- [ ] *(Phase 06/07)* Arrow/Tab/Enter/Escape navigation and typed cell editing work via keyboard +
-  `CharacterReceived`.
+- [ ] *(Phase 06/07)* Arrow/Tab/Enter/Escape navigation and typed cell editing work via keyboard.
 - [ ] *(Phase 06/07)* Pointer coordinates align with drawn cells at all display scales.
 - [x] Handlers are attached on `Loaded` and fully detached on `Unloaded` (no leaks across
   navigation); idempotent re-attach on navigation-back.

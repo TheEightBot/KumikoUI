@@ -254,7 +254,10 @@ public partial class DataGridView : Grid
 
     /// <summary>
     /// End-edit: reset the proxy, stop the cursor-blink timer (unless a filter popup is still
-    /// open), and return focus to the grid — on mobile that dismisses the soft keyboard.
+    /// open), and return focus appropriately based on input device:
+    /// touch → focus the grid (blurs the proxy and dismisses the soft keyboard on mobile);
+    /// mouse/pen → re-focus the proxy so arrow-key navigation and type-to-edit keep working
+    /// immediately without requiring another click.
     /// </summary>
     private void OnEditSessionCellEndEdit(object? sender, CellEndEditEventArgs e)
     {
@@ -263,9 +266,12 @@ public partial class DataGridView : Grid
         ResetProxy();
         if (!_filterPopupActive)
             StopCursorBlinkTimer();
-        // Return focus to the grid. On iOS/Android, focusing a non-text element dismisses
-        // the soft keyboard. WinUI has no Unfocus() — re-focusing the parent is the idiom.
-        Focus(FocusState.Programmatic);
+        // Device-aware focus: on touch, blur the proxy to dismiss the soft keyboard;
+        // on mouse/pen, keep the proxy focused so keyboard navigation continues seamlessly.
+        if (_lastPointerWasTouch)
+            Focus(FocusState.Programmatic);   // touch: blur proxy → soft keyboard dismisses
+        else
+            FocusKeyboardInput();             // mouse/pen: proxy stays focused → arrows/typing keep working
     }
 
     // ── Public events (parity with MAUI) ──────────────────────────
