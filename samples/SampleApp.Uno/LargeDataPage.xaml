@@ -1,0 +1,70 @@
+<Page x:Class="SampleApp.Uno.LargeDataPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      xmlns:core="using:KumikoUI.Core.Models"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Large Data — Virtualization &amp; Inertial Scroll"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   Padding="16,12"
+                   Grid.Row="0" />
+
+        <StackPanel Orientation="Horizontal"
+                    Grid.Row="1"
+                    Padding="16,4"
+                    Spacing="8">
+            <Button x:Name="btn10K" Content="Load 10K" Click="OnLoad10KClicked" />
+            <Button x:Name="btn50K" Content="Load 50K" Click="OnLoad50KClicked" />
+            <Button x:Name="btn100K" Content="Load 100K" Click="OnLoad100KClicked" />
+            <Button x:Name="btnClear" Content="Clear" Click="OnClearClicked" />
+            <Button x:Name="btnUpdateRandom" Content="Update 100 Random" Click="OnUpdateRandomClicked" />
+        </StackPanel>
+
+        <TextBlock x:Name="statusLabel"
+                   Text="Press a button to load data."
+                   FontSize="13"
+                   Foreground="Gray"
+                   Padding="16,2,16,8"
+                   Grid.Row="2" />
+
+        <kumiko:DataGridView x:Name="kumiko"
+                             Grid.Row="3"
+                             ItemsSource="{Binding Items}"
+                             RowHeight="32"
+                             HeaderHeight="40"
+                             GridDescription="Large dataset stress-test grid"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch">
+            <kumiko:DataGridView.Columns>
+                <core:DataGridColumn Header="#" PropertyName="RowNumber" Width="80"
+                                     ColumnType="Numeric" TextAlignment="Right"
+                                     IsReadOnly="True" AllowTabStop="False" IsFrozen="True" />
+                <core:DataGridColumn Header="Full Name" PropertyName="FullName" Width="170" IsFrozen="True" />
+                <core:DataGridColumn Header="Category" PropertyName="Category" Width="110" />
+                <core:DataGridColumn Header="Value" PropertyName="Value" Width="110"
+                                     Format="N2" ColumnType="Numeric" TextAlignment="Right" />
+                <core:DataGridColumn Header="Amount" PropertyName="Amount" Width="120"
+                                     Format="C0" ColumnType="Numeric" TextAlignment="Right" />
+                <core:DataGridColumn Header="Created" PropertyName="CreatedDate" Width="120"
+                                     Format="yyyy-MM-dd" ColumnType="Date" />
+                <core:DataGridColumn Header="Enabled" PropertyName="IsEnabled" Width="80"
+                                     ColumnType="Boolean" AllowTabStop="False" />
+                <core:DataGridColumn Header="Region" PropertyName="Region" Width="120" />
+                <core:DataGridColumn Header="Score" PropertyName="Score" Width="90"
+                                     Format="N1" ColumnType="Numeric" TextAlignment="Right" />
+                <core:DataGridColumn Header="Notes" PropertyName="Notes" Width="160" />
+            </kumiko:DataGridView.Columns>
+        </kumiko:DataGridView>
+    </Grid>
+
+</Page>

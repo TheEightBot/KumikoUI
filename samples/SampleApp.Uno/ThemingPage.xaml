@@ -1,0 +1,78 @@
+<Page x:Class="SampleApp.Uno.ThemingPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      xmlns:core="using:KumikoUI.Core.Models"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Runtime Theming"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   Padding="16,12"
+                   Grid.Row="0" />
+
+        <!-- Built-in + custom theme buttons -->
+        <StackPanel Orientation="Horizontal"
+                    Grid.Row="1"
+                    Padding="16,4"
+                    Spacing="8">
+            <Button Content="Light" Click="OnLightThemeClicked" />
+            <Button Content="Dark" Click="OnDarkThemeClicked" />
+            <Button Content="High Contrast" Click="OnHighContrastThemeClicked" />
+            <Button Content="Ocean Blue" Click="OnOceanBlueClicked" />
+            <Button Content="Forest Green" Click="OnForestGreenClicked" />
+            <Button Content="Sunset" Click="OnSunsetClicked" />
+        </StackPanel>
+
+        <!-- Custom header-color sliders -->
+        <StackPanel Orientation="Horizontal"
+                    Grid.Row="2"
+                    Padding="16,4,16,8"
+                    Spacing="12"
+                    VerticalAlignment="Center">
+            <TextBlock Text="Header RGB:" VerticalAlignment="Center" />
+            <TextBlock Text="R" VerticalAlignment="Center" Foreground="#C0392B" />
+            <Slider x:Name="sliderR" Minimum="0" Maximum="255" Value="20" Width="120"
+                    ValueChanged="OnColorSliderChanged" />
+            <TextBlock Text="G" VerticalAlignment="Center" Foreground="#27AE60" />
+            <Slider x:Name="sliderG" Minimum="0" Maximum="255" Value="80" Width="120"
+                    ValueChanged="OnColorSliderChanged" />
+            <TextBlock Text="B" VerticalAlignment="Center" Foreground="#2980B9" />
+            <Slider x:Name="sliderB" Minimum="0" Maximum="255" Value="160" Width="120"
+                    ValueChanged="OnColorSliderChanged" />
+        </StackPanel>
+
+        <kumiko:DataGridView x:Name="kumiko"
+                             Grid.Row="3"
+                             ItemsSource="{Binding Products}"
+                             RowHeight="34"
+                             HeaderHeight="40"
+                             GridDescription="Themed product grid"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch">
+            <kumiko:DataGridView.Columns>
+                <core:DataGridColumn Header="SKU" PropertyName="Sku" Width="110" IsFrozen="True" />
+                <core:DataGridColumn Header="Product" PropertyName="ProductName" Width="180" />
+                <core:DataGridColumn Header="Category" PropertyName="Category" Width="120" />
+                <core:DataGridColumn Header="Price" PropertyName="Price" Width="110"
+                                     Format="C2" ColumnType="Numeric" TextAlignment="Right" />
+                <core:DataGridColumn Header="Stock" PropertyName="Stock" Width="90"
+                                     ColumnType="Numeric" TextAlignment="Right" />
+                <core:DataGridColumn Header="In Stock" PropertyName="InStock" Width="80"
+                                     ColumnType="Boolean" AllowTabStop="False" />
+                <core:DataGridColumn Header="Rating" PropertyName="Rating" Width="90"
+                                     Format="N1" ColumnType="Numeric" TextAlignment="Right" />
+                <core:DataGridColumn Header="Supplier" PropertyName="Supplier" Width="140" />
+            </kumiko:DataGridView.Columns>
+        </kumiko:DataGridView>
+    </Grid>
+
+</Page>

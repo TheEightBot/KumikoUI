@@ -229,6 +229,13 @@ public class DataGridStyle
 
     // ── Row drag handle ──────────────────────────────────────────
     /// <summary>
+    /// When true (default), Position=Bottom table summary rows are pinned to the bottom edge of the
+    /// viewport (a fixed footer that stays visible while the data scrolls). When false, they are drawn
+    /// at the end of the scrolling content (a totals row after the last data row).
+    /// </summary>
+    public bool PinBottomSummaryRows { get; set; } = true;
+
+    /// <summary>
     /// Show a drag handle icon on each row. When enabled, row dragging only starts
     /// when the user presses and drags the handle. This works independently of
     /// AllowRowDragDrop (which enables full-row drag from any cell).

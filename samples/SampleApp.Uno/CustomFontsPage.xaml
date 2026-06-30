@@ -1,0 +1,57 @@
+<Page x:Class="SampleApp.Uno.CustomFontsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ── Japanese headers section ───────────────────────────────── -->
+        <TextBlock Text="Japanese Column Headers (NotoSansJP font registered at startup)"
+                   FontSize="16"
+                   FontWeight="Bold"
+                   Padding="16,12,16,4"
+                   Grid.Row="0" />
+
+        <TextBlock Text="Headers: Hinpyo-ID / RFID / Hinban / Suryo — drawn from the NotoSansJP typeface via SkiaFontRegistrar."
+                   FontSize="13"
+                   Foreground="Gray"
+                   TextWrapping="Wrap"
+                   Padding="16,0,16,6"
+                   Grid.Row="1" />
+
+        <!-- Grid with Japanese headers — uses NotoSansJP via DataGridStyle header/cell fonts -->
+        <kumiko:DataGridView x:Name="japaneseGrid"
+                             Grid.Row="2"
+                             RowHeight="36"
+                             HeaderHeight="44"
+                             EditTriggers="DoubleTap,F2Key"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch" />
+
+        <!-- ── Icon font section ───────────────────────────────────────── -->
+        <TextBlock Text="Icon Font Column (MaterialIcons)"
+                   FontSize="16"
+                   FontWeight="Bold"
+                   Padding="16,12,16,4"
+                   Grid.Row="3" />
+
+        <!-- Grid with a status column rendered as Material Design icon glyphs -->
+        <kumiko:DataGridView x:Name="iconGrid"
+                             Grid.Row="4"
+                             RowHeight="40"
+                             HeaderHeight="44"
+                             EditTriggers="None"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch" />
+
+    </Grid>
+
+</Page>
