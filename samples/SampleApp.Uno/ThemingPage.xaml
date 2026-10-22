@@ -20,35 +20,43 @@
                    Grid.Row="0" />
 
         <!-- Built-in + custom theme buttons -->
-        <StackPanel Orientation="Horizontal"
-                    Grid.Row="1"
-                    Padding="16,4"
-                    Spacing="8">
-            <Button Content="Light" Click="OnLightThemeClicked" />
-            <Button Content="Dark" Click="OnDarkThemeClicked" />
-            <Button Content="High Contrast" Click="OnHighContrastThemeClicked" />
-            <Button Content="Ocean Blue" Click="OnOceanBlueClicked" />
-            <Button Content="Forest Green" Click="OnForestGreenClicked" />
-            <Button Content="Sunset" Click="OnSunsetClicked" />
-        </StackPanel>
+        <!-- Scrolls horizontally so every action stays reachable on phone-width viewports. -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal"
+                        Padding="16,4"
+                        Spacing="8">
+                <Button Content="Light" Click="OnLightThemeClicked" />
+                <Button Content="Dark" Click="OnDarkThemeClicked" />
+                <Button Content="High Contrast" Click="OnHighContrastThemeClicked" />
+                <Button Content="Ocean Blue" Click="OnOceanBlueClicked" />
+                <Button Content="Forest Green" Click="OnForestGreenClicked" />
+                <Button Content="Sunset" Click="OnSunsetClicked" />
+            </StackPanel>
+        </ScrollViewer>
 
         <!-- Custom header-color sliders -->
-        <StackPanel Orientation="Horizontal"
-                    Grid.Row="2"
-                    Padding="16,4,16,8"
-                    Spacing="12"
-                    VerticalAlignment="Center">
-            <TextBlock Text="Header RGB:" VerticalAlignment="Center" />
-            <TextBlock Text="R" VerticalAlignment="Center" Foreground="#C0392B" />
-            <Slider x:Name="sliderR" Minimum="0" Maximum="255" Value="20" Width="120"
-                    ValueChanged="OnColorSliderChanged" />
-            <TextBlock Text="G" VerticalAlignment="Center" Foreground="#27AE60" />
-            <Slider x:Name="sliderG" Minimum="0" Maximum="255" Value="80" Width="120"
-                    ValueChanged="OnColorSliderChanged" />
-            <TextBlock Text="B" VerticalAlignment="Center" Foreground="#2980B9" />
-            <Slider x:Name="sliderB" Minimum="0" Maximum="255" Value="160" Width="120"
-                    ValueChanged="OnColorSliderChanged" />
-        </StackPanel>
+        <!-- Scrolls horizontally so every action stays reachable on phone-width viewports. -->
+        <ScrollViewer Grid.Row="2"
+                      HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal"
+                        Padding="16,4,16,8"
+                        Spacing="12"
+                        VerticalAlignment="Center">
+                <TextBlock Text="Header RGB:" VerticalAlignment="Center" />
+                <TextBlock Text="R" VerticalAlignment="Center" Foreground="#C0392B" />
+                <Slider x:Name="sliderR" Minimum="0" Maximum="255" Value="20" Width="120"
+                        ValueChanged="OnColorSliderChanged" />
+                <TextBlock Text="G" VerticalAlignment="Center" Foreground="#27AE60" />
+                <Slider x:Name="sliderG" Minimum="0" Maximum="255" Value="80" Width="120"
+                        ValueChanged="OnColorSliderChanged" />
+                <TextBlock Text="B" VerticalAlignment="Center" Foreground="#2980B9" />
+                <Slider x:Name="sliderB" Minimum="0" Maximum="255" Value="160" Width="120"
+                        ValueChanged="OnColorSliderChanged" />
+            </StackPanel>
+        </ScrollViewer>
 
         <kumiko:DataGridView x:Name="kumiko"
                              Grid.Row="3"

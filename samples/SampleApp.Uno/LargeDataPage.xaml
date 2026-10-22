@@ -19,16 +19,20 @@
                    Padding="16,12"
                    Grid.Row="0" />
 
-        <StackPanel Orientation="Horizontal"
-                    Grid.Row="1"
-                    Padding="16,4"
-                    Spacing="8">
-            <Button x:Name="btn10K" Content="Load 10K" Click="OnLoad10KClicked" />
-            <Button x:Name="btn50K" Content="Load 50K" Click="OnLoad50KClicked" />
-            <Button x:Name="btn100K" Content="Load 100K" Click="OnLoad100KClicked" />
-            <Button x:Name="btnClear" Content="Clear" Click="OnClearClicked" />
-            <Button x:Name="btnUpdateRandom" Content="Update 100 Random" Click="OnUpdateRandomClicked" />
-        </StackPanel>
+        <!-- Scrolls horizontally so every action stays reachable on phone-width viewports. -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal"
+                        Padding="16,4"
+                        Spacing="8">
+                <Button x:Name="btn10K" Content="Load 10K" Click="OnLoad10KClicked" />
+                <Button x:Name="btn50K" Content="Load 50K" Click="OnLoad50KClicked" />
+                <Button x:Name="btn100K" Content="Load 100K" Click="OnLoad100KClicked" />
+                <Button x:Name="btnClear" Content="Clear" Click="OnClearClicked" />
+                <Button x:Name="btnUpdateRandom" Content="Update 100 Random" Click="OnUpdateRandomClicked" />
+            </StackPanel>
+        </ScrollViewer>
 
         <TextBlock x:Name="statusLabel"
                    Text="Press a button to load data."

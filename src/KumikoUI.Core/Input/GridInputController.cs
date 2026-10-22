@@ -158,7 +158,9 @@ public class GridInputController
 
         int totalRows = dataSource.RowCount;
         int totalCols = dataSource.Columns.Count;
-        int pageSize = Math.Max(1, (int)(scroll.ViewportHeight / style.RowHeight) - 1);
+        // One page = the number of scrollable rows that fit between the fixed bands (header, grouping
+        // panel, top summaries, frozen rows, pinned footer), so PageUp/PageDown never skip unseen rows.
+        int pageSize = Math.Max(1, (int)(GetScrollableRowsViewportHeight(scroll, style, dataSource) / style.RowHeight));
 
         // ── Editing-mode key handling ──
         if (_editSession != null && _editSession.IsEditing)
@@ -1002,6 +1004,20 @@ public class GridInputController
 
     // ── Scroll helpers ──
 
+    /// <summary>
+    /// Height available to scrollable rows: the viewport minus the fixed bands drawn over or above
+    /// them — grouping panel, header, top summaries, frozen rows and the pinned bottom summary footer.
+    /// </summary>
+    private static float GetScrollableRowsViewportHeight(ScrollState scroll, DataGridStyle style, DataGridSource? dataSource)
+    {
+        float groupPanelHeight = dataSource != null && dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
+        float topSummaryHeight = dataSource != null ? dataSource.TopSummaryCount * style.SummaryRowHeight : 0;
+        float frozenRowHeight = (dataSource?.EffectiveFrozenRowCount ?? 0) * style.RowHeight;
+        float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(dataSource?.BottomSummaryCount ?? 0);
+        return scroll.ViewportHeight - groupPanelHeight - style.HeaderHeight - topSummaryHeight
+            - frozenRowHeight - pinnedFooterHeight;
+    }
+
     private void EnsureCurrentCellVisible(
         ScrollState scroll, SelectionModel selection,
         DataGridStyle style, IReadOnlyList<DataGridColumn> columns,
@@ -1012,15 +1028,7 @@ public class GridInputController
         int row = selection.CurrentCell.Row;
         int col = selection.CurrentCell.Column;
 
-        // Fixed bands that reduce the vertical space available to scrollable rows:
-        // grouping panel, header, top summaries, frozen rows, and the pinned bottom summary footer.
-        float groupPanelHeight = dataSource != null && dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
-        float topSummaryHeight = dataSource != null ? dataSource.TopSummaryCount * style.SummaryRowHeight : 0;
-        float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(dataSource?.BottomSummaryCount ?? 0);
-
-        // Account for frozen rows
         int frozenRowCount = dataSource?.EffectiveFrozenRowCount ?? 0;
-        float frozenRowHeight = frozenRowCount * style.RowHeight;
 
         // If the row is a frozen row, no vertical scroll needed for it
         if (row >= frozenRowCount)
@@ -1029,8 +1037,7 @@ public class GridInputController
             float scrollableRowTop = (row - frozenRowCount) * style.RowHeight;
             float scrollableRowBottom = scrollableRowTop + style.RowHeight;
 
-            float fixedBands = groupPanelHeight + style.HeaderHeight + topSummaryHeight + frozenRowHeight + pinnedFooterHeight;
-            float visibleHeight = Math.Max(style.RowHeight, scroll.ViewportHeight - fixedBands);
+            float visibleHeight = Math.Max(style.RowHeight, GetScrollableRowsViewportHeight(scroll, style, dataSource));
 
             if (scrollableRowTop < scroll.OffsetY)
                 scroll.OffsetY = scrollableRowTop;

@@ -18,19 +18,23 @@
                    Padding="16,12"
                    Grid.Row="0" />
 
-        <StackPanel Orientation="Horizontal"
-                    Grid.Row="1"
-                    Padding="16,4"
-                    Spacing="8">
-            <Button Content="Group: Department" Click="OnGroupByDepartmentClicked" />
-            <Button Content="Group: Level" Click="OnGroupByLevelClicked" />
-            <Button Content="Group: Both" Click="OnGroupByBothClicked" />
-            <Button Content="Clear Groups" Click="OnClearGroupsClicked" />
-            <Button Content="Expand All" Click="OnExpandAllClicked" />
-            <Button Content="Collapse All" Click="OnCollapseAllClicked" />
-            <Button x:Name="groupSummaryToggle" Content="Add Group Summary" Click="OnAddGroupSummaryClicked" />
-            <Button x:Name="filterToggle" Content="Filtering: ON" Click="OnToggleFilteringClicked" />
-        </StackPanel>
+        <!-- Scrolls horizontally so every action stays reachable on phone-width viewports. -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal"
+                        Padding="16,4"
+                        Spacing="8">
+                <Button Content="Group: Department" Click="OnGroupByDepartmentClicked" />
+                <Button Content="Group: Level" Click="OnGroupByLevelClicked" />
+                <Button Content="Group: Both" Click="OnGroupByBothClicked" />
+                <Button Content="Clear Groups" Click="OnClearGroupsClicked" />
+                <Button Content="Expand All" Click="OnExpandAllClicked" />
+                <Button Content="Collapse All" Click="OnCollapseAllClicked" />
+                <Button x:Name="groupSummaryToggle" Content="Add Group Summary" Click="OnAddGroupSummaryClicked" />
+                <Button x:Name="filterToggle" Content="Filtering: ON" Click="OnToggleFilteringClicked" />
+            </StackPanel>
+        </ScrollViewer>
 
         <kumiko:DataGridView x:Name="kumiko"
                              Grid.Row="2"

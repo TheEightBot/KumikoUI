@@ -243,6 +243,38 @@ public class PinnedBottomSummaryTests
         Assert.Equal(4 * grid.Style.RowHeight, grid.Scroll.OffsetY, 2);
     }
 
+    [Fact]
+    public void PageDown_WithSeveralPinnedSummaries_NeverSkipsUnseenRows()
+    {
+        // 400 px viewport, 40 px header, five 36 px pinned summaries (180 px) → 180 px of rows = 5 rows.
+        var grid = CreateGrid();
+        for (int i = 2; i <= 5; i++)
+        {
+            grid.Source.AddTableSummaryRow(new TableSummaryRow
+            {
+                Name = $"Totals{i}",
+                Position = SummaryPosition.Bottom,
+                Columns = { new SummaryColumnDescription { PropertyName = "Age", SummaryType = SummaryType.Count } },
+            });
+        }
+        grid.Render();
+        grid.Selection.CurrentCell = new CellPosition(0, 0);
+        int rowsPerPage = (int)((grid.FooterTop - grid.Style.HeaderHeight) / grid.Style.RowHeight);
+        Assert.Equal(5, rowsPerPage);
+
+        for (int press = 1; press <= 6; press++)
+        {
+            int before = grid.Selection.CurrentCell.Row;
+            grid.Key(GridKey.PageDown);
+            grid.Render();
+
+            int row = grid.Selection.CurrentCell.Row;
+            Assert.True(row - before <= rowsPerPage, $"PageDown jumped {row - before} rows; only {rowsPerPage} fit");
+            float rowBottom = grid.Style.HeaderHeight + (row + 1) * grid.Style.RowHeight - grid.Scroll.OffsetY;
+            Assert.True(rowBottom <= grid.FooterTop + 0.01f, $"row {row} hidden behind the footer");
+        }
+    }
+
     // ── Editing next to the footer ────────────────────────────────
 
     [Fact]

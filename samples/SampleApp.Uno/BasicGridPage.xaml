@@ -21,17 +21,21 @@
                    Grid.Row="0" />
 
         <!-- Demo buttons (WrapPanel-like row of toggles) -->
-        <StackPanel Orientation="Horizontal"
-                    Grid.Row="1"
-                    Padding="16,4"
-                    Spacing="8">
-            <Button Content="Add Row" Click="OnAddRowClicked" />
-            <Button Content="Remove Last Row" Click="OnRemoveLastRowClicked" />
-            <Button Content="Update Random Salary" Click="OnUpdateRandomSalaryClicked" />
-            <Button Content="Randomize Ratings" Click="OnRandomizeRatingsClicked" />
-            <Button x:Name="themeToggle" Content="Theme: Light" Click="OnToggleThemeClicked" />
-            <Button x:Name="selectionModeToggle" Content="Select: All" Click="OnToggleSelectionModeClicked" />
-        </StackPanel>
+        <!-- Scrolls horizontally so every action stays reachable on phone-width viewports. -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal"
+                        Padding="16,4"
+                        Spacing="8">
+                <Button Content="Add Row" Click="OnAddRowClicked" />
+                <Button Content="Remove Last Row" Click="OnRemoveLastRowClicked" />
+                <Button Content="Update Random Salary" Click="OnUpdateRandomSalaryClicked" />
+                <Button Content="Randomize Ratings" Click="OnRandomizeRatingsClicked" />
+                <Button x:Name="themeToggle" Content="Theme: Light" Click="OnToggleThemeClicked" />
+                <Button x:Name="selectionModeToggle" Content="Select: All" Click="OnToggleSelectionModeClicked" />
+            </StackPanel>
+        </ScrollViewer>
 
         <kumiko:DataGridView x:Name="kumiko"
                              Grid.Row="2"
