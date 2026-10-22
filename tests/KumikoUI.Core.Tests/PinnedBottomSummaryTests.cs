@@ -11,7 +11,7 @@ namespace KumikoUI.Core.Tests;
 public class PinnedBottomSummaryTests
 {
     private const float ViewportWidth = 400f;
-    private const float ViewportHeight = 400f;
+    private const float DefaultViewportHeight = 400f;
 
     private sealed class Person
     {
@@ -23,12 +23,14 @@ public class PinnedBottomSummaryTests
     {
         public DataGridSource Source { get; } = new();
         public DataGridStyle Style { get; } = new();
-        public ScrollState Scroll { get; } = new() { ViewportWidth = ViewportWidth, ViewportHeight = ViewportHeight };
+        public ScrollState Scroll { get; init; } = new() { ViewportWidth = ViewportWidth, ViewportHeight = DefaultViewportHeight };
         public SelectionModel Selection { get; } = new();
         public GridInputController Input { get; } = new();
         public DataGridRenderer Renderer { get; } = new();
 
-        /// <summary>Viewport Y of the pinned footer's top edge (no grouping panel).</summary>
+        public float ViewportHeight => Scroll.ViewportHeight;
+
+        /// <summary>Viewport Y of the pinned footer's top edge (anchored to the viewport bottom).</summary>
         public float FooterTop => ViewportHeight - Source.BottomSummaryCount * Style.SummaryRowHeight;
 
         public RecordingDrawingContext Render()
@@ -45,9 +47,10 @@ public class PinnedBottomSummaryTests
             new GridHitTester().HitTest(x, y, Scroll, Style, Source.Columns, Source.RowCount, Source);
     }
 
-    private static Grid CreateGrid(int rowCount = 100, bool pinned = true, int frozenRows = 0, bool grouped = false)
+    private static Grid CreateGrid(int rowCount = 100, bool pinned = true, int frozenRows = 0, bool grouped = false,
+        float viewportHeight = DefaultViewportHeight)
     {
-        var grid = new Grid();
+        var grid = new Grid { Scroll = new ScrollState { ViewportWidth = ViewportWidth, ViewportHeight = viewportHeight } };
         grid.Style.PinBottomSummaryRows = pinned;
         grid.Source.SetColumns(new[]
         {
@@ -89,7 +92,7 @@ public class PinnedBottomSummaryTests
         grid.Scroll.OffsetY = 1000;
         grid.Scroll.ClampOffset();
 
-        Assert.Equal(HitRegion.TableSummaryRow, grid.HitTest(50, ViewportHeight - 1).Region);
+        Assert.Equal(HitRegion.TableSummaryRow, grid.HitTest(50, grid.ViewportHeight - 1).Region);
     }
 
     [Fact]
@@ -109,7 +112,43 @@ public class PinnedBottomSummaryTests
         var grid = CreateGrid(grouped: true);
 
         // The footer is anchored to the viewport bottom regardless of the grouping panel above the header.
-        Assert.Equal(HitRegion.TableSummaryRow, grid.HitTest(50, ViewportHeight - 5).Region);
+        Assert.Equal(HitRegion.TableSummaryRow, grid.HitTest(50, grid.ViewportHeight - 5).Region);
+    }
+
+    [Fact]
+    public void HitTest_ShortViewport_FooterOverlappingHeader_ReturnsTableSummaryRow()
+    {
+        // 60 px viewport: header 0–40, footer 24–60 drawn over the header's lower part.
+        var grid = CreateGrid(viewportHeight: 60);
+        Assert.True(grid.FooterTop < grid.Style.HeaderHeight);
+
+        Assert.Equal(HitRegion.TableSummaryRow, grid.HitTest(50, grid.FooterTop + 6).Region);
+        Assert.Equal(HitRegion.HeaderCell, grid.HitTest(50, grid.FooterTop - 4).Region);
+    }
+
+    [Fact]
+    public void Tap_ShortViewport_FooterOverHeader_DoesNotSort()
+    {
+        var grid = CreateGrid(viewportHeight: 60);
+        float y = grid.FooterTop + 6;
+
+        grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Pressed },
+            grid.Scroll, grid.Selection, grid.Style, grid.Source);
+        grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Released },
+            grid.Scroll, grid.Selection, grid.Style, grid.Source);
+
+        Assert.Empty(grid.Source.ActiveSortColumns);
+        Assert.Equal("P000", grid.Source.GetCellDisplayText(0, grid.Source.Columns[0]));
+    }
+
+    [Fact]
+    public void HitTest_ShortViewport_FooterOverlappingGroupingPanel_ReturnsTableSummaryRow()
+    {
+        // Grouping panel occupies the top band; a viewport shorter than panel + footer makes them overlap.
+        var grid = CreateGrid(grouped: true, viewportHeight: 50);
+        Assert.True(grid.FooterTop < grid.Style.GroupPanelHeight);
+
+        Assert.Equal(HitRegion.TableSummaryRow, grid.HitTest(50, grid.FooterTop + 2).Region);
     }
 
     [Fact]
@@ -117,7 +156,7 @@ public class PinnedBottomSummaryTests
     {
         var grid = CreateGrid(pinned: false);
 
-        var hit = grid.HitTest(50, ViewportHeight - 5);
+        var hit = grid.HitTest(50, grid.ViewportHeight - 5);
 
         Assert.Equal(HitRegion.Cell, hit.Region);
     }
