@@ -74,6 +74,11 @@
     <ProjectReference Include="../KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" UndefineProperties="TargetFramework;TargetFrameworks" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Lets the Uno test project exercise internal, platform-parameterised mapping overloads. -->
+    <InternalsVisibleTo Include="KumikoUI.Uno.Tests" />
+  </ItemGroup>
+
   <!--
     KumikoUIHostingExtensions.UseKumikoUI extends Microsoft.Extensions.Hosting.IHostBuilder
     (the host obtained from IApplicationBuilder in an Uno app's App.xaml.cs — see docs/uno/03).

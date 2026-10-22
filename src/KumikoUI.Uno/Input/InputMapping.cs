@@ -55,22 +55,50 @@ public static class InputMapping
 
     /// <summary>
     /// Maps WinUI <see cref="VirtualKeyModifiers"/> flags to KumikoUI.Core's
-    /// <see cref="InputModifiers"/> flags. <c>Menu</c> is Alt; <c>Windows</c> maps to
-    /// <see cref="InputModifiers.Meta"/>.
+    /// <see cref="InputModifiers"/> flags. <c>Menu</c> is Alt; <c>Windows</c> (the Command key on
+    /// Apple keyboards) maps to <see cref="InputModifiers.Meta"/>, and also to
+    /// <see cref="InputModifiers.Control"/> where Command is the shortcut modifier
+    /// (see <see cref="CommandActsAsControl"/>).
     /// </summary>
     public static InputModifiers ToInputModifiers(VirtualKeyModifiers mods)
+        => ToInputModifiers(mods, CommandActsAsControl);
+
+    /// <summary>
+    /// True on Apple platforms (macOS desktop, iOS, Mac Catalyst) and in the browser, where the
+    /// Command key — reported by WinUI/Uno as <see cref="VirtualKeyModifiers.Windows"/> — is the
+    /// primary shortcut modifier. KumikoUI.Core treats <see cref="InputModifiers.Control"/> as
+    /// "Ctrl on Windows/Linux, Cmd on Mac", so on these platforms Command must also set
+    /// <see cref="InputModifiers.Control"/> for Cmd+A/C/V/X, Cmd-click toggle selection and
+    /// Cmd-click multi-sort to work. In the browser the Windows key never reaches a page with a
+    /// shortcut, so treating Meta as Command there is safe on every OS.
+    /// </summary>
+    internal static bool CommandActsAsControl { get; } =
+        OperatingSystem.IsMacOS() || OperatingSystem.IsIOS() ||
+        OperatingSystem.IsMacCatalyst() || OperatingSystem.IsBrowser();
+
+    /// <summary>
+    /// Folds WinUI modifier flags into <see cref="InputModifiers"/>. The Windows/Command key always
+    /// sets <see cref="InputModifiers.Meta"/>; when <paramref name="commandActsAsControl"/> is true it
+    /// additionally sets <see cref="InputModifiers.Control"/> (see <see cref="CommandActsAsControl"/>).
+    /// </summary>
+    internal static InputModifiers ToInputModifiers(VirtualKeyModifiers mods, bool commandActsAsControl)
     {
         var result = InputModifiers.None;
         if ((mods & VirtualKeyModifiers.Shift) != 0) result |= InputModifiers.Shift;
         if ((mods & VirtualKeyModifiers.Control) != 0) result |= InputModifiers.Control;
         if ((mods & VirtualKeyModifiers.Menu) != 0) result |= InputModifiers.Alt; // Menu == Alt
-        if ((mods & VirtualKeyModifiers.Windows) != 0) result |= InputModifiers.Meta;
+        if ((mods & VirtualKeyModifiers.Windows) != 0)
+        {
+            result |= InputModifiers.Meta;
+            if (commandActsAsControl) result |= InputModifiers.Control;
+        }
         return result;
     }
 
     /// <summary>
     /// Reads the live modifier-key state for the current thread and folds it into
-    /// <see cref="InputModifiers"/>. This is the WinUI 3 way to read modifiers during
+    /// <see cref="InputModifiers"/> with the same rules as <see cref="ToInputModifiers(VirtualKeyModifiers)"/>
+    /// (so keyboard and pointer dispatch agree). This is the WinUI 3 way to read modifiers during
     /// <c>KeyDown</c>/<c>CharacterReceived</c> (where <c>CoreWindow.GetKeyState</c> returns null and
     /// Uno's <c>KeyRoutedEventArgs.KeyboardModifiers</c> is <c>[NotImplemented]</c> on Skia/WASM).
     /// Backed by Uno's keyboard-state tracker on Skia and native key state on Windows. Defensively
@@ -81,13 +109,13 @@ public static class InputMapping
     {
         try
         {
-            var result = InputModifiers.None;
-            if (IsDown(VirtualKey.Shift)) result |= InputModifiers.Shift;
-            if (IsDown(VirtualKey.Control)) result |= InputModifiers.Control;
-            if (IsDown(VirtualKey.Menu)) result |= InputModifiers.Alt;
+            var mods = VirtualKeyModifiers.None;
+            if (IsDown(VirtualKey.Shift)) mods |= VirtualKeyModifiers.Shift;
+            if (IsDown(VirtualKey.Control)) mods |= VirtualKeyModifiers.Control;
+            if (IsDown(VirtualKey.Menu)) mods |= VirtualKeyModifiers.Menu;
             if (IsDown(VirtualKey.LeftWindows) || IsDown(VirtualKey.RightWindows))
-                result |= InputModifiers.Meta;
-            return result;
+                mods |= VirtualKeyModifiers.Windows;
+            return ToInputModifiers(mods);
         }
         catch (NotImplementedException)
         {

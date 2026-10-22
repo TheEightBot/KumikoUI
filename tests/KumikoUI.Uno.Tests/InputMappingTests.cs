@@ -153,12 +153,53 @@ public class InputMappingTests
     [InlineData(VirtualKeyModifiers.Control, InputModifiers.Control)]
     // Menu == Alt in WinUI nomenclature.
     [InlineData(VirtualKeyModifiers.Menu, InputModifiers.Alt)]
-    // The Windows/Command key maps to Meta.
+    // The Windows key maps to Meta (Windows/Linux semantics).
     [InlineData(VirtualKeyModifiers.Windows, InputModifiers.Meta)]
     public void ToInputModifiers_SingleFlag_MapsToMatchingModifier(
         VirtualKeyModifiers mods, InputModifiers expected)
     {
-        Assert.Equal(expected, InputMapping.ToInputModifiers(mods));
+        Assert.Equal(expected, InputMapping.ToInputModifiers(mods, commandActsAsControl: false));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // ToInputModifiers — Apple / browser Command key
+    // ──────────────────────────────────────────────────────────────────────
+
+    /// <summary>On Apple platforms and in the browser, Command is Core's Control (shortcuts, toggle-click).</summary>
+    [Fact]
+    public void ToInputModifiers_CommandOnApple_SetsControlAndMeta()
+    {
+        var result = InputMapping.ToInputModifiers(VirtualKeyModifiers.Windows, commandActsAsControl: true);
+
+        Assert.Equal(InputModifiers.Control | InputModifiers.Meta, result);
+    }
+
+    [Fact]
+    public void ToInputModifiers_CommandShiftOnApple_SetsControlShiftAndMeta()
+    {
+        var result = InputMapping.ToInputModifiers(
+            VirtualKeyModifiers.Windows | VirtualKeyModifiers.Shift, commandActsAsControl: true);
+
+        Assert.Equal(InputModifiers.Control | InputModifiers.Shift | InputModifiers.Meta, result);
+    }
+
+    [Fact]
+    public void ToInputModifiers_ControlOnApple_StaysControl()
+    {
+        var result = InputMapping.ToInputModifiers(VirtualKeyModifiers.Control, commandActsAsControl: true);
+
+        Assert.Equal(InputModifiers.Control, result);
+    }
+
+    /// <summary>The public overload applies the current platform's rule (keyboard and pointer paths share it).</summary>
+    [Fact]
+    public void ToInputModifiers_DefaultOverload_UsesPlatformRule()
+    {
+        var expected = InputMapping.CommandActsAsControl
+            ? InputModifiers.Control | InputModifiers.Meta
+            : InputModifiers.Meta;
+
+        Assert.Equal(expected, InputMapping.ToInputModifiers(VirtualKeyModifiers.Windows));
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -184,7 +225,7 @@ public class InputMappingTests
         var all = VirtualKeyModifiers.Shift | VirtualKeyModifiers.Control
                 | VirtualKeyModifiers.Menu | VirtualKeyModifiers.Windows;
 
-        var result = InputMapping.ToInputModifiers(all);
+        var result = InputMapping.ToInputModifiers(all, commandActsAsControl: false);
 
         Assert.Equal(
             InputModifiers.Shift | InputModifiers.Control | InputModifiers.Alt | InputModifiers.Meta,
