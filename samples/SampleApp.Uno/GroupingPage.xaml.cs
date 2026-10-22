@@ -111,13 +111,23 @@ public sealed partial class GroupingPage : Page
                 SummaryType = SummaryType.Count,
                 Label = "Count: "
             });
-            summaryRow.Columns.Add(new SummaryColumnDescription
+            kumiko.DataSource.AddGroupSummaryRow(summaryRow);
+
+            // The salary average goes in its own row: a summary row shows one aggregate per column
+            // (several aggregates of the same property in one row are tracked in #19).
+            var averageRow = new GroupSummaryRow
+            {
+                Name = "GroupAverages",
+                Title = "Group Average"
+            };
+            averageRow.Columns.Add(new SummaryColumnDescription
             {
                 PropertyName = "Salary",
                 SummaryType = SummaryType.Average,
-                Format = "C0"
+                Format = "C0",
+                Label = "Avg: "
             });
-            kumiko.DataSource.AddGroupSummaryRow(summaryRow);
+            kumiko.DataSource.AddGroupSummaryRow(averageRow);
             _hasGroupSummary = true;
             groupSummaryToggle.Content = "Remove Group Summary";
         }

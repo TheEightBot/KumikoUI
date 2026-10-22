@@ -1236,6 +1236,27 @@ public class GridInputController
         var column = dataSource.Columns[col];
         if (column.IsReadOnly) return;
 
+        // Bring the cell fully into view first, so the editor never opens partly hidden under the
+        // header/frozen rows or straddling the pinned bottom summary footer (which is drawn below the
+        // editor and would otherwise share its screen area).
+        float offsetXBefore = scroll.OffsetX, offsetYBefore = scroll.OffsetY;
+        EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
+        float scrolledX = scroll.OffsetX - offsetXBefore, scrolledY = scroll.OffsetY - offsetYBefore;
+        if (triggeringTap != null && (scrolledX != 0 || scrolledY != 0))
+        {
+            // The cell moved under the finger: keep the forwarded tap on the same spot of the cell.
+            triggeringTap = new GridPointerEventArgs
+            {
+                X = triggeringTap.X - scrolledX,
+                Y = triggeringTap.Y - scrolledY,
+                Action = triggeringTap.Action,
+                Button = triggeringTap.Button,
+                Modifiers = triggeringTap.Modifiers,
+                ClickCount = triggeringTap.ClickCount,
+                TimestampMs = triggeringTap.TimestampMs,
+            };
+        }
+
         // Calculate cell bounds on screen (accounting for group panel offset and top summaries)
         float groupPanelOffset = dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
         float topSummaryHeight = dataSource.TopSummaryCount * style.SummaryRowHeight;

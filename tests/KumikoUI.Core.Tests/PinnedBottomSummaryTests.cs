@@ -243,6 +243,34 @@ public class PinnedBottomSummaryTests
         Assert.Equal(4 * grid.Style.RowHeight, grid.Scroll.OffsetY, 2);
     }
 
+    // ── Editing next to the footer ────────────────────────────────
+
+    [Fact]
+    public void DoubleTap_OnRowStraddlingFooter_ScrollsItAboveFooterBeforeEditing()
+    {
+        var grid = CreateGrid();
+        grid.Input.EditSession = new KumikoUI.Core.Editing.EditSession { Style = grid.Style };
+
+        // Default geometry: rows start at 40 px, 36 px tall; the footer starts at 364 px. Scrolled by half
+        // a row, row 9 spans 346–382 and straddles the footer edge; tap its visible part (358 px).
+        grid.Scroll.OffsetY = 18;
+        float y = grid.FooterTop - 6;
+        foreach (var clicks in new[] { 1, 2 })
+        {
+            grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Pressed, ClickCount = clicks },
+                grid.Scroll, grid.Selection, grid.Style, grid.Source);
+            grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Released, ClickCount = clicks },
+                grid.Scroll, grid.Selection, grid.Style, grid.Source);
+        }
+
+        var editor = grid.Input.EditSession.ActiveEditor;
+        Assert.True(grid.Input.EditSession.IsEditing);
+        Assert.NotNull(editor);
+        Assert.Equal(9, grid.Selection.CurrentCell.Row);
+        Assert.True(editor!.Bounds.Bottom <= grid.FooterTop + 0.01f,
+            $"editor bottom {editor.Bounds.Bottom} overlaps the footer at {grid.FooterTop}");
+    }
+
     // ── Z-order ───────────────────────────────────────────────────
 
     [Fact]
