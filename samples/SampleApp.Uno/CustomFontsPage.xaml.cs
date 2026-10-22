@@ -229,8 +229,8 @@ public class TaskItem : INotifyPropertyChanged
 /// </summary>
 internal sealed class IconFontCellRenderer : ICellRenderer
 {
-    private readonly string _fontFamily;
-    private readonly float _fontSize;
+    // Cached once: the font never changes, and only the colour varies per cell, so no per-repaint allocations.
+    private readonly GridPaint _paint;
 
     /// <param name="fontFamily">
     /// Family name registered in <see cref="KumikoUI.SkiaSharp.SkiaFontRegistrar"/>.
@@ -238,8 +238,7 @@ internal sealed class IconFontCellRenderer : ICellRenderer
     /// <param name="fontSize">Glyph size in pixels.</param>
     public IconFontCellRenderer(string fontFamily, float fontSize)
     {
-        _fontFamily = fontFamily;
-        _fontSize = fontSize;
+        _paint = new GridPaint { IsAntiAlias = true, Font = new GridFont(fontFamily, fontSize) };
     }
 
     /// <inheritdoc />
@@ -256,15 +255,9 @@ internal sealed class IconFontCellRenderer : ICellRenderer
         if (string.IsNullOrEmpty(displayText))
             return;
 
-        var textColor = isSelected ? style.SelectionTextColor : style.CellTextColor;
-        var paint = new GridPaint
-        {
-            Color = textColor,
-            IsAntiAlias = true,
-            Font = new GridFont(_fontFamily, _fontSize),
-        };
+        _paint.Color = isSelected ? style.SelectionTextColor : style.CellTextColor;
 
-        ctx.DrawTextInRect(displayText, cellRect, paint,
+        ctx.DrawTextInRect(displayText, cellRect, _paint,
             GridTextAlignment.Center, GridVerticalAlignment.Center);
     }
 }

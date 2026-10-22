@@ -10,7 +10,7 @@
         matching page. The first item is selected in code-behind so the basic grid shows on launch.
     -->
     <NavigationView x:Name="NavView"
-                    PaneDisplayMode="Left"
+                    PaneDisplayMode="Auto"
                     IsBackButtonVisible="Collapsed"
                     IsSettingsVisible="False"
                     SelectionChanged="OnSelectionChanged">
