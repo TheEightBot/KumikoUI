@@ -63,7 +63,17 @@ public class GridHitTester
         IReadOnlyList<DataGridColumn> columns, int totalRows,
         DataGridSource? dataSource = null)
     {
-        // Check grouping panel area first
+        // Pinned bottom summary footer first: it is drawn last, at the bottom of the viewport, over the
+        // scrolling rows — and over the header and grouping panel when the viewport is short — so a
+        // point inside it must never reach anything underneath.
+        int bottomSummaryCount = dataSource?.BottomSummaryCount ?? 0;
+        float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(bottomSummaryCount);
+        if (pinnedFooterHeight > 0 && viewportY >= scroll.ViewportHeight - pinnedFooterHeight)
+        {
+            return new HitTestResult { Region = HitRegion.TableSummaryRow, ContentX = viewportX, ContentY = viewportY };
+        }
+
+        // Check grouping panel area
         float groupPanelOffset = 0;
         if (dataSource != null && dataSource.IsGroupingActive)
         {
@@ -148,6 +158,16 @@ public class GridHitTester
 
         // Data area — find row (offset by top summary height and frozen rows)
         float dataAreaTop = style.HeaderHeight + topSummaryHeight;
+
+        // Unpinned bottom summary rows scroll with the content, directly after the last row.
+        if (pinnedFooterHeight == 0 && bottomSummaryCount > 0)
+        {
+            float bottomSummaryTop = dataAreaTop + totalRows * style.RowHeight - scroll.OffsetY;
+            if (adjustedY >= bottomSummaryTop && adjustedY < bottomSummaryTop + bottomSummaryCount * style.SummaryRowHeight)
+            {
+                return new HitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
+            }
+        }
         int row;
 
         if (frozenRowCount > 0 && adjustedY >= dataAreaTop && adjustedY < dataAreaTop + frozenRowHeight)
