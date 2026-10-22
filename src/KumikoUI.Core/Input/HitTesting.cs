@@ -142,12 +142,31 @@ public class GridHitTester
             return new HitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
         }
 
+        // Pinned bottom summary footer: fixed band at the bottom of the viewport, drawn over the
+        // scrolling rows. Taps on it must not reach the data row underneath.
+        int bottomSummaryCount = dataSource?.BottomSummaryCount ?? 0;
+        float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(bottomSummaryCount);
+        if (pinnedFooterHeight > 0 && adjustedY >= scroll.ViewportHeight - groupPanelOffset - pinnedFooterHeight)
+        {
+            return new HitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
+        }
+
         // Compute frozen rows
         int frozenRowCount = dataSource?.EffectiveFrozenRowCount ?? 0;
         float frozenRowHeight = frozenRowCount * style.RowHeight;
 
         // Data area — find row (offset by top summary height and frozen rows)
         float dataAreaTop = style.HeaderHeight + topSummaryHeight;
+
+        // Unpinned bottom summary rows scroll with the content, directly after the last row.
+        if (pinnedFooterHeight == 0 && bottomSummaryCount > 0)
+        {
+            float bottomSummaryTop = dataAreaTop + totalRows * style.RowHeight - scroll.OffsetY;
+            if (adjustedY >= bottomSummaryTop && adjustedY < bottomSummaryTop + bottomSummaryCount * style.SummaryRowHeight)
+            {
+                return new HitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
+            }
+        }
         int row;
 
         if (frozenRowCount > 0 && adjustedY >= dataAreaTop && adjustedY < dataAreaTop + frozenRowHeight)
