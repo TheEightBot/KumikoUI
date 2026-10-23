@@ -24,6 +24,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
 
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
@@ -55,11 +57,11 @@ jobs:
       # Validate that packages are packable (dry run — no push)
       - name: Pack — Core (dry run)
         run: dotnet pack src/KumikoUI.Core/KumikoUI.Core.csproj
-          --no-restore -c Release -p:Version=0.0.0-ci -o /tmp/ci-pack
+          --no-restore -c Release -o /tmp/ci-pack
 
       - name: Pack — SkiaSharp (dry run)
         run: dotnet pack src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
-          --no-restore -c Release -p:Version=0.0.0-ci -o /tmp/ci-pack
+          --no-restore -c Release -o /tmp/ci-pack
 
   # ─── Build KumikoUI.Maui (all TFMs including Windows requires Windows runner) ─
   build-maui:
@@ -69,6 +71,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
 
       - name: Setup .NET + MAUI workloads (pinned)
         uses: ./.github/actions/setup-dotnet
@@ -85,7 +89,7 @@ jobs:
       # Validate packability (dry run)
       - name: Pack — Maui (dry run)
         run: dotnet pack src/KumikoUI.Maui/KumikoUI.Maui.csproj
-          --no-restore -c Release -p:Version=0.0.0-ci -o C:\ci-pack
+          --no-restore -c Release -o C:\ci-pack
 
   # ─── Build KumikoUI.Uno (multi-head Uno library — all heads cross-compile on Windows) ─
   build-uno:
@@ -95,6 +99,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
 
       - name: Setup .NET + Uno workloads (pinned)
         uses: ./.github/actions/setup-dotnet
@@ -111,7 +117,7 @@ jobs:
       # Validate packability (dry run — exercises the full multi-head pack)
       - name: Pack — Uno (dry run)
         run: dotnet pack src/KumikoUI.Uno/KumikoUI.Uno.csproj
-          --no-restore -c Release -p:Version=0.0.0-ci -o C:\ci-pack
+          --no-restore -c Release -o C:\ci-pack
 
       # Uno input-mapping unit tests (net10.0-desktop head)
       - name: Test — Uno
