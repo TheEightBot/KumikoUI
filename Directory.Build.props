@@ -1,16 +1,25 @@
 <Project>
   <!--
     Shared NuGet package metadata inherited by every project in the repository.
-    Per-project values (PackageId, Version, Description, PackageTags) are kept
-    in the individual .csproj files.
+    Per-project values (PackageId, Description, PackageTags) are kept in the individual .csproj files.
 
-    The Version can be overridden at build time by passing /p:Version=x.y.z
-    (done automatically by the GitHub Actions publish workflow).
+    Versions come from git tags via MinVer (https://github.com/adamralph/minver): a commit tagged
+    `v1.2.3` builds 1.2.3; any other commit builds the next version as a prerelease, e.g.
+    0.2.0-alpha.0.5 (5 commits after the last tag). All four packages always share one version.
   -->
   <PropertyGroup>
     <Authors>Eight-Bot, Inc.; Michael Stonis</Authors>
     <Company>Eight-Bot, Inc.</Company>
-    <Copyright>Copyright © Eight-Bot, Inc. $([System.DateTime]::UtcNow.Year)</Copyright>
+    <!-- Fixed year (not the build date) so package metadata is reproducible; bump when releasing in a new year. -->
+    <Copyright>Copyright © Eight-Bot, Inc. 2026</Copyright>
+
+    <!-- Version from git tags (MinVer). Untagged builds after v0.1.x become 0.2.0-alpha.0.N. -->
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerMinimumMajorMinor>0.2</MinVerMinimumMajorMinor>
+
+    <!-- Symbol packages (.snupkg) for every packable project, locally and in CI. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/TheEightBot/KumikoUI</PackageProjectUrl>
@@ -62,8 +71,11 @@
     <None Include="$(MSBuildThisFileDirectory)images/logo.png" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
-  <!-- SourceLink for GitHub (requires Microsoft.SourceLink.GitHub package) -->
-  <ItemGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
-    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
+  <!--
+    Source Link is built into the .NET SDK (8+) and enabled by PublishRepositoryUrl above, so no
+    Microsoft.SourceLink.GitHub reference is needed. MinVer computes the version at build time.
+  -->
+  <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="All" />
   </ItemGroup>
 </Project>

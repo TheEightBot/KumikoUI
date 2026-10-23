@@ -5,11 +5,9 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'          # e.g. v1.2.3
       - 'v[0-9]+.[0-9]+.[0-9]+-*'         # e.g. v1.2.3-beta.1
+  # Manual runs are allowed only against a version tag (choose the tag in "Use workflow from"),
+  # e.g. to retry a failed publish. The version always comes from the tag, never from free input.
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Package version (e.g. 1.2.3 or 1.2.3-beta.1) — overrides the tag'
-        required: true
 
 permissions:
   contents: write   # needed to create the GitHub Release
@@ -20,7 +18,7 @@ env:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # 1. Resolve the version string from tag or manual input
+  # 1. Resolve and validate the version: must be a v* tag on main, and MinVer must agree
   # ─────────────────────────────────────────────────────────────────────────────
   resolve-version:
     name: Resolve version
@@ -29,17 +27,39 @@ jobs:
       version: ${{ steps.ver.outputs.version }}
 
     steps:
-      - name: Determine version
+      - name: Require a version tag
+        run: |
+          if [ "${GITHUB_REF_TYPE}" != "tag" ] || ! printf '%s' "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Publishing runs only from a version tag (vX.Y.Z or vX.Y.Z-suffix); got ${GITHUB_REF_TYPE} '${GITHUB_REF_NAME}'."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # MinVer and the main-branch check need full history and tags
+
+      - name: Require the tagged commit to be on main
+        run: |
+          git fetch origin main --quiet
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "::error::Tag ${GITHUB_REF_NAME} points at ${GITHUB_SHA}, which is not on main."
+            exit 1
+          fi
+
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
+
+      - name: Resolve version with MinVer and compare with the tag
         id: ver
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            # Strip leading 'v' from tag (v1.2.3 → 1.2.3)
-            VERSION="${GITHUB_REF_NAME#v}"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          MINVER_VERSION=$(dotnet msbuild src/KumikoUI.Core/KumikoUI.Core.csproj -t:MinVer -getProperty:MinVerVersion -p:Configuration=Release | tail -n 1 | tr -d '[:space:]')
+          echo "Tag: $TAG_VERSION  MinVer: $MINVER_VERSION"
+          if [ "$TAG_VERSION" != "$MINVER_VERSION" ]; then
+            echo "::error::MinVer computed $MINVER_VERSION but the tag says $TAG_VERSION."
+            exit 1
           fi
-          echo "Resolved version: $VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Pack KumikoUI.Core and KumikoUI.SkiaSharp  (plain net10.0 — Linux is fine)
@@ -53,6 +73,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
 
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
@@ -67,9 +89,6 @@ jobs:
           dotnet pack src/KumikoUI.Core/KumikoUI.Core.csproj \
             --no-restore \
             -c Release \
-            -p:Version=${{ env.VERSION }} \
-            --include-symbols \
-            -p:SymbolPackageFormat=snupkg \
             -o ./artifacts
 
       - name: Pack — KumikoUI.SkiaSharp
@@ -77,13 +96,14 @@ jobs:
           dotnet pack src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj \
             --no-restore \
             -c Release \
-            -p:Version=${{ env.VERSION }} \
-            --include-symbols \
-            -p:SymbolPackageFormat=snupkg \
             -o ./artifacts
 
-      - name: List artifacts
-        run: ls -lh artifacts/
+      - name: Verify package versions
+        run: |
+          ls -lh artifacts/
+          for p in KumikoUI.Core KumikoUI.SkiaSharp; do
+            test -f "artifacts/$p.${VERSION}.nupkg" || { echo "::error::artifacts/$p.${VERSION}.nupkg not produced"; exit 1; }
+          done
 
       - name: Upload Core + SkiaSharp packages
         uses: actions/upload-artifact@v4
@@ -97,7 +117,7 @@ jobs:
         with:
           name: snupkg-core-skiasharp
           path: artifacts/*.snupkg
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 3. Pack KumikoUI.Maui (multi-target MAUI — needs Windows for Windows TFM)
@@ -111,6 +131,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
 
       - name: Setup .NET + MAUI workloads (pinned)
         uses: ./.github/actions/setup-dotnet
@@ -125,13 +147,12 @@ jobs:
           dotnet pack src/KumikoUI.Maui/KumikoUI.Maui.csproj `
             --no-restore `
             -c Release `
-            -p:Version=${{ env.VERSION }} `
-            --include-symbols `
-            -p:SymbolPackageFormat=snupkg `
             -o ./artifacts
 
-      - name: List artifacts
-        run: Get-ChildItem artifacts -Recurse | Format-Table Name, Length
+      - name: Verify package version
+        run: |
+          Get-ChildItem artifacts -Recurse | Format-Table Name, Length
+          if (-not (Get-ChildItem artifacts -Filter "*.$env:VERSION.nupkg")) { Write-Error "No package with version $env:VERSION was produced"; exit 1 }
 
       - name: Upload Maui package
         uses: actions/upload-artifact@v4
@@ -145,7 +166,7 @@ jobs:
         with:
           name: snupkg-maui
           path: artifacts/*.snupkg
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 3b. Pack KumikoUI.Uno (multi-head Uno library — all heads pack on a Windows runner)
@@ -159,6 +180,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
 
       - name: Setup .NET + Uno workloads (pinned)
         uses: ./.github/actions/setup-dotnet
@@ -173,13 +196,12 @@ jobs:
           dotnet pack src/KumikoUI.Uno/KumikoUI.Uno.csproj `
             --no-restore `
             -c Release `
-            -p:Version=${{ env.VERSION }} `
-            --include-symbols `
-            -p:SymbolPackageFormat=snupkg `
             -o ./artifacts
 
-      - name: List artifacts
-        run: Get-ChildItem artifacts -Recurse | Format-Table Name, Length
+      - name: Verify package version
+        run: |
+          Get-ChildItem artifacts -Recurse | Format-Table Name, Length
+          if (-not (Get-ChildItem artifacts -Filter "*.$env:VERSION.nupkg")) { Write-Error "No package with version $env:VERSION was produced"; exit 1 }
 
       - name: Upload Uno package
         uses: actions/upload-artifact@v4
@@ -193,7 +215,7 @@ jobs:
         with:
           name: snupkg-uno
           path: artifacts/*.snupkg
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 4. Run tests before publishing (gate publish on green tests)

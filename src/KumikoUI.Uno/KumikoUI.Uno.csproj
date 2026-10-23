@@ -44,7 +44,6 @@
     -->
     <IsPackable>true</IsPackable>
     <PackageId>KumikoUI.Uno</PackageId>
-    <Version>1.0.0</Version>
     <Description>A high-performance, fully custom-drawn KumikoUI DataGrid control for the Uno Platform. Renders via SkiaSharp (SKXamlCanvas) across Windows, desktop (Windows, macOS, Linux), WebAssembly, Android and iOS — reusing the same engine as KumikoUI.Maui.</Description>
     <PackageTags>uno;unoplatform;winui;datagrid;grid;table;skiasharp;dotnet;cross-platform</PackageTags>
   </PropertyGroup>

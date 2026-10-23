@@ -57,3 +57,21 @@ dotnet run --project samples/SampleApp.Uno -f net10.0-desktop
 - **Uno.Sdk:** update `msbuild-sdks` in `global.json` and rebuild every head; Uno changes its implicit packages between versions.
 - **Packages:** change the version in `Directory.Packages.props` only.
 - **Minimum OS versions:** change the `KumikoMin*Version` properties in `Directory.Build.props` and the README "Supported platforms" table together. They are re-baselined at each .NET major release.
+
+## Versions and releases
+
+Package versions come from git tags through [MinVer](https://github.com/adamralph/minver); no project file contains a version.
+
+- A commit tagged `vX.Y.Z` (or `vX.Y.Z-suffix`) builds exactly that version for all four packages.
+- Any other commit builds the next version as a prerelease, for example `0.2.0-alpha.0.8`: eight commits after the last tag. `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 0.2).
+- Clones need tags and history (`git fetch --tags`, no shallow clone) or MinVer falls back to `0.2.0-alpha.0`.
+
+To release, push a version tag on a commit that is on `main`:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. Symbol packages (`.snupkg`) are produced for every package by default.
+
