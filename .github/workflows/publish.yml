@@ -221,12 +221,14 @@ jobs:
   # 4. Run tests before publishing (gate publish on green tests)
   # ─────────────────────────────────────────────────────────────────────────────
   test:
-    name: Run tests
+    name: Run Core tests
     runs-on: ubuntu-latest
     needs: resolve-version
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
@@ -237,14 +239,32 @@ jobs:
           dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj \
             -c Release --logger "trx" --results-directory TestResults
 
+  test-uno:
+    name: Run Uno tests
+    runs-on: windows-latest
+    needs: resolve-version
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET + Uno workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          restore-project: src/KumikoUI.Uno/KumikoUI.Uno.csproj
+
+      - name: Test
+        run: dotnet test tests/KumikoUI.Uno.Tests/KumikoUI.Uno.Tests.csproj -c Release --logger "trx" --results-directory TestResults
+
   # ─────────────────────────────────────────────────────────────────────────────
   # 5. Publish all packages to NuGet.org and create a GitHub Release
   # ─────────────────────────────────────────────────────────────────────────────
   publish:
     name: Publish to NuGet.org
     runs-on: ubuntu-latest
-    needs: [ pack-core, pack-maui, pack-uno, test ]
-    environment: nuget-publish      # optional: require manual approval in repo settings
+    needs: [ pack-core, pack-maui, pack-uno, test, test-uno ]
+    environment: nuget-publish      # required reviewer + v* tags only (see .github/settings/README.md)
 
     steps:
       - uses: actions/checkout@v4

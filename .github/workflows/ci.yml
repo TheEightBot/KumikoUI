@@ -1,16 +1,13 @@
 name: CI
 
+# Runs on every push and pull request to main, including documentation-only changes, because the jobs
+# below are required status checks in the main-branch ruleset (.github/settings/): a path filter would
+# leave them unreported and block the pull request.
 on:
   push:
-    branches: [ main, develop ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+    branches: [ main ]
 
 concurrency:
   group: ci-${{ github.ref }}
