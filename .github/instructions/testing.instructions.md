@@ -10,7 +10,7 @@ applyTo: "tests/**"
 - One test class per source class — `GridRectTests` for `GridRect`, etc.
 - File name: `{ClassName}Tests.cs`.
 - No SkiaSharp or MAUI dependencies — `KumikoUI.Core` only.
-- Tests target `net9.0`.
+- Tests target `net10.0`.
 - Run: `dotnet test tests/KumikoUI.Core.Tests/`
 - Filter to one class: `dotnet test --filter "FullyQualifiedName~{ClassName}Tests"`
 

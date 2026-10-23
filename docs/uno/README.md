@@ -16,8 +16,8 @@ into three layers, and **only the bottom layer is platform-specific**:
 
 | Layer | Project | TFM | Knows about… | Reused for Uno? |
 |---|---|---|---|---|
-| Platform-agnostic engine | `KumikoUI.Core` | `net9.0` | nothing UI-specific — only `IDrawingContext`, models, layout, input dispatch | ✅ **unchanged** |
-| Drawing backend | `KumikoUI.SkiaSharp` | `net9.0` | a bare `SKCanvas` | ✅ **unchanged** |
+| Platform-agnostic engine | `KumikoUI.Core` | `net10.0` | nothing UI-specific — only `IDrawingContext`, models, layout, input dispatch | ✅ **unchanged** |
+| Drawing backend | `KumikoUI.SkiaSharp` | `net10.0` | a bare `SKCanvas` | ✅ **unchanged** |
 | Platform host | `KumikoUI.Maui` | `net10.0-*` | MAUI controls, native input | ➕ add a sibling `KumikoUI.Uno` |
 
 The core insight: **`KumikoUI.SkiaSharp` only needs an `SKCanvas`** — it has no MAUI dependency.
@@ -44,7 +44,7 @@ See also: [../ARCHITECTURE.md](../ARCHITECTURE.md) and [../RENDERING.md](../REND
 | ADR-1 | **Reuse `KumikoUI.SkiaSharp` via `SKXamlCanvas`** rather than writing a new `IDrawingContext`. | Maximum reuse, zero changes to Core/SkiaSharp, pixel-identical to MAUI, lowest risk. Drawing Skia-on-Skia natively on Uno's Skia targets anyway. |
 | ADR-2 | **One cross-targeted `unolib`** covering all heads (Windows, Desktop/Skia, WASM, Android, iOS, Mac Catalyst). | Uno libraries cross-target by default; supporting every head costs almost nothing at the project level. |
 | ADR-3 | **Scaffold everything with the `dotnet` CLI** (`dotnet new`, `dotnet sln add`, `dotnet add reference`). | Guarantees all Uno SDK plumbing is generated correctly; no hand-authored csproj drift. |
-| ADR-4 | **`-tfm net9.0`** for `KumikoUI.Uno`, matching Core/SkiaSharp. | Keeps the whole `src/` stack on one runtime. The template defaults to `net10.0`; flipping is one flag if desired. |
+| ADR-4 | **`net10.0`** heads for `KumikoUI.Uno`, matching Core/SkiaSharp. | Keeps the whole `src/` stack on one runtime. Originally `-tfm net9.0`; retargeted to `net10.0` in #10 because .NET 9 support ends 2026-11-10 (.NET 10 is LTS to 2028-11-14). |
 | ADR-5 | **`KumikoUI.Maui` stays untouched.** | The two hosts are independent siblings; Uno work cannot regress MAUI. |
 
 ---
@@ -52,15 +52,15 @@ See also: [../ARCHITECTURE.md](../ARCHITECTURE.md) and [../RENDERING.md](../REND
 ## 3. Dependency graph
 
 ```
-                 KumikoUI.Core            (net9.0, zero deps — UNCHANGED)
+                 KumikoUI.Core            (net10.0, zero deps — UNCHANGED)
                    ▲        ▲
                    │        │
-      KumikoUI.SkiaSharp    │              (net9.0, refs Core + SkiaSharp — UNCHANGED)
+      KumikoUI.SkiaSharp    │              (net10.0, refs Core + SkiaSharp — UNCHANGED)
             ▲   ▲           │
             │   └───────────┤
             │               │
    KumikoUI.Maui     KumikoUI.Uno          (host layer — Maui exists, Uno is new)
-   (net10.0-*)       (net9.0-<heads>)
+   (net10.0-*)       (net10.0-<heads>)
 ```
 
 `KumikoUI.Uno` references **`KumikoUI.Core`** and **`KumikoUI.SkiaSharp`** only — exactly like
@@ -75,12 +75,12 @@ template — confirm after scaffolding):
 
 | Head | TFM | Render path | Builds on |
 |---|---|---|---|
-| Windows (WinAppSDK / WinUI 3) | `net9.0-windows10.0.xxxxx.0` | `SKXamlCanvas` via `SkiaSharp.Views.WinUI` | Windows only |
-| Desktop (Skia: Win/macOS/Linux) | `net9.0-desktop` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | any OS |
-| WebAssembly | `net9.0-browserwasm` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | any OS (needs `wasm-tools`) |
-| Android | `net9.0-android` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | any OS (needs `android`) |
-| iOS | `net9.0-ios` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | macOS only |
-| Mac Catalyst | `net9.0-maccatalyst` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | macOS only |
+| Windows (WinAppSDK / WinUI 3) | `net10.0-windows10.0.xxxxx.0` | `SKXamlCanvas` via `SkiaSharp.Views.WinUI` | Windows only |
+| Desktop (Skia: Win/macOS/Linux) | `net10.0-desktop` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | any OS |
+| WebAssembly | `net10.0-browserwasm` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | any OS (needs `wasm-tools`) |
+| Android | `net10.0-android` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | any OS (needs `android`) |
+| iOS | `net10.0-ios` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | macOS only |
+| Mac Catalyst | `net10.0-maccatalyst` | `SKXamlCanvas` via `SkiaSharp.Views.Uno.WinUI` | macOS only |
 
 > `SKXamlCanvas` lives in namespace `SkiaSharp.Views.Windows` in **both** the `SkiaSharp.Views.WinUI`
 > (Windows) and `SkiaSharp.Views.Uno.WinUI` (all other heads) packages, so the host code is identical

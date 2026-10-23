@@ -15,8 +15,8 @@ pixel-perfect across iOS, Android, macOS Catalyst, and Windows.
 ## Three-Layer Architecture
 
 ```
-KumikoUI.Core         net9.0          — platform-agnostic models, layout, rendering pipeline
-KumikoUI.SkiaSharp    net9.0          — IDrawingContext → SKCanvas implementation
+KumikoUI.Core         net10.0         — platform-agnostic models, layout, rendering pipeline
+KumikoUI.SkiaSharp    net10.0         — IDrawingContext → SKCanvas implementation
 KumikoUI.Maui         net10.0-*maui*  — DataGridView control, SKCanvasView host
 ```
 
