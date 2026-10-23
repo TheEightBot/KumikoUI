@@ -1,12 +1,8 @@
 <!--
-  The Uno.Sdk version is pinned inline in the Sdk attribute (Uno.Sdk/6.5.31) rather than in a
-  global.json. The unoapp template normally writes that version into a repo-root global.json plus a
-  Directory.Packages.props (Central Package Management) and a Directory.Build.props at the output
-  root. KumikoUI intentionally keeps the repo SDK unpinned and does NOT use CPM, so those generated
-  files were removed during reconciliation and the pin lives here instead — local to this project and
-  out of the repo root. Mirrors src/KumikoUI.Uno/KumikoUI.Uno.csproj.
+  The Uno.Sdk version comes from the repo-root global.json ("msbuild-sdks"), and package versions from
+  the repo-root Directory.Packages.props (central package management), as the unoapp template sets up.
 -->
-<Project Sdk="Uno.Sdk/6.5.31">
+<Project Sdk="Uno.Sdk">
   <PropertyGroup>
     <!--
       Uno single-project head TFMs. The sample and the library KumikoUI.Uno both target .NET 10
@@ -21,8 +17,8 @@
     <UnoSingleProject>true</UnoSingleProject>
 
     <!--
-      The template put these in its generated Directory.Build.props; baked in here since that file
-      was removed (it also enabled CPM, which the repo does not use).
+      The template put these in its generated Directory.Build.props; baked in here because the repo
+      root has its own Directory.Build.props.
     -->
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -49,7 +45,7 @@
     <Description>KumikoUI.Uno sample app — exercises the DataGridView control across every Uno head.</Description>
 
     <!--
-      SkiaSharpVersion comes from the repo-root Directory.Build.props so the app's implicit SkiaSharp
+      SkiaSharpVersion comes from the repo-root Directory.Packages.props so the app's implicit SkiaSharp
       group (incl. SkiaSharp.Views.Uno.WinUI from the SkiaRenderer feature) matches KumikoUI.SkiaSharp.
       An app consuming the NuGet packages sets the same property to the version KumikoUI.Uno depends on.
     -->
@@ -72,7 +68,7 @@
     keeping the version at $(SkiaSharpVersion).
   -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <PackageReference Include="SkiaSharp.Views.WinUI" Version="$(SkiaSharpVersion)" />
+    <PackageReference Include="SkiaSharp.Views.WinUI" />
   </ItemGroup>
 
   <!--

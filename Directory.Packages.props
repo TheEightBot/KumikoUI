@@ -1,0 +1,59 @@
+<Project>
+  <!--
+    Central package management: every NuGet package version used in this repository is declared here,
+    exactly once. Project files reference packages without a Version attribute.
+    https://learn.microsoft.com/nuget/consume-packages/central-package-management
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+    <!--
+      One SkiaSharp version for the whole repository. Uno.Sdk projects also read this property for
+      their implicit SkiaSharp package group (Uno would otherwise default to 3.x). KumikoUI.SkiaSharp is
+      shared by the MAUI and Uno hosts, so mixing majors would put two incompatible native libraries in
+      one app. SkiaSharp 4's runtime assembly keeps the v3 members (they are only removed from the
+      reference assembly), so Uno's own runtime, compiled against 3.x, binds unchanged.
+    -->
+    <SkiaSharpVersion>4.153.1</SkiaSharpVersion>
+
+    <!--
+      Minimum .NET MAUI version KumikoUI.Maui supports. It becomes the package's dependency floor, so it
+      no longer floats with whatever MAUI workload the build machine has. 10.0.20 is also the floor of
+      SkiaSharp.Views.Maui.Controls 4.153.1.
+    -->
+    <MauiVersion>10.0.20</MauiVersion>
+
+    <!--
+      Version of Microsoft.Windows.Compatibility that Uno.Sdk adds implicitly to WebAssembly heads
+      (Uno 6.7 defaults to 9.0.x). 10.0.13 brings System.Security.Cryptography.Pkcs/Xml 10.0.13, which fix
+      the high-severity advisories reported against 10.0.12 (NU1903).
+    -->
+    <WindowsCompatibilityVersion>10.0.13</WindowsCompatibilityVersion>
+  </PropertyGroup>
+
+  <ItemGroup Label="Rendering (SkiaSharp)">
+    <PackageVersion Include="SkiaSharp" Version="$(SkiaSharpVersion)" />
+    <PackageVersion Include="SkiaSharp.Views" Version="$(SkiaSharpVersion)" />
+    <PackageVersion Include="SkiaSharp.Views.Maui.Controls" Version="$(SkiaSharpVersion)" />
+    <PackageVersion Include="SkiaSharp.Views.WinUI" Version="$(SkiaSharpVersion)" />
+    <PackageVersion Include="SkiaSharp.Skottie" Version="$(SkiaSharpVersion)" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="$(SkiaSharpVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="Hosts">
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Build">
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Tests">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+  </ItemGroup>
+</Project>

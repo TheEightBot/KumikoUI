@@ -909,8 +909,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor gui
 Contributions are welcome! Please open an issue before submitting a large pull request so we can discuss the approach.
 
 1. Fork the repository and create your branch from `main`.
-2. Build the solution: `dotnet build KumikoUI.sln`
-3. Run the tests: `dotnet test`
+2. Install the pinned toolchain and build as described in [CONTRIBUTING.md](CONTRIBUTING.md).
+3. Run the tests: `dotnet test tests/KumikoUI.Core.Tests` (and `tests/KumikoUI.Uno.Tests` for Uno changes).
 4. Submit a pull request with a clear description of the change.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for code structure and extension points.

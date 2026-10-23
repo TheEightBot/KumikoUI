@@ -25,10 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.x'
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
@@ -72,26 +70,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+      - name: Setup .NET + MAUI workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
         with:
-          dotnet-version: '10.x'
-
-      - name: Cache MAUI workloads
-        uses: actions/cache@v4
-        id: workload-cache
-        with:
-          path: |
-            ${{ env.USERPROFILE }}\.dotnet\toolResolverCache
-            ${{ env.PROGRAMFILES }}\dotnet\packs
-            ${{ env.PROGRAMFILES }}\dotnet\metadata\workloads
-            ${{ env.PROGRAMFILES }}\dotnet\sdk-manifests
-          key: maui-workloads-win-${{ hashFiles('**/KumikoUI.Maui.csproj') }}
-          restore-keys: maui-workloads-win-
-
-      - name: Install MAUI workloads
-        if: steps.workload-cache.outputs.cache-hit != 'true'
-        run: dotnet workload install maui --source https://api.nuget.org/v3/index.json
+          workloads: maui
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Maui/KumikoUI.Maui.csproj
@@ -114,26 +96,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+      - name: Setup .NET + Uno workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
         with:
-          dotnet-version: '10.x'
-
-      - name: Cache Uno workloads
-        uses: actions/cache@v4
-        id: workload-cache
-        with:
-          path: |
-            ${{ env.USERPROFILE }}\.dotnet\toolResolverCache
-            ${{ env.PROGRAMFILES }}\dotnet\packs
-            ${{ env.PROGRAMFILES }}\dotnet\metadata\workloads
-            ${{ env.PROGRAMFILES }}\dotnet\sdk-manifests
-          key: uno-workloads-win-${{ hashFiles('**/KumikoUI.Uno.csproj') }}
-          restore-keys: uno-workloads-win-
-
-      - name: Restore Uno workloads
-        if: steps.workload-cache.outputs.cache-hit != 'true'
-        run: dotnet workload restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
+          restore-project: src/KumikoUI.Uno/KumikoUI.Uno.csproj
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
