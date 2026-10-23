@@ -7,7 +7,7 @@ This document describes the architecture of the .NET MAUI SkiaSharp KumikoUI for
 ```
 KumikoUI/
 ├── src/
-│   ├── KumikoUI.Core/         # Platform-independent core (net9.0)
+│   ├── KumikoUI.Core/         # Platform-independent core (net10.0)
 │   │   ├── Components/          # Custom-drawn UI controls (10 types)
 │   │   ├── Data/                # Data source management (future)
 │   │   ├── Editing/             # Cell editing pipeline
@@ -15,7 +15,7 @@ KumikoUI/
 │   │   ├── Layout/              # Column width & viewport computation
 │   │   ├── Models/              # Data models, columns, styles, selection
 │   │   └── Rendering/           # Drawing abstractions, cell renderers, paint cache
-│   ├── KumikoUI.SkiaSharp/    # SkiaSharp backend (net9.0)
+│   ├── KumikoUI.SkiaSharp/    # SkiaSharp backend (net10.0)
 │   └── KumikoUI.Maui/         # .NET MAUI integration (net10.0 multi-target)
 │       ├── Hosting/             # Service registration extensions
 │       └── Platforms/           # Per-platform keyboard handling
@@ -29,9 +29,9 @@ KumikoUI/
 ## Dependency Graph
 
 ```
-KumikoUI.Core (net9.0, zero external dependencies)
+KumikoUI.Core (net10.0, zero external dependencies)
        ↑
-KumikoUI.SkiaSharp (net9.0 → SkiaSharp 3.119.2)
+KumikoUI.SkiaSharp (net10.0 → SkiaSharp 3.119.2)
        ↑
 KumikoUI.Maui (net10.0-ios/android/maccatalyst → MAUI + SkiaSharp.Views.Maui.Controls)
 ```

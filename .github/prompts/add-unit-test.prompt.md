@@ -13,7 +13,7 @@ Add xUnit tests to `tests/KumikoUI.Core.Tests/` for a class in `KumikoUI.Core`.
 - One test class per source class (e.g., `GridRectTests` for `GridRect`).
 - Test file name: `{ClassName}Tests.cs` — must match the existing naming convention.
 - No SkiaSharp or MAUI dependencies — `KumikoUI.Core` only.
-- Test project targets `net9.0`.
+- Test project targets `net10.0`.
 - Tests go in `tests/KumikoUI.Core.Tests/`.
 - Existing test files for reference: `GridRectTests.cs`, `SelectionModelTests.cs`,
   `DataGridSourceTests.cs`, `InertialScrollerTests.cs`, `GridLayoutEngineTests.cs`.

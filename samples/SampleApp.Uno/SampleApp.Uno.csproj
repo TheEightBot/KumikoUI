@@ -9,10 +9,8 @@
 <Project Sdk="Uno.Sdk/6.5.31">
   <PropertyGroup>
     <!--
-      Uno single-project head TFMs. The sample targets .NET 10 (the library KumikoUI.Uno stays on
-      net9.0 per docs/uno ADR-4; a net10.0 app binds the library's net9.0 heads via NuGet's
-      nearest-TFM match — verified on the desktop head). This lets the sample run natively on the
-      .NET 10 runtime (no DOTNET_ROLL_FORWARD). The Windows (WinAppSDK) head is conditioned on Windows
+      Uno single-project head TFMs. The sample and the library KumikoUI.Uno both target .NET 10
+      (docs/uno ADR-4, #10), so each app head binds the library's matching head directly. The Windows (WinAppSDK) head is conditioned on Windows
       only so non-Windows machines / CI don't try to build it. Only net10.0-desktop is built/verified
       locally; the other heads are CI-verified (Phase 08).
     -->
@@ -82,9 +80,9 @@
   <!--
     Reference the library under test. KumikoUI.Uno is itself a multi-head Uno project with the SAME
     head TFMs as this app, so the per-head TargetFramework MUST flow through (no UndefineProperties)
-    for the app's net9.0-desktop to bind the library's matching net9.0-desktop output. KumikoUI.Uno
+    for the app's net10.0-desktop to bind the library's matching net10.0-desktop output. KumikoUI.Uno
     transitively brings in KumikoUI.Core + KumikoUI.SkiaSharp and already shields those single-TFM
-    (net9.0-only) dependencies via its own UndefineProperties, so nothing extra is needed here.
+    (net10.0-only) dependencies via its own UndefineProperties, so nothing extra is needed here.
   -->
   <ItemGroup>
     <ProjectReference Include="../../src/KumikoUI.Uno/KumikoUI.Uno.csproj" />

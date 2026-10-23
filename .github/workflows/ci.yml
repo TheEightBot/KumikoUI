@@ -25,10 +25,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 9
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.x'
+          dotnet-version: '10.x'
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
@@ -72,12 +72,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 9 + 10
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            9.x
-            10.x
+          dotnet-version: '10.x'
 
       - name: Cache MAUI workloads
         uses: actions/cache@v4
@@ -116,12 +114,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 9 + 10
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            9.x
-            10.x
+          dotnet-version: '10.x'
 
       - name: Cache Uno workloads
         uses: actions/cache@v4
@@ -151,7 +147,7 @@ jobs:
         run: dotnet pack src/KumikoUI.Uno/KumikoUI.Uno.csproj
           --no-restore -c Release -p:Version=0.0.0-ci -o C:\ci-pack
 
-      # Uno input-mapping unit tests (net9.0-desktop head)
+      # Uno input-mapping unit tests (net10.0-desktop head)
       - name: Test — Uno
         run: dotnet test tests/KumikoUI.Uno.Tests/KumikoUI.Uno.Tests.csproj
           -c Release --logger "trx" --results-directory TestResults
