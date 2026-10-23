@@ -1,8 +1,7 @@
 {
   "sdk": {
     "version": "10.0.401",
-    "rollForward": "latestPatch",
-    "workloadVersion": "10.0.402.1"
+    "rollForward": "latestPatch"
   },
   "msbuild-sdks": {
     "Uno.Sdk": "6.7.30"

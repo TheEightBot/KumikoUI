@@ -9,7 +9,7 @@ The repository pins its toolchain so every machine and CI build the same way:
 | What | Where | Value |
 |---|---|---|
 | .NET SDK | `global.json` → `sdk.version` (roll forward: latest patch) | 10.0.401 |
-| Workload set (MAUI, iOS, Android, Mac Catalyst, WebAssembly) | `global.json` → `sdk.workloadVersion` | 10.0.402.1 |
+| Workload set used by CI (MAUI, iOS, Android, Mac Catalyst, WebAssembly) | `.github/actions/setup-dotnet/action.yml` | 10.0.402.1 |
 | Uno.Sdk | `global.json` → `msbuild-sdks` | 6.7.30 |
 | NuGet package versions | `Directory.Packages.props` (central package management) | — |
 | Package sources | `nuget.config` (nuget.org only) | — |
@@ -19,11 +19,13 @@ Package versions live only in `Directory.Packages.props`; project files referenc
 ## Setup
 
 1. Install the .NET SDK band from `global.json` (any 10.0.40x patch).
-2. Install the workloads. Because `global.json` pins a workload set, these commands install exactly that set:
+2. Install the workloads you need, ideally from the same workload set CI uses. The platform-agnostic projects (Core, SkiaSharp, their tests) need none.
 
    ```bash
-   dotnet workload install maui wasm-tools
+   dotnet workload install maui wasm-tools --version 10.0.402.1
    ```
+
+   The workload set is deliberately not pinned in `global.json`: a pin there makes every build, including Core-only builds, require that exact set to be installed.
 
    On macOS these need `sudo` when the SDK lives in a system location. `uno-check` (https://aka.platform.uno/uno-check) can verify a machine for the Uno heads.
 3. Platform requirements for app heads: Xcode for iOS and Mac Catalyst (macOS only), the Android SDK for Android, Windows for the WinAppSDK heads.
@@ -51,6 +53,6 @@ dotnet run --project samples/SampleApp.Uno -f net10.0-desktop
 
 ## Updating the toolchain
 
-- **SDK or workloads:** update `sdk.version` and `sdk.workloadVersion` together (`dotnet workload --version` prints the installed set). CI reads both from `global.json`.
+- **SDK or workloads:** update `sdk.version` in `global.json` and the workload set in `.github/actions/setup-dotnet/action.yml` together, plus the command above (`dotnet workload --version` prints the installed set). Workload sets are tied to an SDK feature band.
 - **Uno.Sdk:** update `msbuild-sdks` in `global.json` and rebuild every head; Uno changes its implicit packages between versions.
 - **Packages:** change the version in `Directory.Packages.props` only.

@@ -1,0 +1,34 @@
+name: Setup .NET and workloads
+description: >
+  Installs the .NET SDK pinned in global.json and, optionally, workloads from the pinned workload set.
+  The workload set version lives only here so CI and documentation share one value.
+
+inputs:
+  workloads:
+    description: Space-separated workloads to install from the pinned workload set (e.g. "maui"). Empty installs none.
+    required: false
+    default: ''
+  restore-project:
+    description: Project whose workloads to restore from the pinned workload set (dotnet workload restore). Empty skips.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET (version from global.json)
+      uses: actions/setup-dotnet@v4
+      with:
+        global-json-file: global.json
+
+    # Pinned workload set: identical MAUI / iOS / Android / Mac Catalyst / WebAssembly workloads on every run.
+    # Update together with the SDK band in global.json; CONTRIBUTING.md documents the same value.
+    - name: Install workloads (pinned workload set)
+      if: inputs.workloads != ''
+      shell: pwsh
+      run: dotnet workload install ${{ inputs.workloads }} --version 10.0.402.1
+
+    - name: Restore project workloads (pinned workload set)
+      if: inputs.restore-project != ''
+      shell: pwsh
+      run: dotnet workload restore ${{ inputs.restore-project }} --version 10.0.402.1

@@ -54,10 +54,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET (version from global.json)
-        uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
 
       - name: Restore
         run: |
@@ -114,15 +112,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET (version from global.json)
-        uses: actions/setup-dotnet@v4
+      - name: Setup .NET + MAUI workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
         with:
-          global-json-file: global.json
-
-      # Workload versions are pinned by "workloadVersion" in global.json (a workload set), so this
-      # installs the same MAUI workloads on every run and on every developer machine.
-      - name: Install MAUI workloads (pinned workload set)
-        run: dotnet workload install maui
+          workloads: maui
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Maui/KumikoUI.Maui.csproj
@@ -167,14 +160,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET (version from global.json)
-        uses: actions/setup-dotnet@v4
+      - name: Setup .NET + Uno workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
         with:
-          global-json-file: global.json
-
-      # Workload versions are pinned by "workloadVersion" in global.json (a workload set).
-      - name: Restore Uno workloads (pinned workload set)
-        run: dotnet workload restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
+          restore-project: src/KumikoUI.Uno/KumikoUI.Uno.csproj
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
@@ -217,10 +206,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET (version from global.json)
-        uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
 
       - name: Restore & Test
         run: |
@@ -240,10 +227,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET (version from global.json)
-        uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
 
       - name: Download all package artifacts
         uses: actions/download-artifact@v4
