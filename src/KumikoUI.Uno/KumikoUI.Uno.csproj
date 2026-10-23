@@ -1,10 +1,8 @@
 <!--
-  The Uno.Sdk version is pinned inline in the Sdk attribute (Uno.Sdk/6.5.31) rather than in a
-  global.json. The unolib template normally writes that version into a repo-root global.json, but
-  KumikoUI intentionally has none (scaffolded with `-global-json false`) so the pin lives here,
-  keeping it local to this project and out of the repo root.
+  The Uno.Sdk version comes from the repo-root global.json ("msbuild-sdks"), so the library, its tests
+  and the sample always use the same Uno version, and Uno tooling (uno-check, IDE extensions) finds it.
 -->
-<Project Sdk="Uno.Sdk/6.5.31">
+<Project Sdk="Uno.Sdk">
   <PropertyGroup>
     <!--
       Uno single-project head TFMs (originally scaffolded with `dotnet new unolib -r skia` for .NET 9; retargeted to .NET 10 in #10).
@@ -23,7 +21,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!--
-      SkiaSharpVersion comes from the repo-root Directory.Build.props (one version for every project).
+      SkiaSharpVersion comes from the repo-root Directory.Packages.props (one version for every project).
       It overrides the version Uno.Sdk would otherwise apply to the implicit SkiaSharp group
       (incl. SkiaSharp.Views.Uno.WinUI): Uno ships SkiaSharp 3.x by default, and KumikoUI uses 4.x.
       Consumers of KumikoUI.Uno therefore get SkiaSharp 4 through this package's dependencies.
@@ -58,7 +56,7 @@
     Uno dedups implicit references against explicit ones, so this also keeps the version at $(SkiaSharpVersion).
   -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <PackageReference Include="SkiaSharp.Views.WinUI" Version="$(SkiaSharpVersion)" />
+    <PackageReference Include="SkiaSharp.Views.WinUI" />
   </ItemGroup>
 
   <!--
@@ -71,11 +69,11 @@
     (NuGet picks the highest version among equal-depth dependencies).
   -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))">
-    <PackageReference Include="SkiaSharp.Views" Version="$(SkiaSharpVersion)" />
-    <PackageReference Include="SkiaSharp.Skottie" Version="$(SkiaSharpVersion)" />
+    <PackageReference Include="SkiaSharp.Views" />
+    <PackageReference Include="SkiaSharp.Skottie" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-desktop'))">
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="$(SkiaSharpVersion)" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
   </ItemGroup>
 
   <!--
@@ -104,7 +102,7 @@
     minimal and the documented signature intact.
   -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
   </ItemGroup>
 
   <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
