@@ -56,3 +56,4 @@ dotnet run --project samples/SampleApp.Uno -f net10.0-desktop
 - **SDK or workloads:** update `sdk.version` in `global.json` and the workload set in `.github/actions/setup-dotnet/action.yml` together, plus the command above (`dotnet workload --version` prints the installed set). Workload sets are tied to an SDK feature band.
 - **Uno.Sdk:** update `msbuild-sdks` in `global.json` and rebuild every head; Uno changes its implicit packages between versions.
 - **Packages:** change the version in `Directory.Packages.props` only.
+- **Minimum OS versions:** change the `KumikoMin*Version` properties in `Directory.Build.props` and the README "Supported platforms" table together. They are re-baselined at each .NET major release.

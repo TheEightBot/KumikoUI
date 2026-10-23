@@ -17,7 +17,7 @@
   <p align="center">
     <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" />
     <img alt="SkiaSharp" src="https://img.shields.io/badge/SkiaSharp-4.153.1-ff6b6b" />
-    <img alt="Platforms" src="https://img.shields.io/badge/platforms-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows-blue" />
+    <img alt="Platforms" src="https://img.shields.io/badge/platforms-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20WebAssembly-blue" />
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
   </p>
   <p align="center">
@@ -893,8 +893,28 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor gui
 
 ## 📦 Requirements
 
-| Target | Minimum version |
-|---|---|
+All packages target **.NET 10** and **SkiaSharp 4.153.1**. Uno apps must also set `<SkiaSharpVersion>4.153.1</SkiaSharpVersion>` in the app csproj, because Uno.Sdk defaults to SkiaSharp 3.x.
+
+### Supported platforms
+
+| Package | Platform (target framework) | Minimum OS | App build host | Verification |
+|---|---|---|---|---|
+| KumikoUI.Core, KumikoUI.SkiaSharp | any .NET 10 runtime (`net10.0`) | — | any OS | unit tests in CI |
+| KumikoUI.Maui | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build |
+| KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; sample launch tracked in #121 |
+| KumikoUI.Maui | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build |
+| KumikoUI.Maui | Windows (`net10.0-windows10.0.19041.0`) | 10.0.19041 | Windows | CI build |
+| KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; sample run on macOS |
+| KumikoUI.Uno | WebAssembly (`net10.0-browserwasm`) | current evergreen browsers | any OS (`wasm-tools` workload) | CI build |
+| KumikoUI.Uno | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build |
+| KumikoUI.Uno | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build |
+| KumikoUI.Uno | Windows App SDK (`net10.0-windows10.0.26100`) | 10.0.19041 | Windows | CI build |
+
+"App build host" is where an app for that head can be built; the libraries themselves are compiled and packed for every head on Windows in CI. "CI build" means compiled and packed in CI; interactive device testing for each head is tracked in #67. KumikoUI.Uno has no Mac Catalyst head: Uno serves macOS through the desktop head.
+
+**Watermark policy.** The minimum OS versions are defined once in `Directory.Build.props` (`KumikoMin*Version`) and apply to every library, sample and head. They are re-baselined at each .NET major release to the current platform guidance, and every change is called out as breaking in the [CHANGELOG](CHANGELOG.md).
+
+---|---|
 | .NET (libraries and apps) | 10.0 |
 | SkiaSharp | 4.153.1 (Uno apps: set `<SkiaSharpVersion>4.153.1</SkiaSharpVersion>` in the app csproj; Uno defaults to 3.x) |
 | iOS | 15.0+ |

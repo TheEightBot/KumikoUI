@@ -35,6 +35,27 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <!--
+    Minimum supported OS versions ("platform watermark"), shared by every library, sample and head
+    (MAUI and Uno). Re-baselined at each .NET major release; see README "Supported platforms".
+    Mac Catalyst 17.0 is also the floor the Xcode 27 toolchain enforces. Uno's desktop and WebAssembly
+    heads have no OS version floor and are not affected.
+  -->
+  <PropertyGroup>
+    <KumikoMinAndroidVersion>24.0</KumikoMinAndroidVersion>
+    <KumikoMinIOSVersion>17.0</KumikoMinIOSVersion>
+    <KumikoMinMacCatalystVersion>17.0</KumikoMinMacCatalystVersion>
+    <KumikoMinWindowsVersion>10.0.19041.0</KumikoMinWindowsVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' != ''">
+    <_KumikoPlatform>$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))</_KumikoPlatform>
+    <SupportedOSPlatformVersion Condition="'$(_KumikoPlatform)' == 'android'">$(KumikoMinAndroidVersion)</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(_KumikoPlatform)' == 'ios'">$(KumikoMinIOSVersion)</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(_KumikoPlatform)' == 'maccatalyst'">$(KumikoMinMacCatalystVersion)</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(_KumikoPlatform)' == 'windows'">$(KumikoMinWindowsVersion)</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="'$(_KumikoPlatform)' == 'windows'">$(KumikoMinWindowsVersion)</TargetPlatformMinVersion>
+  </PropertyGroup>
+
   <!-- Include README and icon in every package -->
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\"/>
