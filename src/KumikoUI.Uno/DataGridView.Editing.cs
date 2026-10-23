@@ -82,6 +82,11 @@ public partial class DataGridView
     private bool _suppressProxyTextChanged;
     private string _lastProxyText = ProxySentinel;
 
+    // The command key (Tab or Enter) that OnProxyKeyDown last sent to Core. Some heads still let the
+    // TextBox insert its text form ("\t", "\n") even though KeyDown was marked handled; TextChanged
+    // drops that echo once instead of delivering the key a second time.
+    private GridKey _keyHandledOnKeyDown = GridKey.None;
+
     // ── Proxy setup / teardown ───────────────────────────────────
 
     /// <summary>
@@ -164,36 +169,21 @@ public partial class DataGridView
         }
 
         // ── Character input: extract newly inserted characters ───
-        // Use the same content-based diffing as MAUI's OnKeyboardProxyTextChanged:
-        //   • Standard append:   sentinel + "a"  → append-detected suffix is "a".
-        //   • IME replacement:   sentinel gone, just "a" → strip sentinel if present, else take all.
-        string newInput;
+        // Same content-based diffing as MAUI's OnKeyboardProxyTextChanged (plain append or IME
+        // full replacement), then plan the Core events: typed characters, Tab/Enter from soft
+        // keyboards, minus the echo of a key KeyDown already handled and minus AppKit function-key
+        // characters (e.g. F2 arrives as U+F705 on macOS, which would otherwise start a type-to-edit
+        // that replaces the cell text with an undrawable glyph).
+        string inserted = ProxyTextInput.ExtractInserted(oldText, newText, ProxySentinel);
+        var dispatches = ProxyTextInput.Plan(inserted, _keyHandledOnKeyDown);
+        _keyHandledOnKeyDown = GridKey.None;
 
-        if (newText.Length > oldText.Length && newText.StartsWith(oldText, StringComparison.Ordinal))
+        foreach (var d in dispatches)
         {
-            // Standard append: characters added after existing content.
-            newInput = newText.Substring(oldText.Length);
-        }
-        else
-        {
-            // IME full-replacement or other non-standard input:
-            // Remove the sentinel character if still embedded; treat the rest as input.
-            int sentinelIdx = newText.IndexOf(ProxySentinel, StringComparison.Ordinal);
-            if (sentinelIdx >= 0)
-                newInput = newText.Remove(sentinelIdx, ProxySentinel.Length);
+            if (d.Key == GridKey.Character)
+                HandleEditChar(d.Character!.Value);
             else
-                newInput = newText; // sentinel fully replaced — all chars are new input
-        }
-
-        // Forward each character to Core.
-        foreach (char ch in newInput)
-        {
-            if (ch == '\n' || ch == '\r')
-                HandleEditKey(GridKey.Enter);
-            else if (ch == '\t')
-                HandleEditKey(GridKey.Tab);
-            else
-                HandleEditChar(ch);
+                HandleEditKey(d.Key);
         }
 
         ResetProxy();
@@ -207,6 +197,7 @@ public partial class DataGridView
         // also act on them (move its caret, add a newline, delete the sentinel). Printable characters
         // are handled via TextChanged for correct IME/dead-key ordering — so anything that maps to
         // GridKey.None is left alone.
+        _keyHandledOnKeyDown = GridKey.None; // a new keystroke: any earlier Tab/Enter echo is stale
         var key = InputMapping.ToGridKey(e.Key);
         if (key == GridKey.None) return; // ordinary printable key → flows to TextChanged
 
@@ -228,6 +219,7 @@ public partial class DataGridView
 
         HandleEditKey(key);
         e.Handled = true;
+        _keyHandledOnKeyDown = key is GridKey.Tab or GridKey.Enter ? key : GridKey.None;
     }
 
     // ── Core dispatch helpers ─────────────────────────────────────
@@ -237,7 +229,7 @@ public partial class DataGridView
     {
         var evt = new GridKeyEventArgs
         {
-            Key = GridKey.None,
+            Key = GridKey.Character, // same contract as MAUI; DrawnFilterPopup's search box requires it
             Character = ch,
             Modifiers = InputMapping.GetLiveModifiers(),
             IsKeyDown = true,
