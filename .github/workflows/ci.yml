@@ -106,3 +106,59 @@ jobs:
       - name: Pack — Maui (dry run)
         run: dotnet pack src/KumikoUI.Maui/KumikoUI.Maui.csproj
           --no-restore -c Release -p:Version=0.0.0-ci -o C:\ci-pack
+
+  # ─── Build KumikoUI.Uno (multi-head Uno library — all heads cross-compile on Windows) ─
+  build-uno:
+    name: Build & Test (KumikoUI.Uno — all heads)
+    runs-on: windows-latest
+    needs: build-core
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9 + 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.x
+            10.x
+
+      - name: Cache Uno workloads
+        uses: actions/cache@v4
+        id: workload-cache
+        with:
+          path: |
+            ${{ env.USERPROFILE }}\.dotnet\toolResolverCache
+            ${{ env.PROGRAMFILES }}\dotnet\packs
+            ${{ env.PROGRAMFILES }}\dotnet\metadata\workloads
+            ${{ env.PROGRAMFILES }}\dotnet\sdk-manifests
+          key: uno-workloads-win-${{ hashFiles('**/KumikoUI.Uno.csproj') }}
+          restore-keys: uno-workloads-win-
+
+      - name: Restore Uno workloads
+        if: steps.workload-cache.outputs.cache-hit != 'true'
+        run: dotnet workload restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
+
+      - name: Restore
+        run: dotnet restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
+
+      - name: Build — Uno
+        run: dotnet build src/KumikoUI.Uno/KumikoUI.Uno.csproj
+          --no-restore -c Release
+
+      # Validate packability (dry run — exercises the full multi-head pack)
+      - name: Pack — Uno (dry run)
+        run: dotnet pack src/KumikoUI.Uno/KumikoUI.Uno.csproj
+          --no-restore -c Release -p:Version=0.0.0-ci -o C:\ci-pack
+
+      # Uno input-mapping unit tests (net9.0-desktop head)
+      - name: Test — Uno
+        run: dotnet test tests/KumikoUI.Uno.Tests/KumikoUI.Uno.Tests.csproj
+          -c Release --logger "trx" --results-directory TestResults
+
+      - name: Upload Uno test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-uno
+          path: TestResults/

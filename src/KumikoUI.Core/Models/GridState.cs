@@ -201,6 +201,21 @@ public class DataGridStyle
     /// <summary>Border color of the table summary row.</summary>
     public GridColor SummaryRowBorderColor { get; set; } = new(200, 200, 200);
 
+    /// <summary>
+    /// When true (default), Position=Bottom table summary rows are pinned to the bottom edge of the
+    /// viewport (a fixed footer that stays visible while the data scrolls). Taps on the footer do not
+    /// reach the rows behind it, and keyboard navigation keeps the current row above it.
+    /// When false, they are drawn at the end of the scrolling content (a totals row after the last data row).
+    /// </summary>
+    public bool PinBottomSummaryRows { get; set; } = true;
+
+    /// <summary>
+    /// Height of the pinned bottom summary footer for the given number of bottom summary rows,
+    /// or 0 when <see cref="PinBottomSummaryRows"/> is false.
+    /// </summary>
+    internal float GetPinnedBottomSummaryHeight(int bottomSummaryCount)
+        => PinBottomSummaryRows && bottomSummaryCount > 0 ? bottomSummaryCount * SummaryRowHeight : 0f;
+
     // Group summary rows (after each group)
     /// <summary>Background color of group summary rows displayed after each group.</summary>
     public GridColor GroupSummaryRowBackgroundColor { get; set; } = new(242, 245, 250);

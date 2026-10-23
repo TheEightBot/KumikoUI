@@ -168,6 +168,72 @@ jobs:
           if-no-files-found: warn
 
   # ─────────────────────────────────────────────────────────────────────────────
+  # 3b. Pack KumikoUI.Uno (multi-head Uno library — all heads pack on a Windows runner)
+  # ─────────────────────────────────────────────────────────────────────────────
+  pack-uno:
+    name: Pack KumikoUI.Uno (all heads)
+    runs-on: windows-latest
+    needs: resolve-version
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9 + 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.x
+            10.x
+
+      - name: Cache Uno workloads
+        uses: actions/cache@v4
+        id: workload-cache
+        with:
+          path: |
+            ${{ env.USERPROFILE }}\.dotnet\toolResolverCache
+            ${{ env.PROGRAMFILES }}\dotnet\packs
+            ${{ env.PROGRAMFILES }}\dotnet\metadata\workloads
+            ${{ env.PROGRAMFILES }}\dotnet\sdk-manifests
+          key: uno-workloads-win-${{ hashFiles('**/KumikoUI.Uno.csproj') }}
+          restore-keys: uno-workloads-win-
+
+      - name: Restore Uno workloads
+        if: steps.workload-cache.outputs.cache-hit != 'true'
+        run: dotnet workload restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
+
+      - name: Restore
+        run: dotnet restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
+
+      - name: Pack — KumikoUI.Uno
+        run: |
+          dotnet pack src/KumikoUI.Uno/KumikoUI.Uno.csproj `
+            --no-restore `
+            -c Release `
+            -p:Version=${{ env.VERSION }} `
+            --include-symbols `
+            -p:SymbolPackageFormat=snupkg `
+            -o ./artifacts
+
+      - name: List artifacts
+        run: Get-ChildItem artifacts -Recurse | Format-Table Name, Length
+
+      - name: Upload Uno package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-uno
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      - name: Upload Uno symbol package
+        uses: actions/upload-artifact@v4
+        with:
+          name: snupkg-uno
+          path: artifacts/*.snupkg
+          if-no-files-found: warn
+
+  # ─────────────────────────────────────────────────────────────────────────────
   # 4. Run tests before publishing (gate publish on green tests)
   # ─────────────────────────────────────────────────────────────────────────────
   test:
@@ -195,7 +261,7 @@ jobs:
   publish:
     name: Publish to NuGet.org
     runs-on: ubuntu-latest
-    needs: [ pack-core, pack-maui, test ]
+    needs: [ pack-core, pack-maui, pack-uno, test ]
     environment: nuget-publish      # optional: require manual approval in repo settings
 
     steps:

@@ -158,7 +158,9 @@ public class GridInputController
 
         int totalRows = dataSource.RowCount;
         int totalCols = dataSource.Columns.Count;
-        int pageSize = Math.Max(1, (int)(scroll.ViewportHeight / style.RowHeight) - 1);
+        // One page = the number of scrollable rows that fit between the fixed bands (header, grouping
+        // panel, top summaries, frozen rows, pinned footer), so PageUp/PageDown never skip unseen rows.
+        int pageSize = Math.Max(1, (int)(GetScrollableRowsViewportHeight(scroll, style, dataSource) / style.RowHeight));
 
         // ── Editing-mode key handling ──
         if (_editSession != null && _editSession.IsEditing)
@@ -178,7 +180,7 @@ public class GridInputController
                         selection.IsEditing = false;
                         // Move down after commit
                         selection.NavigateDown(totalRows, false);
-                        EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                        EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
 
                         if (!_editSession.DismissKeyboardOnEnter)
                         {
@@ -258,13 +260,13 @@ public class GridInputController
                         return;
                     case GridKey.Up:
                         selection.NavigateUp(totalRows, e.HasShift);
-                        EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                        EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                         Redraw();
                         e.Handled = true;
                         return;
                     case GridKey.Down:
                         selection.NavigateDown(totalRows, e.HasShift);
-                        EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                        EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                         Redraw();
                         e.Handled = true;
                         return;
@@ -290,49 +292,49 @@ public class GridInputController
                 break;
             case GridKey.Up:
                 selection.NavigateUp(totalRows, e.HasShift);
-                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case GridKey.Down:
                 selection.NavigateDown(totalRows, e.HasShift);
-                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case GridKey.Left:
                 selection.NavigateLeft(totalCols, e.HasShift);
-                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case GridKey.Right:
                 selection.NavigateRight(totalCols, e.HasShift);
-                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case GridKey.Home:
                 selection.NavigateHome(e.HasControl, totalRows, e.HasShift);
-                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case GridKey.End:
                 selection.NavigateEnd(e.HasControl, totalRows, totalCols, e.HasShift);
-                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case GridKey.PageUp:
                 selection.NavigatePageUp(pageSize, e.HasShift, totalRows);
-                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case GridKey.PageDown:
                 selection.NavigatePageDown(pageSize, totalRows, e.HasShift);
-                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+                EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
@@ -1002,6 +1004,20 @@ public class GridInputController
 
     // ── Scroll helpers ──
 
+    /// <summary>
+    /// Height available to scrollable rows: the viewport minus the fixed bands drawn over or above
+    /// them — grouping panel, header, top summaries, frozen rows and the pinned bottom summary footer.
+    /// </summary>
+    private static float GetScrollableRowsViewportHeight(ScrollState scroll, DataGridStyle style, DataGridSource? dataSource)
+    {
+        float groupPanelHeight = dataSource != null && dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
+        float topSummaryHeight = dataSource != null ? dataSource.TopSummaryCount * style.SummaryRowHeight : 0;
+        float frozenRowHeight = (dataSource?.EffectiveFrozenRowCount ?? 0) * style.RowHeight;
+        float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(dataSource?.BottomSummaryCount ?? 0);
+        return scroll.ViewportHeight - groupPanelHeight - style.HeaderHeight - topSummaryHeight
+            - frozenRowHeight - pinnedFooterHeight;
+    }
+
     private void EnsureCurrentCellVisible(
         ScrollState scroll, SelectionModel selection,
         DataGridStyle style, IReadOnlyList<DataGridColumn> columns,
@@ -1012,30 +1028,21 @@ public class GridInputController
         int row = selection.CurrentCell.Row;
         int col = selection.CurrentCell.Column;
 
-        // Account for top summary area between header and data
-        float topSummaryHeight = dataSource != null ? dataSource.TopSummaryCount * style.SummaryRowHeight : 0;
-
-        // Account for frozen rows
         int frozenRowCount = dataSource?.EffectiveFrozenRowCount ?? 0;
-        float frozenRowHeight = frozenRowCount * style.RowHeight;
 
         // If the row is a frozen row, no vertical scroll needed for it
         if (row >= frozenRowCount)
         {
-            // Scrollable row: ensure visible below frozen rows
+            // Scrollable row: ensure visible between the frozen rows and the pinned footer
             float scrollableRowTop = (row - frozenRowCount) * style.RowHeight;
             float scrollableRowBottom = scrollableRowTop + style.RowHeight;
 
-            float headerAndSummaryAndFrozen = style.HeaderHeight + topSummaryHeight + frozenRowHeight;
+            float visibleHeight = Math.Max(style.RowHeight, GetScrollableRowsViewportHeight(scroll, style, dataSource));
+
             if (scrollableRowTop < scroll.OffsetY)
                 scroll.OffsetY = scrollableRowTop;
-            else if (scrollableRowBottom > scroll.OffsetY + scroll.ViewportHeight - headerAndSummaryAndFrozen + scroll.OffsetY)
-            {
-                // Ensure the row bottom doesn't extend past the viewport
-                float visibleBottom = scroll.ViewportHeight - headerAndSummaryAndFrozen;
-                if (scrollableRowBottom > scroll.OffsetY + visibleBottom)
-                    scroll.OffsetY = scrollableRowBottom - visibleBottom;
-            }
+            else if (scrollableRowBottom > scroll.OffsetY + visibleHeight)
+                scroll.OffsetY = scrollableRowBottom - visibleHeight;
         }
 
         // If the column is frozen (left or right), no horizontal scroll needed
@@ -1236,6 +1243,27 @@ public class GridInputController
         var column = dataSource.Columns[col];
         if (column.IsReadOnly) return;
 
+        // Bring the cell fully into view first, so the editor never opens partly hidden under the
+        // header/frozen rows or straddling the pinned bottom summary footer (which is drawn below the
+        // editor and would otherwise share its screen area).
+        float offsetXBefore = scroll.OffsetX, offsetYBefore = scroll.OffsetY;
+        EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
+        float scrolledX = scroll.OffsetX - offsetXBefore, scrolledY = scroll.OffsetY - offsetYBefore;
+        if (triggeringTap != null && (scrolledX != 0 || scrolledY != 0))
+        {
+            // The cell moved under the finger: keep the forwarded tap on the same spot of the cell.
+            triggeringTap = new GridPointerEventArgs
+            {
+                X = triggeringTap.X - scrolledX,
+                Y = triggeringTap.Y - scrolledY,
+                Action = triggeringTap.Action,
+                Button = triggeringTap.Button,
+                Modifiers = triggeringTap.Modifiers,
+                ClickCount = triggeringTap.ClickCount,
+                TimestampMs = triggeringTap.TimestampMs,
+            };
+        }
+
         // Calculate cell bounds on screen (accounting for group panel offset and top summaries)
         float groupPanelOffset = dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
         float topSummaryHeight = dataSource.TopSummaryCount * style.SummaryRowHeight;
@@ -1416,7 +1444,7 @@ public class GridInputController
             // Found a valid target cell
             selection.CurrentCell = new CellPosition(row, col);
             selection.HandleRowSelection(row, false, false, totalRows);
-            EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns);
+            EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
             return;
         }
     }
