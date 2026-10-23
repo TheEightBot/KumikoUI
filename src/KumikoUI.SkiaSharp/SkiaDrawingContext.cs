@@ -198,13 +198,15 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     /// </remarks>
     public void DrawImage(object image, GridRect destRect)
     {
+        // SkiaSharp 4 requires explicit sampling. SKSamplingOptions.Default (nearest neighbour)
+        // matches what the v3 paint-less overloads used, so image cells render unchanged.
         if (image is SKImage skImage)
         {
-            _canvas.DrawImage(skImage, ToSKRect(destRect));
+            _canvas.DrawImage(skImage, ToSKRect(destRect), SKSamplingOptions.Default, null);
         }
         else if (image is SKBitmap skBitmap)
         {
-            _canvas.DrawBitmap(skBitmap, ToSKRect(destRect));
+            _canvas.DrawBitmap(skBitmap, ToSKRect(destRect), SKSamplingOptions.Default, null);
         }
     }
 
@@ -279,11 +281,19 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
             }
             else if (isBold || isItalic || family != "Default")
             {
-                var weight = isBold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal;
-                var slant = isItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
-                typeface = SKTypeface.FromFamilyName(
-                    family == "Default" ? null : family,
-                    weight, SKFontStyleWidth.Normal, slant);
+                var style = new SKFontStyle(
+                    isBold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal,
+                    SKFontStyleWidth.Normal,
+                    isItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
+
+                // Resolve through the font manager with an explicit family so the requested weight and
+                // slant are honoured. SkiaSharp 4's SKTypeface.FromFamilyName(null, …) falls back to the
+                // plain default typeface and drops the style (bold headers rendered regular). An unknown
+                // family falls back to the default family in the same style rather than to null.
+                var defaultFamily = SKTypeface.Default.FamilyName;
+                typeface = SKFontManager.Default.MatchFamily(family == "Default" ? defaultFamily : family, style)
+                    ?? SKFontManager.Default.MatchFamily(defaultFamily, style)
+                    ?? SKTypeface.Default;
             }
             else
             {

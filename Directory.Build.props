@@ -35,6 +35,18 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <!--
+    One SkiaSharp version for the whole repository. Every SkiaSharp package reference uses
+    $(SkiaSharpVersion), and Uno.Sdk projects read the same property for their implicit SkiaSharp
+    package group (Uno would otherwise default to 3.x). KumikoUI.SkiaSharp is shared by the MAUI and
+    Uno hosts, so mixing majors would put two incompatible native binaries in one app.
+    SkiaSharp 4's runtime assembly keeps the v3 members (they are only removed from the reference
+    assembly), so Uno's own runtime, compiled against 3.x, binds unchanged.
+  -->
+  <PropertyGroup>
+    <SkiaSharpVersion>4.153.1</SkiaSharpVersion>
+  </PropertyGroup>
+
   <!-- Include README and icon in every package -->
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\"/>

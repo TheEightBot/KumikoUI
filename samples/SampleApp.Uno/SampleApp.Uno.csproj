@@ -49,12 +49,10 @@
     <Description>KumikoUI.Uno sample app — exercises the DataGridView control across every Uno head.</Description>
 
     <!--
-      Pin the SkiaSharp implicit-package group to 3.119.2 to match KumikoUI.SkiaSharp,
-      KumikoUI.Maui and KumikoUI.Uno, avoiding native-binary version conflicts. This overrides the
-      version the Uno.Sdk would otherwise apply to the implicit SkiaSharp group (incl.
-      SkiaSharp.Views.Uno.WinUI brought in by the SkiaRenderer feature).
+      SkiaSharpVersion comes from the repo-root Directory.Build.props so the app's implicit SkiaSharp
+      group (incl. SkiaSharp.Views.Uno.WinUI from the SkiaRenderer feature) matches KumikoUI.SkiaSharp.
+      An app consuming the NuGet packages sets the same property to the version KumikoUI.Uno depends on.
     -->
-    <SkiaSharpVersion>3.119.2</SkiaSharpVersion>
 
     <!--
       UnoFeatures are used to quickly add and manage features enabled for your app.
@@ -71,10 +69,10 @@
     The Windows (WinAppSDK) head's SkiaSharp.Views package (SkiaSharp.Views.WinUI) is NOT pulled in
     by the SkiaRenderer UnoFeature, so reference it explicitly on the Windows head so SKXamlCanvas
     (used by KumikoUI.Uno) resolves there too. Uno dedups implicit references against explicit ones,
-    keeping the version at 3.119.2.
+    keeping the version at $(SkiaSharpVersion).
   -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <PackageReference Include="SkiaSharp.Views.WinUI" Version="3.119.2" />
+    <PackageReference Include="SkiaSharp.Views.WinUI" Version="$(SkiaSharpVersion)" />
   </ItemGroup>
 
   <!--

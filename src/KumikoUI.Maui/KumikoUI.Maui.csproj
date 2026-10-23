@@ -25,7 +25,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-		<PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="3.119.2" />
+		<PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="$(SkiaSharpVersion)" />
 	</ItemGroup>
 
 	<ItemGroup>

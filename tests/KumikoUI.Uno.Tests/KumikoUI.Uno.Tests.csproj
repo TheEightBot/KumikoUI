@@ -28,8 +28,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
 
-    <!-- Keep aligned with src/KumikoUI.Uno so the implicit SkiaSharp group versions match. -->
-    <SkiaSharpVersion>3.119.2</SkiaSharpVersion>
+    <!-- SkiaSharpVersion comes from the repo-root Directory.Build.props (same as src/KumikoUI.Uno). -->
 
     <!--
       Match the host's UnoFeatures so this project resolves the identical Uno reference assemblies
