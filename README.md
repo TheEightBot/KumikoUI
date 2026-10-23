@@ -16,7 +16,7 @@
   </p>
   <p align="center">
     <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" />
-    <img alt="SkiaSharp" src="https://img.shields.io/badge/SkiaSharp-3.119.2-ff6b6b" />
+    <img alt="SkiaSharp" src="https://img.shields.io/badge/SkiaSharp-4.153.1-ff6b6b" />
     <img alt="Platforms" src="https://img.shields.io/badge/platforms-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows-blue" />
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
   </p>
@@ -823,7 +823,7 @@ Accessors are compiled once via `Expression.Property` chains and cached.
 ```
 KumikoUI.Core (net10.0) — zero external dependencies
        ↑
-KumikoUI.SkiaSharp (net10.0) — SkiaSharp 3.119.2
+KumikoUI.SkiaSharp (net10.0) — SkiaSharp 4.153.1
        ↑
 KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 ```
@@ -896,7 +896,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor gui
 | Target | Minimum version |
 |---|---|
 | .NET (libraries and apps) | 10.0 |
-| SkiaSharp | 3.119.2 |
+| SkiaSharp | 4.153.1 (Uno apps: set `<SkiaSharpVersion>4.153.1</SkiaSharpVersion>` in the app csproj; Uno defaults to 3.x) |
 | iOS | 15.0+ |
 | Android | 5.0+ (API 21) |
 | macOS Catalyst | 15.0+ |

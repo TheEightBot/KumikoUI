@@ -23,11 +23,11 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!--
-      Pin the SkiaSharp implicit-package group to 3.119.2 to match KumikoUI.SkiaSharp
-      and KumikoUI.Maui, avoiding native-binary conflicts. This overrides the version the
-      Uno.Sdk would otherwise apply to the implicit SkiaSharp group (incl. SkiaSharp.Views.Uno.WinUI).
+      SkiaSharpVersion comes from the repo-root Directory.Build.props (one version for every project).
+      It overrides the version Uno.Sdk would otherwise apply to the implicit SkiaSharp group
+      (incl. SkiaSharp.Views.Uno.WinUI): Uno ships SkiaSharp 3.x by default, and KumikoUI uses 4.x.
+      Consumers of KumikoUI.Uno therefore get SkiaSharp 4 through this package's dependencies.
     -->
-    <SkiaSharpVersion>3.119.2</SkiaSharpVersion>
 
     <!--
       UnoFeatures let's you quickly add and manage implicit package references based on the features you want to use.
@@ -55,10 +55,27 @@
     The Windows (WinAppSDK) head's SkiaSharp.Views package (SkiaSharp.Views.WinUI) is NOT pulled in by
     the SkiaRenderer UnoFeature (that gate only fires for the skia/lottie/svg features), so reference it
     explicitly on the Windows head so SKXamlCanvas (namespace SkiaSharp.Views.Windows) resolves there too.
-    Uno dedups implicit references against explicit ones, so this also keeps the version at 3.119.2.
+    Uno dedups implicit references against explicit ones, so this also keeps the version at $(SkiaSharpVersion).
   -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <PackageReference Include="SkiaSharp.Views.WinUI" Version="3.119.2" />
+    <PackageReference Include="SkiaSharp.Views.WinUI" Version="$(SkiaSharpVersion)" />
+  </ItemGroup>
+
+  <!--
+    Uno's runtime packages reference some SkiaSharp packages directly at 3.x, outside the implicit
+    group that SkiaSharpVersion overrides: SkiaSharp.Views (Android/iOS runtimes),
+    SkiaSharp.NativeAssets.Linux (X11 / framebuffer desktop runtimes) and SkiaSharp.Skottie with its
+    SceneGraph/Resources dependencies (Uno.WinUI.Lottie). Left alone, an app would combine SkiaSharp 4
+    managed code with a SkiaSharp 3 native library on Linux, which fails at load. Referencing them here
+    at $(SkiaSharpVersion) makes every consumer of KumikoUI.Uno resolve one SkiaSharp major
+    (NuGet picks the highest version among equal-depth dependencies).
+  -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))">
+    <PackageReference Include="SkiaSharp.Views" Version="$(SkiaSharpVersion)" />
+    <PackageReference Include="SkiaSharp.Skottie" Version="$(SkiaSharpVersion)" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-desktop'))">
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="$(SkiaSharpVersion)" />
   </ItemGroup>
 
   <!--

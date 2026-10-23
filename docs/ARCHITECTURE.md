@@ -31,7 +31,7 @@ KumikoUI/
 ```
 KumikoUI.Core (net10.0, zero external dependencies)
        ↑
-KumikoUI.SkiaSharp (net10.0 → SkiaSharp 3.119.2)
+KumikoUI.SkiaSharp (net10.0 → SkiaSharp 4.153.1)
        ↑
 KumikoUI.Maui (net10.0-ios/android/maccatalyst → MAUI + SkiaSharp.Views.Maui.Controls)
 ```
