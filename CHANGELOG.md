@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Changed
+- Releases are gated: publishing requires approval in the `nuget-publish` environment and passing Core and Uno test suites; `main` and `v*` tags are protected by rulesets kept in `.github/settings/`. CI now runs on every pull request to `main`, including documentation-only changes, and no longer runs for `develop`.
 - Package versions come from git tags (MinVer); project files no longer contain `<Version>1.0.0</Version>`, so a local `dotnet pack` now produces a prerelease such as `0.2.0-alpha.0.8` instead of a misleading `1.0.0`. Copyright metadata uses a fixed year, and symbol packages are produced by default.
 - **Breaking:** minimum OS versions raised and unified across KumikoUI.Maui and KumikoUI.Uno: iOS 17.0 (was 15.0 on MAUI, 14.2 on Uno), Mac Catalyst 17.0 (was 15.0, which current Xcode toolchains reject), Android API 24 (was 21), Windows 10.0.19041 (was 10.0.17763 on MAUI). Defined once in `Directory.Build.props` and re-baselined at each .NET major.
 - KumikoUI.Uno package description no longer claims a Mac Catalyst head (macOS is served by the desktop head).

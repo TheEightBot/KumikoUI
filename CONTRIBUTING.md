@@ -73,5 +73,9 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. Symbol packages (`.snupkg`) are produced for every package by default.
+The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. It then runs the Core and Uno test suites and waits for approval in the `nuget-publish` environment before pushing to NuGet.org. Symbol packages (`.snupkg`) are produced for every package by default. Only admins can create `v*` tags.
+
+## Pull requests
+
+`main` accepts changes only through pull requests that pass the three CI jobs, with review threads resolved. Pull requests merge by squash or rebase (linear history). The settings live in [`.github/settings/`](.github/settings/README.md).
 
