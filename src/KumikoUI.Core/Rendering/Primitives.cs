@@ -139,6 +139,9 @@ public readonly struct GridRect
 
     /// <summary>A zero-size rectangle at the origin.</summary>
     public static GridRect Empty => new(0, 0, 0, 0);
+
+    /// <inheritdoc />
+    public override string ToString() => FormattableString.Invariant($"GridRect({X}, {Y}, {Width}, {Height})");
 }
 
 /// <summary>

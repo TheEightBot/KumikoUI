@@ -84,35 +84,27 @@ public class DataGridSourceSortingTests
 
 ---
 
-## `FakeDrawingContext` — test double for renderers
+## `RecordingDrawingContext` — test double for rendering
 
-When testing `ICellRenderer` or `DrawnComponent`, create a no-op `IDrawingContext`:
+Rendering tests run without SkiaSharp against `tests/KumikoUI.Core.Tests/TestHelpers/RecordingDrawingContext.cs`.
+It records every `IDrawingContext` call as a `DrawOp` in call order (so index = z-order), in viewport
+coordinates with the active clip, and measures text monospace (8 px per character, 14 px tall).
+`DrawOp.Visible` is the part of an op its clip lets reach the screen.
+
+For `DataGridRenderer`, use `RenderHarness` (same folder): it builds a four-column grid of people, gives
+every `GridColor` on the style a distinct value (so a recorded colour identifies its style role) and
+renders into a fresh recording context:
 
 ```csharp
-// tests/KumikoUI.Core.Tests/TestHelpers/FakeDrawingContext.cs
-using KumikoUI.Core.Rendering;
+var h = RenderHarness.Create(width: 300);
+h.Column("Name").FreezeMode = ColumnFreezeMode.Left;
+h.Scroll.OffsetX = 50;
 
-namespace KumikoUI.Core.Tests.TestHelpers;
+var ctx = h.Render();
 
-internal sealed class FakeDrawingContext : IDrawingContext
-{
-    public void DrawRect(GridRect r, GridPaint p) { }
-    public void FillRect(GridRect r, GridPaint p) { }
-    public void DrawRoundRect(GridRect r, float cr, GridPaint p) { }
-    public void FillRoundRect(GridRect r, float cr, GridPaint p) { }
-    public void DrawLine(float x1, float y1, float x2, float y2, GridPaint p) { }
-    public void DrawText(string t, float x, float y, GridPaint p) { }
-    public void DrawTextInRect(string t, GridRect r, GridPaint p,
-        GridTextAlignment h = GridTextAlignment.Left,
-        GridVerticalAlignment v = GridVerticalAlignment.Center,
-        bool clip = true) { }
-    public GridSize MeasureText(string t, GridPaint p) => new GridSize(t.Length * 8, 14);
-    public GridFontMetrics GetFontMetrics(GridPaint p) => new GridFontMetrics(14, 0, 2);
-    public void ClipRect(GridRect r) { }
-    public void Save() { }
-    public void Restore() { }
-    public void Translate(float dx, float dy) { }
-    public void DrawImage(object image, GridRect dest) { }
-    public void Dispose() { }
-}
+var cell = ctx.SingleText("P00");
+Assert.Equal(new GridRect(0, 0, 150, 400), cell.Clip);
 ```
+
+Known renderer defects are pinned as `[Fact(Skip = "<finding>, fixed by #<issue>: …")]` tests in
+`tests/KumikoUI.Core.Tests/Rendering/`; the fix removes the `Skip`.
