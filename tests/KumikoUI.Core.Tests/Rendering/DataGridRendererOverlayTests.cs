@@ -25,7 +25,7 @@ public class DataGridRendererOverlayTests
         var ctx = h.Render();
 
         Assert.Contains(ctx.Fills, f => f.Color == h.Style.GroupPanelBackgroundColor && f.Rect.Equals(new GridRect(0, 0, 600, 40)));
-        Assert.Contains(ctx.Lines, l => l.Color == h.Style.GridLineColor && l.Y1 == 40 && l.Y2 == 40 && l.X2 == 600);
+        Assert.Contains(ctx.Lines, l => l.Color == h.Style.GridLineColor && Near(l.Y1, 40) && Near(l.Y2, 40) && Near(l.X2, 600));
         // Everything below the panel is translated by its height.
         Assert.Contains(ctx.Fills, f => f.Color == h.Style.HeaderBackgroundColor && f.Rect.Equals(new GridRect(0, 40, 600, 40)));
         Assert.Equal(40, ctx.SingleText("Name").Rect.Y);
@@ -66,7 +66,7 @@ public class DataGridRendererOverlayTests
         var arrow = h.Render().Lines.Where(l => l.Color == h.Style.GroupPanelChipAccentColor).ToList();
 
         Assert.Equal(3, arrow.Count);
-        var shaft = Assert.Single(arrow, l => l.X1 == l.X2);
+        var shaft = Assert.Single(arrow, l => Near(l.X1, l.X2));
         Assert.Equal(8, shaft.Rect.Height);
         Assert.All(arrow.Where(l => l != shaft), l => Assert.Equal(headY, l.Y2));
     }
@@ -83,7 +83,7 @@ public class DataGridRendererOverlayTests
 
         // Row 0 is the Oslo header: below the 40 px panel and the 40 px header.
         Assert.Contains(ctx.Fills, f => f.Color == h.Style.GroupHeaderBackgroundColor && f.Rect.Equals(new GridRect(0, 80, 600, 36)));
-        var title = Assert.Single(ctx.Texts, t => t.Color == h.Style.GroupHeaderTextColor && t.Rect.Y == 80);
+        var title = Assert.Single(ctx.Texts, t => t.Color == h.Style.GroupHeaderTextColor && Near(t.Rect.Y, 80));
         Assert.Equal("City: Oslo (10)", title.Text);
         Assert.Equal(8 + 14 + 8, title.Rect.X);
         // Full-width rows are clipped to the data area, below the header.
@@ -103,8 +103,8 @@ public class DataGridRendererOverlayTests
         var chevron = h.Render().Lines.Where(l => l.Color == h.Style.GroupChevronColor && l.Rect.Top >= 80 && l.Rect.Bottom <= 116).ToList();
 
         Assert.Equal(3, chevron.Count);
-        Assert.Equal(expectHorizontalEdge, chevron.Any(l => l.Y1 == l.Y2));
-        Assert.Equal(!expectHorizontalEdge, chevron.Any(l => l.X1 == l.X2));
+        Assert.Equal(expectHorizontalEdge, chevron.Any(l => Near(l.Y1, l.Y2)));
+        Assert.Equal(!expectHorizontalEdge, chevron.Any(l => Near(l.X1, l.X2)));
     }
 
     [Fact]
@@ -167,7 +167,7 @@ public class DataGridRendererOverlayTests
         Assert.Equal(2, titles.Count);
         Assert.Equal(new GridRect(16, y, 200, 36), titles[0].Rect);
         Assert.Equal(y + 4 * 36, titles[1].Rect.Y);
-        var value = Assert.Single(ctx.Texts, t => t.Color == h.Style.GroupSummaryRowTextColor && t.Rect.Y == y && t.Text != "Subtotal");
+        var value = Assert.Single(ctx.Texts, t => t.Color == h.Style.GroupSummaryRowTextColor && Near(t.Rect.Y, y) && t.Text != "Subtotal");
         Assert.Equal(new GridRect(158, y, 84, 36), value.Rect);
     }
 
@@ -258,7 +258,7 @@ public class DataGridRendererOverlayTests
 
         var ghost = Assert.Single(ctx.Fills, f => f.Color == h.Style.HeaderBackgroundColor.WithAlpha(180));
         Assert.Equal(new GridRect(220, 0, 100, 40), ghost.Rect);
-        Assert.Contains(ctx.Ops, o => o.Kind == DrawOpKind.DrawRect && o.Color == h.Style.CurrentCellBorderColor && o.Rect.Equals(ghost.Rect) && o.StrokeWidth == 2);
+        Assert.Contains(ctx.Ops, o => o.Kind == DrawOpKind.DrawRect && o.Color == h.Style.CurrentCellBorderColor && o.Rect.Equals(ghost.Rect) && Near(o.StrokeWidth, 2));
         var titles = ctx.TextsEqual("Age").OrderBy(t => t.Index).ToList();
         Assert.Equal(2, titles.Count);
         Assert.Equal(228, titles[1].Rect.X);
@@ -287,13 +287,13 @@ public class DataGridRendererOverlayTests
         var ghost = Assert.Single(ctx.Fills, f => f.Color == h.Style.RowDragOverlayColor);
         Assert.Equal(new GridRect(0, 150, 600, 36), ghost.Rect);
         Assert.Contains(ctx.Ops, o => o.Kind == DrawOpKind.DrawRect && o.Color == h.Style.RowDragBorderColor && o.Rect.Equals(ghost.Rect));
-        var ghostText = Assert.Single(ctx.TextsEqual("P02"), t => t.Rect.Y == 150);
+        var ghostText = Assert.Single(ctx.TextsEqual("P02"), t => Near(t.Rect.Y, 150));
         Assert.Equal(h.Style.CellTextColor.WithAlpha(200), ghostText.Color);
 
         // Ghost centre 168 → drop before row 3, whose top edge is 40 + 3 × 36 = 148.
         var indicator = ctx.Lines.Where(l => l.Color == h.Style.RowDropIndicatorColor).ToList();
-        Assert.Contains(indicator, l => l.Y1 == 148 && l.Y2 == 148 && l.X1 == 0 && l.X2 == 600);
-        Assert.Equal(2, indicator.Count(l => l.X1 == l.X2)); // end caps
+        Assert.Contains(indicator, l => Near(l.Y1, 148) && Near(l.Y2, 148) && Near(l.X1, 0) && Near(l.X2, 600));
+        Assert.Equal(2, indicator.Count(l => Near(l.X1, l.X2))); // end caps
     }
 
     [Fact]
@@ -306,8 +306,8 @@ public class DataGridRendererOverlayTests
         var ctx = h.Render(dragRowIndex: 5, dragRowScreenY: 60);
 
         // Ghost centre 78 lies in frozen row 1 (76–112): the indicator marks its top edge, ignoring the scroll.
-        Assert.Contains(ctx.Lines, l => l.Color == h.Style.RowDropIndicatorColor && l.Y1 == 76 && l.Y2 == 76 && l.X2 == 600);
-        Assert.Single(ctx.TextsEqual("P05"), t => t.Rect.Y == 60);
+        Assert.Contains(ctx.Lines, l => l.Color == h.Style.RowDropIndicatorColor && Near(l.Y1, 76) && Near(l.Y2, 76) && Near(l.X2, 600));
+        Assert.Single(ctx.TextsEqual("P05"), t => Near(t.Rect.Y, 60));
     }
 
     [Fact]
@@ -332,7 +332,7 @@ public class DataGridRendererOverlayTests
 
         var ghost = Assert.Single(ctx.Fills, f => f.Color == h.Style.RowDragOverlayColor);
         Assert.Equal(new GridRect(32, 150, 568, 36), ghost.Rect);
-        Assert.Contains(ctx.Lines, l => l.Color == h.Style.RowDropIndicatorColor && l.Y1 == l.Y2 && l.X1 == 32 && l.X2 == 600);
+        Assert.Contains(ctx.Lines, l => l.Color == h.Style.RowDropIndicatorColor && Near(l.Y1, l.Y2) && Near(l.X1, 32) && Near(l.X2, 600));
     }
 
     // ── Editor and popups ─────────────────────────────────────────

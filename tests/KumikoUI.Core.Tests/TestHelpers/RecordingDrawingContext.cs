@@ -77,7 +77,7 @@ internal static class RectMath
         float bottom = Math.Min(a.Bottom, b.Bottom);
         // Lines have a zero-width or zero-height bounding box; keep them when they lie inside the clip.
         if (right < left || bottom < top) return null;
-        if ((right == left && a.Width > 0) || (bottom == top && a.Height > 0)) return null;
+        if ((right <= left && a.Width > 0) || (bottom <= top && a.Height > 0)) return null;
         return new GridRect(left, top, right - left, bottom - top);
     }
 

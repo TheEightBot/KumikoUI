@@ -52,7 +52,7 @@ internal sealed class RenderHarness
             Name = $"P{i:D2}",
             Age = 20 + i % 5,
             City = i % 2 == 0 ? "Oslo" : "Rome",
-            Salary = 1000 + i * 10,
+            Salary = 1000m + i * 10m,
             Active = i % 3 == 0,
         }).ToList();
 
@@ -88,7 +88,7 @@ internal sealed class RenderHarness
 
     /// <summary>The full-width row background fill at <paramref name="y"/>, drawn by the pass with that clip.</summary>
     public static IEnumerable<DrawOp> RowBackgrounds(RecordingDrawingContext ctx, float y, float viewportWidth) =>
-        ctx.Ops.Where(o => o.Kind == DrawOpKind.FillRect && Near(o.Rect.Y, y) && o.Rect.X == 0 && o.Rect.Width >= viewportWidth);
+        ctx.Ops.Where(o => o.Kind == DrawOpKind.FillRect && Near(o.Rect.Y, y) && Near(o.Rect.X, 0) && o.Rect.Width >= viewportWidth);
 
     public static bool Near(float a, float b) => Math.Abs(a - b) < 0.01f;
 

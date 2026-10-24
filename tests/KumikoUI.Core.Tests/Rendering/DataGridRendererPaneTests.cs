@@ -103,7 +103,7 @@ public class DataGridRendererPaneTests
         var age = ctx.SingleText("20", row: 0, h);
         Assert.Equal(32 + 150 + 8, age.Rect.X);
         Assert.Equal(new GridRect(182, 0, 418, 400), age.Clip);
-        Assert.Contains(ctx.Lines, l => l.Color == h.Style.FrozenColumnDividerColor && l.X1 == 182);
+        Assert.Contains(ctx.Lines, l => l.Color == h.Style.FrozenColumnDividerColor && Near(l.X1, 182));
     }
 
     // ── Right-frozen columns ──────────────────────────────────────
@@ -271,7 +271,7 @@ public class DataGridRendererPaneTests
         Assert.Contains(RowBackgrounds(ctx, 112, 600), f => f.Color == highlight);
         Assert.Contains(ctx.Fills, f => f.Color == tint && f.Rect.Equals(new GridRect(250, 112, 150, 36)));
         Assert.Equal(rowText, ctx.SingleText("P02").Color);
-        Assert.Equal(warn, Assert.Single(ctx.TextsEqual("20"), t => t.Rect.Y == 40).Color);
+        Assert.Equal(warn, Assert.Single(ctx.TextsEqual("20"), t => Near(t.Rect.Y, 40)).Color);
     }
 
     [Fact]
@@ -315,7 +315,7 @@ public class DataGridRendererPaneTests
 
         Assert.Contains(ctx.Fills, f => f.Color == h.Style.RowDragHandleHeaderBackgroundColor && f.Rect.Equals(new GridRect(0, 0, 32, 40)));
         Assert.Contains(ctx.Fills, f => f.Color == h.Style.RowDragHandleBackgroundColor && f.Rect.Equals(new GridRect(0, 40, 32, 360)));
-        Assert.Contains(ctx.Lines, l => l.Color == h.Style.GridLineColor && l.X1 == 32 && l.X2 == 32 && l.Y1 == 0 && l.Y2 == 400);
+        Assert.Contains(ctx.Lines, l => l.Color == h.Style.GridLineColor && Near(l.X1, 32) && Near(l.X2, 32) && Near(l.Y1, 0) && Near(l.Y2, 400));
 
         var row0Grips = ctx.Fills.Where(f => f.Color == h.Style.RowDragHandleColor && f.Rect.Top >= 40 && f.Rect.Bottom <= 76).ToList();
         Assert.Equal(6, row0Grips.Count);

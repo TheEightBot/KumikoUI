@@ -91,7 +91,7 @@ public class DataGridRendererTests
         var ctx = h.Render();
 
         Assert.Contains(ctx.Fills, f => f.Color == h.Style.HeaderBackgroundColor && f.Rect.Equals(new GridRect(0, 0, 600, 40)));
-        Assert.Contains(ctx.Lines, l => l.Color == h.Style.HeaderBorderColor && l.Y1 == 40 && l.Y2 == 40 && l.X1 == 0 && l.X2 == 600);
+        Assert.Contains(ctx.Lines, l => l.Color == h.Style.HeaderBorderColor && Near(l.Y1, 40) && Near(l.Y2, 40) && Near(l.X1, 0) && Near(l.X2, 600));
     }
 
     [Fact]
@@ -397,9 +397,9 @@ public class DataGridRendererTests
 
         var lines = h.Render().Lines.Where(l => l.Color == h.Style.GridLineColor).ToList();
 
-        var horizontalYs = lines.Where(l => l.Y1 == l.Y2).Select(l => l.Y1).Distinct().OrderBy(y => y);
+        var horizontalYs = lines.Where(l => Near(l.Y1, l.Y2)).Select(l => l.Y1).Distinct().OrderBy(y => y);
         Assert.Equal(new[] { 40f, 76f, 112f, 148f }, horizontalYs);
-        var vertical = lines.Where(l => l.X1 == l.X2).ToList();
+        var vertical = lines.Where(l => Near(l.X1, l.X2)).ToList();
         Assert.Equal(new[] { 150f, 250f, 400f, 550f }, vertical.Select(l => l.X1).OrderBy(x => x));
         // Vertical lines stop at the last row instead of running to the viewport bottom.
         Assert.All(vertical, l => Assert.Equal(148f, l.Y2));
@@ -464,7 +464,7 @@ public class DataGridRendererTests
         // Name is 150 px wide: arrow spans 134–142 (width − padding − 8), centred on the 40 px header.
         Assert.Equal(134, arrow.Min(l => l.Rect.Left));
         Assert.Equal(142, arrow.Max(l => l.Rect.Right));
-        var apex = arrow.SelectMany(l => new[] { (l.X1, l.Y1), (l.X2, l.Y2) }).Where(p => p.Item1 == 138f).ToList();
+        var apex = arrow.SelectMany(l => new[] { (l.X1, l.Y1), (l.X2, l.Y2) }).Where(p => Near(p.Item1, 138f)).ToList();
         Assert.NotEmpty(apex);
         Assert.All(apex, p => Assert.Equal(apexY, p.Item2));
     }
