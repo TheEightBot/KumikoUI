@@ -62,6 +62,29 @@ jobs:
           fi
           echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
 
+      # Release notes come from CHANGELOG.md. A stable release must have its own dated section;
+      # a prerelease uses its section if present, otherwise the Unreleased section.
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if eng/changelog-section.sh "$VERSION" > release-notes.md; then
+            echo "Using the [$VERSION] section of CHANGELOG.md"
+          elif [[ "$VERSION" == *-* ]]; then
+            eng/changelog-section.sh Unreleased > release-notes.md
+            echo "Prerelease: using the [Unreleased] section of CHANGELOG.md"
+          else
+            echo "::error::CHANGELOG.md needs a '## [$VERSION] - <date>' section before $VERSION can be released."
+            exit 1
+          fi
+          printf '\n**Full changelog:** https://github.com/%s/blob/%s/CHANGELOG.md\n' "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" >> release-notes.md
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Pack KumikoUI.Core and KumikoUI.SkiaSharp  (plain net10.0 — Linux is fine)
   # ─────────────────────────────────────────────────────────────────────────────
@@ -314,13 +337,19 @@ jobs:
           done
 
       # ── GitHub Release ─────────────────────────────────────────────────────
+      - name: Download release notes
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+          path: notes
+
+      # Runs for tag pushes and for manual runs against a tag (the only refs resolve-version accepts).
       - name: Create GitHub Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
+          body_path: notes/release-notes.md
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
-          generate_release_notes: true
           files: publish/*.nupkg

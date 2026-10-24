@@ -23,6 +23,7 @@
 
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/TheEightBot/KumikoUI</PackageProjectUrl>
+    <PackageReleaseNotes>Release notes for every version: https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/TheEightBot/KumikoUI</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
 
