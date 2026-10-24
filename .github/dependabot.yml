@@ -1,0 +1,32 @@
+# Dependency updates: weekly, grouped to keep the PR count low.
+# NuGet versions live in Directory.Packages.props (central package management).
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [ "area:packaging", "kind:task" ]
+    groups:
+      # One major version across the whole repository (see Directory.Packages.props).
+      skiasharp:
+        patterns: [ "SkiaSharp*" ]
+      maui:
+        patterns: [ "Microsoft.Maui.*" ]
+      test-dependencies:
+        patterns: [ "xunit*", "Microsoft.NET.Test.Sdk", "coverlet.*" ]
+      everything-else:
+        patterns: [ "*" ]
+        exclude-patterns: [ "SkiaSharp*", "Microsoft.Maui.*", "xunit*", "Microsoft.NET.Test.Sdk", "coverlet.*" ]
+
+  - package-ecosystem: github-actions
+    directories: [ "/", "/.github/actions/*" ]
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [ "area:ci", "kind:task" ]
+    groups:
+      actions:
+        patterns: [ "*" ]
