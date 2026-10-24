@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a new capability or an improvement.
+labels: [ "kind:enhancement" ]
+body:
+  - type: markdown
+    attributes:
+      value: Check the [roadmap](https://github.com/TheEightBot/KumikoUI/blob/main/docs/ROADMAP.md) and existing issues first; it may already be planned.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: The scenario and why the current behaviour is not enough.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How you'd like it to work, including API or XAML sketches if you have them.
+    validations:
+      required: true
+  - type: dropdown
+    id: hosts
+    attributes:
+      label: Hosts
+      multiple: true
+      options: [ MAUI, Uno, Both / host-independent ]
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you use today, or how other grids handle this.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I'd be willing to help implement this

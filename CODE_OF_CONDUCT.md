@@ -59,8 +59,11 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-GitHub.
+reported to the community leaders responsible for enforcement: the project
+maintainer, [@michaelstonis](https://github.com/michaelstonis). Reports can be
+made privately through a GitHub private message or by email to the address on
+the maintainer's GitHub profile; please do not report conduct issues in public
+issues or discussions.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the
