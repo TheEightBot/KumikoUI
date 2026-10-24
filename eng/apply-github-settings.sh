@@ -50,4 +50,19 @@ if [[ -z "$existing" ]]; then
   echo "Added deployment policy: tags matching v*"
 fi
 
+# ── Security features ───────────────────────────────────────────────────────
+echo "Enabling secret scanning + push protection, Dependabot alerts and security updates"
+run gh api -X PATCH "repos/$REPO" --silent --input - <<'JSON'
+{ "security_and_analysis": {
+    "secret_scanning": { "status": "enabled" },
+    "secret_scanning_push_protection": { "status": "enabled" } } }
+JSON
+run gh api -X PUT "repos/$REPO/vulnerability-alerts" --silent
+run gh api -X PUT "repos/$REPO/automated-security-fixes" --silent
+
+# ── Workflow token defaults: read-only; workflows request more per job ──────
+echo "Setting the default GITHUB_TOKEN permission to read-only"
+run gh api -X PUT "repos/$REPO/actions/permissions/workflow" --silent \
+  -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
+
 echo "Done."
