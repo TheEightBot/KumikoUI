@@ -24,13 +24,13 @@ jobs:
       # build-mode: none analyzes C# from source without building, so the MAUI and Uno
       # projects are covered without installing their workloads.
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@8498dc4c2b27cdd99baf0f87955b29ebbf30c78d # v4.39.1
+        uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           languages: csharp
           build-mode: none
           queries: security-and-quality
 
       - name: Analyze
-        uses: github/codeql-action/analyze@8498dc4c2b27cdd99baf0f87955b29ebbf30c78d # v4.39.1
+        uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           category: /language:csharp
