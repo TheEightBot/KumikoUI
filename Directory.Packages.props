@@ -21,7 +21,7 @@
       no longer floats with whatever MAUI workload the build machine has. 10.0.20 is also the floor of
       SkiaSharp.Views.Maui.Controls 4.153.1.
     -->
-    <MauiVersion>10.0.20</MauiVersion>
+    <MauiVersion>10.0.120</MauiVersion>
 
     <!--
       Version of Microsoft.Windows.Compatibility that Uno.Sdk adds implicitly to WebAssembly heads
