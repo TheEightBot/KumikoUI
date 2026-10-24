@@ -9,12 +9,14 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     labels: [ "area:packaging", "kind:task" ]
+    ignore:
+      # MauiVersion (Directory.Packages.props) is the deliberate minimum KumikoUI.Maui supports,
+      # not a version to track: raising it forces every consumer onto that MAUI. Raise it by hand.
+      - dependency-name: "Microsoft.Maui.Controls"
     groups:
       # One major version across the whole repository (see Directory.Packages.props).
       skiasharp:
         patterns: [ "SkiaSharp*" ]
-      maui:
-        patterns: [ "Microsoft.Maui.*" ]
       test-dependencies:
         patterns: [ "xunit*", "Microsoft.NET.Test.Sdk", "coverlet.*" ]
       everything-else:
