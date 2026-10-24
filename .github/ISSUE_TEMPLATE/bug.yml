@@ -1,0 +1,75 @@
+name: Bug report
+description: Something in KumikoUI does not work as documented.
+labels: [ "kind:bug" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please search [existing issues](https://github.com/TheEightBot/KumikoUI/issues) first.
+        **Security problems:** do not file them here; follow [SECURITY.md](https://github.com/TheEightBot/KumikoUI/blob/main/SECURITY.md).
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. Screenshots or recordings help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps, ideally with a small project or a snippet of the grid's XAML/C# configuration.
+      placeholder: |
+        1. Create a grid with ...
+        2. Tap / type / scroll ...
+        3. See ...
+    validations:
+      required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package(s)
+      multiple: true
+      options: [ KumikoUI.Maui, KumikoUI.Uno, KumikoUI.Core, KumikoUI.SkiaSharp, Samples / docs ]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: e.g. 0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform(s)
+      multiple: true
+      options:
+        - iOS
+        - Android
+        - Mac Catalyst
+        - Windows (MAUI / WinAppSDK)
+        - Uno desktop on Windows
+        - Uno desktop on macOS
+        - Uno desktop on Linux
+        - WebAssembly
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS, device and .NET / MAUI / Uno versions
+      placeholder: e.g. iOS 26.1 on iPhone 16, .NET 10.0.13, MAUI 10.0.120, Uno.Sdk 6.7.30
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Exception, stack trace or logs
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Custom renderers, fonts registered, theme, data size, workarounds you found.

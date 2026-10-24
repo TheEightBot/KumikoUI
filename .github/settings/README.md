@@ -18,6 +18,7 @@ The script is idempotent: rulesets are updated in place by name, and the environ
 | `release-tags` ruleset | `ruleset-release-tags.json` | Only admins can create, move or delete `v*` tags, the tags that publish packages. |
 | `nuget-publish` environment | `eng/apply-github-settings.sh` | The publish job waits for approval by the configured reviewer and can only deploy from `v*` tags. |
 | Security features | `eng/apply-github-settings.sh` | Secret scanning with push protection, Dependabot alerts and Dependabot security updates. |
+| Community | `eng/apply-github-settings.sh` | GitHub Discussions (linked from the issue forms), private vulnerability reporting (the channel in `SECURITY.md`), and head branches deleted automatically after a pull request merges. |
 | Workflow token default | `eng/apply-github-settings.sh` | `GITHUB_TOKEN` is read-only unless a workflow job asks for more, and Actions cannot approve pull requests. |
 
 Checked-in automation that complements these settings: Dependabot version updates (`.github/dependabot.yml`), CodeQL (`.github/workflows/codeql.yml`) and OpenSSF Scorecard (`.github/workflows/scorecard.yml`). Every action is pinned to a commit SHA with its version in a comment; Dependabot keeps the pins current.

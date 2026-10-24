@@ -1,6 +1,14 @@
 # Contributing to KumikoUI
 
-Thanks for helping. This file currently covers building and testing; the full guide (branching, commit conventions, pull requests, releases) is being written in #93.
+Thanks for helping make KumikoUI better. This guide covers how to report problems, set up a machine, make a change and get it merged, and how releases work.
+
+By participating you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md). Security problems go through [SECURITY.md](SECURITY.md), never public issues.
+
+## Ways to contribute
+
+- **Report a bug or request a feature** with the [issue forms](https://github.com/TheEightBot/KumikoUI/issues/new/choose). Bug reports need the package, version, host (MAUI or Uno), platform and a small repro.
+- **Ask a question or share an idea** in [Discussions](https://github.com/TheEightBot/KumikoUI/discussions).
+- **Fix or build something.** Comment on the issue first so we can agree on the approach; for anything larger than a bug fix, open an issue before writing code. The [roadmap](docs/ROADMAP.md) and the [1.0 checklist](https://github.com/TheEightBot/KumikoUI/issues/114) show what is planned.
 
 ## Toolchain
 
@@ -75,7 +83,56 @@ git push origin v0.2.0
 
 The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. It then runs the Core and Uno test suites and waits for approval in the `nuget-publish` environment before pushing to NuGet.org. Symbol packages (`.snupkg`) are produced for every package by default. Only admins can create `v*` tags.
 
-## Pull requests
+## Making a change
 
-`main` accepts changes only through pull requests that pass the three CI jobs, with review threads resolved. Pull requests merge by squash or rebase (linear history). The settings live in [`.github/settings/`](.github/settings/README.md).
+### Branches
+
+`main` is the only long-lived branch; releases are tags on `main`. Create a short-lived branch from `main` named after the issue:
+
+```
+<type>/<issue>-<short-description>      e.g. fix/25-pinned-summary-footer, chore/12-cpm-pins
+```
+
+Fork the repository if you don't have write access.
+
+### Commits
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+
+```
+<type>(<optional scope>): <summary in the imperative, lower case>
+
+<body: what changed and why>
+
+Closes #<issue>
+```
+
+| Type | Use for |
+|---|---|
+| `feat` | a new capability |
+| `fix` | a bug fix |
+| `perf` | a performance improvement |
+| `refactor` | a code change that neither fixes a bug nor adds a feature |
+| `test` | tests only |
+| `docs` | documentation only |
+| `ci`, `build`, `chore` | pipelines, build system, maintenance |
+
+Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaking changes with `!` after the type (`feat(core)!: …`) and a `BREAKING CHANGE:` footer; until 1.0 they are allowed but must be called out in the CHANGELOG.
+
+### Code
+
+- Follow the conventions in [`.github/instructions/`](.github/instructions) and the surrounding code: nullable enabled, `float` coordinates, `GridColor` for colours, no LINQ or allocations in the render loop.
+- Every public member gets an XML doc comment.
+- KumikoUI.Core must stay free of UI-framework and SkiaSharp references; host-specific code belongs in KumikoUI.Maui or KumikoUI.Uno.
+- Add or update tests with every behaviour change (xUnit; see [`tests/`](tests)). Bug fixes start with a failing test.
+
+### Pull requests
+
+1. Rebase on the latest `main`, build the projects you touched and run the tests.
+2. Open a pull request against `main` and fill in the template: what changed, why, how you verified it, and anything not verified (devices, platforms).
+3. Add a line to the `Unreleased` section of [CHANGELOG.md](CHANGELOG.md) for user-visible changes.
+4. CI must pass (`Build & Test (Core + SkiaSharp)`, `Build (KumikoUI.Maui — all TFMs)`, `Build & Test (KumikoUI.Uno — all heads)`), CodeQL must not report new alerts, and review threads must be resolved.
+5. A maintainer merges by squash or rebase; `main` keeps a linear history.
+
+The branch protection and other repository settings are kept in [`.github/settings/`](.github/settings/README.md).
 

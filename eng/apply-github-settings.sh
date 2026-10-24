@@ -60,6 +60,11 @@ JSON
 run gh api -X PUT "repos/$REPO/vulnerability-alerts" --silent
 run gh api -X PUT "repos/$REPO/automated-security-fixes" --silent
 
+# ── Community: Discussions and private vulnerability reporting (SECURITY.md) ─
+echo "Enabling Discussions, private vulnerability reporting and branch auto-delete after merge"
+run gh api -X PATCH "repos/$REPO" --silent -F has_discussions=true -F delete_branch_on_merge=true
+run gh api -X PUT "repos/$REPO/private-vulnerability-reporting" --silent
+
 # ── Workflow token defaults: read-only; workflows request more per job ──────
 echo "Setting the default GITHUB_TOKEN permission to read-only"
 run gh api -X PUT "repos/$REPO/actions/permissions/workflow" --silent \

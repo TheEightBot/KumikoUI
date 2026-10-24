@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/TheEightBot/KumikoUI/discussions
+    about: Ask how to do something or discuss an idea before filing an issue.
+  - name: Report a security vulnerability
+    url: https://github.com/TheEightBot/KumikoUI/security/advisories/new
+    about: Please report security problems privately, never in a public issue.
