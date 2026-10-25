@@ -26,14 +26,21 @@
   <!--
     PackageDownload restores exactly these packages (no dependency graph, nothing referenced or compiled
     against). Versions are the MauiVersion, WindowsAppSdkWinUIVersion, UnoWinUIVersion and
-    WindowsDesktopRefVersion properties in Directory.Packages.props.
+    WindowsDesktopRefVersion, CommunityToolkitWinUIDataGridVersion, CommunityToolkitMauiVersion, AvaloniaVersion
+    and AvaloniaDataGridVersion properties in Directory.Packages.props.
   -->
   <ItemGroup>
     <PackageDownload Include="Microsoft.Maui.Controls.Core" Version="[$(MauiVersion)]" />
     <PackageDownload Include="Microsoft.Maui.Controls.Xaml" Version="[$(MauiVersion)]" />
+    <PackageDownload Include="Microsoft.Maui.Core" Version="[$(MauiVersion)]" />
+    <PackageDownload Include="Microsoft.Maui.Graphics" Version="[$(MauiVersion)]" />
     <PackageDownload Include="Microsoft.WindowsAppSDK.WinUI" Version="[$(WindowsAppSdkWinUIVersion)]" />
     <PackageDownload Include="Uno.WinUI" Version="[$(UnoWinUIVersion)]" />
     <PackageDownload Include="Microsoft.WindowsDesktop.App.Ref" Version="[$(WindowsDesktopRefVersion)]" />
+    <PackageDownload Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="[$(CommunityToolkitWinUIDataGridVersion)]" />
+    <PackageDownload Include="CommunityToolkit.Maui" Version="[$(CommunityToolkitMauiVersion)]" />
+    <PackageDownload Include="Avalonia" Version="[$(AvaloniaVersion)]" />
+    <PackageDownload Include="Avalonia.Controls.DataGrid" Version="[$(AvaloniaDataGridVersion)]" />
   </ItemGroup>
 
   <!-- Hand the package locations to the tool so it never guesses paths. -->
@@ -57,6 +64,22 @@
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>WindowsDesktopRefVersion</_Parameter1>
       <_Parameter2>$(WindowsDesktopRefVersion)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>CommunityToolkitWinUIDataGridVersion</_Parameter1>
+      <_Parameter2>$(CommunityToolkitWinUIDataGridVersion)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>CommunityToolkitMauiVersion</_Parameter1>
+      <_Parameter2>$(CommunityToolkitMauiVersion)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>AvaloniaVersion</_Parameter1>
+      <_Parameter2>$(AvaloniaVersion)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>AvaloniaDataGridVersion</_Parameter1>
+      <_Parameter2>$(AvaloniaDataGridVersion)</_Parameter2>
     </AssemblyAttribute>
   </ItemGroup>
 

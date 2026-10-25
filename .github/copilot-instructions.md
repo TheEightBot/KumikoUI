@@ -52,9 +52,9 @@ declarable editor config, `EditSession` pipeline (begin → draw → commit/canc
 ### [models-and-data.instructions.md](.github/instructions/models-and-data.instructions.md)
 **Applies to:** `src/KumikoUI.Core/Models/**`
 
-Everything about the data layer. Covers: all `DataGridColumn` properties and column types,
+Everything about the data layer. Covers: all `GridColumn` properties and column types,
 `DataGridSource` API (get/set values, bulk updates, sorting, filtering, grouping, summaries),
-`DataGridStyle` theming (built-in themes, `CellStyleResolver`, `RowStyleResolver`), `CellStyle`/
+`DataGridStyle` theming (built-in themes, `CellStyleResolver`, `RowStyleResolver`), `DataGridCellStyle`/
 `DataGridRowStyle` nullable merge semantics, and step-by-step recipes for adding a new style property
 or column type.
 
@@ -89,7 +89,7 @@ Reusable task prompts live in [`.github/prompts/`](.github/prompts/):
 |---|---|
 | [`add-cell-renderer.prompt.md`](.github/prompts/add-cell-renderer.prompt.md) | Creating a new `ICellRenderer` |
 | [`add-drawn-component.prompt.md`](.github/prompts/add-drawn-component.prompt.md) | Creating a new canvas-drawn inline editor |
-| [`add-column-type.prompt.md`](.github/prompts/add-column-type.prompt.md) | Adding a new `DataGridColumnType` end-to-end |
+| [`add-column-type.prompt.md`](.github/prompts/add-column-type.prompt.md) | Adding a new `GridColumnType` end-to-end |
 | [`add-theme-property.prompt.md`](.github/prompts/add-theme-property.prompt.md) | Adding a new `DataGridStyle` visual property |
 | [`add-unit-test.prompt.md`](.github/prompts/add-unit-test.prompt.md) | Writing xUnit tests for Core classes |
 | [`configure-datagrid-features.prompt.md`](.github/prompts/configure-datagrid-features.prompt.md) | Wiring sorting, filtering, grouping, or summaries |

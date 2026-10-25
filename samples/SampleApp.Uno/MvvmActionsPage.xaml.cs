@@ -38,18 +38,18 @@ public sealed partial class MvvmActionsPage : Page
     private void BuildColumns()
     {
         // Id — read-only.
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new GridColumn
         {
             Header = "Id",
             PropertyName = "Id",
-            ColumnType = DataGridColumnType.Numeric,
+            ColumnType = GridColumnType.Numeric,
             Width = 52,
             IsReadOnly = true,
             AllowTabStop = false,
         });
 
         // Name — single-tap, F2, OR typing starts editing (most accessible).
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new GridColumn
         {
             Header = "Name",
             PropertyName = "Name",
@@ -58,33 +58,33 @@ public sealed partial class MvvmActionsPage : Page
         });
 
         // Department — double-tap or F2 only (typing excluded for a ComboBox).
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new GridColumn
         {
             Header = "Department",
             PropertyName = "Department",
-            ColumnType = DataGridColumnType.ComboBox,
+            ColumnType = GridColumnType.ComboBox,
             Width = 130,
             EditorItemsString = "Engineering,Marketing,Finance,HR,Design,Product,Sales",
             EditTriggers = EditTrigger.DoubleTap | EditTrigger.F2Key,
         });
 
         // Level — double-tap ONLY.
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new GridColumn
         {
             Header = "Level",
             PropertyName = "Level",
-            ColumnType = DataGridColumnType.Picker,
+            ColumnType = GridColumnType.Picker,
             Width = 90,
             EditorItemsString = "Junior,Mid,Senior,Lead,Principal",
             EditTriggers = EditTrigger.DoubleTap,
         });
 
         // Salary — F2 key ONLY (protects financial data from pointer gestures).
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new GridColumn
         {
             Header = "Salary",
             PropertyName = "Salary",
-            ColumnType = DataGridColumnType.Numeric,
+            ColumnType = GridColumnType.Numeric,
             Format = "C0",
             Width = 110,
             TextAlignment = GridTextAlignment.Right,
@@ -92,11 +92,11 @@ public sealed partial class MvvmActionsPage : Page
         });
 
         // Active — Boolean; toggles on tap.
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new GridColumn
         {
             Header = "Active",
             PropertyName = "IsActive",
-            ColumnType = DataGridColumnType.Boolean,
+            ColumnType = GridColumnType.Boolean,
             Width = 60,
             AllowTabStop = false,
         });
@@ -105,11 +105,11 @@ public sealed partial class MvvmActionsPage : Page
         // Column-level EditTriggers=SingleTap ensures buttons activate on a single tap even though
         // the grid default is DoubleTap. PropertyName="" passes the full Employee as the cell value,
         // so DrawnActionButtons.RowItem (→ Command parameter) is the row's Employee.
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new GridColumn
         {
             Header = "Actions",
             PropertyName = "",
-            ColumnType = DataGridColumnType.Template,
+            ColumnType = GridColumnType.Template,
             Width = 200,
             IsReadOnly = false,
             AllowSorting = false,

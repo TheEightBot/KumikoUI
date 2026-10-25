@@ -137,10 +137,10 @@ builder
                  RowHeight="36"
                  HeaderHeight="40">
     <dg:KumikoDataGrid.Columns>
-        <core:DataGridColumn Header="Name"   PropertyName="Name"     Width="180" />
-        <core:DataGridColumn Header="Age"    PropertyName="Age"      Width="80"
+        <core:GridColumn Header="Name"   PropertyName="Name"     Width="180" />
+        <core:GridColumn Header="Age"    PropertyName="Age"      Width="80"
                              ColumnType="Numeric" TextAlignment="Right" />
-        <core:DataGridColumn Header="Active" PropertyName="IsActive" Width="80"
+        <core:GridColumn Header="Active" PropertyName="IsActive" Width="80"
                              ColumnType="Boolean" />
     </dg:KumikoDataGrid.Columns>
 </dg:KumikoDataGrid>
@@ -150,7 +150,7 @@ builder
 
 ## 📋 Column Types
 
-Each column is a `DataGridColumn` with a `ColumnType` that controls both the read-only cell renderer and the inline editor.
+Each column is a `GridColumn` with a `ColumnType` that controls both the read-only cell renderer and the inline editor.
 
 | `ColumnType` | Cell Renderer | Editor | Notes |
 |---|---|---|---|
@@ -167,20 +167,20 @@ Each column is a `DataGridColumn` with a `ColumnType` that controls both the rea
 ### Column declaration example
 
 ```xml
-<core:DataGridColumn Header="Department"
+<core:GridColumn Header="Department"
                      PropertyName="Department"
                      Width="140"
                      ColumnType="ComboBox"
                      EditorItemsString="Engineering,Marketing,Sales,HR,Finance" />
 
-<core:DataGridColumn Header="Salary"
+<core:GridColumn Header="Salary"
                      PropertyName="Salary"
                      Width="120"
                      ColumnType="Numeric"
                      Format="C0"
                      TextAlignment="Right" />
 
-<core:DataGridColumn Header="Rating"
+<core:GridColumn Header="Rating"
                      PropertyName="Rating"
                      Width="120"
                      ColumnType="ProgressBar" />
@@ -189,7 +189,7 @@ Each column is a `DataGridColumn` with a `ColumnType` that controls both the rea
 ### Read-only and tab behavior
 
 ```xml
-<core:DataGridColumn Header="Id" PropertyName="Id"
+<core:GridColumn Header="Id" PropertyName="Id"
                      IsReadOnly="True"
                      AllowTabStop="False" />
 ```
@@ -215,7 +215,7 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
 
 <dg:KumikoDataGrid x:Name="actionsGrid" ...>
     <dg:KumikoDataGrid.Columns>
-        <core:DataGridColumn Header="Actions"
+        <core:GridColumn Header="Actions"
                              PropertyName=""
                              ColumnType="Template"
                              Width="200"
@@ -223,7 +223,7 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
                              AllowFiltering="False"
                              AllowTabStop="False"
                              EditTriggers="SingleTap">
-            <core:DataGridColumn.CustomCellRenderer>
+            <core:GridColumn.CustomCellRenderer>
                 <render:ActionButtonsCellRenderer>
                     <render:ActionButtonsCellRenderer.Buttons>
                         <dg:MauiActionButtonDefinition
@@ -238,8 +238,8 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
                                               Source={x:Reference actionsGrid}}" />
                     </render:ActionButtonsCellRenderer.Buttons>
                 </render:ActionButtonsCellRenderer>
-            </core:DataGridColumn.CustomCellRenderer>
-        </core:DataGridColumn>
+            </core:GridColumn.CustomCellRenderer>
+        </core:GridColumn>
     </dg:KumikoDataGrid.Columns>
 </dg:KumikoDataGrid>
 ```
@@ -316,11 +316,11 @@ Columns can be pinned to the left or right edge and will never scroll out of vie
 
 ```xml
 <!-- Pin to left (default freeze side) -->
-<core:DataGridColumn Header="Id"    PropertyName="Id"    IsFrozen="True" />
-<core:DataGridColumn Header="Name"  PropertyName="Name"  IsFrozen="True" />
+<core:GridColumn Header="Id"    PropertyName="Id"    IsFrozen="True" />
+<core:GridColumn Header="Name"  PropertyName="Name"  IsFrozen="True" />
 
 <!-- Pin to right -->
-<core:DataGridColumn Header="Total" PropertyName="Total" FreezeMode="Right" />
+<core:GridColumn Header="Total" PropertyName="Total" FreezeMode="Right" />
 ```
 
 The renderer uses 3-pass clip regions so frozen columns naturally overlay scrollable content with correct z-ordering.
@@ -343,7 +343,7 @@ Tap any column header to sort. The indicator cycles through **Ascending → Desc
 
 ```csharp
 // Set ascending sort on a column, then refresh:
-lastNameColumn.SortDirection = DataGridSortDirection.Ascending;
+lastNameColumn.SortDirection = GridSortDirection.Ascending;
 kumiko.DataSource.Refresh();
 ```
 
@@ -457,22 +457,22 @@ Each column can override the grid-level `EditTriggers` independently via its own
     <dg:KumikoDataGrid.Columns>
 
         <!-- Most accessible: single-tap, F2, or typing to edit -->
-        <core:DataGridColumn Header="Name" PropertyName="Name"
+        <core:GridColumn Header="Name" PropertyName="Name"
                              EditTriggers="SingleTap, F2Key, Typing" />
 
         <!-- ComboBox: double-tap or F2 only (no accidental typing edits) -->
-        <core:DataGridColumn Header="Department" PropertyName="Department"
+        <core:GridColumn Header="Department" PropertyName="Department"
                              ColumnType="ComboBox"
                              EditorItemsString="Engineering,Marketing,Finance,HR"
                              EditTriggers="DoubleTap, F2Key" />
 
         <!-- Salary: keyboard-only — protects financial data from pointer gestures -->
-        <core:DataGridColumn Header="Salary" PropertyName="Salary"
+        <core:GridColumn Header="Salary" PropertyName="Salary"
                              ColumnType="Numeric" Format="C0"
                              EditTriggers="F2Key" />
 
         <!-- Action buttons always activate on first tap -->
-        <core:DataGridColumn Header="Actions" PropertyName=""
+        <core:GridColumn Header="Actions" PropertyName=""
                              ColumnType="Template"
                              EditTriggers="SingleTap" />
 
@@ -503,11 +503,11 @@ Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column
 For `Template` columns supply an `EditorDescriptor`:
 
 ```csharp
-var column = new DataGridColumn
+var column = new GridColumn
 {
     Header = "Rating",
     PropertyName = "Rating",
-    ColumnType = DataGridColumnType.Template,
+    ColumnType = GridColumnType.Template,
     EditorDescriptor = new NumericUpDownEditorDescriptor { Min = 0, Max = 10, Step = 1 }
 };
 ```
@@ -522,7 +522,7 @@ var column = new DataGridColumn
 <dg:KumikoDataGrid GridSelectionMode="Multiple" />
 ```
 
-| `DataGridSelectionMode` | Behavior |
+| `GridSelectionMode` | Behavior |
 |---|---|
 | `Single` | One item at a time |
 | `Multiple` | Each tap toggles the item |
@@ -637,13 +637,13 @@ var style = kumiko.GridStyle;
 style.CellStyleResolver = (item, column) =>
 {
     if (column.PropertyName == "Salary" && item is Employee e && e.Salary > 100_000)
-        return new CellStyle { TextColor = new GridColor(0.8f, 0.1f, 0.1f), Bold = true };
+        return new DataGridCellStyle { TextColor = new GridColor(0.8f, 0.1f, 0.1f), Bold = true };
     return null;
 };
 kumiko.GridStyle = style;
 ```
 
-Style resolution cascades: **per-cell resolver → column `CellStyle` → grid `DataGridStyle`**.
+Style resolution cascades: **per-cell resolver → column `DataGridCellStyle` → grid `DataGridStyle`**.
 
 ---
 
@@ -703,8 +703,8 @@ Store the Unicode code-point string as the cell value and render it with a custo
 public class IconFontCellRenderer(string fontFamily, float fontSize) : ICellRenderer
 {
     public void Render(IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, DataGridColumn column,
-        DataGridStyle style, bool isSelected, CellStyle? cellStyle = null)
+        string displayText, GridColumn column,
+        DataGridStyle style, bool isSelected, DataGridCellStyle? cellStyle = null)
     {
         if (string.IsNullOrEmpty(displayText)) return;
 
@@ -722,7 +722,7 @@ Attach it to a column:
 
 ```csharp
 // "\uE876" = checkmark, "\uE5CD" = close, "\uE002" = warning in MaterialIcons
-new DataGridColumn
+new GridColumn
 {
     Header             = "Status",
     PropertyName       = nameof(Item.StatusIcon),   // returns e.g. "\uE876"
@@ -812,7 +812,7 @@ public class Employee : INotifyPropertyChanged
 `PropertyName` supports dotted paths for nested objects:
 
 ```xml
-<core:DataGridColumn Header="City" PropertyName="Address.City" Width="120" />
+<core:GridColumn Header="City" PropertyName="Address.City" Width="120" />
 ```
 
 Accessors are compiled once via `Expression.Property` chains and cached.

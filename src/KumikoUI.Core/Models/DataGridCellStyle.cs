@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Models;
 /// Defines visual properties for an individual cell.
 /// All properties are nullable; a null value means "inherit from grid-level style".
 /// </summary>
-public class CellStyle
+public class DataGridCellStyle
 {
     /// <summary>Background color of the cell.</summary>
     public GridColor? BackgroundColor { get; set; }
@@ -38,15 +38,15 @@ public class CellStyle
         TextAlignment.HasValue;
 
     /// <summary>
-    /// Merge two CellStyle instances. Values from <paramref name="primary"/> take precedence;
+    /// Merge two DataGridCellStyle instances. Values from <paramref name="primary"/> take precedence;
     /// any null properties fall back to <paramref name="fallback"/>.
     /// Returns null when both inputs are null.
     /// </summary>
-    public static CellStyle? Merge(CellStyle? primary, CellStyle? fallback)
+    public static DataGridCellStyle? Merge(DataGridCellStyle? primary, DataGridCellStyle? fallback)
     {
         if (primary == null) return fallback;
         if (fallback == null) return primary;
-        return new CellStyle
+        return new DataGridCellStyle
         {
             BackgroundColor = primary.BackgroundColor ?? fallback.BackgroundColor,
             TextColor = primary.TextColor ?? fallback.TextColor,

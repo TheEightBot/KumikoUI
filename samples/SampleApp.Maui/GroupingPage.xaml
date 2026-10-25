@@ -36,42 +36,42 @@
                          VerticalOptions="Fill">
 
             <dg:KumikoDataGrid.Columns>
-                <core:DataGridColumn Header="Id"
+                <core:GridColumn Header="Id"
                                      PropertyName="Id"
                                      Width="60"
                                      ColumnType="Numeric"
                                      TextAlignment="Right"
                                      IsReadOnly="True" />
 
-                <core:DataGridColumn Header="Name"
+                <core:GridColumn Header="Name"
                                      PropertyName="Name"
                                      Width="160" />
 
-                <core:DataGridColumn Header="Department"
+                <core:GridColumn Header="Department"
                                      PropertyName="Department"
                                      Width="140"
                                      ColumnType="ComboBox"
                                      EditorItemsString="Engineering,Marketing,Sales,HR,Finance,Design,Support" />
 
-                <core:DataGridColumn Header="Salary"
+                <core:GridColumn Header="Salary"
                                      PropertyName="Salary"
                                      Width="120"
                                      Format="C0"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:DataGridColumn Header="Level"
+                <core:GridColumn Header="Level"
                                      PropertyName="Level"
                                      Width="120"
                                      ColumnType="ComboBox"
                                      EditorItemsString="Junior,Mid,Senior,Staff,Principal,Director" />
 
-                <core:DataGridColumn Header="Active"
+                <core:GridColumn Header="Active"
                                      PropertyName="IsActive"
                                      Width="80"
                                      ColumnType="Boolean" />
 
-                <core:DataGridColumn Header="City"
+                <core:GridColumn Header="City"
                                      PropertyName="City"
                                      Width="130" />
             </dg:KumikoDataGrid.Columns>

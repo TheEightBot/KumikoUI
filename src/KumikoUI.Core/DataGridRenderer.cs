@@ -14,39 +14,39 @@ public class DataGridRenderer
 {
     private readonly GridLayoutEngine _layout = new();
     private readonly PaintCache _paintCache = new();
-    private readonly Dictionary<DataGridColumnType, ICellRenderer> _cellRenderers = new();
+    private readonly Dictionary<GridColumnType, ICellRenderer> _cellRenderers = new();
 
     // Reusable per-frame column lists — avoids allocating new Lists every Render() call
-    private readonly List<(DataGridColumn Column, float X, int OriginalIndex)> _frozenCols = new();
-    private readonly List<(DataGridColumn Column, float X, int OriginalIndex)> _rightFrozenCols = new();
-    private readonly List<(DataGridColumn Column, float X, int OriginalIndex)> _scrollableCols = new();
-    private readonly List<(DataGridColumn Column, float X, int OriginalIndex)> _allCols = new();
+    private readonly List<(GridColumn Column, float X, int OriginalIndex)> _frozenCols = new();
+    private readonly List<(GridColumn Column, float X, int OriginalIndex)> _rightFrozenCols = new();
+    private readonly List<(GridColumn Column, float X, int OriginalIndex)> _scrollableCols = new();
+    private readonly List<(GridColumn Column, float X, int OriginalIndex)> _allCols = new();
 
     public DataGridRenderer()
     {
         var textRenderer = new TextCellRenderer();
-        _cellRenderers[DataGridColumnType.Text] = textRenderer;
-        _cellRenderers[DataGridColumnType.Numeric] = textRenderer;
-        _cellRenderers[DataGridColumnType.Date] = textRenderer;
-        _cellRenderers[DataGridColumnType.Template] = textRenderer;
-        _cellRenderers[DataGridColumnType.ComboBox] = textRenderer;
-        _cellRenderers[DataGridColumnType.Picker] = textRenderer;
-        _cellRenderers[DataGridColumnType.Boolean] = new BooleanCellRenderer();
-        _cellRenderers[DataGridColumnType.Image] = new ImageCellRenderer();
+        _cellRenderers[GridColumnType.Text] = textRenderer;
+        _cellRenderers[GridColumnType.Numeric] = textRenderer;
+        _cellRenderers[GridColumnType.Date] = textRenderer;
+        _cellRenderers[GridColumnType.Template] = textRenderer;
+        _cellRenderers[GridColumnType.ComboBox] = textRenderer;
+        _cellRenderers[GridColumnType.Picker] = textRenderer;
+        _cellRenderers[GridColumnType.Boolean] = new BooleanCellRenderer();
+        _cellRenderers[GridColumnType.Image] = new ImageCellRenderer();
     }
 
     /// <summary>Register a custom cell renderer for a column type.</summary>
-    public void SetCellRenderer(DataGridColumnType columnType, ICellRenderer renderer)
+    public void SetCellRenderer(GridColumnType columnType, ICellRenderer renderer)
     {
         _cellRenderers[columnType] = renderer;
     }
 
     /// <summary>Get the cell renderer for a column type.</summary>
-    public ICellRenderer GetCellRenderer(DataGridColumnType columnType)
+    public ICellRenderer GetCellRenderer(GridColumnType columnType)
     {
         return _cellRenderers.TryGetValue(columnType, out var renderer)
             ? renderer
-            : _cellRenderers[DataGridColumnType.Text];
+            : _cellRenderers[GridColumnType.Text];
     }
 
     /// <summary>Render the full grid given the current state.</summary>
@@ -357,7 +357,7 @@ public class DataGridRenderer
 
     private void DrawHeader(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
         DataGridStyle style,
         bool isFrozen,
@@ -372,7 +372,7 @@ public class DataGridRenderer
 
     private void DrawHeader(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
         DataGridStyle style,
         ColumnFreezeMode freezeMode,
@@ -451,7 +451,7 @@ public class DataGridRenderer
     private void DrawRows(
         IDrawingContext ctx,
         DataGridSource dataSource,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         int firstRow, int lastRow,
         ScrollState scroll,
         DataGridSelectionModel selection,
@@ -470,7 +470,7 @@ public class DataGridRenderer
     private void DrawRows(
         IDrawingContext ctx,
         DataGridSource dataSource,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         int firstRow, int lastRow,
         ScrollState scroll,
         DataGridSelectionModel selection,
@@ -556,16 +556,16 @@ public class DataGridRenderer
                 {
                     dataItem ??= dataSource.GetItem(row);
                     var dynamicCellStyle = style.CellStyleResolver(dataItem, col);
-                    colCellStyle = CellStyle.Merge(dynamicCellStyle, colCellStyle);
+                    colCellStyle = DataGridCellStyle.Merge(dynamicCellStyle, colCellStyle);
                 }
 
                 // Apply row-level text/font overrides into the effective cell style
                 if (dynamicRowStyle != null &&
                     (dynamicRowStyle.TextColor != null || dynamicRowStyle.Font != null))
                 {
-                    colCellStyle ??= new CellStyle();
+                    colCellStyle ??= new DataGridCellStyle();
                     if (colCellStyle == col.CellStyle)
-                        colCellStyle = CellStyle.Merge(null, colCellStyle) ?? new CellStyle();
+                        colCellStyle = DataGridCellStyle.Merge(null, colCellStyle) ?? new DataGridCellStyle();
                     colCellStyle.TextColor ??= dynamicRowStyle.TextColor;
                     colCellStyle.Font ??= dynamicRowStyle.Font;
                 }
@@ -605,7 +605,7 @@ public class DataGridRenderer
     private void DrawFrozenRows(
         IDrawingContext ctx,
         DataGridSource dataSource,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         int frozenRowCount,
         ScrollState scroll,
         DataGridSelectionModel selection,
@@ -622,7 +622,7 @@ public class DataGridRenderer
     private void DrawFrozenRows(
         IDrawingContext ctx,
         DataGridSource dataSource,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         int frozenRowCount,
         ScrollState scroll,
         DataGridSelectionModel selection,
@@ -697,16 +697,16 @@ public class DataGridRenderer
                 {
                     dataItem ??= dataSource.GetItem(row);
                     var dynamicCellStyle = style.CellStyleResolver(dataItem, col);
-                    colCellStyle = CellStyle.Merge(dynamicCellStyle, colCellStyle);
+                    colCellStyle = DataGridCellStyle.Merge(dynamicCellStyle, colCellStyle);
                 }
 
                 // Apply row-level text/font overrides into the effective cell style
                 if (dynamicRowStyle != null &&
                     (dynamicRowStyle.TextColor != null || dynamicRowStyle.Font != null))
                 {
-                    colCellStyle ??= new CellStyle();
+                    colCellStyle ??= new DataGridCellStyle();
                     if (colCellStyle == col.CellStyle)
-                        colCellStyle = CellStyle.Merge(null, colCellStyle) ?? new CellStyle();
+                        colCellStyle = DataGridCellStyle.Merge(null, colCellStyle) ?? new DataGridCellStyle();
                     colCellStyle.TextColor ??= dynamicRowStyle.TextColor;
                     colCellStyle.Font ??= dynamicRowStyle.Font;
                 }
@@ -746,7 +746,7 @@ public class DataGridRenderer
         DataGridSource dataSource,
         int row,
         float rowY,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> allCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> allCols,
         ScrollState scroll,
         DataGridStyle style,
         float frozenWidth,
@@ -852,7 +852,7 @@ public class DataGridRenderer
 
     private void DrawGridLines(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         int firstRow, int lastRow,
         ScrollState scroll,
         DataGridStyle style,
@@ -870,7 +870,7 @@ public class DataGridRenderer
 
     private void DrawGridLines(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         int firstRow, int lastRow,
         ScrollState scroll,
         DataGridStyle style,
@@ -914,7 +914,7 @@ public class DataGridRenderer
 
     private void DrawCurrentCellBorder(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
         DataGridSelectionModel selection,
         DataGridStyle style,
@@ -931,7 +931,7 @@ public class DataGridRenderer
 
     private void DrawCurrentCellBorder(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
         DataGridSelectionModel selection,
         DataGridStyle style,
@@ -979,7 +979,7 @@ public class DataGridRenderer
 
     private void DrawSortIndicators(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
         DataGridStyle style,
         bool isFrozen,
@@ -993,7 +993,7 @@ public class DataGridRenderer
 
     private void DrawSortIndicators(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
         DataGridStyle style,
         ColumnFreezeMode freezeMode,
@@ -1002,7 +1002,7 @@ public class DataGridRenderer
     {
         foreach (var (col, colX, _) in visibleCols)
         {
-            if (col.SortDirection == DataGridSortDirection.None) continue;
+            if (col.SortDirection == GridSortDirection.None) continue;
 
             float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
             float arrowX = screenX + col.Width - style.CellPadding - 8;
@@ -1010,7 +1010,7 @@ public class DataGridRenderer
 
             var paint = _paintCache.SortIndicator;
 
-            if (col.SortDirection == DataGridSortDirection.Ascending)
+            if (col.SortDirection == GridSortDirection.Ascending)
             {
                 ctx.DrawLine(arrowX, arrowCenterY + 3, arrowX + 4, arrowCenterY - 3, paint);
                 ctx.DrawLine(arrowX + 4, arrowCenterY - 3, arrowX + 8, arrowCenterY + 3, paint);
@@ -1043,7 +1043,7 @@ public class DataGridRenderer
 
     private void DrawFilterIcons(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
         DataGridStyle style,
         bool isFrozen,
@@ -1055,7 +1055,7 @@ public class DataGridRenderer
 
     private void DrawFilterIcons(
         IDrawingContext ctx,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
         DataGridStyle style,
         ColumnFreezeMode freezeMode,
@@ -1217,7 +1217,7 @@ public class DataGridRenderer
                 StrokeWidth = 2f,
                 IsAntiAlias = true
             };
-            if (group.GroupSortDirection == DataGridSortDirection.Ascending)
+            if (group.GroupSortDirection == GridSortDirection.Ascending)
             {
                 // Up arrow
                 float ax = arrowX + 6;
@@ -1285,7 +1285,7 @@ public class DataGridRenderer
     private static void DrawTableSummaryRows(
         IDrawingContext ctx,
         DataGridSource dataSource,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> allCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> allCols,
         ScrollState scroll,
         DataGridStyle style,
         float frozenWidth,
@@ -1412,7 +1412,7 @@ public class DataGridRenderer
         DataGridSource dataSource,
         int row,
         float rowY,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> allCols,
+        List<(GridColumn Column, float X, int OriginalIndex)> allCols,
         ScrollState scroll,
         DataGridStyle style,
         float frozenWidth,
@@ -1531,7 +1531,7 @@ public class DataGridRenderer
 
     private static void DrawColumnDragOverlay(
         IDrawingContext ctx,
-        IReadOnlyList<DataGridColumn> columns,
+        IReadOnlyList<GridColumn> columns,
         int dragColumnIndex,
         float dragScreenX,
         ScrollState scroll,
@@ -1651,7 +1651,7 @@ public class DataGridRenderer
     private void DrawRowDragOverlay(
         IDrawingContext ctx,
         DataGridSource dataSource,
-        IReadOnlyList<DataGridColumn> columns,
+        IReadOnlyList<GridColumn> columns,
         int dragRowIndex,
         float dragScreenY,
         ScrollState scroll,

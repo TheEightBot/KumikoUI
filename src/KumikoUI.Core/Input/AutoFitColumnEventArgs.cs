@@ -11,11 +11,11 @@ public class AutoFitColumnEventArgs : EventArgs
     /// <summary>Zero-based index of the column to auto-fit.</summary>
     public int ColumnIndex { get; }
     /// <summary>The column to auto-fit.</summary>
-    public DataGridColumn Column { get; }
+    public GridColumn Column { get; }
     /// <summary>Initializes a new instance of the <see cref="AutoFitColumnEventArgs"/> class.</summary>
     /// <param name="index">The zero-based column index.</param>
     /// <param name="column">The column to auto-fit.</param>
-    public AutoFitColumnEventArgs(int index, DataGridColumn column)
+    public AutoFitColumnEventArgs(int index, GridColumn column)
     {
         ColumnIndex = index;
         Column = column;

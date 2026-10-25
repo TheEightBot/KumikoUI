@@ -67,18 +67,18 @@
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
             <kumiko:KumikoDataGrid.Columns>
-                <core:DataGridColumn Header="SKU" PropertyName="Sku" Width="110" IsFrozen="True" />
-                <core:DataGridColumn Header="Product" PropertyName="ProductName" Width="180" />
-                <core:DataGridColumn Header="Category" PropertyName="Category" Width="120" />
-                <core:DataGridColumn Header="Price" PropertyName="Price" Width="110"
+                <core:GridColumn Header="SKU" PropertyName="Sku" Width="110" IsFrozen="True" />
+                <core:GridColumn Header="Product" PropertyName="ProductName" Width="180" />
+                <core:GridColumn Header="Category" PropertyName="Category" Width="120" />
+                <core:GridColumn Header="Price" PropertyName="Price" Width="110"
                                      Format="C2" ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="Stock" PropertyName="Stock" Width="90"
+                <core:GridColumn Header="Stock" PropertyName="Stock" Width="90"
                                      ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="In Stock" PropertyName="InStock" Width="80"
+                <core:GridColumn Header="In Stock" PropertyName="InStock" Width="80"
                                      ColumnType="Boolean" AllowTabStop="False" />
-                <core:DataGridColumn Header="Rating" PropertyName="Rating" Width="90"
+                <core:GridColumn Header="Rating" PropertyName="Rating" Width="90"
                                      Format="N1" ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="Supplier" PropertyName="Supplier" Width="140" />
+                <core:GridColumn Header="Supplier" PropertyName="Supplier" Width="140" />
             </kumiko:KumikoDataGrid.Columns>
         </kumiko:KumikoDataGrid>
     </Grid>

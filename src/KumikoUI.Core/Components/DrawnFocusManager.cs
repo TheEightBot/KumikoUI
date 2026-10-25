@@ -39,7 +39,7 @@ public class DrawnFocusManager
         _focused = component;
         component?.SetFocusDirect(true);
 
-        FocusChanged?.Invoke(this, new FocusChangedEventArgs(old, component));
+        FocusChanged?.Invoke(this, new GridFocusChangedEventArgs(old, component));
     }
 
     /// <summary>Clear focus from all components.</summary>
@@ -110,5 +110,5 @@ public class DrawnFocusManager
     }
 
     /// <summary>Raised when the focused component changes.</summary>
-    public event EventHandler<FocusChangedEventArgs>? FocusChanged;
+    public event EventHandler<GridFocusChangedEventArgs>? FocusChanged;
 }

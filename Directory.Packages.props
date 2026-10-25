@@ -36,12 +36,17 @@
         - WinUI: the Microsoft.UI.Xaml.* metadata (Windows App SDK).
         - Uno: Uno's own Microsoft.UI.Xaml implementation, which has public types WinUI lacks. Keep it at the
           Uno.WinUI version that Uno.Sdk (global.json) resolves.
-        - Windows Forms: the System.Windows.Forms.* reference assemblies.
+        - WPF and Windows Forms: the System.Windows.* reference assemblies.
       MAUI uses MauiVersion above (the minimum KumikoUI.Maui supports).
     -->
     <WindowsAppSdkWinUIVersion>1.8.260528001</WindowsAppSdkWinUIVersion>
     <UnoWinUIVersion>6.7.135</UnoWinUIVersion>
     <WindowsDesktopRefVersion>10.0.13</WindowsDesktopRefVersion>
+    <!-- Other UI frameworks and grids an app may import next to KumikoUI. -->
+    <CommunityToolkitWinUIDataGridVersion>7.1.2</CommunityToolkitWinUIDataGridVersion>
+    <CommunityToolkitMauiVersion>15.0.1</CommunityToolkitMauiVersion>
+    <AvaloniaVersion>12.1.4</AvaloniaVersion>
+    <AvaloniaDataGridVersion>12.1.2</AvaloniaDataGridVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Rendering (SkiaSharp)">
@@ -71,6 +76,10 @@
   <ItemGroup Label="Build tools (eng/TypeNameCheck)">
     <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="$(WindowsAppSdkWinUIVersion)" />
     <PackageVersion Include="Microsoft.WindowsDesktop.App.Ref" Version="$(WindowsDesktopRefVersion)" />
+    <PackageVersion Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="$(CommunityToolkitWinUIDataGridVersion)" />
+    <PackageVersion Include="CommunityToolkit.Maui" Version="$(CommunityToolkitMauiVersion)" />
+    <PackageVersion Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Controls.DataGrid" Version="$(AvaloniaDataGridVersion)" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">

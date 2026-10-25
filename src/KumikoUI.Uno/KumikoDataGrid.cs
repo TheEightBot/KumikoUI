@@ -60,7 +60,7 @@ public partial class KumikoDataGrid : Grid
 
         // Auto-init the bindable collections so XAML can add items directly,
         // matching the MAUI control's ctor.
-        Columns = new ObservableCollection<DataGridColumn>();
+        Columns = new ObservableCollection<GridColumn>();
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
         // Core "invalidate" signals → request a single canvas repaint.
@@ -130,7 +130,7 @@ public partial class KumikoDataGrid : Grid
     public void SetItemsSource(IEnumerable items) => _dataSource.SetItems(items);
 
     /// <summary>Set the column definitions imperatively (alternative to <see cref="Columns"/>).</summary>
-    public void SetColumns(IEnumerable<DataGridColumn> columns)
+    public void SetColumns(IEnumerable<GridColumn> columns)
     {
         _dataSource.SetColumns(columns);
         InvalidateSurface();

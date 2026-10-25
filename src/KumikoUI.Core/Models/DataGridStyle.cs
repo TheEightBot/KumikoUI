@@ -222,11 +222,11 @@ public class DataGridStyle
 
     // ── Conditional style resolvers ──────────────────────────────
     /// <summary>
-    /// Callback invoked for each visible cell to dynamically resolve a CellStyle
+    /// Callback invoked for each visible cell to dynamically resolve a DataGridCellStyle
     /// based on the row data item and column. Return null if no override is needed.
-    /// Dynamic styles take precedence over per-column CellStyle.
+    /// Dynamic styles take precedence over per-column DataGridCellStyle.
     /// </summary>
-    public Func<object, DataGridColumn, CellStyle?>? CellStyleResolver { get; set; }
+    public Func<object, GridColumn, DataGridCellStyle?>? CellStyleResolver { get; set; }
 
     /// <summary>
     /// Callback invoked for each visible row to dynamically resolve a DataGridRowStyle

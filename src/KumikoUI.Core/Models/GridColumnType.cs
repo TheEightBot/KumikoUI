@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Defines column types for data binding and rendering dispatch.
 /// </summary>
-public enum DataGridColumnType
+public enum GridColumnType
 {
     /// <summary>Plain text column.</summary>
     Text,

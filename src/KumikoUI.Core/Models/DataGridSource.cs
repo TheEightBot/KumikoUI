@@ -17,7 +17,7 @@ public class DataGridSource
     private IList _sourceItems = Array.Empty<object>();
     private List<int> _viewIndices = new();          // filtered + sorted mapping
     private List<FlatViewRow>? _flatView;            // null when no grouping; otherwise group headers + data rows
-    private List<DataGridColumn> _columns = new();
+    private List<GridColumn> _columns = new();
     private readonly Dictionary<string, Func<object, object?>> _accessors = new();
     private Func<object, bool>? _filterPredicate;
 
@@ -199,13 +199,13 @@ public class DataGridSource
     /// <summary>
     /// The columns currently defined.
     /// </summary>
-    public IReadOnlyList<DataGridColumn> Columns => _columns;
+    public IReadOnlyList<GridColumn> Columns => _columns;
 
     /// <summary>
     /// Get all columns that are actively sorted, ordered by SortOrder.
     /// </summary>
-    public IReadOnlyList<DataGridColumn> ActiveSortColumns =>
-        _columns.Where(c => c.SortDirection != DataGridSortDirection.None && c.SortOrder > 0)
+    public IReadOnlyList<GridColumn> ActiveSortColumns =>
+        _columns.Where(c => c.SortDirection != GridSortDirection.None && c.SortOrder > 0)
                 .OrderBy(c => c.SortOrder)
                 .ToList();
 
@@ -221,7 +221,7 @@ public class DataGridSource
     /// Returns true if more than one column is currently sorted.
     /// </summary>
     public bool IsMultiSortActive =>
-        _columns.Count(c => c.SortDirection != DataGridSortDirection.None) > 1;
+        _columns.Count(c => c.SortDirection != GridSortDirection.None) > 1;
 
     /// <summary>
     /// Set the backing data collection. Accepts IList, arrays, or List&lt;T&gt;.
@@ -395,7 +395,7 @@ public class DataGridSource
             {
                 if (col.PropertyName == propName)
                 {
-                    if (col.SortDirection != DataGridSortDirection.None ||
+                    if (col.SortDirection != GridSortDirection.None ||
                         col.ActiveFilter != null ||
                         _groupDescriptions.Any(g => g.PropertyName == propName))
                     {
@@ -446,7 +446,7 @@ public class DataGridSource
     /// <summary>
     /// Replace the column definitions.
     /// </summary>
-    public void SetColumns(IEnumerable<DataGridColumn> columns)
+    public void SetColumns(IEnumerable<GridColumn> columns)
     {
         _columns = columns.ToList();
         _accessors.Clear();
@@ -664,7 +664,7 @@ public class DataGridSource
     /// Get a cell value for a visible row and column.
     /// Returns null for group header rows.
     /// </summary>
-    public object? GetCellValue(int visibleRow, DataGridColumn column)
+    public object? GetCellValue(int visibleRow, GridColumn column)
     {
         if (IsGroupHeaderRow(visibleRow)) return null;
         var item = GetItem(visibleRow);
@@ -676,7 +676,7 @@ public class DataGridSource
     /// Format a cell value as a display string.
     /// Returns empty for group header rows.
     /// </summary>
-    public string GetCellDisplayText(int visibleRow, DataGridColumn column)
+    public string GetCellDisplayText(int visibleRow, GridColumn column)
     {
         if (IsGroupHeaderRow(visibleRow)) return string.Empty;
         var value = GetCellValue(visibleRow, column);
@@ -699,7 +699,7 @@ public class DataGridSource
     /// Set or clear a per-column filter. This is the primary filtering API.
     /// Pass null to clear the filter for the column.
     /// </summary>
-    public void SetColumnFilter(DataGridColumn column, FilterDescription? filter)
+    public void SetColumnFilter(GridColumn column, FilterDescription? filter)
     {
         if (!column.AllowFiltering) return;
 
@@ -730,7 +730,7 @@ public class DataGridSource
     /// Get unique display values for a column (for Excel-style checkbox filter).
     /// Returns sorted distinct values as strings.
     /// </summary>
-    public List<string> GetUniqueColumnValues(DataGridColumn column)
+    public List<string> GetUniqueColumnValues(GridColumn column)
     {
         var values = new HashSet<string>();
         for (int i = 0; i < _sourceItems.Count; i++)
@@ -755,16 +755,16 @@ public class DataGridSource
     /// <summary>
     /// Sort by a single column (clears all other sort state). Toggle direction automatically.
     /// </summary>
-    public void ToggleSort(DataGridColumn column)
+    public void ToggleSort(GridColumn column)
     {
         if (!column.AllowSorting) return;
 
         var newDirection = column.SortDirection switch
         {
-            DataGridSortDirection.None => DataGridSortDirection.Ascending,
-            DataGridSortDirection.Ascending => DataGridSortDirection.Descending,
-            DataGridSortDirection.Descending => DataGridSortDirection.None,
-            _ => DataGridSortDirection.None
+            GridSortDirection.None => GridSortDirection.Ascending,
+            GridSortDirection.Ascending => GridSortDirection.Descending,
+            GridSortDirection.Descending => GridSortDirection.None,
+            _ => GridSortDirection.None
         };
 
         // Raise changing event (cancelable)
@@ -775,12 +775,12 @@ public class DataGridSource
         // Reset all columns
         foreach (var c in _columns)
         {
-            c.SortDirection = DataGridSortDirection.None;
+            c.SortDirection = GridSortDirection.None;
             c.SortOrder = 0;
         }
 
         column.SortDirection = newDirection;
-        column.SortOrder = newDirection != DataGridSortDirection.None ? 1 : 0;
+        column.SortOrder = newDirection != GridSortDirection.None ? 1 : 0;
 
         RebuildView();
 
@@ -792,16 +792,16 @@ public class DataGridSource
     /// Toggle sort on a column in multi-sort mode.
     /// Adds the column to the existing sort chain or removes it if toggled to None.
     /// </summary>
-    public void ToggleMultiSort(DataGridColumn column)
+    public void ToggleMultiSort(GridColumn column)
     {
         if (!column.AllowSorting) return;
 
         var newDirection = column.SortDirection switch
         {
-            DataGridSortDirection.None => DataGridSortDirection.Ascending,
-            DataGridSortDirection.Ascending => DataGridSortDirection.Descending,
-            DataGridSortDirection.Descending => DataGridSortDirection.None,
-            _ => DataGridSortDirection.None
+            GridSortDirection.None => GridSortDirection.Ascending,
+            GridSortDirection.Ascending => GridSortDirection.Descending,
+            GridSortDirection.Descending => GridSortDirection.None,
+            _ => GridSortDirection.None
         };
 
         // Raise changing event (cancelable)
@@ -809,11 +809,11 @@ public class DataGridSource
         SortColumnsChanging?.Invoke(this, changingArgs);
         if (changingArgs.Cancel) return;
 
-        if (newDirection == DataGridSortDirection.None)
+        if (newDirection == GridSortDirection.None)
         {
             // Remove from multi-sort and recompact orders
             int removedOrder = column.SortOrder;
-            column.SortDirection = DataGridSortDirection.None;
+            column.SortDirection = GridSortDirection.None;
             column.SortOrder = 0;
 
             // Recompact: shift down orders above the removed one
@@ -823,7 +823,7 @@ public class DataGridSource
                     c.SortOrder--;
             }
         }
-        else if (column.SortDirection == DataGridSortDirection.None)
+        else if (column.SortDirection == GridSortDirection.None)
         {
             // Adding new column to multi-sort: assign next order
             int maxOrder = 0;
@@ -852,7 +852,7 @@ public class DataGridSource
     {
         foreach (var c in _columns)
         {
-            c.SortDirection = DataGridSortDirection.None;
+            c.SortDirection = GridSortDirection.None;
             c.SortOrder = 0;
         }
         RebuildView();
@@ -869,7 +869,7 @@ public class DataGridSource
     /// <summary>
     /// Set a cell value for a visible row and column via reflection.
     /// </summary>
-    public void SetCellValue(int visibleRow, DataGridColumn column, object? value)
+    public void SetCellValue(int visibleRow, GridColumn column, object? value)
     {
         var item = GetItem(visibleRow);
         SetPropertyValue(item, column.PropertyName, value);
@@ -947,7 +947,7 @@ public class DataGridSource
     /// Check if an item passes all filters EXCEPT the specified column's filter.
     /// Used for computing unique value lists.
     /// </summary>
-    private bool PassesOtherFilters(object item, DataGridColumn excludeColumn)
+    private bool PassesOtherFilters(object item, GridColumn excludeColumn)
     {
         if (_filterPredicate != null && !_filterPredicate(item))
             return false;
@@ -971,7 +971,7 @@ public class DataGridSource
     /// <summary>
     /// Get a cell value directly from an item (bypasses view indices).
     /// </summary>
-    private object? GetCellValueDirect(object item, DataGridColumn column)
+    private object? GetCellValueDirect(object item, GridColumn column)
     {
         var accessor = GetOrCreateAccessor(item.GetType(), column.PropertyName);
         return accessor(item);
@@ -980,7 +980,7 @@ public class DataGridSource
     /// <summary>
     /// Format a cell value as display text.
     /// </summary>
-    public static string FormatCellValue(object? value, DataGridColumn column)
+    public static string FormatCellValue(object? value, GridColumn column)
     {
         if (value is null) return string.Empty;
         if (!string.IsNullOrEmpty(column.Format) && value is IFormattable fmt)
@@ -1001,7 +1001,7 @@ public class DataGridSource
             return false;
 
         // Cannot do incremental when sort, filter, group, or summaries are active
-        bool hasSort = _columns.Any(c => c.SortDirection != DataGridSortDirection.None);
+        bool hasSort = _columns.Any(c => c.SortDirection != GridSortDirection.None);
         bool hasFilter = _columns.Any(c => c.ActiveFilter is { IsActive: true });
         bool hasGroup = _groupDescriptions.Count > 0;
         bool hasSummaries = _tableSummaryRows.Count > 0 || _groupSummaryRows.Count > 0 ||
@@ -1071,14 +1071,14 @@ public class DataGridSource
 
         // Collect sorted columns in priority order
         var sortedColumns = _columns
-            .Where(c => c.SortDirection != DataGridSortDirection.None && c.SortOrder > 0)
+            .Where(c => c.SortDirection != GridSortDirection.None && c.SortOrder > 0)
             .OrderBy(c => c.SortOrder)
             .ToList();
 
         // Fallback: if a column has a sort direction but no SortOrder, treat as single-sort
         if (sortedColumns.Count == 0)
         {
-            var fallback = _columns.FirstOrDefault(c => c.SortDirection != DataGridSortDirection.None);
+            var fallback = _columns.FirstOrDefault(c => c.SortDirection != GridSortDirection.None);
             if (fallback != null)
             {
                 fallback.SortOrder = 1;
@@ -1095,7 +1095,7 @@ public class DataGridSource
             {
                 Accessor = GetOrCreateAccessor(itemType, col.PropertyName),
                 Comparer = col.CustomComparer ?? Comparer<object>.Default,
-                Direction = col.SortDirection == DataGridSortDirection.Ascending ? 1 : -1
+                Direction = col.SortDirection == GridSortDirection.Ascending ? 1 : -1
             }).ToList();
 
             _viewIndices.Sort((a, b) =>
@@ -1191,9 +1191,9 @@ public class DataGridSource
         }
 
         // Sort groups
-        if (groupDesc.GroupSortDirection == DataGridSortDirection.Ascending)
+        if (groupDesc.GroupSortDirection == GridSortDirection.Ascending)
             groups.Sort((a, b) => string.Compare(a.DisplayText, b.DisplayText, StringComparison.OrdinalIgnoreCase));
-        else if (groupDesc.GroupSortDirection == DataGridSortDirection.Descending)
+        else if (groupDesc.GroupSortDirection == GridSortDirection.Descending)
             groups.Sort((a, b) => string.Compare(b.DisplayText, a.DisplayText, StringComparison.OrdinalIgnoreCase));
 
         // Emit group headers + children

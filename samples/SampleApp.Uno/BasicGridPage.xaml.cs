@@ -114,11 +114,11 @@ public sealed partial class BasicGridPage : Page
 
     private void OnToggleSelectionModeClicked(object sender, RoutedEventArgs e)
     {
-        kumiko.GridSelectionMode = kumiko.GridSelectionMode == DataGridSelectionMode.Extended
-            ? DataGridSelectionMode.Single
-            : DataGridSelectionMode.Extended;
+        kumiko.GridSelectionMode = kumiko.GridSelectionMode == GridSelectionMode.Extended
+            ? GridSelectionMode.Single
+            : GridSelectionMode.Extended;
 
-        selectionModeToggle.Content = kumiko.GridSelectionMode == DataGridSelectionMode.Extended
+        selectionModeToggle.Content = kumiko.GridSelectionMode == GridSelectionMode.Extended
             ? "Select: All"
             : "Select: Single";
     }

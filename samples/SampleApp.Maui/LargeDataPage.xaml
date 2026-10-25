@@ -34,7 +34,7 @@
                          VerticalOptions="Fill">
 
             <dg:KumikoDataGrid.Columns>
-                <core:DataGridColumn Header="Row #"
+                <core:GridColumn Header="Row #"
                                      PropertyName="RowNumber"
                                      Width="80"
                                      ColumnType="Numeric"
@@ -42,51 +42,51 @@
                                      IsReadOnly="True"
                                      IsFrozen="True" />
 
-                <core:DataGridColumn Header="Name"
+                <core:GridColumn Header="Name"
                                      PropertyName="FullName"
                                      Width="180" />
 
-                <core:DataGridColumn Header="Category"
+                <core:GridColumn Header="Category"
                                      PropertyName="Category"
                                      Width="120" />
 
-                <core:DataGridColumn Header="Value"
+                <core:GridColumn Header="Value"
                                      PropertyName="Value"
                                      Width="100"
                                      Format="N2"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:DataGridColumn Header="Amount"
+                <core:GridColumn Header="Amount"
                                      PropertyName="Amount"
                                      Width="110"
                                      Format="C0"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:DataGridColumn Header="Date"
+                <core:GridColumn Header="Date"
                                      PropertyName="CreatedDate"
                                      Width="110"
                                      Format="yyyy-MM-dd"
                                      ColumnType="Date" />
 
-                <core:DataGridColumn Header="Enabled"
+                <core:GridColumn Header="Enabled"
                                      PropertyName="IsEnabled"
                                      Width="80"
                                      ColumnType="Boolean" />
 
-                <core:DataGridColumn Header="Region"
+                <core:GridColumn Header="Region"
                                      PropertyName="Region"
                                      Width="120" />
 
-                <core:DataGridColumn Header="Score"
+                <core:GridColumn Header="Score"
                                      PropertyName="Score"
                                      Width="80"
                                      Format="N1"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:DataGridColumn Header="Notes"
+                <core:GridColumn Header="Notes"
                                      PropertyName="Notes"
                                      Width="200" />
             </dg:KumikoDataGrid.Columns>

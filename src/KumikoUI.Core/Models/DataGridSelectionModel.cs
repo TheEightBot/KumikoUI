@@ -8,7 +8,7 @@ public class DataGridSelectionModel
     private int _anchorRow = -1; // For shift-range selection
 
     /// <summary>Active selection mode controlling click behavior.</summary>
-    public DataGridSelectionMode Mode { get; set; } = DataGridSelectionMode.Extended;
+    public GridSelectionMode Mode { get; set; } = GridSelectionMode.Extended;
     /// <summary>Whether selection targets rows or individual cells.</summary>
     public SelectionUnit Unit { get; set; } = SelectionUnit.Row;
 
@@ -41,26 +41,26 @@ public class DataGridSelectionModel
     /// <param name="totalRows">Total number of visible rows (used for clamping).</param>
     public void HandleRowSelection(int row, bool shift, bool ctrl, int totalRows)
     {
-        if (Mode == DataGridSelectionMode.None) return;
+        if (Mode == GridSelectionMode.None) return;
 
         var previousRows = new HashSet<int>(SelectedRows);
 
         switch (Mode)
         {
-            case DataGridSelectionMode.Single:
+            case GridSelectionMode.Single:
                 SelectedRows.Clear();
                 SelectedRows.Add(row);
                 _anchorRow = row;
                 break;
 
-            case DataGridSelectionMode.Multiple:
+            case GridSelectionMode.Multiple:
                 // Toggle
                 if (!SelectedRows.Add(row))
                     SelectedRows.Remove(row);
                 _anchorRow = row;
                 break;
 
-            case DataGridSelectionMode.Extended:
+            case GridSelectionMode.Extended:
                 if (shift && _anchorRow >= 0)
                 {
                     // Range select from anchor to current
@@ -95,11 +95,11 @@ public class DataGridSelectionModel
             RaiseSelectionChanged();
     }
 
-    /// <summary>Selects all rows. Has no effect in <see cref="DataGridSelectionMode.None"/> or <see cref="DataGridSelectionMode.Single"/> mode.</summary>
+    /// <summary>Selects all rows. Has no effect in <see cref="GridSelectionMode.None"/> or <see cref="GridSelectionMode.Single"/> mode.</summary>
     /// <param name="totalRows">Total number of visible rows to select.</param>
     public void SelectAll(int totalRows)
     {
-        if (Mode == DataGridSelectionMode.None || Mode == DataGridSelectionMode.Single) return;
+        if (Mode == GridSelectionMode.None || Mode == GridSelectionMode.Single) return;
         SelectedRows.Clear();
         for (int i = 0; i < totalRows; i++)
             SelectedRows.Add(i);

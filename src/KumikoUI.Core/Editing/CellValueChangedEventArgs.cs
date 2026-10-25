@@ -15,7 +15,7 @@ public class CellValueChangedEventArgs : EventArgs
     public int ColumnIndex { get; }
 
     /// <summary>Column definition for the changed cell.</summary>
-    public DataGridColumn Column { get; }
+    public GridColumn Column { get; }
 
     /// <summary>Previous cell value.</summary>
     public object? OldValue { get; }
@@ -23,7 +23,7 @@ public class CellValueChangedEventArgs : EventArgs
     /// <summary>New cell value.</summary>
     public object? NewValue { get; }
 
-    public CellValueChangedEventArgs(int row, int col, DataGridColumn column,
+    public CellValueChangedEventArgs(int row, int col, GridColumn column,
         object? oldValue, object? newValue)
     {
         RowIndex = row;

@@ -45,9 +45,9 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider
     /// <inheritdoc />
     public void Render(
         IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, DataGridColumn column,
+        string displayText, GridColumn column,
         DataGridStyle style, bool isSelected,
-        CellStyle? cellStyle = null)
+        DataGridCellStyle? cellStyle = null)
     {
         if (Buttons.Count == 0) return;
         var rects = ActionButtonLayout.ComputeButtonRects(cellRect, Buttons.Count, CellPadding, ButtonSpacing);

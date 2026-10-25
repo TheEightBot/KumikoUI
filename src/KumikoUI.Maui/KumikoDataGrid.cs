@@ -111,7 +111,7 @@ public class KumikoDataGrid : Grid
         Children.Add(_keyboardProxy);
 
         // Auto-init the Columns collection so XAML can add items directly
-        Columns = new ObservableCollection<DataGridColumn>();
+        Columns = new ObservableCollection<GridColumn>();
 
         // Auto-init the TableSummaryRows collection so XAML can add items directly
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
@@ -241,7 +241,7 @@ public class KumikoDataGrid : Grid
     }
 
     /// <summary>Set the column definitions.</summary>
-    public void SetColumns(IEnumerable<DataGridColumn> columns)
+    public void SetColumns(IEnumerable<GridColumn> columns)
     {
         _dataSource.SetColumns(columns);
         InvalidateSurface();
@@ -318,23 +318,23 @@ public class KumikoDataGrid : Grid
         set => SetValue(FrozenRowCountProperty, value);
     }
 
-    // ── DataGridSelectionMode ──
+    // ── GridSelectionMode ──
 
     /// <summary>Identifies the <see cref="GridSelectionMode"/> bindable property.</summary>
     public static readonly BindableProperty GridSelectionModeProperty = BindableProperty.Create(
-        nameof(GridSelectionMode), typeof(KumikoUI.Core.Models.DataGridSelectionMode), typeof(KumikoDataGrid),
-        KumikoUI.Core.Models.DataGridSelectionMode.Extended,
+        nameof(GridSelectionMode), typeof(KumikoUI.Core.Models.GridSelectionMode), typeof(KumikoDataGrid),
+        KumikoUI.Core.Models.GridSelectionMode.Extended,
         propertyChanged: (b, _, n) =>
         {
             var view = (KumikoDataGrid)b;
-            view._selection.Mode = (KumikoUI.Core.Models.DataGridSelectionMode)n;
+            view._selection.Mode = (KumikoUI.Core.Models.GridSelectionMode)n;
             view.InvalidateSurface();
         });
 
     /// <summary>Selection mode: None, Single, Multiple, or Extended.</summary>
-    public KumikoUI.Core.Models.DataGridSelectionMode GridSelectionMode
+    public KumikoUI.Core.Models.GridSelectionMode GridSelectionMode
     {
-        get => (KumikoUI.Core.Models.DataGridSelectionMode)GetValue(GridSelectionModeProperty);
+        get => (KumikoUI.Core.Models.GridSelectionMode)GetValue(GridSelectionModeProperty);
         set => SetValue(GridSelectionModeProperty, value);
     }
 
@@ -492,26 +492,26 @@ public class KumikoDataGrid : Grid
     /// <summary>Identifies the <see cref="Columns"/> bindable property.</summary>
     public static readonly BindableProperty ColumnsProperty = BindableProperty.Create(
         nameof(Columns),
-        typeof(ObservableCollection<DataGridColumn>),
+        typeof(ObservableCollection<GridColumn>),
         typeof(KumikoDataGrid),
         defaultValue: null,
         propertyChanged: (b, o, n) => ((KumikoDataGrid)b).OnColumnsChanged(
-            o as ObservableCollection<DataGridColumn>,
-            n as ObservableCollection<DataGridColumn>));
+            o as ObservableCollection<GridColumn>,
+            n as ObservableCollection<GridColumn>));
 
     /// <summary>
     /// Bindable collection of column definitions. Supports ObservableCollection
     /// for dynamic add/remove of columns at runtime.
     /// </summary>
-    public ObservableCollection<DataGridColumn>? Columns
+    public ObservableCollection<GridColumn>? Columns
     {
-        get => (ObservableCollection<DataGridColumn>?)GetValue(ColumnsProperty);
+        get => (ObservableCollection<GridColumn>?)GetValue(ColumnsProperty);
         set => SetValue(ColumnsProperty, value);
     }
 
     private void OnColumnsChanged(
-        ObservableCollection<DataGridColumn>? oldCollection,
-        ObservableCollection<DataGridColumn>? newCollection)
+        ObservableCollection<GridColumn>? oldCollection,
+        ObservableCollection<GridColumn>? newCollection)
     {
         if (oldCollection != null)
             oldCollection.CollectionChanged -= OnColumnsCollectionChanged;
@@ -523,7 +523,7 @@ public class KumikoDataGrid : Grid
         }
         else
         {
-            _dataSource.SetColumns(Array.Empty<DataGridColumn>());
+            _dataSource.SetColumns(Array.Empty<GridColumn>());
         }
 
         InvalidateSurface();

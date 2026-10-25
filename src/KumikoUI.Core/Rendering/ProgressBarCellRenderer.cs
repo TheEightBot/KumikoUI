@@ -40,9 +40,9 @@ public class ProgressBarCellRenderer : ICellRenderer
 
     public void Render(
         IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, KumikoUI.Core.Models.DataGridColumn column,
+        string displayText, KumikoUI.Core.Models.GridColumn column,
         DataGridStyle style, bool isSelected,
-        CellStyle? cellStyle = null)
+        DataGridCellStyle? cellStyle = null)
     {
         double numValue = 0;
         if (value is IConvertible conv)

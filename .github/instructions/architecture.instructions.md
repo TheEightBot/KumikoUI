@@ -49,7 +49,7 @@ KumikoUI.Core  ←  KumikoUI.SkiaSharp  ←  KumikoUI.Maui
 
 | Namespace | Key types |
 |---|---|
-| `KumikoUI.Core.Models` | `DataGridColumn`, `DataGridStyle`, `DataGridSource`, `DataGridSelectionModel`, `ScrollState`, `CellStyle`, `DataGridRowStyle`, `FilterDescription`, `GroupDescription`, `TableSummaryRow`, `SummaryColumnDescription` |
+| `KumikoUI.Core.Models` | `GridColumn`, `DataGridStyle`, `DataGridSource`, `DataGridSelectionModel`, `ScrollState`, `DataGridCellStyle`, `DataGridRowStyle`, `FilterDescription`, `GroupDescription`, `TableSummaryRow`, `SummaryColumnDescription` |
 | `KumikoUI.Core.Rendering` | `IDrawingContext`, `ICellRenderer`, `GridRect`, `GridColor`, `GridPaint`, `GridFont`, `GridSize`, `GridFontMetrics`, `PaintStyle`, `GridTextAlignment`, `GridVerticalAlignment` |
 | `KumikoUI.Core.Layout` | `GridLayoutEngine` |
 | `KumikoUI.Core.Input` | `GridInputController`, `InertialScroller`, `ScrollSettings`, `GridPointerEventArgs`, `GridKeyEventArgs`, `HitTesting` |

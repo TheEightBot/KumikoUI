@@ -76,11 +76,11 @@ public class MyRenderer : ICellRenderer
         IDrawingContext ctx,
         GridRect cellRect,       // padded cell area — stay inside this
         object? value,           // raw value from DataGridSource
-        string displayText,      // formatted via DataGridColumn.Format
-        DataGridColumn column,
+        string displayText,      // formatted via GridColumn.Format
+        GridColumn column,
         DataGridStyle style,
         bool isSelected,
-        CellStyle? cellStyle = null)
+        DataGridCellStyle? cellStyle = null)
     {
         // Use ctx.* only. No SkiaSharp. No allocation.
     }
@@ -94,9 +94,9 @@ Attach to column:
 column.CustomCellRenderer = new MyRenderer();   // code
 ```
 ```xml
-<core:DataGridColumn.CustomCellRenderer>
+<core:GridColumn.CustomCellRenderer>
     <render:MyRenderer />
-</core:DataGridColumn.CustomCellRenderer>
+</core:GridColumn.CustomCellRenderer>
 ```
 
 ---

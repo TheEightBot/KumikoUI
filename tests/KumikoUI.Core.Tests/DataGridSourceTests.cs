@@ -48,16 +48,16 @@ internal class Address
 
 public class DataGridSourceTests
 {
-    private static DataGridSource MakeSource(IEnumerable<Person> items, params DataGridColumn[] columns)
+    private static DataGridSource MakeSource(IEnumerable<Person> items, params GridColumn[] columns)
     {
         var source = new DataGridSource();
         source.SetColumns(columns.Length > 0
             ? columns
             : new[]
             {
-                new DataGridColumn { PropertyName = "Name", Header = "Name", ColumnType = DataGridColumnType.Text },
-                new DataGridColumn { PropertyName = "Age", Header = "Age", ColumnType = DataGridColumnType.Numeric },
-                new DataGridColumn { PropertyName = "Department", Header = "Department", ColumnType = DataGridColumnType.Text }
+                new GridColumn { PropertyName = "Name", Header = "Name", ColumnType = GridColumnType.Text },
+                new GridColumn { PropertyName = "Age", Header = "Age", ColumnType = GridColumnType.Numeric },
+                new GridColumn { PropertyName = "Department", Header = "Department", ColumnType = GridColumnType.Text }
             });
         source.SetItems(items.ToList());
         return source;
@@ -113,7 +113,7 @@ public class DataGridSourceTests
         var source = new DataGridSource();
         source.SetColumns(new[]
         {
-            new DataGridColumn { PropertyName = "Age", ColumnType = DataGridColumnType.Numeric, Format = "N2" }
+            new GridColumn { PropertyName = "Age", ColumnType = GridColumnType.Numeric, Format = "N2" }
         });
         source.SetItems(new List<Person> { new Person { Age = 30 } });
         var col = source.Columns[0];
@@ -127,7 +127,7 @@ public class DataGridSourceTests
         var source = new DataGridSource();
         source.SetColumns(new[]
         {
-            new DataGridColumn { PropertyName = "Name", ColumnType = DataGridColumnType.Text }
+            new GridColumn { PropertyName = "Name", ColumnType = GridColumnType.Text }
         });
         source.SetItems(new List<Person> { new Person { Name = "" } });
         var col = source.Columns[0];
@@ -170,7 +170,7 @@ public class DataGridSourceTests
         source.ToggleSort(col); // Ascending
         source.ToggleSort(col); // Descending
         source.ToggleSort(col); // None
-        Assert.Equal(DataGridSortDirection.None, col.SortDirection);
+        Assert.Equal(GridSortDirection.None, col.SortDirection);
     }
 
     [Fact]
@@ -181,8 +181,8 @@ public class DataGridSourceTests
         var ageCol = source.Columns.First(c => c.PropertyName == "Age");
         source.ToggleSort(nameCol);
         source.ToggleSort(ageCol);
-        Assert.Equal(DataGridSortDirection.None, nameCol.SortDirection);
-        Assert.Equal(DataGridSortDirection.Ascending, ageCol.SortDirection);
+        Assert.Equal(GridSortDirection.None, nameCol.SortDirection);
+        Assert.Equal(GridSortDirection.Ascending, ageCol.SortDirection);
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class DataGridSourceTests
         var col = source.Columns.First(c => c.PropertyName == "Name");
         source.ToggleSort(col);
         source.ClearSort();
-        Assert.Equal(DataGridSortDirection.None, col.SortDirection);
+        Assert.Equal(GridSortDirection.None, col.SortDirection);
         Assert.Empty(source.ActiveSortColumns);
     }
 
@@ -229,7 +229,7 @@ public class DataGridSourceTests
         var col = source.Columns.First(c => c.PropertyName == "Name");
         source.SortColumnsChanging += (_, e) => e.Cancel = true;
         source.ToggleSort(col);
-        Assert.Equal(DataGridSortDirection.None, col.SortDirection);
+        Assert.Equal(GridSortDirection.None, col.SortDirection);
     }
 
     [Fact]
@@ -723,9 +723,9 @@ public class DataGridSourceTests
         var source = new DataGridSource();
         source.SetColumns(new[]
         {
-            new DataGridColumn { PropertyName = "Name", ColumnType = DataGridColumnType.Text },
-            new DataGridColumn { PropertyName = "Age", ColumnType = DataGridColumnType.Numeric },
-            new DataGridColumn { PropertyName = "Department", ColumnType = DataGridColumnType.Text }
+            new GridColumn { PropertyName = "Name", ColumnType = GridColumnType.Text },
+            new GridColumn { PropertyName = "Age", ColumnType = GridColumnType.Numeric },
+            new GridColumn { PropertyName = "Department", ColumnType = GridColumnType.Text }
         });
         source.SetItems(people);
         int dataChangedCount = 0;
@@ -742,9 +742,9 @@ public class DataGridSourceTests
         var source = new DataGridSource();
         source.SetColumns(new[]
         {
-            new DataGridColumn { PropertyName = "Name", ColumnType = DataGridColumnType.Text },
-            new DataGridColumn { PropertyName = "Age", ColumnType = DataGridColumnType.Numeric },
-            new DataGridColumn { PropertyName = "Department", ColumnType = DataGridColumnType.Text }
+            new GridColumn { PropertyName = "Name", ColumnType = GridColumnType.Text },
+            new GridColumn { PropertyName = "Age", ColumnType = GridColumnType.Numeric },
+            new GridColumn { PropertyName = "Department", ColumnType = GridColumnType.Text }
         });
         source.SetItems(people);
         people.RemoveAt(0);
@@ -791,7 +791,7 @@ public class DataGridSourceTests
         var source = new DataGridSource();
         source.SetColumns(new[]
         {
-            new DataGridColumn { PropertyName = "Address.City", ColumnType = DataGridColumnType.Text }
+            new GridColumn { PropertyName = "Address.City", ColumnType = GridColumnType.Text }
         });
         source.SetItems(items);
         var col = source.Columns[0];
@@ -804,7 +804,7 @@ public class DataGridSourceTests
         var source = new DataGridSource();
         source.SetColumns(new[]
         {
-            new DataGridColumn { PropertyName = "NonExistentProp", ColumnType = DataGridColumnType.Text }
+            new GridColumn { PropertyName = "NonExistentProp", ColumnType = GridColumnType.Text }
         });
         source.SetItems(new List<Person> { new Person { Name = "Test" } });
         var col = source.Columns[0];
@@ -852,7 +852,7 @@ public class DataGridSourceTests
     public void SetColumns_ReplacesExistingColumns()
     {
         var source = MakeSource(SamplePeople());
-        source.SetColumns(new[] { new DataGridColumn { PropertyName = "Name" } });
+        source.SetColumns(new[] { new GridColumn { PropertyName = "Name" } });
         Assert.Single(source.Columns);
     }
 
@@ -872,21 +872,21 @@ public class DataGridSourceTests
     [Fact]
     public void FormatCellValue_NullValue_ReturnsEmpty()
     {
-        var col = new DataGridColumn();
+        var col = new GridColumn();
         Assert.Equal("", DataGridSource.FormatCellValue(null, col));
     }
 
     [Fact]
     public void FormatCellValue_WithFormat_FormatsValue()
     {
-        var col = new DataGridColumn { Format = "N2" };
+        var col = new GridColumn { Format = "N2" };
         Assert.Equal("3.14", DataGridSource.FormatCellValue(3.14159265, col));
     }
 
     [Fact]
     public void FormatCellValue_NoFormat_UsestoString()
     {
-        var col = new DataGridColumn();
+        var col = new GridColumn();
         Assert.Equal("42", DataGridSource.FormatCellValue(42, col));
     }
 

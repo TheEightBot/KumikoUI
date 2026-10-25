@@ -25,7 +25,7 @@ To enable/disable per-column:
 
 ```csharp
 // XAML:
-<core:DataGridColumn AllowSorting="True" ... />
+<core:GridColumn AllowSorting="True" ... />
 
 // Code (default is True):
 column.AllowSorting = false;  // disable for specific column
@@ -34,12 +34,12 @@ column.AllowSorting = false;  // disable for specific column
 **Programmatic sort:**
 ```csharp
 // Single column ascending:
-kumikoDataGrid.Source.ApplySort(column, DataGridSortDirection.Ascending);
+kumikoDataGrid.Source.ApplySort(column, GridSortDirection.Ascending);
 
 // Multi-column (set SortOrder to control priority):
-columnA.SortDirection = DataGridSortDirection.Ascending;
+columnA.SortDirection = GridSortDirection.Ascending;
 columnA.SortOrder     = 1;
-columnB.SortDirection = DataGridSortDirection.Descending;
+columnB.SortDirection = GridSortDirection.Descending;
 columnB.SortOrder     = 2;
 kumikoDataGrid.Source.ApplySorts();
 ```

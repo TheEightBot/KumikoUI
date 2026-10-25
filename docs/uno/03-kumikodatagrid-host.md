@@ -32,7 +32,7 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
   > Deviation: deriving from `Microsoft.UI.Xaml.Controls.Grid` pulls
   > `Microsoft.UI.Xaml.Controls.SelectionModel` / `SelectionMode` into scope, which collided with Core's
   > `SelectionModel` / `SelectionMode`. This was first resolved with `using`-aliases; the Core types are now
-  > named `DataGridSelectionModel` / `DataGridSelectionMode`, so no aliases are needed (#16).
+  > named `DataGridSelectionModel` / `GridSelectionMode`, so no aliases are needed (#16).
 - [x] The `unolib` template ships a sample `MyTemplatedControl` + `Themes/Generic.xaml`. Remove the
   sample control. Keep an (empty) `Themes/Generic.xaml` only if you later add stylable resources;
   it is **not** required by the drawn `KumikoDataGrid`.
@@ -50,7 +50,7 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
       Children.Add(_canvasView);
 
       // Auto-init bindable collections so XAML can add items directly (mirrors MAUI ctor).
-      Columns          = new ObservableCollection<DataGridColumn>();
+      Columns          = new ObservableCollection<GridColumn>();
       TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
       _dataSource.DataChanged += OnDataSourceDataChanged;
@@ -157,9 +157,9 @@ Map each MAUI `BindableProperty` to a WinUI `DependencyProperty`. Same names, sa
   | DependencyProperty | DP type | Default | Callback target (Core) |
   |---|---|---|---|
   | `ItemsSource` | `System.Collections.IEnumerable` | `null` | `_dataSource.SetItems(...)`; (un)subscribes `INotifyCollectionChanged` |
-  | `Columns` | `ObservableCollection<DataGridColumn>` | `null` | `_dataSource.SetColumns(...)`; subscribes `CollectionChanged` |
+  | `Columns` | `ObservableCollection<GridColumn>` | `null` | `_dataSource.SetColumns(...)`; subscribes `CollectionChanged` |
   | `TableSummaryRows` | `ObservableCollection<TableSummaryRow>` | `null` | `_dataSource.ClearTableSummaryRows()` + `AddTableSummaryRow(...)` |
-  | `GridSelectionMode` | `KumikoUI.Core.Models.DataGridSelectionMode` | `Extended` | `_selection.Mode` |
+  | `GridSelectionMode` | `KumikoUI.Core.Models.GridSelectionMode` | `Extended` | `_selection.Mode` |
   | `RowHeight` | `double` | `36` | `_style.RowHeight` (cast `double`→`float`) |
   | `HeaderHeight` | `double` | `40` | `_style.HeaderHeight` (cast `double`→`float`) |
   | `FrozenRowCount` | `int` | `0` | `_dataSource.FrozenRowCount` |

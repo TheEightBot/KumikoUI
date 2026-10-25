@@ -18,7 +18,7 @@ public class EditSession
     private CellPosition _editCell = CellPosition.Invalid;
     private object? _originalValue;
     private DrawnComponent? _activeEditor;
-    private DataGridColumn? _editColumn;
+    private GridColumn? _editColumn;
     private DataGridSource? _editDataSource;
 
     /// <summary>Whether a cell is currently being edited.</summary>
@@ -82,7 +82,7 @@ public class EditSession
     /// </summary>
     public bool BeginEdit(
         int rowIndex, int columnIndex,
-        DataGridColumn column, DataGridSource dataSource,
+        GridColumn column, DataGridSource dataSource,
         GridRect cellBounds, char? initialCharacter = null)
     {
         if (_isEditing)
@@ -182,7 +182,7 @@ public class EditSession
     /// <summary>
     /// Toggle a boolean cell directly (no editor needed).
     /// </summary>
-    public void ToggleBooleanCell(int row, int col, DataGridColumn column, DataGridSource dataSource)
+    public void ToggleBooleanCell(int row, int col, GridColumn column, DataGridSource dataSource)
     {
         if (column.IsReadOnly) return;
 

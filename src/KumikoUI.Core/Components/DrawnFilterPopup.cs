@@ -14,7 +14,7 @@ namespace KumikoUI.Core.Components;
 /// </summary>
 public class DrawnFilterPopup : DrawnComponent
 {
-    private readonly DataGridColumn _column;
+    private readonly GridColumn _column;
     private readonly DataGridSource _dataSource;
     private List<FilterItem> _allItems = new();
     private List<FilterItem> _filteredItems = new();
@@ -81,7 +81,7 @@ public class DrawnFilterPopup : DrawnComponent
     /// <summary>Raised when the user cancels the filter popup without applying.</summary>
     public event Action? FilterCancelled;
     /// <summary>Raised when the user requests a sort direction from the popup.</summary>
-    public event Action<DataGridSortDirection>? SortRequested;
+    public event Action<GridSortDirection>? SortRequested;
 
     /// <summary>Raised when the search box is tapped and needs platform keyboard focus.</summary>
     public event Action? KeyboardFocusRequested;
@@ -89,7 +89,7 @@ public class DrawnFilterPopup : DrawnComponent
     /// <summary>Initializes a new <see cref="DrawnFilterPopup"/> for the specified column and data source.</summary>
     /// <param name="column">The column whose values will populate the filter list.</param>
     /// <param name="dataSource">The data source used to extract unique column values.</param>
-    public DrawnFilterPopup(DataGridColumn column, DataGridSource dataSource)
+    public DrawnFilterPopup(GridColumn column, DataGridSource dataSource)
     {
         _column = column;
         _dataSource = dataSource;
@@ -584,9 +584,9 @@ public class DrawnFilterPopup : DrawnComponent
         if (relY >= 0 && relY < SortRowHeight)
         {
             if (relX < contentWidth / 2)
-                SortRequested?.Invoke(DataGridSortDirection.Ascending);
+                SortRequested?.Invoke(GridSortDirection.Ascending);
             else
-                SortRequested?.Invoke(DataGridSortDirection.Descending);
+                SortRequested?.Invoke(GridSortDirection.Descending);
             return true;
         }
 

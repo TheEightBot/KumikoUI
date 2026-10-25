@@ -21,7 +21,7 @@ values in a custom visual style.
 | Action | File |
 |---|---|
 | **Create** | `src/KumikoUI.Core/Rendering/{ClassName}.cs` |
-| **Modify** (optional, if new column type) | `src/KumikoUI.Core/Models/DataGridColumn.cs` — add enum value |
+| **Modify** (optional, if new column type) | `src/KumikoUI.Core/Models/GridColumn.cs` — add enum value |
 | **Create** | `tests/KumikoUI.Core.Tests/{ClassName}Tests.cs` |
 
 ---
@@ -55,10 +55,10 @@ public class {ClassName} : ICellRenderer
         GridRect cellRect,
         object? value,
         string displayText,
-        DataGridColumn column,
+        GridColumn column,
         DataGridStyle style,
         bool isSelected,
-        CellStyle? cellStyle = null)
+        DataGridCellStyle? cellStyle = null)
     {
         // ── Background ────────────────────────────────────────────────────────────
         var bg = cellStyle?.BackgroundColor
@@ -99,22 +99,22 @@ public class {ClassName} : ICellRenderer
 ### In XAML (Template column)
 
 ```xml
-<core:DataGridColumn Header="My Column" PropertyName="Value"
+<core:GridColumn Header="My Column" PropertyName="Value"
                      ColumnType="Template" Width="140" IsReadOnly="True">
-    <core:DataGridColumn.CustomCellRenderer>
+    <core:GridColumn.CustomCellRenderer>
         <render:{ClassName} Minimum="0" Maximum="100" />
-    </core:DataGridColumn.CustomCellRenderer>
-</core:DataGridColumn>
+    </core:GridColumn.CustomCellRenderer>
+</core:GridColumn>
 ```
 
 ### In code
 
 ```csharp
-var column = new DataGridColumn
+var column = new GridColumn
 {
     Header = "My Column",
     PropertyName = "Value",
-    ColumnType = DataGridColumnType.Template,
+    ColumnType = GridColumnType.Template,
     Width = 140,
     IsReadOnly = true,
     CustomCellRenderer = new {ClassName} { Minimum = 0, Maximum = 100 }
@@ -132,8 +132,8 @@ using KumikoUI.Core.Rendering;
 
 public class {ClassName}Tests
 {
-    private static DataGridColumn MakeColumn() =>
-        new DataGridColumn { PropertyName = "Value", ColumnType = DataGridColumnType.Template };
+    private static GridColumn MakeColumn() =>
+        new GridColumn { PropertyName = "Value", ColumnType = GridColumnType.Template };
 
     [Fact]
     public void Render_WithNullValue_DoesNotThrow()

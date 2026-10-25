@@ -118,4 +118,17 @@
     <!-- <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" RuntimeFrameworkVersion="10.0.22621.28" />
     <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" TargetingPackVersion="10.0.22621.28" /> -->
   </ItemGroup>
+
+  <!--
+    Uno.Resizetizer (implicit in Uno.Sdk) ships a source generator that emits a public
+    KumikoUI.Uno.WindowExtensions.SetWindowIcon app-icon helper into every project, libraries included. A library
+    has no app icon, and the type would ship in the package and clash with Microsoft.Maui.WindowExtensions
+    (eng/TypeNameCheck). Its MSBuild switches only cover the file-based variant, so drop the generator here.
+  -->
+  <Target Name="KumikoRemoveResizetizerGenerators" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'Uno.Resizetizer.Generators'" />
+    </ItemGroup>
+  </Target>
+
 </Project>

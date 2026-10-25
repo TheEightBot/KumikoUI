@@ -9,9 +9,9 @@ public class TextCellRenderer : ICellRenderer
 {
     public void Render(
         IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, DataGridColumn column,
+        string displayText, GridColumn column,
         DataGridStyle style, bool isSelected,
-        CellStyle? cellStyle = null)
+        DataGridCellStyle? cellStyle = null)
     {
         var paint = new GridPaint
         {

@@ -5,10 +5,10 @@ namespace KumikoUI.Core.Models;
 /// </summary>
 public class FilterChangedEventArgs : EventArgs
 {
-    public DataGridColumn Column { get; }
+    public GridColumn Column { get; }
     public IReadOnlyList<FilterDescription> ActiveFilters { get; }
 
-    public FilterChangedEventArgs(DataGridColumn column, IReadOnlyList<FilterDescription> activeFilters)
+    public FilterChangedEventArgs(GridColumn column, IReadOnlyList<FilterDescription> activeFilters)
     {
         Column = column;
         ActiveFilters = activeFilters;

@@ -50,7 +50,7 @@ xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
 ```xml
 <dg:KumikoDataGrid ItemsSource="{Binding Items}">
     <dg:KumikoDataGrid.Columns>
-        <core:DataGridColumn Header="Name" PropertyName="Name" Width="180" />
+        <core:GridColumn Header="Name" PropertyName="Name" Width="180" />
     </dg:KumikoDataGrid.Columns>
 </dg:KumikoDataGrid>
 ```
@@ -61,49 +61,49 @@ xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
 
 ```xml
 <!-- Numeric, frozen left, read-only -->
-<core:DataGridColumn Header="Id" PropertyName="Id" ColumnType="Numeric"
+<core:GridColumn Header="Id" PropertyName="Id" ColumnType="Numeric"
                      Width="60" IsReadOnly="True" IsFrozen="True" AllowTabStop="False"
                      TextAlignment="Right" />
 
 <!-- Text, frozen right -->
-<core:DataGridColumn Header="City" PropertyName="City" Width="130" FreezeMode="Right" />
+<core:GridColumn Header="City" PropertyName="City" Width="130" FreezeMode="Right" />
 
 <!-- ComboBox — items as CSV -->
-<core:DataGridColumn Header="Department" PropertyName="Department" Width="140"
+<core:GridColumn Header="Department" PropertyName="Department" Width="140"
                      ColumnType="ComboBox"
                      EditorItemsString="Engineering,Marketing,Sales,HR,Finance" />
 
 <!-- Picker — scroll-wheel -->
-<core:DataGridColumn Header="Level" PropertyName="Level" Width="120"
+<core:GridColumn Header="Level" PropertyName="Level" Width="120"
                      ColumnType="Picker"
                      EditorItemsString="Junior,Mid,Senior,Staff,Principal" />
 
 <!-- Date -->
-<core:DataGridColumn Header="Hire Date" PropertyName="HireDate" Width="120"
+<core:GridColumn Header="Hire Date" PropertyName="HireDate" Width="120"
                      ColumnType="Date" Format="yyyy-MM-dd" />
 
 <!-- Boolean -->
-<core:DataGridColumn Header="Active" PropertyName="IsActive" Width="80"
+<core:GridColumn Header="Active" PropertyName="IsActive" Width="80"
                      ColumnType="Boolean" AllowTabStop="False" />
 
 <!-- Template — custom renderer (display only) -->
-<core:DataGridColumn Header="Performance" PropertyName="Performance"
+<core:GridColumn Header="Performance" PropertyName="Performance"
                      ColumnType="Template" Width="140" IsReadOnly="True">
-    <core:DataGridColumn.CustomCellRenderer>
+    <core:GridColumn.CustomCellRenderer>
         <render:ProgressBarCellRenderer Minimum="0" Maximum="100"
                                         TrackHeight="12" CornerRadius="6"
                                         ShowText="True" TextFormat="N0" />
-    </core:DataGridColumn.CustomCellRenderer>
-</core:DataGridColumn>
+    </core:GridColumn.CustomCellRenderer>
+</core:GridColumn>
 
 <!-- Template — declarative editor -->
-<core:DataGridColumn Header="Rating" PropertyName="Rating"
+<core:GridColumn Header="Rating" PropertyName="Rating"
                      ColumnType="Template" Width="100">
-    <core:DataGridColumn.EditorDescriptor>
+    <core:GridColumn.EditorDescriptor>
         <editing:NumericUpDownEditorDescriptor Minimum="1" Maximum="5"
                                                Step="1" DecimalPlaces="0" />
-    </core:DataGridColumn.EditorDescriptor>
-</core:DataGridColumn>
+    </core:GridColumn.EditorDescriptor>
+</core:GridColumn>
 ```
 
 ---

@@ -56,9 +56,9 @@ public class DataGridRendererOverlayTests
     }
 
     [Theory]
-    [InlineData(DataGridSortDirection.Ascending, 16f)]  // arrow head at the top of the 26 px chip (centre 20)
-    [InlineData(DataGridSortDirection.Descending, 24f)] // arrow head at the bottom
-    public void GroupingPanel_ChipArrow_ShowsTheGroupSortDirection(DataGridSortDirection direction, float headY)
+    [InlineData(GridSortDirection.Ascending, 16f)]  // arrow head at the top of the 26 px chip (centre 20)
+    [InlineData(GridSortDirection.Descending, 24f)] // arrow head at the bottom
+    public void GroupingPanel_ChipArrow_ShowsTheGroupSortDirection(GridSortDirection direction, float headY)
     {
         var h = Create();
         h.Source.AddGroupDescription(new GroupDescription("City") { GroupSortDirection = direction });
@@ -362,12 +362,12 @@ public class DataGridRendererOverlayTests
 
     // ── Known defects (un-skip when the fix lands) ────────────────
 
-    [Fact(Skip = "CORE-03, fixed by #22: the row-style text override is written into the column's shared CellStyle.")]
+    [Fact(Skip = "CORE-03, fixed by #22: the row-style text override is written into the column's shared DataGridCellStyle.")]
     public void RowStyleTextOverride_DoesNotLeakIntoTheColumnStyleOrOtherRows()
     {
         var h = Create();
         var name = h.Column("Name");
-        name.CellStyle = new CellStyle { Padding = 4 };
+        name.CellStyle = new DataGridCellStyle { Padding = 4 };
         var red = new GridColor(255, 0, 0);
         h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Name == "P00" ? new DataGridRowStyle { TextColor = red } : null;
 

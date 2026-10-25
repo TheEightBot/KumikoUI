@@ -78,13 +78,13 @@ public partial class KumikoDataGrid
     /// <summary>Identifies the <see cref="Columns"/> dependency property.</summary>
     public static readonly DependencyProperty ColumnsProperty =
         DependencyProperty.Register(
-            nameof(Columns), typeof(ObservableCollection<DataGridColumn>), typeof(KumikoDataGrid),
+            nameof(Columns), typeof(ObservableCollection<GridColumn>), typeof(KumikoDataGrid),
             new PropertyMetadata(null, OnColumnsChanged));
 
     /// <summary>Bindable collection of column definitions. Supports runtime add/remove.</summary>
-    public ObservableCollection<DataGridColumn>? Columns
+    public ObservableCollection<GridColumn>? Columns
     {
-        get => (ObservableCollection<DataGridColumn>?)GetValue(ColumnsProperty);
+        get => (ObservableCollection<GridColumn>?)GetValue(ColumnsProperty);
         set => SetValue(ColumnsProperty, value);
     }
 
@@ -92,17 +92,17 @@ public partial class KumikoDataGrid
     {
         var view = (KumikoDataGrid)d;
 
-        if (e.OldValue is ObservableCollection<DataGridColumn> oldCollection)
+        if (e.OldValue is ObservableCollection<GridColumn> oldCollection)
             oldCollection.CollectionChanged -= view.OnColumnsCollectionChanged;
 
-        if (e.NewValue is ObservableCollection<DataGridColumn> newCollection)
+        if (e.NewValue is ObservableCollection<GridColumn> newCollection)
         {
             newCollection.CollectionChanged += view.OnColumnsCollectionChanged;
             view._dataSource.SetColumns(newCollection);
         }
         else
         {
-            view._dataSource.SetColumns(Array.Empty<DataGridColumn>());
+            view._dataSource.SetColumns(Array.Empty<GridColumn>());
         }
 
         view.Invalidate();
@@ -167,20 +167,20 @@ public partial class KumikoDataGrid
     /// <summary>Identifies the <see cref="GridSelectionMode"/> dependency property.</summary>
     public static readonly DependencyProperty GridSelectionModeProperty =
         DependencyProperty.Register(
-            nameof(GridSelectionMode), typeof(DataGridSelectionMode), typeof(KumikoDataGrid),
-            new PropertyMetadata(DataGridSelectionMode.Extended, OnGridSelectionModeChanged));
+            nameof(GridSelectionMode), typeof(GridSelectionMode), typeof(KumikoDataGrid),
+            new PropertyMetadata(GridSelectionMode.Extended, OnGridSelectionModeChanged));
 
     /// <summary>Selection mode: None, Single, Multiple, or Extended.</summary>
-    public DataGridSelectionMode GridSelectionMode
+    public GridSelectionMode GridSelectionMode
     {
-        get => (DataGridSelectionMode)GetValue(GridSelectionModeProperty);
+        get => (GridSelectionMode)GetValue(GridSelectionModeProperty);
         set => SetValue(GridSelectionModeProperty, value);
     }
 
     private static void OnGridSelectionModeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var view = (KumikoDataGrid)d;
-        view._selection.Mode = (DataGridSelectionMode)e.NewValue;
+        view._selection.Mode = (GridSelectionMode)e.NewValue;
         view.Invalidate();
     }
 

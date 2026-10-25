@@ -260,8 +260,8 @@ public class DataGridRendererPaneTests
             ? new DataGridRowStyle { BackgroundColor = highlight, TextColor = rowText }
             : null;
         h.Style.CellStyleResolver = (item, column) =>
-            column.PropertyName == "Age" && ((RenderHarness.Person)item!).Name == "P00" ? new CellStyle { TextColor = warn } : null;
-        h.Column("City").CellStyle = new CellStyle { BackgroundColor = tint };
+            column.PropertyName == "Age" && ((RenderHarness.Person)item!).Name == "P00" ? new DataGridCellStyle { TextColor = warn } : null;
+        h.Column("City").CellStyle = new DataGridCellStyle { BackgroundColor = tint };
         h.Scroll.OffsetY = 100;
 
         var ctx = h.Render();

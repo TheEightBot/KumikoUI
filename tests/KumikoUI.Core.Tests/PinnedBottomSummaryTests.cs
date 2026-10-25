@@ -43,7 +43,7 @@ public class PinnedBottomSummaryTests
         public void Key(GridKey key) =>
             Input.HandleKey(new GridKeyEventArgs { Key = key }, Scroll, Selection, Style, Source);
 
-        public HitTestResult HitTest(float x, float y) =>
+        public GridHitTestResult HitTest(float x, float y) =>
             new GridHitTester().HitTest(x, y, Scroll, Style, Source.Columns, Source.RowCount, Source);
     }
 
@@ -54,8 +54,8 @@ public class PinnedBottomSummaryTests
         grid.Style.PinBottomSummaryRows = pinned;
         grid.Source.SetColumns(new[]
         {
-            new DataGridColumn { Header = "Name", PropertyName = "Name", Width = 200 },
-            new DataGridColumn { Header = "Age", PropertyName = "Age", Width = 100, ColumnType = DataGridColumnType.Numeric },
+            new GridColumn { Header = "Name", PropertyName = "Name", Width = 200 },
+            new GridColumn { Header = "Age", PropertyName = "Age", Width = 100, ColumnType = GridColumnType.Numeric },
         });
         grid.Source.SetItems(Enumerable.Range(0, rowCount)
             .Select(i => new Person { Name = $"P{i:D3}", Age = i % 7 })

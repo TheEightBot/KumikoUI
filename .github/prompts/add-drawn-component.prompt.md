@@ -142,7 +142,7 @@ In `src/KumikoUI.Core/Editing/CellEditorFactory.cs`:
 **`CreateEditor` switch:**
 ```csharp
 // add inside CreateEditor(...)  switch (column.ColumnType)
-case DataGridColumnType.{NewType}:
+case GridColumnType.{NewType}:
     return new Drawn{Name}
     {
         Bounds = cellBounds,
@@ -191,11 +191,11 @@ public class {Name}EditorDescriptor : EditorDescriptor
 
 **XAML usage:**
 ```xml
-<core:DataGridColumn Header="..." PropertyName="..." ColumnType="Template" Width="120">
-    <core:DataGridColumn.EditorDescriptor>
+<core:GridColumn Header="..." PropertyName="..." ColumnType="Template" Width="120">
+    <core:GridColumn.EditorDescriptor>
         <editing:{Name}EditorDescriptor SomeOption="42" />
-    </core:DataGridColumn.EditorDescriptor>
-</core:DataGridColumn>
+    </core:GridColumn.EditorDescriptor>
+</core:GridColumn>
 ```
 
 ---

@@ -135,7 +135,7 @@ public class DataGridRendererTests
         var h = Create();
         var background = new GridColor(10, 20, 30);
         var text = new GridColor(40, 50, 60);
-        h.Column("City").HeaderCellStyle = new CellStyle { BackgroundColor = background, TextColor = text, Padding = 2 };
+        h.Column("City").HeaderCellStyle = new DataGridCellStyle { BackgroundColor = background, TextColor = text, Padding = 2 };
 
         var ctx = h.Render();
 
@@ -289,7 +289,7 @@ public class DataGridRendererTests
     {
         var h = Create();
         var tint = new GridColor(9, 99, 199);
-        h.Column("City").CellStyle = new CellStyle { BackgroundColor = tint };
+        h.Column("City").CellStyle = new DataGridCellStyle { BackgroundColor = tint };
 
         var ctx = h.Render();
 
@@ -302,7 +302,7 @@ public class DataGridRendererTests
         var h = Create();
         var warn = new GridColor(250, 120, 0);
         h.Style.CellStyleResolver = (item, column) =>
-            column.PropertyName == "Age" && ((RenderHarness.Person)item!).Age == 21 ? new CellStyle { TextColor = warn } : null;
+            column.PropertyName == "Age" && ((RenderHarness.Person)item!).Age == 21 ? new DataGridCellStyle { TextColor = warn } : null;
 
         var ctx = h.Render();
 
@@ -351,11 +351,11 @@ public class DataGridRendererTests
     {
         var h = Create(rows: 2);
         var probe = new CapturingCellRenderer();
-        h.Renderer.SetCellRenderer(DataGridColumnType.Numeric, probe);
+        h.Renderer.SetCellRenderer(GridColumnType.Numeric, probe);
 
         var ctx = h.Render();
 
-        Assert.Same(probe, h.Renderer.GetCellRenderer(DataGridColumnType.Numeric));
+        Assert.Same(probe, h.Renderer.GetCellRenderer(GridColumnType.Numeric));
         Assert.Equal(4, probe.Calls.Count); // Age and Salary, two rows each
         Assert.Empty(ctx.TextsEqual("1000"));
         Assert.Single(ctx.TextsEqual("P00"));
@@ -366,16 +366,16 @@ public class DataGridRendererTests
     {
         var renderer = new DataGridRenderer();
 
-        Assert.IsType<TextCellRenderer>(renderer.GetCellRenderer((DataGridColumnType)999));
-        Assert.IsType<BooleanCellRenderer>(renderer.GetCellRenderer(DataGridColumnType.Boolean));
-        Assert.IsType<ImageCellRenderer>(renderer.GetCellRenderer(DataGridColumnType.Image));
+        Assert.IsType<TextCellRenderer>(renderer.GetCellRenderer((GridColumnType)999));
+        Assert.IsType<BooleanCellRenderer>(renderer.GetCellRenderer(GridColumnType.Boolean));
+        Assert.IsType<ImageCellRenderer>(renderer.GetCellRenderer(GridColumnType.Image));
     }
 
     [Fact]
     public void Rows_BooleanColumn_DrawsACheckboxAndACheckmarkOnlyWhenTrue()
     {
         var h = Create(rows: 2);
-        h.Source.SetColumns(new[] { new DataGridColumn { Header = "Active", PropertyName = "Active", Width = 100, ColumnType = DataGridColumnType.Boolean } });
+        h.Source.SetColumns(new[] { new GridColumn { Header = "Active", PropertyName = "Active", Width = 100, ColumnType = GridColumnType.Boolean } });
 
         var ctx = h.Render();
 
@@ -481,9 +481,9 @@ public class DataGridRendererTests
     public void SortIndicator_MultiSort_DrawsOrderBadges()
     {
         var h = Create();
-        h.Column("City").SortDirection = DataGridSortDirection.Ascending;
+        h.Column("City").SortDirection = GridSortDirection.Ascending;
         h.Column("City").SortOrder = 1;
-        h.Column("Age").SortDirection = DataGridSortDirection.Descending;
+        h.Column("Age").SortDirection = GridSortDirection.Descending;
         h.Column("Age").SortOrder = 2;
 
         var ctx = h.Render();
@@ -530,7 +530,7 @@ public class DataGridRendererTests
         public List<(GridRect Rect, object? Value, string Text)> Calls { get; } = new();
 
         public void Render(IDrawingContext ctx, GridRect cellRect, object? value, string displayText,
-            DataGridColumn column, DataGridStyle style, bool isSelected, CellStyle? cellStyle = null) =>
+            GridColumn column, DataGridStyle style, bool isSelected, DataGridCellStyle? cellStyle = null) =>
             Calls.Add((cellRect, value, displayText));
     }
 }

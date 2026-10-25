@@ -45,37 +45,37 @@ public sealed partial class CustomFontsPage : Page
         };
 
         japaneseGrid.GridStyle = style;
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new GridColumn
         {
             Header = "現品票ID",   // 現品票ID
             PropertyName = nameof(InventoryItem.ItemId),
             Width = 110,
-            ColumnType = DataGridColumnType.Numeric,
+            ColumnType = GridColumnType.Numeric,
             TextAlignment = GridTextAlignment.Right,
             IsReadOnly = true,
             IsFrozen = true,
         });
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new GridColumn
         {
             Header = "RFID",
             PropertyName = nameof(InventoryItem.Rfid),
             Width = 160,
         });
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new GridColumn
         {
             Header = "品番",           // 品番
             PropertyName = nameof(InventoryItem.PartNumber),
             Width = 130,
         });
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new GridColumn
         {
             Header = "数量",           // 数量
             PropertyName = nameof(InventoryItem.Quantity),
             Width = 90,
-            ColumnType = DataGridColumnType.Numeric,
+            ColumnType = GridColumnType.Numeric,
             TextAlignment = GridTextAlignment.Right,
         });
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new GridColumn
         {
             Header = "倉庫",           // 倉庫
             PropertyName = nameof(InventoryItem.Warehouse),
@@ -111,20 +111,20 @@ public sealed partial class CustomFontsPage : Page
     private void BuildIconGrid()
     {
         // Regular columns use the default font; only the Priority/Done columns use MaterialIcons.
-        iconGrid.Columns!.Add(new DataGridColumn
+        iconGrid.Columns!.Add(new GridColumn
         {
             Header = "Name",
             PropertyName = nameof(TaskItem.Name),
             Width = 180,
             IsFrozen = true,
         });
-        iconGrid.Columns!.Add(new DataGridColumn
+        iconGrid.Columns!.Add(new GridColumn
         {
             Header = "Assignee",
             PropertyName = nameof(TaskItem.Assignee),
             Width = 130,
         });
-        iconGrid.Columns!.Add(new DataGridColumn
+        iconGrid.Columns!.Add(new GridColumn
         {
             Header = "Priority",
             PropertyName = nameof(TaskItem.PriorityIcon),
@@ -135,7 +135,7 @@ public sealed partial class CustomFontsPage : Page
             // from the MaterialIcons typeface registered at startup.
             CustomCellRenderer = new IconFontCellRenderer("MaterialIcons", 22f),
         });
-        iconGrid.Columns!.Add(new DataGridColumn
+        iconGrid.Columns!.Add(new GridColumn
         {
             Header = "Done",
             PropertyName = nameof(TaskItem.DoneIcon),
@@ -247,10 +247,10 @@ internal sealed class IconFontCellRenderer : ICellRenderer
         GridRect cellRect,
         object? value,
         string displayText,
-        DataGridColumn column,
+        GridColumn column,
         DataGridStyle style,
         bool isSelected,
-        CellStyle? cellStyle = null)
+        DataGridCellStyle? cellStyle = null)
     {
         if (string.IsNullOrEmpty(displayText))
             return;

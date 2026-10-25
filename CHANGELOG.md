@@ -11,16 +11,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `DataGridStyle.PinBottomSummaryRows` (default `true`): `Position=Bottom` table summary rows are pinned to the bottom of the viewport as a fixed footer instead of scrolling after the last row. **Behaviour change** for existing users of bottom summaries; set it to `false` to restore the previous layout.
 
 ### Changed
-- **Breaking:** naming pass so no public name collides with MAUI, WinUI/Uno or Windows Forms types (#16). Namespaces are unchanged (`KumikoUI.*`); property names are unchanged (for example `DataGridColumn.SortDirection` and `KumikoDataGrid.GridSelectionMode` keep their names, only their types change). Update XAML and code as follows:
+- **Breaking:** naming pass so no public name collides with types of MAUI, CommunityToolkit.Maui, WinUI/Uno, the Windows Community Toolkit DataGrid, WPF, Windows Forms or Avalonia (#16). Namespaces are unchanged (`KumikoUI.*`); property names are unchanged (for example `GridColumn.SortDirection` and `KumikoDataGrid.GridSelectionMode` keep their names, only their types change). Update XAML and code as follows:
   - Host control: `DataGridView` → `KumikoDataGrid` in both `KumikoUI.Maui` and `KumikoUI.Uno`, including XAML (`<dg:DataGridView …>` → `<dg:KumikoDataGrid …>`, `<dg:DataGridView.Columns>` → `<dg:KumikoDataGrid.Columns>`, and the same for `TableSummaryRows` and `GroupSummaryRows`).
-  - `SelectionMode` → `DataGridSelectionMode`, `SelectionChangedEventArgs` → `DataGridSelectionChangedEventArgs`, `SelectionModel` → `DataGridSelectionModel`
-  - `SortDirection` → `DataGridSortDirection`, `RowStyle` → `DataGridRowStyle`
-  - `TextChangedEventArgs` → `GridTextChangedEventArgs`, `TimeChangedEventArgs` → `GridTimeChangedEventArgs`, `ColumnReorderedEventArgs` → `GridColumnReorderedEventArgs`
-  - `ComboBoxItem` → `DrawnComboBoxItem`, `FocusManager` → `DrawnFocusManager`, `CheckState` → `DrawnCheckState`
-  - `RowTappedEventArgs2` → `RowTappedEventArgs` (the type of `RowTapped` and `RowDoubleTapped` on both hosts and on `GridInputController`)
+  - Columns: `DataGridColumn` → `GridColumn` (including `<core:DataGridColumn …>` in XAML), `DataGridColumnType` → `GridColumnType`
+  - Selection: `SelectionMode` → `GridSelectionMode`, `SelectionChangedEventArgs` → `DataGridSelectionChangedEventArgs`, `SelectionModel` → `DataGridSelectionModel`
+  - Sorting and styles: `SortDirection` → `GridSortDirection`, `CellStyle` → `DataGridCellStyle`, `RowStyle` → `DataGridRowStyle`
+  - Events and input: `TextChangedEventArgs` → `GridTextChangedEventArgs`, `TimeChangedEventArgs` → `GridTimeChangedEventArgs`, `ColumnReorderedEventArgs` → `GridColumnReorderedEventArgs`, `FocusChangedEventArgs` → `GridFocusChangedEventArgs`, `HitTestResult` → `GridHitTestResult`, `RowTappedEventArgs2` → `RowTappedEventArgs` (the type of `RowTapped` and `RowDoubleTapped` on both hosts and on `GridInputController`)
+  - Drawn components: `ComboBoxItem` → `DrawnComboBoxItem`, `FocusManager` → `DrawnFocusManager`, `CheckState` → `DrawnCheckState`
 
   Apps that aliased Core's types to avoid clashes with `Microsoft.UI.Xaml.Controls` or `Microsoft.Maui.Controls` (for example `using SelectionMode = KumikoUI.Core.Models.SelectionMode;`) can drop the aliases.
-- CI fails when a public KumikoUI type shares its simple name with a type in `Microsoft.Maui.Controls.*`, `Microsoft.UI.Xaml.*` (WinUI and Uno) or `System.Windows.Forms.*`. The check (`eng/TypeNameCheck`) reads the names from the pinned platform packages, so it needs no workloads. See "Public type names" in CONTRIBUTING.md.
+- KumikoUI.Uno no longer ships the `KumikoUI.Uno.WindowExtensions` app-icon helper that Uno.Resizetizer's source generator added to the library.
+- CI fails when a public KumikoUI type shares its simple name with another public KumikoUI type or with a type of those frameworks. The check (`eng/TypeNameCheck`) reads the names from pinned packages, so it needs no workloads. See "Public type names" in CONTRIBUTING.md.
 - Every public type now lives in its own source file named after it (for example `DataGridStyle` moved from `GridState.cs` to `DataGridStyle.cs`; the MAUI hosting extensions file is now `KumikoUIHostingExtensions.cs`). No API change.
 - The product is named "KumikoUI DataGrid" in all package descriptions, assembly metadata and the README.
 - **Breaking:** minimum OS versions raised and unified across KumikoUI.Maui and KumikoUI.Uno: iOS 17.0 (was 15.0 on MAUI, 14.2 on Uno), Mac Catalyst 17.0 (was 15.0, which current Xcode toolchains reject), Android API 24 (was 21), Windows 10.0.19041 (was 10.0.17763 on MAUI). Defined once in `Directory.Build.props` and re-baselined at each .NET major.

@@ -16,10 +16,10 @@ public class GridHitTester
     /// Resolve a viewport coordinate to a grid region, row, and column.
     /// Properly handles left-frozen, right-frozen, and frozen rows.
     /// </summary>
-    public HitTestResult HitTest(
+    public GridHitTestResult HitTest(
         float viewportX, float viewportY,
         ScrollState scroll, DataGridStyle style,
-        IReadOnlyList<DataGridColumn> columns, int totalRows,
+        IReadOnlyList<GridColumn> columns, int totalRows,
         DataGridSource? dataSource = null)
     {
         // Pinned bottom summary footer first: it is drawn last, at the bottom of the viewport, over the
@@ -29,7 +29,7 @@ public class GridHitTester
         float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(bottomSummaryCount);
         if (pinnedFooterHeight > 0 && viewportY >= scroll.ViewportHeight - pinnedFooterHeight)
         {
-            return new HitTestResult { Region = HitRegion.TableSummaryRow, ContentX = viewportX, ContentY = viewportY };
+            return new GridHitTestResult { Region = HitRegion.TableSummaryRow, ContentX = viewportX, ContentY = viewportY };
         }
 
         // Check grouping panel area
@@ -108,7 +108,7 @@ public class GridHitTester
         // Check if in top summary area
         if (adjustedY >= style.HeaderHeight && adjustedY < style.HeaderHeight + topSummaryHeight)
         {
-            return new HitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
+            return new GridHitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
         }
 
         // Compute frozen rows
@@ -124,7 +124,7 @@ public class GridHitTester
             float bottomSummaryTop = dataAreaTop + totalRows * style.RowHeight - scroll.OffsetY;
             if (adjustedY >= bottomSummaryTop && adjustedY < bottomSummaryTop + bottomSummaryCount * style.SummaryRowHeight)
             {
-                return new HitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
+                return new GridHitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
             }
         }
         int row;
@@ -144,13 +144,13 @@ public class GridHitTester
 
         if (row < 0 || row >= totalRows)
         {
-            return new HitTestResult { Region = HitRegion.EmptyArea, ContentX = effectiveContentX, ContentY = contentY };
+            return new GridHitTestResult { Region = HitRegion.EmptyArea, ContentX = effectiveContentX, ContentY = contentY };
         }
 
         // Check if this row is a group summary
         if (dataSource != null && dataSource.IsGroupSummaryRow(row))
         {
-            return new HitTestResult
+            return new GridHitTestResult
             {
                 Region = HitRegion.GroupSummaryRow,
                 RowIndex = row,
@@ -174,7 +174,7 @@ public class GridHitTester
                 // since group headers span the full viewport
                 if (viewportX >= chevronLeft && viewportX <= chevronRight + style.CellPadding)
                 {
-                    return new HitTestResult
+                    return new GridHitTestResult
                     {
                         Region = HitRegion.GroupChevron,
                         RowIndex = row,
@@ -183,7 +183,7 @@ public class GridHitTester
                     };
                 }
 
-                return new HitTestResult
+                return new GridHitTestResult
                 {
                     Region = HitRegion.GroupHeaderRow,
                     RowIndex = row,
@@ -209,7 +209,7 @@ public class GridHitTester
 
             if (isOnHandle)
             {
-                return new HitTestResult
+                return new GridHitTestResult
                 {
                     Region = HitRegion.RowDragHandle,
                     RowIndex = row,
@@ -228,9 +228,9 @@ public class GridHitTester
     /// Hit test a column header, properly handling frozen, scrollable, and right-frozen panes.
     /// viewportX here is columnAreaViewportX (already offset by drag handle width).
     /// </summary>
-    private HitTestResult HitTestHeader(
+    private GridHitTestResult HitTestHeader(
         float viewportX, float effectiveContentX, float contentY,
-        IReadOnlyList<DataGridColumn> columns, ScrollState scroll, DataGridStyle style,
+        IReadOnlyList<GridColumn> columns, ScrollState scroll, DataGridStyle style,
         float frozenWidth, float rightFrozenWidth, float rightFrozenLeft, float handleOffset)
     {
         // Try left-frozen columns first (column-area coords, starting at 0)
@@ -278,7 +278,7 @@ public class GridHitTester
                     scrollContentX >= colRight - ResizeGripWidth &&
                     scrollContentX <= colRight + ResizeGripWidth)
                 {
-                    return new HitTestResult
+                    return new GridHitTestResult
                     {
                         Region = HitRegion.HeaderResizeGrip,
                         ColumnIndex = i, Column = col,
@@ -293,7 +293,7 @@ public class GridHitTester
                         float filterIconX = colRight - FilterIconRightMargin - FilterIconSize;
                         if (scrollContentX >= filterIconX && scrollContentX <= colRight - ResizeGripWidth)
                         {
-                            return new HitTestResult
+                            return new GridHitTestResult
                             {
                                 Region = HitRegion.HeaderFilterIcon,
                                 ColumnIndex = i, Column = col,
@@ -302,7 +302,7 @@ public class GridHitTester
                         }
                     }
 
-                    return new HitTestResult
+                    return new GridHitTestResult
                     {
                         Region = HitRegion.HeaderCell,
                         ColumnIndex = i, Column = col,
@@ -314,19 +314,19 @@ public class GridHitTester
             }
         }
 
-        return new HitTestResult { Region = HitRegion.EmptyArea, ContentX = effectiveContentX, ContentY = contentY };
+        return new GridHitTestResult { Region = HitRegion.EmptyArea, ContentX = effectiveContentX, ContentY = contentY };
     }
 
     /// <summary>Check a single column header for resize grip, filter icon, or header cell hit.</summary>
-    private HitTestResult? CheckHeaderColumn(
-        DataGridColumn col, int index, float colLeft, float colRight,
+    private GridHitTestResult? CheckHeaderColumn(
+        GridColumn col, int index, float colLeft, float colRight,
         float testX, float effectiveContentX, float contentY, DataGridStyle style)
     {
         if (col.AllowResize &&
             testX >= colRight - ResizeGripWidth &&
             testX <= colRight + ResizeGripWidth)
         {
-            return new HitTestResult
+            return new GridHitTestResult
             {
                 Region = HitRegion.HeaderResizeGrip,
                 ColumnIndex = index, Column = col,
@@ -341,7 +341,7 @@ public class GridHitTester
                 float filterIconX = colRight - FilterIconRightMargin - FilterIconSize;
                 if (testX >= filterIconX && testX <= colRight - ResizeGripWidth)
                 {
-                    return new HitTestResult
+                    return new GridHitTestResult
                     {
                         Region = HitRegion.HeaderFilterIcon,
                         ColumnIndex = index, Column = col,
@@ -350,7 +350,7 @@ public class GridHitTester
                 }
             }
 
-            return new HitTestResult
+            return new GridHitTestResult
             {
                 Region = HitRegion.HeaderCell,
                 ColumnIndex = index, Column = col,
@@ -365,9 +365,9 @@ public class GridHitTester
     /// Hit test a data cell column, handling frozen, scrollable, and right-frozen columns.
     /// viewportX here is columnAreaViewportX (already offset by drag handle width).
     /// </summary>
-    private HitTestResult HitTestColumn(
+    private GridHitTestResult HitTestColumn(
         float viewportX, float effectiveContentX, float contentY, int row,
-        IReadOnlyList<DataGridColumn> columns, ScrollState scroll,
+        IReadOnlyList<GridColumn> columns, ScrollState scroll,
         float frozenWidth, float rightFrozenWidth, float rightFrozenLeft, float handleOffset)
     {
         // Check left-frozen columns (column-area coords, starting at 0)
@@ -380,7 +380,7 @@ public class GridHitTester
                 if (!col.IsVisible || !col.IsFrozen) continue;
                 if (viewportX >= x && viewportX < x + col.Width)
                 {
-                    return new HitTestResult
+                    return new GridHitTestResult
                     {
                         Region = HitRegion.Cell, RowIndex = row,
                         ColumnIndex = i, Column = col,
@@ -402,7 +402,7 @@ public class GridHitTester
                 if (!col.IsVisible || !col.IsFrozenRight) continue;
                 if (viewportX >= x && viewportX < x + col.Width)
                 {
-                    return new HitTestResult
+                    return new GridHitTestResult
                     {
                         Region = HitRegion.Cell, RowIndex = row,
                         ColumnIndex = i, Column = col,
@@ -422,7 +422,7 @@ public class GridHitTester
             if (!col.IsVisible || col.IsFrozen || col.IsFrozenRight) continue;
             if (scrollContentX >= cx && scrollContentX < cx + col.Width)
             {
-                return new HitTestResult
+                return new GridHitTestResult
                 {
                     Region = HitRegion.Cell, RowIndex = row,
                     ColumnIndex = i, Column = col,
@@ -432,7 +432,7 @@ public class GridHitTester
             cx += col.Width;
         }
 
-        return new HitTestResult
+        return new GridHitTestResult
         {
             Region = HitRegion.EmptyArea, RowIndex = row,
             ContentX = effectiveContentX, ContentY = contentY
@@ -441,14 +441,14 @@ public class GridHitTester
     /// <summary>
     /// Hit test within the grouping panel area (chips and remove buttons).
     /// </summary>
-    private HitTestResult HitTestGroupPanel(
+    private GridHitTestResult HitTestGroupPanel(
         float viewportX, float viewportY,
         ScrollState scroll, DataGridStyle style,
         DataGridSource dataSource)
     {
         var groups = dataSource.GroupDescriptions;
         if (groups.Count == 0)
-            return new HitTestResult { Region = HitRegion.EmptyArea };
+            return new GridHitTestResult { Region = HitRegion.EmptyArea };
 
         // Replicate the layout from DrawGroupingPanel
         // "Grouped by:" label takes space first
@@ -482,14 +482,14 @@ public class GridHitTester
                 float removeAreaX = chipX + chipWidth - removeButtonSize - chipPadding / 2 - 4;
                 if (viewportX >= removeAreaX)
                 {
-                    return new HitTestResult
+                    return new GridHitTestResult
                     {
                         Region = HitRegion.GroupPanelChipRemove,
                         GroupDescriptionIndex = i
                     };
                 }
 
-                return new HitTestResult
+                return new GridHitTestResult
                 {
                     Region = HitRegion.GroupPanelChip,
                     GroupDescriptionIndex = i
@@ -503,6 +503,6 @@ public class GridHitTester
                 chipX += 14 + chipGap;
         }
 
-        return new HitTestResult { Region = HitRegion.EmptyArea };
+        return new GridHitTestResult { Region = HitRegion.EmptyArea };
     }
 }

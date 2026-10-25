@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Sort direction used by columns and the data source.
 /// </summary>
-public enum DataGridSortDirection
+public enum GridSortDirection
 {
     /// <summary>No sorting applied.</summary>
     None,

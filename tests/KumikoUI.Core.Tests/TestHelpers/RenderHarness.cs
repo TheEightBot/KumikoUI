@@ -59,17 +59,17 @@ internal sealed class RenderHarness
         var h = new RenderHarness(width, height, people);
         h.Source.SetColumns(new[]
         {
-            new DataGridColumn { Header = "Name", PropertyName = "Name", Width = 150 },
-            new DataGridColumn { Header = "Age", PropertyName = "Age", Width = 100, ColumnType = DataGridColumnType.Numeric },
-            new DataGridColumn { Header = "City", PropertyName = "City", Width = 150 },
-            new DataGridColumn { Header = "Salary", PropertyName = "Salary", Width = 150, ColumnType = DataGridColumnType.Numeric },
+            new GridColumn { Header = "Name", PropertyName = "Name", Width = 150 },
+            new GridColumn { Header = "Age", PropertyName = "Age", Width = 100, ColumnType = GridColumnType.Numeric },
+            new GridColumn { Header = "City", PropertyName = "City", Width = 150 },
+            new GridColumn { Header = "Salary", PropertyName = "Salary", Width = 150, ColumnType = GridColumnType.Numeric },
         });
         h.Source.SetItems(people);
         configure?.Invoke(h);
         return h;
     }
 
-    public DataGridColumn Column(string propertyName) =>
+    public GridColumn Column(string propertyName) =>
         Source.Columns.Single(c => c.PropertyName == propertyName);
 
     public RecordingDrawingContext Render(

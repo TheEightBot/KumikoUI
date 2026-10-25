@@ -11,9 +11,9 @@ public class ColumnResizedEventArgs : EventArgs
     /// <summary>Zero-based index of the resized column.</summary>
     public int ColumnIndex { get; }
     /// <summary>The column that was resized.</summary>
-    public DataGridColumn Column { get; }
+    public GridColumn Column { get; }
     /// <summary>Initializes a new instance of the <see cref="ColumnResizedEventArgs"/> class.</summary>
     /// <param name="index">The zero-based column index.</param>
     /// <param name="column">The resized column.</param>
-    public ColumnResizedEventArgs(int index, DataGridColumn column) { ColumnIndex = index; Column = column; }
+    public ColumnResizedEventArgs(int index, GridColumn column) { ColumnIndex = index; Column = column; }
 }

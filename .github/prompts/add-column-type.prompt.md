@@ -1,11 +1,11 @@
 ---
 mode: agent
-description: Add a new DataGridColumnType and wire it end-to-end in KumikoUI
+description: Add a new GridColumnType and wire it end-to-end in KumikoUI
 ---
 
 # Add a New Column Type
 
-Adds a new `DataGridColumnType` enum value and wires it through all five required
+Adds a new `GridColumnType` enum value and wires it through all five required
 touch-points in the codebase.
 
 ## What to ask the user before generating code
@@ -22,7 +22,7 @@ touch-points in the codebase.
 
 | Action | File | What to change |
 |---|---|---|
-| **Modify** | `src/KumikoUI.Core/Models/DataGridColumn.cs` | Add enum value to `DataGridColumnType` |
+| **Modify** | `src/KumikoUI.Core/Models/GridColumn.cs` | Add enum value to `GridColumnType` |
 | **Create** (if custom renderer) | `src/KumikoUI.Core/Rendering/{Type}CellRenderer.cs` | New `ICellRenderer` |
 | **Create** (if custom editor) | `src/KumikoUI.Core/Components/Drawn{Type}.cs` | New `DrawnComponent` |
 | **Modify** | `src/KumikoUI.Core/Editing/CellEditorFactory.cs` | Add cases for create, get value, apply theme |
@@ -30,12 +30,12 @@ touch-points in the codebase.
 
 ---
 
-## Step 1 — `DataGridColumnType` enum
+## Step 1 — `GridColumnType` enum
 
-In `src/KumikoUI.Core/Models/DataGridColumn.cs`, add the new value with a doc comment:
+In `src/KumikoUI.Core/Models/GridColumn.cs`, add the new value with a doc comment:
 
 ```csharp
-public enum DataGridColumnType
+public enum GridColumnType
 {
     Text,
     Numeric,
@@ -78,7 +78,7 @@ In `src/KumikoUI.Core/Editing/CellEditorFactory.cs`, add three cases:
 
 ### `CreateEditor`
 ```csharp
-case DataGridColumnType.{NewType}:
+case GridColumnType.{NewType}:
     var editor = new Drawn{Type}
     {
         Bounds = cellBounds,
@@ -111,16 +111,16 @@ cell renderer by column type and add a case:
 
 ```csharp
 // Inside the method that resolves ICellRenderer for a column:
-DataGridColumnType.{NewType} => new {Type}CellRenderer(),
+GridColumnType.{NewType} => new {Type}CellRenderer(),
 // or, if reusing text renderer:
-DataGridColumnType.{NewType} => _textCellRenderer,
+GridColumnType.{NewType} => _textCellRenderer,
 ```
 
 ---
 
 ## Step 6 — Verification checklist
 
-- [ ] `DataGridColumnType.{NewType}` compiles in `KumikoUI.Core`
+- [ ] `GridColumnType.{NewType}` compiles in `KumikoUI.Core`
 - [ ] `CellEditorFactory` switch has `CreateEditor`, `GetEditorValue`, and `ApplyThemeToEditor` cases
 - [ ] `DataGridRenderer` dispatches to the renderer (no missing-case compiler warning)
 - [ ] Can declare column in XAML: `ColumnType="{NewType}"` without error
@@ -132,17 +132,17 @@ DataGridColumnType.{NewType} => _textCellRenderer,
 ## XAML usage example (once implemented)
 
 ```xml
-<core:DataGridColumn Header="Rating" PropertyName="Rating"
+<core:GridColumn Header="Rating" PropertyName="Rating"
                      ColumnType="{NewType}"
                      Width="120" />
 ```
 
 If an `EditorDescriptor` was created:
 ```xml
-<core:DataGridColumn Header="Rating" PropertyName="Rating"
+<core:GridColumn Header="Rating" PropertyName="Rating"
                      ColumnType="{NewType}" Width="120">
-    <core:DataGridColumn.EditorDescriptor>
+    <core:GridColumn.EditorDescriptor>
         <editing:{Type}EditorDescriptor Minimum="1" Maximum="5" />
-    </core:DataGridColumn.EditorDescriptor>
-</core:DataGridColumn>
+    </core:GridColumn.EditorDescriptor>
+</core:GridColumn>
 ```

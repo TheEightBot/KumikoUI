@@ -53,7 +53,7 @@ public void {MethodName}_{Scenario}({Type} input, {Type} expected)
 ```csharp
 public class DataGridSourceSortingTests
 {
-    private static DataGridSource MakeSource(IList items, List<DataGridColumn> columns)
+    private static DataGridSource MakeSource(IList items, List<GridColumn> columns)
     {
         var source = new DataGridSource();
         foreach (var col in columns) source.Columns.Add(col);
@@ -70,7 +70,7 @@ public class DataGridSourceSortingTests
             new() { Id = 1, Name = "Alice" },
             new() { Id = 2, Name = "Bob" },
         };
-        var col    = new DataGridColumn { PropertyName = "Name", ColumnType = DataGridColumnType.Text };
+        var col    = new GridColumn { PropertyName = "Name", ColumnType = GridColumnType.Text };
         var source = MakeSource(items, [col]);
 
         source.ApplySort(col);

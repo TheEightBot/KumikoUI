@@ -4,7 +4,7 @@ namespace KumikoUI.Core.Rendering;
 
 /// <summary>
 /// Interface for rendering individual cell content.
-/// Implementations are dispatched by <see cref="DataGridColumnType"/>.
+/// Implementations are dispatched by <see cref="GridColumnType"/>.
 /// </summary>
 public interface ICellRenderer
 {
@@ -24,8 +24,8 @@ public interface ICellRenderer
         GridRect cellRect,
         object? value,
         string displayText,
-        DataGridColumn column,
+        GridColumn column,
         DataGridStyle style,
         bool isSelected,
-        CellStyle? cellStyle = null);
+        DataGridCellStyle? cellStyle = null);
 }

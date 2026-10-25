@@ -17,9 +17,9 @@ public class ImageCellRenderer : ICellRenderer
 
     public void Render(
         IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, DataGridColumn column,
+        string displayText, GridColumn column,
         DataGridStyle style, bool isSelected,
-        CellStyle? cellStyle = null)
+        DataGridCellStyle? cellStyle = null)
     {
         var image = ImageResolver != null ? ImageResolver(value) : value;
         if (image == null) return;

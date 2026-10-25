@@ -20,15 +20,15 @@ public class FilterCondition
     /// <summary>
     /// Evaluate this condition against a cell value for a given column type.
     /// </summary>
-    public bool Evaluate(object? cellValue, DataGridColumnType columnType)
+    public bool Evaluate(object? cellValue, GridColumnType columnType)
     {
         return columnType switch
         {
-            DataGridColumnType.Text or DataGridColumnType.ComboBox or DataGridColumnType.Picker
+            GridColumnType.Text or GridColumnType.ComboBox or GridColumnType.Picker
                 => EvaluateText(cellValue),
-            DataGridColumnType.Numeric => EvaluateNumeric(cellValue),
-            DataGridColumnType.Date => EvaluateDate(cellValue),
-            DataGridColumnType.Boolean => EvaluateBoolean(cellValue),
+            GridColumnType.Numeric => EvaluateNumeric(cellValue),
+            GridColumnType.Date => EvaluateDate(cellValue),
+            GridColumnType.Boolean => EvaluateBoolean(cellValue),
             _ => true // Template/Image columns pass through
         };
     }

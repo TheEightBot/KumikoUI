@@ -1,5 +1,7 @@
 // Fails when a public top-level type in the given KumikoUI assemblies has the same simple name as a public
-// type in Microsoft.Maui.Controls.*, Microsoft.UI.Xaml.* or System.Windows.Forms.*.
+// type of a UI framework an app may import next to KumikoUI (Microsoft.Maui.*, Microsoft.UI.Xaml.* from
+// WinUI and Uno, System.Windows.* from WPF and Windows Forms, the Windows Community Toolkit DataGrid,
+// CommunityToolkit.Maui, Avalonia and its DataGrid), or as another public type in the given assemblies.
 //
 //   dotnet run --project eng/TypeNameCheck -c Release -- <KumikoUI assembly>...
 //
@@ -25,14 +27,20 @@ try
     string winUIVersion = Metadata("WindowsAppSdkWinUIVersion");
     string unoVersion = Metadata("UnoWinUIVersion");
     string desktopRefVersion = Metadata("WindowsDesktopRefVersion");
+    string toolkitDataGridVersion = Metadata("CommunityToolkitWinUIDataGridVersion");
+    string toolkitMauiVersion = Metadata("CommunityToolkitMauiVersion");
+    string avaloniaVersion = Metadata("AvaloniaVersion");
+    string avaloniaDataGridVersion = Metadata("AvaloniaDataGridVersion");
 
     // Each source lists the metadata files to read, the namespace prefix to keep, and a type that must be
     // present: if it is not, the package layout changed and the check would silently compare nothing.
     PlatformSource[] sources =
     [
-        new("Microsoft.Maui.Controls", "Microsoft.Maui.Controls", "Microsoft.Maui.Controls.Button",
+        new("Microsoft.Maui", "Microsoft.Maui", "Microsoft.Maui.Controls.Button",
             Package("microsoft.maui.controls.core", mauiVersion, "lib/net10.0", "Microsoft.Maui.Controls.dll")
-                .Concat(Package("microsoft.maui.controls.xaml", mauiVersion, "lib/net10.0", "Microsoft.Maui.Controls.Xaml.dll"))),
+                .Concat(Package("microsoft.maui.controls.xaml", mauiVersion, "lib/net10.0", "Microsoft.Maui.Controls.Xaml.dll"))
+                .Concat(Package("microsoft.maui.core", mauiVersion, "lib/net10.0", "Microsoft.Maui.dll"))
+                .Concat(Package("microsoft.maui.graphics", mauiVersion, "lib/net10.0", "Microsoft.Maui.Graphics.dll"))),
         new("Microsoft.UI.Xaml", "Microsoft.UI.Xaml", "Microsoft.UI.Xaml.Controls.Button",
             Package("microsoft.windowsappsdk.winui", winUIVersion, "metadata", "*.winmd")),
         // Uno implements Microsoft.UI.Xaml itself and adds public types of its own (for example SelectionModel),
@@ -41,6 +49,18 @@ try
             Package("uno.winui", unoVersion, "lib/net10.0", "Uno.UI.dll")),
         new("System.Windows.Forms", "System.Windows.Forms", "System.Windows.Forms.Button",
             Package("microsoft.windowsdesktop.app.ref", desktopRefVersion, "ref", "System.Windows.Forms*.dll")),
+        new("WPF", "System.Windows", "System.Windows.Controls.DataGrid",
+            Package("microsoft.windowsdesktop.app.ref", desktopRefVersion, "ref", "PresentationFramework.dll")
+                .Concat(Package("microsoft.windowsdesktop.app.ref", desktopRefVersion, "ref", "PresentationCore.dll"))
+                .Concat(Package("microsoft.windowsdesktop.app.ref", desktopRefVersion, "ref", "WindowsBase.dll"))),
+        // The WinUI DataGrid most WinUI and Uno apps use (Uno ships the same API as Uno.CommunityToolkit.*).
+        new("Windows Community Toolkit DataGrid", "CommunityToolkit.WinUI", "CommunityToolkit.WinUI.UI.Controls.DataGrid",
+            Package("communitytoolkit.winui.ui.controls.datagrid", toolkitDataGridVersion, "lib", "*.dll")),
+        new("CommunityToolkit.Maui", "CommunityToolkit.Maui", "CommunityToolkit.Maui.Views.Popup",
+            Package("communitytoolkit.maui", toolkitMauiVersion, "lib/net10.0", "*.dll")),
+        new("Avalonia", "Avalonia", "Avalonia.Controls.DataGrid",
+            Package("avalonia", avaloniaVersion, "ref/net10.0", "*.dll")
+                .Concat(Package("avalonia.controls.datagrid", avaloniaDataGridVersion, "lib/net10.0", "*.dll"))),
     ];
 
     // simple name -> full names, per platform
@@ -71,6 +91,14 @@ try
     if (kumikoTypes.Count == 0)
         throw new InvalidOperationException("No public types found in the given assemblies.");
 
+    // Two KumikoUI types with one simple name clash too, except the same type defined by each host package
+    // (KumikoUI.Maui and KumikoUI.Uno are never referenced together).
+    var duplicates = kumikoTypes
+        .GroupBy(t => t.SimpleName, StringComparer.Ordinal)
+        .Where(g => g.Select(t => t.FullName).Distinct(StringComparer.Ordinal).Count() > 1)
+        .Select(g => (Name: g.Key, FullNames: g.Select(t => $"{t.FullName} ({t.Assembly})").Distinct(StringComparer.Ordinal).ToList()))
+        .ToList();
+
     var collisions = new List<(TypeName Kumiko, List<string> Platform)>();
     foreach (var type in kumikoTypes.OrderBy(t => t.FullName, StringComparer.Ordinal))
     {
@@ -88,14 +116,22 @@ try
         $"Checked {kumikoTypes.Count} public KumikoUI types from {assemblyPaths.Length} assembl{(assemblyPaths.Length == 1 ? "y" : "ies")} " +
         "against " + string.Join(", ", sources.Select(s => $"{platformNames[s.Label].Count} {s.Label} names")) + ".");
 
-    if (collisions.Count == 0)
+    if (collisions.Count == 0 && duplicates.Count == 0)
     {
         Console.WriteLine("No public type name collides.");
         return 0;
     }
 
     bool github = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
-    Console.Error.WriteLine($"{collisions.Count} public type name collision(s):");
+    foreach (var (name, fullNames) in duplicates)
+    {
+        string message = $"{name} is defined more than once: {string.Join(", ", fullNames)}";
+        Console.Error.WriteLine("  " + message);
+        if (github)
+            Console.Error.WriteLine($"::error title=Duplicate public type name::{message}");
+    }
+
+    Console.Error.WriteLine($"{collisions.Count + duplicates.Count} public type name collision(s):");
     foreach (var (kumiko, platform) in collisions)
     {
         string message = $"{kumiko.FullName} ({kumiko.Assembly}) has the same simple name as {string.Join(", ", platform)}";
@@ -105,7 +141,7 @@ try
     }
 
     Console.Error.WriteLine(
-        "Rename the KumikoUI type (DataGrid*, Drawn* or Grid* prefix); see CONTRIBUTING.md, \"Public type names\".");
+        "Rename the KumikoUI type; see CONTRIBUTING.md, \"Public type names\".");
     return 1;
 }
 catch (Exception ex) when (ex is IOException or InvalidOperationException or BadImageFormatException)

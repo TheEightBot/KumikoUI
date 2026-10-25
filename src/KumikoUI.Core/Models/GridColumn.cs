@@ -7,7 +7,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Platform-independent column definition.
 /// </summary>
-public class DataGridColumn
+public class GridColumn
 {
     /// <summary>Unique identifier.</summary>
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
@@ -19,7 +19,7 @@ public class DataGridColumn
     public string PropertyName { get; set; } = string.Empty;
 
     /// <summary>Type of column for rendering dispatch.</summary>
-    public DataGridColumnType ColumnType { get; set; } = DataGridColumnType.Text;
+    public GridColumnType ColumnType { get; set; } = GridColumnType.Text;
 
     /// <summary>Current width in pixels (after layout).</summary>
     public float Width { get; set; } = 120f;
@@ -90,7 +90,7 @@ public class DataGridColumn
     public ColumnFreezeMode FreezeMode { get; set; } = ColumnFreezeMode.None;
 
     /// <summary>Current sort direction.</summary>
-    public DataGridSortDirection SortDirection { get; set; } = DataGridSortDirection.None;
+    public GridSortDirection SortDirection { get; set; } = GridSortDirection.None;
 
     /// <summary>
     /// Sort priority in multi-sort mode. 0 = not part of multi-sort.
@@ -186,11 +186,11 @@ public class DataGridColumn
     /// Style overrides for data cells in this column.
     /// Null properties fall back to the grid-level <see cref="DataGridStyle"/>.
     /// </summary>
-    public CellStyle? CellStyle { get; set; }
+    public DataGridCellStyle? CellStyle { get; set; }
 
     /// <summary>
     /// Style overrides for the header cell of this column.
     /// Null properties fall back to the grid-level <see cref="DataGridStyle"/>.
     /// </summary>
-    public CellStyle? HeaderCellStyle { get; set; }
+    public DataGridCellStyle? HeaderCellStyle { get; set; }
 }

@@ -9,13 +9,13 @@ namespace KumikoUI.Core.Tests;
 ///   - non-null column.EditTriggers → fully overrides grid-level value
 ///   - EditTrigger.None on a column blocks all trigger-based editing for that column
 /// The resolution logic (GetEffectiveEditTriggers) lives in GridInputController but the
-/// semantics are fully expressed through the DataGridColumn model and are validated here
+/// semantics are fully expressed through the GridColumn model and are validated here
 /// using a simple inline resolution helper that mirrors the production code exactly.
 /// </summary>
 public class EditTriggerResolutionTests
 {
     // ── Mirrors the production resolution rule ──────────────────────────────
-    private static EditTrigger Resolve(DataGridColumn? column, EditTrigger gridLevel)
+    private static EditTrigger Resolve(GridColumn? column, EditTrigger gridLevel)
         => column?.EditTriggers ?? gridLevel;
 
     // ── Null column (no column in scope) ────────────────────────────────────
@@ -39,7 +39,7 @@ public class EditTriggerResolutionTests
     [Fact]
     public void Resolve_ColumnWithNullEditTriggers_ReturnsGridLevel()
     {
-        var col = new DataGridColumn { EditTriggers = null };
+        var col = new GridColumn { EditTriggers = null };
         var result = Resolve(col, EditTrigger.Default);
         Assert.Equal(EditTrigger.Default, result);
     }
@@ -54,7 +54,7 @@ public class EditTriggerResolutionTests
     [InlineData(EditTrigger.Default)]
     public void Resolve_ColumnWithNullEditTriggers_InheritsAnyGridLevel(EditTrigger gridLevel)
     {
-        var col = new DataGridColumn { EditTriggers = null };
+        var col = new GridColumn { EditTriggers = null };
         Assert.Equal(gridLevel, Resolve(col, gridLevel));
     }
 
@@ -63,7 +63,7 @@ public class EditTriggerResolutionTests
     [Fact]
     public void Resolve_ColumnOverrideNone_BlocksEvenWhenGridAllowsAll()
     {
-        var col = new DataGridColumn { EditTriggers = EditTrigger.None };
+        var col = new GridColumn { EditTriggers = EditTrigger.None };
         var result = Resolve(col, EditTrigger.Default);
         Assert.Equal(EditTrigger.None, result);
         Assert.Equal(0, (int)result);   // no flags set
@@ -72,7 +72,7 @@ public class EditTriggerResolutionTests
     [Fact]
     public void Resolve_ColumnOverrideSingleTap_IgnoresGridDoubleTap()
     {
-        var col = new DataGridColumn { EditTriggers = EditTrigger.SingleTap };
+        var col = new GridColumn { EditTriggers = EditTrigger.SingleTap };
         var result = Resolve(col, EditTrigger.DoubleTap | EditTrigger.F2Key | EditTrigger.Typing);
         Assert.Equal(EditTrigger.SingleTap, result);
         Assert.Equal(0, (int)(result & EditTrigger.DoubleTap));
@@ -81,7 +81,7 @@ public class EditTriggerResolutionTests
     [Fact]
     public void Resolve_ColumnOverrideF2Only_DoesNotHaveTypingFlag()
     {
-        var col = new DataGridColumn { EditTriggers = EditTrigger.F2Key };
+        var col = new GridColumn { EditTriggers = EditTrigger.F2Key };
         var result = Resolve(col, EditTrigger.Default);
         Assert.True((result & EditTrigger.F2Key) != 0);
         Assert.Equal(0, (int)(result & EditTrigger.Typing));
@@ -91,7 +91,7 @@ public class EditTriggerResolutionTests
     [Fact]
     public void Resolve_ColumnOverrideCombined_ReturnsCombined()
     {
-        var col = new DataGridColumn
+        var col = new GridColumn
         {
             EditTriggers = EditTrigger.SingleTap | EditTrigger.F2Key
         };
@@ -105,10 +105,10 @@ public class EditTriggerResolutionTests
     [Fact]
     public void Resolve_TwoColumns_ReturnIndependentValues()
     {
-        var salary = new DataGridColumn { EditTriggers = EditTrigger.DoubleTap };
-        var name   = new DataGridColumn { EditTriggers = EditTrigger.SingleTap | EditTrigger.F2Key };
-        var id     = new DataGridColumn { EditTriggers = EditTrigger.None };
-        var notes  = new DataGridColumn { EditTriggers = null };  // inherit
+        var salary = new GridColumn { EditTriggers = EditTrigger.DoubleTap };
+        var name   = new GridColumn { EditTriggers = EditTrigger.SingleTap | EditTrigger.F2Key };
+        var id     = new GridColumn { EditTriggers = EditTrigger.None };
+        var notes  = new GridColumn { EditTriggers = null };  // inherit
 
         EditTrigger gridLevel = EditTrigger.Default;
 
@@ -136,7 +136,7 @@ public class EditTriggerResolutionTests
     public void FlagCheck_ReportsCorrectMembership(
         EditTrigger columnTrigger, EditTrigger flag, bool expected)
     {
-        var col = new DataGridColumn { EditTriggers = columnTrigger };
+        var col = new GridColumn { EditTriggers = columnTrigger };
         var effective = Resolve(col, EditTrigger.Default);
         Assert.Equal(expected, (effective & flag) != 0);
     }

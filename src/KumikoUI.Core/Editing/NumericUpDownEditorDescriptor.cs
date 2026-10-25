@@ -7,11 +7,11 @@ namespace KumikoUI.Core.Editing;
 /// XAML-declarable editor descriptor for numeric up/down controls.
 /// Usage in XAML:
 /// <code>
-/// &lt;core:DataGridColumn Header="Rating" ColumnType="Template"&gt;
-///     &lt;core:DataGridColumn.EditorDescriptor&gt;
+/// &lt;core:GridColumn Header="Rating" ColumnType="Template"&gt;
+///     &lt;core:GridColumn.EditorDescriptor&gt;
 ///         &lt;editing:NumericUpDownEditorDescriptor Minimum="1" Maximum="5" Step="1" DecimalPlaces="0" /&gt;
-///     &lt;/core:DataGridColumn.EditorDescriptor&gt;
-/// &lt;/core:DataGridColumn&gt;
+///     &lt;/core:GridColumn.EditorDescriptor&gt;
+/// &lt;/core:GridColumn&gt;
 /// </code>
 /// </summary>
 public class NumericUpDownEditorDescriptor : EditorDescriptor

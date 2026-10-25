@@ -13,12 +13,12 @@ public class GridColumnReorderedEventArgs : EventArgs
     /// <summary>New zero-based index of the column after it was moved.</summary>
     public int NewIndex { get; }
     /// <summary>The column that was reordered.</summary>
-    public DataGridColumn Column { get; }
+    public GridColumn Column { get; }
     /// <summary>Initializes a new instance of the <see cref="GridColumnReorderedEventArgs"/> class.</summary>
     /// <param name="oldIndex">The original column index.</param>
     /// <param name="newIndex">The new column index.</param>
     /// <param name="column">The reordered column.</param>
-    public GridColumnReorderedEventArgs(int oldIndex, int newIndex, DataGridColumn column)
+    public GridColumnReorderedEventArgs(int oldIndex, int newIndex, GridColumn column)
     {
         OldIndex = oldIndex; NewIndex = newIndex; Column = column;
     }

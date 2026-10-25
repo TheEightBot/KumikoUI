@@ -13,7 +13,7 @@ public class GridLayoutEngine
     /// Recalculate column widths based on the available viewport width.
     /// Handles Fixed, Star, and Auto sizing modes.
     /// </summary>
-    public void ComputeColumnWidths(IReadOnlyList<DataGridColumn> columns, float viewportWidth)
+    public void ComputeColumnWidths(IReadOnlyList<GridColumn> columns, float viewportWidth)
     {
         float fixedTotal = 0f;
         float starTotal = 0f;
@@ -45,7 +45,7 @@ public class GridLayoutEngine
     /// <summary>
     /// Calculate total content width from visible columns.
     /// </summary>
-    public float GetContentWidth(IReadOnlyList<DataGridColumn> columns)
+    public float GetContentWidth(IReadOnlyList<GridColumn> columns)
     {
         float w = 0;
         foreach (var col in columns)
@@ -56,7 +56,7 @@ public class GridLayoutEngine
     /// <summary>
     /// Calculate the total width of frozen (pinned left) columns.
     /// </summary>
-    public float GetFrozenColumnWidth(IReadOnlyList<DataGridColumn> columns)
+    public float GetFrozenColumnWidth(IReadOnlyList<GridColumn> columns)
     {
         float w = 0;
         foreach (var col in columns)
@@ -67,7 +67,7 @@ public class GridLayoutEngine
     /// <summary>
     /// Calculate the total width of right-frozen (pinned right) columns.
     /// </summary>
-    public float GetRightFrozenColumnWidth(IReadOnlyList<DataGridColumn> columns)
+    public float GetRightFrozenColumnWidth(IReadOnlyList<GridColumn> columns)
     {
         float w = 0;
         foreach (var col in columns)
@@ -80,10 +80,10 @@ public class GridLayoutEngine
     /// Frozen columns are always drawn starting at X=0,
     /// in the order they appear in the columns list.
     /// </summary>
-    public List<(DataGridColumn Column, float X, int OriginalIndex)> GetVisibleFrozenColumns(
-        IReadOnlyList<DataGridColumn> columns)
+    public List<(GridColumn Column, float X, int OriginalIndex)> GetVisibleFrozenColumns(
+        IReadOnlyList<GridColumn> columns)
     {
-        var result = new List<(DataGridColumn, float, int)>();
+        var result = new List<(GridColumn, float, int)>();
         PopulateVisibleFrozenColumns(columns, result);
         return result;
     }
@@ -92,8 +92,8 @@ public class GridLayoutEngine
     /// Populate an existing list with frozen columns (avoids per-frame allocation).
     /// </summary>
     public void PopulateVisibleFrozenColumns(
-        IReadOnlyList<DataGridColumn> columns,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> result)
+        IReadOnlyList<GridColumn> columns,
+        List<(GridColumn Column, float X, int OriginalIndex)> result)
     {
         result.Clear();
         float x = 0;
@@ -113,10 +113,10 @@ public class GridLayoutEngine
     /// Right-frozen columns are drawn at the right edge of the viewport.
     /// X positions are relative to the right-frozen pane (0 = left edge of right-frozen area).
     /// </summary>
-    public List<(DataGridColumn Column, float X, int OriginalIndex)> GetVisibleRightFrozenColumns(
-        IReadOnlyList<DataGridColumn> columns, float viewportWidth)
+    public List<(GridColumn Column, float X, int OriginalIndex)> GetVisibleRightFrozenColumns(
+        IReadOnlyList<GridColumn> columns, float viewportWidth)
     {
-        var result = new List<(DataGridColumn, float, int)>();
+        var result = new List<(GridColumn, float, int)>();
         PopulateVisibleRightFrozenColumns(columns, viewportWidth, result);
         return result;
     }
@@ -125,8 +125,8 @@ public class GridLayoutEngine
     /// Populate an existing list with right-frozen columns (avoids per-frame allocation).
     /// </summary>
     public void PopulateVisibleRightFrozenColumns(
-        IReadOnlyList<DataGridColumn> columns, float viewportWidth,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> result)
+        IReadOnlyList<GridColumn> columns, float viewportWidth,
+        List<(GridColumn Column, float X, int OriginalIndex)> result)
     {
         result.Clear();
         float rightFrozenWidth = GetRightFrozenColumnWidth(columns);
@@ -149,10 +149,10 @@ public class GridLayoutEngine
     /// within the viewport, taking the frozen area widths into account.
     /// Returns content X positions (not screen positions).
     /// </summary>
-    public List<(DataGridColumn Column, float X, int OriginalIndex)> GetVisibleScrollableColumns(
-        IReadOnlyList<DataGridColumn> columns, ScrollState scroll, float frozenWidth, float rightFrozenWidth = 0)
+    public List<(GridColumn Column, float X, int OriginalIndex)> GetVisibleScrollableColumns(
+        IReadOnlyList<GridColumn> columns, ScrollState scroll, float frozenWidth, float rightFrozenWidth = 0)
     {
-        var result = new List<(DataGridColumn, float, int)>();
+        var result = new List<(GridColumn, float, int)>();
         PopulateVisibleScrollableColumns(columns, scroll, frozenWidth, rightFrozenWidth, result);
         return result;
     }
@@ -161,9 +161,9 @@ public class GridLayoutEngine
     /// Populate an existing list with visible scrollable columns (avoids per-frame allocation).
     /// </summary>
     public void PopulateVisibleScrollableColumns(
-        IReadOnlyList<DataGridColumn> columns, ScrollState scroll, float frozenWidth,
+        IReadOnlyList<GridColumn> columns, ScrollState scroll, float frozenWidth,
         float rightFrozenWidth,
-        List<(DataGridColumn Column, float X, int OriginalIndex)> result)
+        List<(GridColumn Column, float X, int OriginalIndex)> result)
     {
         result.Clear();
 
@@ -243,10 +243,10 @@ public class GridLayoutEngine
     /// Determine visible columns given horizontal scroll offset and viewport width.
     /// Returns list of (column, xOffset) pairs.
     /// </summary>
-    public List<(DataGridColumn Column, float X)> GetVisibleColumns(
-        IReadOnlyList<DataGridColumn> columns, ScrollState scroll)
+    public List<(GridColumn Column, float X)> GetVisibleColumns(
+        IReadOnlyList<GridColumn> columns, ScrollState scroll)
     {
-        var result = new List<(DataGridColumn, float)>();
+        var result = new List<(GridColumn, float)>();
         float x = 0;
 
         foreach (var col in columns)
@@ -269,8 +269,8 @@ public class GridLayoutEngine
     /// <summary>
     /// Get the column at a given X position (in content coordinates, not viewport).
     /// </summary>
-    public (DataGridColumn? Column, int Index) HitTestColumn(
-        IReadOnlyList<DataGridColumn> columns, float contentX)
+    public (GridColumn? Column, int Index) HitTestColumn(
+        IReadOnlyList<GridColumn> columns, float contentX)
     {
         float x = 0;
         for (int i = 0; i < columns.Count; i++)
@@ -300,7 +300,7 @@ public class GridLayoutEngine
     /// <summary>
     /// Get the X position of a column's left edge.
     /// </summary>
-    public float GetColumnX(IReadOnlyList<DataGridColumn> columns, int columnIndex)
+    public float GetColumnX(IReadOnlyList<GridColumn> columns, int columnIndex)
     {
         float x = 0;
         for (int i = 0; i < columnIndex && i < columns.Count; i++)
@@ -317,7 +317,7 @@ public class GridLayoutEngine
     /// the maximum width plus padding, clamped to MinWidth/MaxWidth.
     /// </summary>
     public float CalculateAutoFitWidth(
-        DataGridColumn column,
+        GridColumn column,
         DataGridSource dataSource,
         IDrawingContext ctx,
         DataGridStyle style)

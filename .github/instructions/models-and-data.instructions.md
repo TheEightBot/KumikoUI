@@ -4,14 +4,14 @@ applyTo: "src/KumikoUI.Core/Models/**"
 
 # KumikoUI — Models & Data
 
-## `DataGridColumn` — Column definition
+## `GridColumn` — Column definition
 
 ```csharp
-new DataGridColumn
+new GridColumn
 {
     Header          = "Name",
     PropertyName    = "Name",           // nested paths supported: "Address.City"
-    ColumnType      = DataGridColumnType.Text,
+    ColumnType      = GridColumnType.Text,
     Width           = 180f,
     SizeMode        = ColumnSizeMode.Fixed,   // Fixed | Star | Auto
     StarWeight      = 1f,
@@ -38,7 +38,7 @@ new DataGridColumn
 
 ### Column types
 
-| `DataGridColumnType` | Cell renderer | Inline editor |
+| `GridColumnType` | Cell renderer | Inline editor |
 |---|---|---|
 | `Text` | `TextCellRenderer` | `DrawnTextBox` |
 | `Numeric` | `TextCellRenderer` | `DrawnTextBox` (numeric-only) |
@@ -73,11 +73,11 @@ source.EndUpdate();
 
 ```csharp
 source.ApplySort(column);                         // cycles None → Asc → Desc → None
-source.ApplySort(column, DataGridSortDirection.Ascending);
+source.ApplySort(column, GridSortDirection.Ascending);
 
 // Multi-column:
-col1.SortDirection = DataGridSortDirection.Ascending; col1.SortOrder = 1;
-col2.SortDirection = DataGridSortDirection.Descending; col2.SortOrder = 2;
+col1.SortDirection = GridSortDirection.Ascending; col1.SortOrder = 1;
+col2.SortDirection = GridSortDirection.Descending; col2.SortOrder = 2;
 source.ApplySorts();
 ```
 
@@ -148,7 +148,7 @@ DataGridTheme.Create(DataGridThemeMode.HighContrast)
 // Dynamic per-cell styling:
 style.CellStyleResolver = (item, column) =>
     item is Employee e && !e.IsActive
-        ? new CellStyle { TextColor = new GridColor(180, 0, 0) }
+        ? new DataGridCellStyle { TextColor = new GridColor(180, 0, 0) }
         : null;
 
 // Dynamic per-row styling:
@@ -158,10 +158,10 @@ style.RowStyleResolver = item =>
         : null;
 ```
 
-### `CellStyle` / `DataGridRowStyle` nullable properties
+### `DataGridCellStyle` / `DataGridRowStyle` nullable properties
 
 All properties are nullable — `null` means "inherit from grid-level `DataGridStyle`".
-`CellStyle.Merge(primary, fallback)` combines two instances with `primary` taking precedence.
+`DataGridCellStyle.Merge(primary, fallback)` combines two instances with `primary` taking precedence.
 
 ---
 
@@ -174,9 +174,9 @@ All properties are nullable — `null` means "inherit from grid-level `DataGridS
 
 ---
 
-## Adding a new `DataGridColumnType`
+## Adding a new `GridColumnType`
 
-1. Add enum value to `DataGridColumnType` in `DataGridColumn.cs`.
+1. Add enum value to `GridColumnType` in `GridColumn.cs`.
 2. Create cell renderer in `src/KumikoUI.Core/Rendering/` (if display differs from text).
 3. Create editor (`DrawnComponent`) in `src/KumikoUI.Core/Components/` (if needed).
 4. Wire `CellEditorFactory`: `CreateEditor`, `GetEditorValue`, `ApplyThemeToEditor`.

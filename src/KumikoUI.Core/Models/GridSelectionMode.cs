@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Selection mode for the grid.
 /// </summary>
-public enum DataGridSelectionMode
+public enum GridSelectionMode
 {
     /// <summary>No selection allowed.</summary>
     None,

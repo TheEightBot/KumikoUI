@@ -143,16 +143,30 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 
 ### Public type names
 
-KumikoUI types are imported next to MAUI, WinUI/Uno and Windows Forms types, so a public type must never share its simple name with one in `Microsoft.Maui.Controls.*`, `Microsoft.UI.Xaml.*` (including Uno's own `Microsoft.UI.Xaml` types) or `System.Windows.Forms.*` (`SelectionMode`, `FocusManager`, `TextChangedEventArgs` and `SelectionModel` are examples). Prefix instead:
+KumikoUI types are imported next to other UI frameworks' types, so a public type must never share its simple name with a public type of:
+
+- .NET MAUI (`Microsoft.Maui.*`) and CommunityToolkit.Maui (`CommunityToolkit.Maui.*`)
+- WinUI and Uno (`Microsoft.UI.Xaml.*`, including Uno's own types) and the Windows Community Toolkit DataGrid (`CommunityToolkit.WinUI.*`)
+- WPF and Windows Forms (`System.Windows.*`)
+- Avalonia and its DataGrid (`Avalonia.*`)
+- another public KumikoUI type (two hosts may each define the same type, such as `KumikoDataGrid`)
+
+`SelectionMode`, `FocusManager`, `TextChangedEventArgs`, `HitTestResult` and `DataGridColumn` are examples that clash. A `DataGrid` prefix alone is not enough, because other grids use it too. Prefix instead:
 
 | Prefix | For |
 |---|---|
-| `DataGrid` | grid-level models and enums (`DataGridColumn`, `DataGridSortDirection`) |
-| `Drawn` | drawn components and the types that belong to them (`DrawnComboBox`, `DrawnComboBoxItem`) |
-| `Grid` | primitives and event arguments (`GridRect`, `GridTextChangedEventArgs`) |
 | `Kumiko` | the host controls and library entry points (`KumikoDataGrid`, `KumikoFonts`) |
+| `Grid` | columns, primitives, grid-level enums and event arguments (`GridColumn`, `GridSelectionMode`, `GridRect`, `GridTextChangedEventArgs`) |
+| `DataGrid` | the grid's own models that no other grid defines (`DataGridSource`, `DataGridStyle`, `DataGridCellStyle`) |
+| `Drawn` | drawn components and the types that belong to them (`DrawnComboBox`, `DrawnComboBoxItem`) |
 
-CI enforces this with `eng/TypeNameCheck`, a small console tool (not part of `KumikoUI.sln` and not packed). It lists the public top-level type names in the built KumikoUI assemblies and compares them with the names read, via `System.Reflection.Metadata`, from the pinned packages: `Microsoft.Maui.Controls.Core` and `.Xaml` (at `MauiVersion`), `Microsoft.WindowsAppSDK.WinUI` and `Uno.WinUI` (`Microsoft.UI.Xaml`), and `Microsoft.WindowsDesktop.App.Ref` (`System.Windows.Forms`). The versions are in `Directory.Packages.props`; the tool needs no workloads and runs on any OS. It exits non-zero and lists every collision. Raising one of those versions can surface a new collision, which is then fixed by renaming the KumikoUI type.
+CI enforces this with `eng/TypeNameCheck`, a small console tool (not part of `KumikoUI.sln` and not packed). It lists the public top-level type names in the built KumikoUI assemblies and compares them with each other and with the names read, via `System.Reflection.Metadata`, from pinned packages: `Microsoft.Maui.Controls.Core`, `.Xaml`, `Microsoft.Maui.Core` and `Microsoft.Maui.Graphics` (at `MauiVersion`); `Microsoft.WindowsAppSDK.WinUI` and `Uno.WinUI`; `Microsoft.WindowsDesktop.App.Ref`; `CommunityToolkit.WinUI.UI.Controls.DataGrid`; `CommunityToolkit.Maui`; `Avalonia` and `Avalonia.Controls.DataGrid`. The versions are in `Directory.Packages.props`; the tool needs no workloads and runs on any OS:
+
+```bash
+dotnet run --project eng/TypeNameCheck -c Release -- src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
+```
+
+It exits non-zero and lists every collision. Raising one of those versions can surface a new collision, which is then fixed by renaming the KumikoUI type.
 
 ### Pull requests
 

@@ -254,7 +254,7 @@ public class PaintCache
     /// <summary>
     /// Create a paint for cell text with optional style overrides.
     /// </summary>
-    public GridPaint CellTextPaint(CellStyle? cellStyle, DataGridStyle style)
+    public GridPaint CellTextPaint(DataGridCellStyle? cellStyle, DataGridStyle style)
     {
         if (cellStyle == null || (cellStyle.TextColor == null && cellStyle.Font == null))
             return CellText;

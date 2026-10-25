@@ -7,14 +7,14 @@ using KumikoUI.Core.Models;
 
 /// <summary>
 /// Optional companion to <see cref="ICellRenderer"/> that allows a renderer to
-/// also act as the cell editor factory for <see cref="DataGridColumnType.Template"/>
+/// also act as the cell editor factory for <see cref="GridColumnType.Template"/>
 /// columns.
 /// </summary>
 /// <remarks>
-/// When a <c>Template</c> column's <see cref="DataGridColumn.CustomCellRenderer"/>
+/// When a <c>Template</c> column's <see cref="GridColumn.CustomCellRenderer"/>
 /// implements this interface <em>and</em> no explicit
-/// <see cref="DataGridColumn.CustomEditorFactory"/> or
-/// <see cref="DataGridColumn.EditorDescriptor"/> is set, the grid automatically
+/// <see cref="GridColumn.CustomEditorFactory"/> or
+/// <see cref="GridColumn.EditorDescriptor"/> is set, the grid automatically
 /// calls <see cref="CreateEditor"/> to produce the interactive overlay editor.
 /// This lets a single object (e.g. <see cref="ActionButtonsCellRenderer"/>)
 /// handle both display and editing without any code-behind wiring.

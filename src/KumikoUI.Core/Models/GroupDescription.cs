@@ -28,7 +28,7 @@ public class GroupDescription
     /// <summary>
     /// Sort direction for groups. Default is ascending.
     /// </summary>
-    public DataGridSortDirection GroupSortDirection { get; set; } = DataGridSortDirection.Ascending;
+    public GridSortDirection GroupSortDirection { get; set; } = GridSortDirection.Ascending;
 
     public GroupDescription() { }
 

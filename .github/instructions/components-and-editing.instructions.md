@@ -63,7 +63,7 @@ public void ApplyTheme(DataGridStyle style)
 
 ```csharp
 // 1. CreateEditor:
-case DataGridColumnType.{NewType}:
+case GridColumnType.{NewType}:
     return new MyEditor { Bounds = cellBounds, Value = ({T}?)currentValue ?? default };
 
 // 2. GetEditorValue:
@@ -95,11 +95,11 @@ public class MyEditorDescriptor : EditorDescriptor
 
 XAML usage:
 ```xml
-<core:DataGridColumn Header="Score" PropertyName="Score" ColumnType="Template" Width="120">
-    <core:DataGridColumn.EditorDescriptor>
+<core:GridColumn Header="Score" PropertyName="Score" ColumnType="Template" Width="120">
+    <core:GridColumn.EditorDescriptor>
         <editing:MyEditorDescriptor Minimum="0" Maximum="10" />
-    </core:DataGridColumn.EditorDescriptor>
-</core:DataGridColumn>
+    </core:GridColumn.EditorDescriptor>
+</core:GridColumn>
 ```
 
 Built-in descriptors: `NumericUpDownEditorDescriptor`, `TextEditorDescriptor`.

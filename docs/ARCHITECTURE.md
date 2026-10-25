@@ -123,9 +123,9 @@ Scrollable, left-frozen, and right-frozen columns are each rendered in separate 
 `PopupManager` intercepts all input before the grid. A hit on a popup is consumed. A press outside a popup dismisses all popups but does **not** consume the event, so the grid still processes the click.
 
 ### Cascading Style Resolution
-`CellStyle` has nullable properties with `Merge(primary, fallback)`. Resolution order:
+`DataGridCellStyle` has nullable properties with `Merge(primary, fallback)`. Resolution order:
 1. Per-cell dynamic style (`CellStyleResolver`)
-2. Column `CellStyle`
+2. Column `DataGridCellStyle`
 3. Grid defaults from `DataGridStyle`
 
 ### O(1) Incremental Updates

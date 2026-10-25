@@ -97,7 +97,7 @@ for each visible FlatViewRow:
     switch row.Kind:
         case Data:
             for each visible column:
-                → Resolve CellStyle (cascade: cell → column → grid)
+                → Resolve DataGridCellStyle (cascade: cell → column → grid)
                 → PaintCache.CellBackgroundPaint(style, isAlternate, isSelected)
                 → context.FillRect(cellRect, backgroundPaint)
                 → cellRenderer.Draw(context, cellRect, value, paint)

@@ -14,20 +14,20 @@ public static class CellEditorFactory
     /// positioned at the cell bounds.
     /// </summary>
     public static DrawnComponent? CreateEditor(
-        DataGridColumn column, object? currentValue,
+        GridColumn column, object? currentValue,
         GridRect cellBounds, char? initialCharacter = null,
         EditTextSelectionMode selectionMode = EditTextSelectionMode.SelectAll)
     {
         return column.ColumnType switch
         {
-            DataGridColumnType.Text => CreateTextEditor(column, currentValue, cellBounds, initialCharacter, selectionMode),
-            DataGridColumnType.Numeric => CreateNumericEditor(column, currentValue, cellBounds, initialCharacter, selectionMode),
-            DataGridColumnType.Date => CreateDateEditor(column, currentValue, cellBounds),
-            DataGridColumnType.Boolean => null, // Toggled directly, no overlay editor
-            DataGridColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds),
-            DataGridColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
-            DataGridColumnType.Image => null, // Not editable
-            DataGridColumnType.Template => CreateTemplateEditor(column, currentValue, cellBounds),
+            GridColumnType.Text => CreateTextEditor(column, currentValue, cellBounds, initialCharacter, selectionMode),
+            GridColumnType.Numeric => CreateNumericEditor(column, currentValue, cellBounds, initialCharacter, selectionMode),
+            GridColumnType.Date => CreateDateEditor(column, currentValue, cellBounds),
+            GridColumnType.Boolean => null, // Toggled directly, no overlay editor
+            GridColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds),
+            GridColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
+            GridColumnType.Image => null, // Not editable
+            GridColumnType.Template => CreateTemplateEditor(column, currentValue, cellBounds),
             _ => null
         };
     }
@@ -35,7 +35,7 @@ public static class CellEditorFactory
     /// <summary>
     /// Extract the current value from an active editor.
     /// </summary>
-    public static object? GetEditorValue(DrawnComponent editor, DataGridColumn column)
+    public static object? GetEditorValue(DrawnComponent editor, GridColumn column)
     {
         return editor switch
         {
@@ -68,7 +68,7 @@ public static class CellEditorFactory
     // ── Editor creation ─────────────────────────────────────────
 
     private static DrawnTextBox CreateTextEditor(
-        DataGridColumn column, object? value, GridRect cellBounds, char? initialCharacter,
+        GridColumn column, object? value, GridRect cellBounds, char? initialCharacter,
         EditTextSelectionMode selectionMode)
     {
         var textBox = new DrawnTextBox
@@ -95,7 +95,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnComponent CreateNumericEditor(
-        DataGridColumn column, object? value, GridRect cellBounds, char? initialCharacter,
+        GridColumn column, object? value, GridRect cellBounds, char? initialCharacter,
         EditTextSelectionMode selectionMode)
     {
         var textBox = new DrawnTextBox
@@ -126,7 +126,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnDatePicker CreateDateEditor(
-        DataGridColumn column, object? value, GridRect cellBounds)
+        GridColumn column, object? value, GridRect cellBounds)
     {
         var picker = new DrawnDatePicker
         {
@@ -148,7 +148,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnComboBox CreateComboBoxEditor(
-        DataGridColumn column, object? value, GridRect cellBounds)
+        GridColumn column, object? value, GridRect cellBounds)
     {
         var comboBox = new DrawnComboBox
         {
@@ -175,7 +175,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnScrollPicker CreatePickerEditor(
-        DataGridColumn column, object? value, GridRect cellBounds)
+        GridColumn column, object? value, GridRect cellBounds)
     {
         var picker = new DrawnScrollPicker
         {
@@ -210,7 +210,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnComponent? CreateTemplateEditor(
-        DataGridColumn column, object? value, GridRect cellBounds)
+        GridColumn column, object? value, GridRect cellBounds)
     {
         // Priority: explicit factory → EditorDescriptor → renderer self-creates → text fallback
         if (column.CustomEditorFactory != null)
@@ -228,12 +228,12 @@ public static class CellEditorFactory
 
     // ── Value conversion ────────────────────────────────────────
 
-    private static object? ConvertTextToValue(string text, DataGridColumn column)
+    private static object? ConvertTextToValue(string text, GridColumn column)
     {
         return column.ColumnType switch
         {
-            DataGridColumnType.Numeric => ParseNumeric(text),
-            DataGridColumnType.Date => DateTime.TryParse(text, out var dt) ? dt : text,
+            GridColumnType.Numeric => ParseNumeric(text),
+            GridColumnType.Date => DateTime.TryParse(text, out var dt) ? dt : text,
             _ => text
         };
     }

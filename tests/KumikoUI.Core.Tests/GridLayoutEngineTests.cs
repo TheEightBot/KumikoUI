@@ -6,12 +6,12 @@ namespace KumikoUI.Core.Tests;
 
 public class GridLayoutEngineTests
 {
-    private static List<DataGridColumn> MakeColumns(params (float width, ColumnSizeMode mode, float star)[] specs)
+    private static List<GridColumn> MakeColumns(params (float width, ColumnSizeMode mode, float star)[] specs)
     {
-        var cols = new List<DataGridColumn>();
+        var cols = new List<GridColumn>();
         foreach (var (width, mode, star) in specs)
         {
-            cols.Add(new DataGridColumn
+            cols.Add(new GridColumn
             {
                 Width = width,
                 SizeMode = mode,
@@ -329,7 +329,7 @@ public class GridLayoutEngineTests
         var engine = new GridLayoutEngine();
         // 5 columns each 100px wide
         var cols = Enumerable.Repeat(0, 5)
-            .Select(_ => new DataGridColumn { Width = 100f, IsVisible = true, SizeMode = ColumnSizeMode.Fixed, MinWidth = 20f })
+            .Select(_ => new GridColumn { Width = 100f, IsVisible = true, SizeMode = ColumnSizeMode.Fixed, MinWidth = 20f })
             .ToList();
         // scroll past first 3
         var scroll = new ScrollState { OffsetX = 300, ViewportWidth = 120 };

@@ -417,7 +417,7 @@ public class GridInputController
     private void HandlePointerDown(
         GridPointerEventArgs e, ScrollState scroll,
         DataGridSelectionModel selection, DataGridStyle style,
-        IReadOnlyList<DataGridColumn> columns, int totalRows,
+        IReadOnlyList<GridColumn> columns, int totalRows,
         DataGridSource dataSource)
     {
         _inertialScroller.Reset();
@@ -470,9 +470,9 @@ public class GridInputController
             if (hit.GroupDescriptionIndex < groups.Count)
             {
                 var group = groups[hit.GroupDescriptionIndex];
-                group.GroupSortDirection = group.GroupSortDirection == DataGridSortDirection.Ascending
-                    ? DataGridSortDirection.Descending
-                    : DataGridSortDirection.Ascending;
+                group.GroupSortDirection = group.GroupSortDirection == GridSortDirection.Ascending
+                    ? GridSortDirection.Descending
+                    : GridSortDirection.Ascending;
                 dataSource.RebuildView();
                 Redraw();
             }
@@ -525,7 +525,7 @@ public class GridInputController
     private void HandlePointerMove(
         GridPointerEventArgs e, ScrollState scroll,
         DataGridSelectionModel selection, DataGridStyle style,
-        IReadOnlyList<DataGridColumn> columns, int totalRows,
+        IReadOnlyList<GridColumn> columns, int totalRows,
         DataGridSource dataSource)
     {
         // Forward move events to the active editor first — this enables hover
@@ -647,7 +647,7 @@ public class GridInputController
     private void HandlePointerUp(
         GridPointerEventArgs e, ScrollState scroll,
         DataGridSelectionModel selection, DataGridStyle style,
-        IReadOnlyList<DataGridColumn> columns, int totalRows,
+        IReadOnlyList<GridColumn> columns, int totalRows,
         DataGridSource dataSource)
     {
         if (_isResizingColumn)
@@ -784,7 +784,7 @@ public class GridInputController
                     (GetEffectiveEditTriggers(hit.Column) & EditTrigger.DoubleTap) != 0)
                 {
                     // Boolean toggle on double-tap
-                    if (hit.Column.ColumnType == DataGridColumnType.Boolean)
+                    if (hit.Column.ColumnType == GridColumnType.Boolean)
                     {
                         _editSession.ToggleBooleanCell(
                             hit.RowIndex, hit.ColumnIndex, hit.Column, dataSource);
@@ -798,7 +798,7 @@ public class GridInputController
             else if (e.ClickCount == 1 && hit.Column != null)
             {
                 // Single-tap toggle for boolean cells (more natural than double-tap)
-                if (hit.Column.ColumnType == DataGridColumnType.Boolean && _editSession != null)
+                if (hit.Column.ColumnType == GridColumnType.Boolean && _editSession != null)
                 {
                     _editSession.ToggleBooleanCell(
                         hit.RowIndex, hit.ColumnIndex, hit.Column, dataSource);
@@ -877,7 +877,7 @@ public class GridInputController
     private void HandleLongPress(
         GridPointerEventArgs e,
         ScrollState scroll, DataGridSelectionModel selection, DataGridStyle style,
-        IReadOnlyList<DataGridColumn> columns, int totalRows,
+        IReadOnlyList<GridColumn> columns, int totalRows,
         DataGridSource dataSource)
     {
         var hit = _hitTester.HitTest(e.X, e.Y, scroll, style, columns, totalRows, dataSource);
@@ -889,7 +889,7 @@ public class GridInputController
         if (_editSession != null && hit.Column != null &&
             (GetEffectiveEditTriggers(hit.Column) & EditTrigger.LongPress) != 0)
         {
-            if (hit.Column.ColumnType == DataGridColumnType.Boolean)
+            if (hit.Column.ColumnType == GridColumnType.Boolean)
             {
                 _editSession.ToggleBooleanCell(
                     hit.RowIndex, hit.ColumnIndex, hit.Column, dataSource);
@@ -906,7 +906,7 @@ public class GridInputController
 
     // ── Column resize ──
 
-    private void HandleColumnResize(GridPointerEventArgs e, IReadOnlyList<DataGridColumn> columns)
+    private void HandleColumnResize(GridPointerEventArgs e, IReadOnlyList<GridColumn> columns)
     {
         if (_resizeColumnIndex < 0 || _resizeColumnIndex >= columns.Count) return;
 
@@ -921,7 +921,7 @@ public class GridInputController
 
     private void FinishColumnReorder(
         float dropX, ScrollState scroll,
-        IReadOnlyList<DataGridColumn> columns, DataGridStyle style)
+        IReadOnlyList<GridColumn> columns, DataGridStyle style)
     {
         if (_dragColumnIndex < 0) return;
 
@@ -943,7 +943,7 @@ public class GridInputController
 
         if (dropIndex != _dragColumnIndex)
         {
-            // The columns list is from DataGridSource which uses List<DataGridColumn>
+            // The columns list is from DataGridSource which uses List<GridColumn>
             // We need to reorder via the source
             ColumnReordered?.Invoke(this, new GridColumnReorderedEventArgs(
                 _dragColumnIndex, dropIndex, columns[_dragColumnIndex]));
@@ -1019,7 +1019,7 @@ public class GridInputController
 
     private void EnsureCurrentCellVisible(
         ScrollState scroll, DataGridSelectionModel selection,
-        DataGridStyle style, IReadOnlyList<DataGridColumn> columns,
+        DataGridStyle style, IReadOnlyList<GridColumn> columns,
         DataGridSource? dataSource = null)
     {
         if (!selection.CurrentCell.IsValid) return;
@@ -1098,7 +1098,7 @@ public class GridInputController
     // ── Filter popup ──────────────────────────────────────────────
 
     private void ShowFilterPopup(
-        DataGridColumn column, int columnIndex,
+        GridColumn column, int columnIndex,
         ScrollState scroll, DataGridStyle style,
         DataGridSource dataSource)
     {
@@ -1171,7 +1171,7 @@ public class GridInputController
             // Clear existing sorts and set this column
             foreach (var c in dataSource.Columns)
             {
-                c.SortDirection = DataGridSortDirection.None;
+                c.SortDirection = GridSortDirection.None;
                 c.SortOrder = 0;
             }
             column.SortDirection = dir;
@@ -1215,11 +1215,11 @@ public class GridInputController
 
     /// <summary>
     /// Resolves the effective <see cref="EditTrigger"/> for <paramref name="column"/>.
-    /// When the column has its own <see cref="DataGridColumn.EditTriggers"/> override it is
+    /// When the column has its own <see cref="GridColumn.EditTriggers"/> override it is
     /// returned directly; otherwise the grid-level <see cref="EditSession.EditTriggers"/> is
     /// used, falling back to <see cref="EditTrigger.Default"/> if the session is null.
     /// </summary>
-    private EditTrigger GetEffectiveEditTriggers(DataGridColumn? column)
+    private EditTrigger GetEffectiveEditTriggers(GridColumn? column)
         => column?.EditTriggers ?? _editSession?.EditTriggers ?? EditTrigger.Default;
 
     /// <summary>
@@ -1293,7 +1293,7 @@ public class GridInputController
     public GridRect GetCellScreenBounds(
         int row, int col,
         ScrollState scroll, DataGridStyle style,
-        IReadOnlyList<DataGridColumn> columns,
+        IReadOnlyList<GridColumn> columns,
         float groupPanelOffset = 0,
         float topSummaryHeight = 0,
         DataGridSource? dataSource = null)
