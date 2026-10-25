@@ -41,7 +41,7 @@
                    Padding="16,2,16,8"
                    Grid.Row="2" />
 
-        <kumiko:DataGridView x:Name="kumiko"
+        <kumiko:KumikoDataGrid x:Name="kumiko"
                              Grid.Row="3"
                              ItemsSource="{Binding Items}"
                              RowHeight="32"
@@ -49,26 +49,26 @@
                              GridDescription="Large dataset stress-test grid"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
-            <kumiko:DataGridView.Columns>
-                <core:DataGridColumn Header="#" PropertyName="RowNumber" Width="80"
+            <kumiko:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="#" PropertyName="RowNumber" Width="80"
                                      ColumnType="Numeric" TextAlignment="Right"
                                      IsReadOnly="True" AllowTabStop="False" IsFrozen="True" />
-                <core:DataGridColumn Header="Full Name" PropertyName="FullName" Width="170" IsFrozen="True" />
-                <core:DataGridColumn Header="Category" PropertyName="Category" Width="110" />
-                <core:DataGridColumn Header="Value" PropertyName="Value" Width="110"
+                <core:KumikoColumn Header="Full Name" PropertyName="FullName" Width="170" IsFrozen="True" />
+                <core:KumikoColumn Header="Category" PropertyName="Category" Width="110" />
+                <core:KumikoColumn Header="Value" PropertyName="Value" Width="110"
                                      Format="N2" ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="Amount" PropertyName="Amount" Width="120"
+                <core:KumikoColumn Header="Amount" PropertyName="Amount" Width="120"
                                      Format="C0" ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="Created" PropertyName="CreatedDate" Width="120"
+                <core:KumikoColumn Header="Created" PropertyName="CreatedDate" Width="120"
                                      Format="yyyy-MM-dd" ColumnType="Date" />
-                <core:DataGridColumn Header="Enabled" PropertyName="IsEnabled" Width="80"
+                <core:KumikoColumn Header="Enabled" PropertyName="IsEnabled" Width="80"
                                      ColumnType="Boolean" AllowTabStop="False" />
-                <core:DataGridColumn Header="Region" PropertyName="Region" Width="120" />
-                <core:DataGridColumn Header="Score" PropertyName="Score" Width="90"
+                <core:KumikoColumn Header="Region" PropertyName="Region" Width="120" />
+                <core:KumikoColumn Header="Score" PropertyName="Score" Width="90"
                                      Format="N1" ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="Notes" PropertyName="Notes" Width="160" />
-            </kumiko:DataGridView.Columns>
-        </kumiko:DataGridView>
+                <core:KumikoColumn Header="Notes" PropertyName="Notes" Width="160" />
+            </kumiko:KumikoDataGrid.Columns>
+        </kumiko:KumikoDataGrid>
     </Grid>
 
 </Page>

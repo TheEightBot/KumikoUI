@@ -29,6 +29,24 @@
       the high-severity advisories reported against 10.0.12 (NU1903).
     -->
     <WindowsCompatibilityVersion>10.0.13</WindowsCompatibilityVersion>
+
+    <!--
+      Versions of the platform packages eng/TypeNameCheck reads to compare public type names. They are only
+      downloaded by that build tool (PackageDownload); nothing in the shipped packages references them.
+        - WinUI: the Microsoft.UI.Xaml.* metadata (Windows App SDK).
+        - Uno: Uno's own Microsoft.UI.Xaml implementation, which has public types WinUI lacks. Keep it at the
+          Uno.WinUI version that Uno.Sdk (global.json) resolves.
+        - WPF and Windows Forms: the System.Windows.* reference assemblies.
+      MAUI uses MauiVersion above (the minimum KumikoUI.Maui supports).
+    -->
+    <WindowsAppSdkWinUIVersion>1.8.260528001</WindowsAppSdkWinUIVersion>
+    <UnoWinUIVersion>6.7.135</UnoWinUIVersion>
+    <WindowsDesktopRefVersion>10.0.13</WindowsDesktopRefVersion>
+    <!-- Other UI frameworks and grids an app may import next to KumikoUI. -->
+    <CommunityToolkitWinUIDataGridVersion>7.1.2</CommunityToolkitWinUIDataGridVersion>
+    <CommunityToolkitMauiVersion>15.0.1</CommunityToolkitMauiVersion>
+    <AvaloniaVersion>12.1.4</AvaloniaVersion>
+    <AvaloniaDataGridVersion>12.1.2</AvaloniaDataGridVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Rendering (SkiaSharp)">
@@ -48,6 +66,20 @@
 
   <ItemGroup Label="Build">
     <PackageVersion Include="MinVer" Version="8.0.0" />
+  </ItemGroup>
+
+  <!--
+    Listed so Dependabot sees them. The MAUI packages follow MauiVersion and Uno.WinUI follows Uno.Sdk, so
+    they are deliberately not listed here: a PackageVersion for them could override the versions the MAUI
+    and Uno SDKs choose for the real projects.
+  -->
+  <ItemGroup Label="Build tools (eng/TypeNameCheck)">
+    <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="$(WindowsAppSdkWinUIVersion)" />
+    <PackageVersion Include="Microsoft.WindowsDesktop.App.Ref" Version="$(WindowsDesktopRefVersion)" />
+    <PackageVersion Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="$(CommunityToolkitWinUIDataGridVersion)" />
+    <PackageVersion Include="CommunityToolkit.Maui" Version="$(CommunityToolkitMauiVersion)" />
+    <PackageVersion Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Controls.DataGrid" Version="$(AvaloniaDataGridVersion)" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">

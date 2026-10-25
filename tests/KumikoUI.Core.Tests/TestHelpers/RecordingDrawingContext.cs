@@ -41,14 +41,14 @@ internal enum DrawOpKind
 internal sealed record DrawOp(
     int Index,
     DrawOpKind Kind,
-    GridRect Rect,
-    GridColor Color,
+    KumikoRect Rect,
+    KumikoColor Color,
     PaintStyle Style,
     float StrokeWidth,
-    GridFont? Font,
-    GridRect? Clip,
+    KumikoFont? Font,
+    KumikoRect? Clip,
     string? Text = null,
-    GridTextAlignment HAlign = GridTextAlignment.Left,
+    KumikoTextAlignment HAlign = KumikoTextAlignment.Left,
     bool ClipsToRect = false,
     float X1 = 0, float Y1 = 0, float X2 = 0, float Y2 = 0)
 {
@@ -56,7 +56,7 @@ internal sealed record DrawOp(
     /// The part of <see cref="Rect"/> that can reach the screen: <see cref="Rect"/> intersected with
     /// <see cref="Clip"/>. Null when the op is clipped away entirely.
     /// </summary>
-    public GridRect? Visible => Clip is { } clip ? RectMath.Intersect(Rect, clip) : Rect;
+    public KumikoRect? Visible => Clip is { } clip ? RectMath.Intersect(Rect, clip) : Rect;
 
     public bool IsText => Kind is DrawOpKind.Text or DrawOpKind.TextInRect;
 
@@ -69,7 +69,7 @@ internal sealed record DrawOp(
 internal static class RectMath
 {
     /// <summary>The overlap of two rectangles, or null when they do not overlap (touching edges do not count).</summary>
-    public static GridRect? Intersect(GridRect a, GridRect b)
+    public static KumikoRect? Intersect(KumikoRect a, KumikoRect b)
     {
         float left = Math.Max(a.Left, b.Left);
         float top = Math.Max(a.Top, b.Top);
@@ -78,11 +78,11 @@ internal static class RectMath
         // Lines have a zero-width or zero-height bounding box; keep them when they lie inside the clip.
         if (right < left || bottom < top) return null;
         if ((right <= left && a.Width > 0) || (bottom <= top && a.Height > 0)) return null;
-        return new GridRect(left, top, right - left, bottom - top);
+        return new KumikoRect(left, top, right - left, bottom - top);
     }
 
     /// <summary>The horizontal overlap of a rectangle with the band [left, right).</summary>
-    public static float HorizontalOverlap(GridRect r, float left, float right) =>
+    public static float HorizontalOverlap(KumikoRect r, float left, float right) =>
         Math.Max(0, Math.Min(r.Right, right) - Math.Max(r.Left, left));
 }
 
@@ -97,9 +97,9 @@ internal sealed class RecordingDrawingContext : IDrawingContext
     public const float CharWidth = 8f;
     public const float TextHeight = 14f;
 
-    private readonly Stack<(float Tx, float Ty, GridRect? Clip)> _saved = new();
+    private readonly Stack<(float Tx, float Ty, KumikoRect? Clip)> _saved = new();
     private float _tx, _ty;
-    private GridRect? _clip;
+    private KumikoRect? _clip;
 
     /// <summary>Every recorded call, in call order.</summary>
     public List<DrawOp> Ops { get; } = new();
@@ -133,49 +133,49 @@ internal sealed class RecordingDrawingContext : IDrawingContext
 
     // ── IDrawingContext ───────────────────────────────────────────
 
-    private GridRect Map(GridRect r) => new(r.X + _tx, r.Y + _ty, r.Width, r.Height);
+    private KumikoRect Map(KumikoRect r) => new(r.X + _tx, r.Y + _ty, r.Width, r.Height);
 
-    private void Record(DrawOpKind kind, GridRect rect, GridPaint paint, string? text = null,
-        GridTextAlignment hAlign = GridTextAlignment.Left, bool clipsToRect = false,
+    private void Record(DrawOpKind kind, KumikoRect rect, KumikoPaint paint, string? text = null,
+        KumikoTextAlignment hAlign = KumikoTextAlignment.Left, bool clipsToRect = false,
         float x1 = 0, float y1 = 0, float x2 = 0, float y2 = 0)
     {
         Ops.Add(new DrawOp(Ops.Count, kind, rect, paint.Color, paint.Style, paint.StrokeWidth, paint.Font, _clip,
             text, hAlign, clipsToRect, x1, y1, x2, y2));
     }
 
-    public void FillRect(GridRect rect, GridPaint paint) => Record(DrawOpKind.FillRect, Map(rect), paint);
-    public void DrawRect(GridRect rect, GridPaint paint) => Record(DrawOpKind.DrawRect, Map(rect), paint);
-    public void FillRoundRect(GridRect rect, float cornerRadius, GridPaint paint) => Record(DrawOpKind.FillRoundRect, Map(rect), paint);
-    public void DrawRoundRect(GridRect rect, float cornerRadius, GridPaint paint) => Record(DrawOpKind.DrawRoundRect, Map(rect), paint);
+    public void FillRect(KumikoRect rect, KumikoPaint paint) => Record(DrawOpKind.FillRect, Map(rect), paint);
+    public void DrawRect(KumikoRect rect, KumikoPaint paint) => Record(DrawOpKind.DrawRect, Map(rect), paint);
+    public void FillRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint) => Record(DrawOpKind.FillRoundRect, Map(rect), paint);
+    public void DrawRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint) => Record(DrawOpKind.DrawRoundRect, Map(rect), paint);
 
-    public void DrawLine(float x1, float y1, float x2, float y2, GridPaint paint)
+    public void DrawLine(float x1, float y1, float x2, float y2, KumikoPaint paint)
     {
         x1 += _tx; x2 += _tx; y1 += _ty; y2 += _ty;
-        var box = new GridRect(Math.Min(x1, x2), Math.Min(y1, y2), Math.Abs(x2 - x1), Math.Abs(y2 - y1));
+        var box = new KumikoRect(Math.Min(x1, x2), Math.Min(y1, y2), Math.Abs(x2 - x1), Math.Abs(y2 - y1));
         Record(DrawOpKind.Line, box, paint, x1: x1, y1: y1, x2: x2, y2: y2);
     }
 
-    public void DrawText(string text, float x, float y, GridPaint paint)
+    public void DrawText(string text, float x, float y, KumikoPaint paint)
     {
         var size = MeasureText(text, paint);
         // y is the baseline; the measured box sits above it.
-        Record(DrawOpKind.Text, Map(new GridRect(x, y - size.Height, size.Width, size.Height)), paint, text);
+        Record(DrawOpKind.Text, Map(new KumikoRect(x, y - size.Height, size.Width, size.Height)), paint, text);
     }
 
-    public void DrawTextInRect(string text, GridRect rect, GridPaint paint,
-        GridTextAlignment hAlign = GridTextAlignment.Left,
-        GridVerticalAlignment vAlign = GridVerticalAlignment.Center,
+    public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
+        KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
+        KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center,
         bool clip = true) =>
         Record(DrawOpKind.TextInRect, Map(rect), paint, text, hAlign, clip);
 
-    public GridSize MeasureText(string text, GridPaint paint) => new(text.Length * CharWidth, TextHeight);
+    public KumikoSize MeasureText(string text, KumikoPaint paint) => new(text.Length * CharWidth, TextHeight);
 
-    public GridFontMetrics GetFontMetrics(GridPaint paint) => new(-11, 3, 2);
+    public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) => new(-11, 3, 2);
 
-    public void ClipRect(GridRect rect)
+    public void ClipRect(KumikoRect rect)
     {
         var mapped = Map(rect);
-        _clip = _clip is { } c ? RectMath.Intersect(c, mapped) ?? GridRect.Empty : mapped;
+        _clip = _clip is { } c ? RectMath.Intersect(c, mapped) ?? KumikoRect.Empty : mapped;
     }
 
     public void Save()
@@ -192,6 +192,6 @@ internal sealed class RecordingDrawingContext : IDrawingContext
 
     public void Translate(float dx, float dy) { _tx += dx; _ty += dy; }
 
-    public void DrawImage(object image, GridRect destRect) =>
-        Record(DrawOpKind.Image, Map(destRect), new GridPaint());
+    public void DrawImage(object image, KumikoRect destRect) =>
+        Record(DrawOpKind.Image, Map(destRect), new KumikoPaint());
 }

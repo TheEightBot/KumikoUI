@@ -7,7 +7,7 @@ namespace KumikoUI.Uno;
 /// Host-layer helper for registering custom typefaces with KumikoUI's SkiaSharp renderer on Uno.
 /// Wraps Uno/WinUI asset loading (<see cref="StorageFile"/> + the <c>ms-appx:///</c> scheme) into
 /// <see cref="SkiaFontRegistrar"/>, so a consuming app can make a TTF/OTF available to the grid by
-/// family name (usable from <c>DataGridStyle</c> / <c>GridFont.Family</c>) with a single call.
+/// family name (usable from <c>KumikoStyle</c> / <c>KumikoFont.Family</c>) with a single call.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -41,7 +41,7 @@ public static class KumikoFonts
     /// </summary>
     /// <param name="family">
     /// Family name to register under. Must match the value used in
-    /// <c>DataGridStyle</c> / <c>GridFont.Family</c> (e.g. <c>"NotoSansJP"</c>, <c>"MaterialIcons"</c>).
+    /// <c>KumikoStyle</c> / <c>KumikoFont.Family</c> (e.g. <c>"NotoSansJP"</c>, <c>"MaterialIcons"</c>).
     /// </param>
     /// <param name="appxUri">
     /// The packaged-asset URI of the font file, e.g.
@@ -99,7 +99,7 @@ public static class KumikoFonts
     /// </summary>
     /// <param name="family">
     /// Family name to register under. Must match the value used in
-    /// <c>DataGridStyle</c> / <c>GridFont.Family</c>.
+    /// <c>KumikoStyle</c> / <c>KumikoFont.Family</c>.
     /// </param>
     /// <param name="stream">
     /// A readable stream containing a valid TrueType (.ttf) or OpenType (.otf) font. The caller owns

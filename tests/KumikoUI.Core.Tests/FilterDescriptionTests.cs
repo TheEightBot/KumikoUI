@@ -4,11 +4,11 @@ namespace KumikoUI.Core.Tests;
 
 public class FilterDescriptionTests
 {
-    private static DataGridColumn MakeTextColumn() =>
-        new DataGridColumn { ColumnType = DataGridColumnType.Text, PropertyName = "Name" };
+    private static KumikoColumn MakeTextColumn() =>
+        new KumikoColumn { ColumnType = KumikoColumnType.Text, PropertyName = "Name" };
 
-    private static DataGridColumn MakeNumericColumn() =>
-        new DataGridColumn { ColumnType = DataGridColumnType.Numeric, PropertyName = "Value" };
+    private static KumikoColumn MakeNumericColumn() =>
+        new KumikoColumn { ColumnType = KumikoColumnType.Numeric, PropertyName = "Value" };
 
     // ── IsActive ──────────────────────────────────────────────────
 

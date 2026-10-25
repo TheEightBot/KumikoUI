@@ -6,182 +6,20 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Editing;
 
 /// <summary>
-/// Defines what action triggers cell editing.
-/// </summary>
-[Flags]
-public enum EditTrigger
-{
-    /// <summary>Editing is disabled.</summary>
-    None = 0,
-    /// <summary>A single tap starts editing.</summary>
-    SingleTap = 1,
-    /// <summary>A double-tap starts editing.</summary>
-    DoubleTap = 2,
-    /// <summary>Pressing F2 starts editing.</summary>
-    F2Key = 4,
-    /// <summary>Typing a character starts editing.</summary>
-    Typing = 8,
-    /// <summary>A long press starts editing.</summary>
-    LongPress = 16,
-    /// <summary>Default triggers: DoubleTap, F2, and Typing.</summary>
-    Default = DoubleTap | F2Key | Typing
-}
-
-/// <summary>
-/// Controls how text is selected when a cell enters edit mode.
-/// </summary>
-public enum EditTextSelectionMode
-{
-    /// <summary>All text is selected (default).</summary>
-    SelectAll,
-    /// <summary>Cursor is placed at the end of the text with no selection.</summary>
-    CursorAtEnd
-}
-
-/// <summary>
-/// Validation severity level.
-/// </summary>
-public enum ValidationSeverity
-{
-    /// <summary>Validation error that prevents commit.</summary>
-    Error,
-    /// <summary>Validation warning (commit still allowed).</summary>
-    Warning,
-    /// <summary>Informational validation message.</summary>
-    Info
-}
-
-/// <summary>
-/// Validation result for a cell edit.
-/// </summary>
-public class CellValidationResult
-{
-    /// <summary>Whether the cell value is valid.</summary>
-    public bool IsValid { get; set; } = true;
-
-    /// <summary>Error or warning message (null when valid).</summary>
-    public string? ErrorMessage { get; set; }
-
-    /// <summary>Severity of the validation result.</summary>
-    public ValidationSeverity Severity { get; set; } = ValidationSeverity.Error;
-
-    public static CellValidationResult Valid => new();
-    public static CellValidationResult Error(string message) =>
-        new() { IsValid = false, ErrorMessage = message };
-    public static CellValidationResult Warning(string message) =>
-        new() { IsValid = true, ErrorMessage = message, Severity = ValidationSeverity.Warning };
-}
-
-/// <summary>
-/// Event args for CellBeginEdit. Set Cancel=true to prevent editing.
-/// </summary>
-public class CellBeginEditEventArgs : EventArgs
-{
-    /// <summary>Zero-based row index of the cell.</summary>
-    public int RowIndex { get; }
-
-    /// <summary>Zero-based column index of the cell.</summary>
-    public int ColumnIndex { get; }
-
-    /// <summary>Column definition for the cell.</summary>
-    public DataGridColumn Column { get; }
-
-    /// <summary>Current value of the cell before editing.</summary>
-    public object? CellValue { get; }
-
-    /// <summary>Set to true to cancel the edit operation.</summary>
-    public bool Cancel { get; set; }
-
-    public CellBeginEditEventArgs(int row, int col, DataGridColumn column, object? value)
-    {
-        RowIndex = row;
-        ColumnIndex = col;
-        Column = column;
-        CellValue = value;
-    }
-}
-
-/// <summary>
-/// Event args for CellEndEdit.
-/// </summary>
-public class CellEndEditEventArgs : EventArgs
-{
-    /// <summary>Zero-based row index of the cell.</summary>
-    public int RowIndex { get; }
-
-    /// <summary>Zero-based column index of the cell.</summary>
-    public int ColumnIndex { get; }
-
-    /// <summary>Column definition for the cell.</summary>
-    public DataGridColumn Column { get; }
-
-    /// <summary>Cell value before editing.</summary>
-    public object? OldValue { get; }
-
-    /// <summary>Cell value after editing.</summary>
-    public object? NewValue { get; }
-
-    /// <summary>True if the edit was committed; false if cancelled.</summary>
-    public bool Committed { get; }
-
-    public CellEndEditEventArgs(int row, int col, DataGridColumn column,
-        object? oldValue, object? newValue, bool committed)
-    {
-        RowIndex = row;
-        ColumnIndex = col;
-        Column = column;
-        OldValue = oldValue;
-        NewValue = newValue;
-        Committed = committed;
-    }
-}
-
-/// <summary>
-/// Event args for CellValueChanged.
-/// </summary>
-public class CellValueChangedEventArgs : EventArgs
-{
-    /// <summary>Zero-based row index of the changed cell.</summary>
-    public int RowIndex { get; }
-
-    /// <summary>Zero-based column index of the changed cell.</summary>
-    public int ColumnIndex { get; }
-
-    /// <summary>Column definition for the changed cell.</summary>
-    public DataGridColumn Column { get; }
-
-    /// <summary>Previous cell value.</summary>
-    public object? OldValue { get; }
-
-    /// <summary>New cell value.</summary>
-    public object? NewValue { get; }
-
-    public CellValueChangedEventArgs(int row, int col, DataGridColumn column,
-        object? oldValue, object? newValue)
-    {
-        RowIndex = row;
-        ColumnIndex = col;
-        Column = column;
-        OldValue = oldValue;
-        NewValue = newValue;
-    }
-}
-
-/// <summary>
 /// Manages inline cell editing. Tracks the active edit session,
 /// creates/positions editors, and handles commit/cancel.
 /// </summary>
 public class EditSession
 {
-    private readonly FocusManager _focusManager = new();
+    private readonly DrawnFocusManager _focusManager = new();
 
     // Edit state
     private bool _isEditing;
     private CellPosition _editCell = CellPosition.Invalid;
     private object? _originalValue;
     private DrawnComponent? _activeEditor;
-    private DataGridColumn? _editColumn;
-    private DataGridSource? _editDataSource;
+    private KumikoColumn? _editColumn;
+    private KumikoSource? _editDataSource;
 
     /// <summary>Whether a cell is currently being edited.</summary>
     public bool IsEditing => _isEditing;
@@ -221,7 +59,7 @@ public class EditSession
     /// The current grid style. When set, newly created editors will have
     /// their theme colors applied automatically.
     /// </summary>
-    public DataGridStyle? Style { get; set; }
+    public KumikoStyle? Style { get; set; }
 
     // ── Events ──────────────────────────────────────────────────
 
@@ -244,8 +82,8 @@ public class EditSession
     /// </summary>
     public bool BeginEdit(
         int rowIndex, int columnIndex,
-        DataGridColumn column, DataGridSource dataSource,
-        GridRect cellBounds, char? initialCharacter = null)
+        KumikoColumn column, KumikoSource dataSource,
+        KumikoRect cellBounds, char? initialCharacter = null)
     {
         if (_isEditing)
             CommitEdit(dataSource);
@@ -292,7 +130,7 @@ public class EditSession
     /// Commit the current edit, writing the value back.
     /// Returns true if the commit succeeded.
     /// </summary>
-    public bool CommitEdit(DataGridSource dataSource)
+    public bool CommitEdit(KumikoSource dataSource)
     {
         if (!_isEditing || _activeEditor == null || _editColumn == null) return false;
 
@@ -344,7 +182,7 @@ public class EditSession
     /// <summary>
     /// Toggle a boolean cell directly (no editor needed).
     /// </summary>
-    public void ToggleBooleanCell(int row, int col, DataGridColumn column, DataGridSource dataSource)
+    public void ToggleBooleanCell(int row, int col, KumikoColumn column, KumikoSource dataSource)
     {
         if (column.IsReadOnly) return;
 
@@ -370,7 +208,7 @@ public class EditSession
     /// <summary>
     /// Update the editor bounds (e.g., when scrolling while editing).
     /// </summary>
-    public void UpdateEditorBounds(GridRect cellBounds)
+    public void UpdateEditorBounds(KumikoRect cellBounds)
     {
         if (_activeEditor != null)
             _activeEditor.Bounds = cellBounds;
@@ -394,31 +232,31 @@ public class EditSession
         var bounds = _activeEditor.Bounds;
 
         // Resolve frame colors from theme or fall back to defaults
-        var bgColor = Style?.BackgroundColor ?? GridColor.White;
+        var bgColor = Style?.BackgroundColor ?? KumikoColor.White;
         var shadowColor = Style != null
-            ? new GridColor(Style.CellTextColor.R, Style.CellTextColor.G, Style.CellTextColor.B, 30)
-            : new GridColor(0, 0, 0, 30);
+            ? new KumikoColor(Style.CellTextColor.R, Style.CellTextColor.G, Style.CellTextColor.B, 30)
+            : new KumikoColor(0, 0, 0, 30);
 
         // Draw subtle drop shadow for depth effect
         var shadowBounds = bounds.Offset(1, 1).Inflate(1, 1);
-        ctx.FillRect(shadowBounds, new GridPaint
+        ctx.FillRect(shadowBounds, new KumikoPaint
         {
             Color = shadowColor,
             Style = PaintStyle.Fill
         });
 
         // Background to cover cell content underneath
-        ctx.FillRect(bounds, new GridPaint { Color = bgColor });
+        ctx.FillRect(bounds, new KumikoPaint { Color = bgColor });
         _activeEditor.OnDraw(ctx);
 
         // Draw validation error indicator (overrides normal border)
         if (CurrentValidation != null && !CurrentValidation.IsValid)
         {
             var errorColor = CurrentValidation.Severity == ValidationSeverity.Warning
-                ? new GridColor(255, 165, 0)   // orange
-                : new GridColor(220, 50, 50);   // red
+                ? new KumikoColor(255, 165, 0)   // orange
+                : new KumikoColor(220, 50, 50);   // red
 
-            ctx.DrawRect(bounds, new GridPaint
+            ctx.DrawRect(bounds, new KumikoPaint
             {
                 Color = errorColor,
                 Style = PaintStyle.Stroke,
@@ -434,7 +272,7 @@ public class EditSession
     /// Forward a key event to the active editor.
     /// Returns true if the editor handled it.
     /// </summary>
-    public bool HandleKeyEvent(GridKeyEventArgs e)
+    public bool HandleKeyEvent(KumikoKeyEventArgs e)
     {
         if (!_isEditing) return false;
         return _focusManager.DispatchKey(e);
@@ -444,7 +282,7 @@ public class EditSession
     /// Forward a pointer event to the active editor.
     /// Returns true if the editor handled it.
     /// </summary>
-    public bool HandlePointerEvent(GridPointerEventArgs e)
+    public bool HandlePointerEvent(KumikoPointerEventArgs e)
     {
         if (!_isEditing || _activeEditor == null) return false;
 
@@ -468,13 +306,13 @@ public class EditSession
     /// <param name="releasedEvent">
     /// The original <c>Released</c> pointer event that triggered <c>BeginEdit</c>.
     /// </param>
-    public void TryForwardInitialTap(GridPointerEventArgs releasedEvent)
+    public void TryForwardInitialTap(KumikoPointerEventArgs releasedEvent)
     {
         if (!_isEditing || _activeEditor == null) return;
         if (!_activeEditor.ActivatesImmediately) return;
         if (!_activeEditor.HitTest(releasedEvent.X, releasedEvent.Y)) return;
 
-        var syntheticDown = new GridPointerEventArgs
+        var syntheticDown = new KumikoPointerEventArgs
         {
             X = releasedEvent.X,
             Y = releasedEvent.Y,
@@ -489,7 +327,7 @@ public class EditSession
 
     // ── Validation ──────────────────────────────────────────────
 
-    private CellValidationResult? ValidateValue(int row, int col, object? value, DataGridSource dataSource)
+    private CellValidationResult? ValidateValue(int row, int col, object? value, KumikoSource dataSource)
     {
         // Check custom validator first
         if (CellValidator != null)

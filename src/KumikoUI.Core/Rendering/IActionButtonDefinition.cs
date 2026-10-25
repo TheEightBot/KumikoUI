@@ -19,10 +19,10 @@ public interface IActionButtonDefinition
     string Label { get; }
 
     /// <summary>Button pill background color.</summary>
-    GridColor BackgroundColor { get; }
+    KumikoColor BackgroundColor { get; }
 
     /// <summary>Button label text color.</summary>
-    GridColor TextColor { get; }
+    KumikoColor TextColor { get; }
 
     /// <summary>
     /// Optional callback invoked when the button is tapped.

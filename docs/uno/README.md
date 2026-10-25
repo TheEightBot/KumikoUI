@@ -29,7 +29,7 @@ library's core tenets.
 See also: [../ARCHITECTURE.md](../ARCHITECTURE.md) and [../RENDERING.md](../RENDERING.md).
 
 > **Post-port Core change (1):** `KumikoUI.Core` was later extended with one shared rendering option —
-> `DataGridStyle.PinBottomSummaryRows` (default `true`), which pins `Position=Bottom` table summary rows
+> `KumikoStyle.PinBottomSummaryRows` (default `true`), which pins `Position=Bottom` table summary rows
 > to the viewport bottom as a fixed footer. This is a deliberate feature (requested by the author) that
 > also changes `KumikoUI.Maui` behavior, since both share Core. The port's "Core unchanged" property
 > otherwise holds; this is the only Core edit, and it is additive (the `Render(...)` signature is
@@ -95,7 +95,7 @@ template — confirm after scaffolding):
 | Render surface | `SKCanvasView` | `SKXamlCanvas` |
 | Paint event | `PaintSurface` → `e.Surface.Canvas` | `PaintSurface` → `e.Surface.Canvas` (**identical**) |
 | Drawing bridge | `new SkiaDrawingContext(canvas)` | `new SkiaDrawingContext(canvas)` (**reused**) |
-| Render call | `DataGridRenderer.Render(ctx, …)` | `DataGridRenderer.Render(ctx, …)` (**reused**) |
+| Render call | `KumikoRenderer.Render(ctx, …)` | `KumikoRenderer.Render(ctx, …)` (**reused**) |
 | Request redraw | `InvalidateSurface()` | `SKXamlCanvas.Invalidate()` |
 | Pointer input | `SKCanvasView.Touch` | `UIElement.PointerPressed/Moved/Released`, `PointerWheelChanged` |
 | Keyboard input | native responder / hidden `Entry` | `UIElement.KeyDown`/`KeyUp` + `CharacterReceived` |
@@ -109,12 +109,12 @@ Core is already the seam — the host only adapts framework events into Core cal
 
 | Uno event | Build | Core call (unchanged API) |
 |---|---|---|
-| `PointerPressed`/`Moved`/`Released`, `PointerWheelChanged` | `GridPointerEventArgs` | `InputController.HandlePointer(evt, scroll, selection, style, dataSource)` |
-| `KeyDown`/`KeyUp`, `CharacterReceived` | `GridKeyEventArgs` (map `VirtualKey` → `GridKey`) | `InputController.HandleKey(evt, scroll, selection, style, dataSource)` |
+| `PointerPressed`/`Moved`/`Released`, `PointerWheelChanged` | `KumikoPointerEventArgs` | `InputController.HandlePointer(evt, scroll, selection, style, dataSource)` |
+| `KeyDown`/`KeyUp`, `CharacterReceived` | `KumikoKeyEventArgs` (map `VirtualKey` → `KumikoKey`) | `InputController.HandleKey(evt, scroll, selection, style, dataSource)` |
 | timer tick (~16 ms) | — | `InputController.UpdateInertialScroll(scroll, 16f)` |
 | `InputController.NeedsRedraw` | — | `skXamlCanvas.Invalidate()` |
 
-These are the exact members exercised by [`src/KumikoUI.Maui/DataGridView.cs`](../../src/KumikoUI.Maui/DataGridView.cs) today.
+These are the exact members exercised by [`src/KumikoUI.Maui/KumikoDataGrid.cs`](../../src/KumikoUI.Maui/KumikoDataGrid.cs) today.
 
 ---
 
@@ -122,8 +122,8 @@ These are the exact members exercised by [`src/KumikoUI.Maui/DataGridView.cs`](.
 
 - [ ] **[01 — Prerequisites & tooling](01-prerequisites.md)** — SDKs, Uno templates, `uno-check`, workloads, per-OS build constraints.
 - [ ] **[02 — Library scaffold](02-library-scaffold.md)** — `dotnet new unolib`, solution wiring, TFMs, conditional SkiaSharp.Views references, packaging metadata.
-- [ ] **[03 — DataGridView host](03-datagridview-host.md)** — the control: `SKXamlCanvas` hosting, paint loop, `DependencyProperty` surface, lifecycle.
-- [ ] **[04 — Input, keyboard & focus](04-input-keyboard-focus.md)** — pointer/keyboard/focus bridge into `GridInputController`, inertial scroll, per-head nuances.
+- [ ] **[03 — KumikoDataGrid host](03-kumikodatagrid-host.md)** — the control: `SKXamlCanvas` hosting, paint loop, `DependencyProperty` surface, lifecycle.
+- [ ] **[04 — Input, keyboard & focus](04-input-keyboard-focus.md)** — pointer/keyboard/focus bridge into `KumikoInputController`, inertial scroll, per-head nuances.
 - [ ] **[05 — Fonts & assets](05-fonts-and-assets.md)** — `SkiaFontRegistrar` reuse (CJK/icons), Uno library-asset packaging rules.
 - [ ] **[06 — Sample app](06-sample-app.md)** — `dotnet new unoapp` `SampleApp.Uno`, font registration, demo pages, per-head run commands.
 - [ ] **[07 — Tests](07-tests.md)** — unchanged Core xUnit suite + optional Uno.UITest runtime tests + smoke matrix.

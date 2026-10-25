@@ -5,7 +5,7 @@ namespace KumikoUI.SkiaSharp;
 /// <summary>
 /// A static registry for custom <see cref="SKTypeface"/> instances used by <see cref="SkiaDrawingContext"/>.
 /// Register fonts loaded from streams (e.g. embedded resources, app-bundle raw assets) so they are
-/// available to the grid renderer by family name via <see cref="KumikoUI.Core.Rendering.GridFont.Family"/>.
+/// available to the grid renderer by family name via <see cref="KumikoUI.Core.Rendering.KumikoFont.Family"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -42,7 +42,7 @@ public static class SkiaFontRegistrar
     /// </summary>
     /// <param name="family">
     /// Family name to register. Must match the value used in
-    /// <see cref="KumikoUI.Core.Rendering.GridFont.Family"/>.
+    /// <see cref="KumikoUI.Core.Rendering.KumikoFont.Family"/>.
     /// </param>
     /// <param name="typeface">The <see cref="SKTypeface"/> to register.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="typeface"/> is <c>null</c>.</exception>
@@ -64,7 +64,7 @@ public static class SkiaFontRegistrar
     /// </summary>
     /// <param name="family">
     /// Family name to register. Must match the value used in
-    /// <see cref="KumikoUI.Core.Rendering.GridFont.Family"/>.
+    /// <see cref="KumikoUI.Core.Rendering.KumikoFont.Family"/>.
     /// </param>
     /// <param name="stream">A readable stream containing a valid TrueType (.ttf) or OpenType (.otf) font.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is <c>null</c>.</exception>

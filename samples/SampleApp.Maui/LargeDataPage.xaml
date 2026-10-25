@@ -22,7 +22,7 @@
             <Label x:Name="statusLabel" Text="No data loaded" VerticalOptions="Center" Margin="8,0" />
         </FlexLayout>
 
-        <dg:DataGridView x:Name="kumiko"
+        <dg:KumikoDataGrid x:Name="kumiko"
                          Grid.Row="2"
                          ItemsSource="{Binding Items}"
                          AllowSorting="True"
@@ -33,8 +33,8 @@
                          HorizontalOptions="Fill"
                          VerticalOptions="Fill">
 
-            <dg:DataGridView.Columns>
-                <core:DataGridColumn Header="Row #"
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="Row #"
                                      PropertyName="RowNumber"
                                      Width="80"
                                      ColumnType="Numeric"
@@ -42,56 +42,56 @@
                                      IsReadOnly="True"
                                      IsFrozen="True" />
 
-                <core:DataGridColumn Header="Name"
+                <core:KumikoColumn Header="Name"
                                      PropertyName="FullName"
                                      Width="180" />
 
-                <core:DataGridColumn Header="Category"
+                <core:KumikoColumn Header="Category"
                                      PropertyName="Category"
                                      Width="120" />
 
-                <core:DataGridColumn Header="Value"
+                <core:KumikoColumn Header="Value"
                                      PropertyName="Value"
                                      Width="100"
                                      Format="N2"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:DataGridColumn Header="Amount"
+                <core:KumikoColumn Header="Amount"
                                      PropertyName="Amount"
                                      Width="110"
                                      Format="C0"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:DataGridColumn Header="Date"
+                <core:KumikoColumn Header="Date"
                                      PropertyName="CreatedDate"
                                      Width="110"
                                      Format="yyyy-MM-dd"
                                      ColumnType="Date" />
 
-                <core:DataGridColumn Header="Enabled"
+                <core:KumikoColumn Header="Enabled"
                                      PropertyName="IsEnabled"
                                      Width="80"
                                      ColumnType="Boolean" />
 
-                <core:DataGridColumn Header="Region"
+                <core:KumikoColumn Header="Region"
                                      PropertyName="Region"
                                      Width="120" />
 
-                <core:DataGridColumn Header="Score"
+                <core:KumikoColumn Header="Score"
                                      PropertyName="Score"
                                      Width="80"
                                      Format="N1"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:DataGridColumn Header="Notes"
+                <core:KumikoColumn Header="Notes"
                                      PropertyName="Notes"
                                      Width="200" />
-            </dg:DataGridView.Columns>
+            </dg:KumikoDataGrid.Columns>
 
-            <dg:DataGridView.TableSummaryRows>
+            <dg:KumikoDataGrid.TableSummaryRows>
                 <core:TableSummaryRow Name="Stats" Position="Bottom" Title="Stats">
                     <core:TableSummaryRow.Columns>
                         <core:SummaryColumnDescription PropertyName="RowNumber"
@@ -105,9 +105,9 @@
                                                        Format="N1" />
                     </core:TableSummaryRow.Columns>
                 </core:TableSummaryRow>
-            </dg:DataGridView.TableSummaryRows>
+            </dg:KumikoDataGrid.TableSummaryRows>
 
-        </dg:DataGridView>
+        </dg:KumikoDataGrid>
     </Grid>
 
 </ContentPage>

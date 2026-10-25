@@ -5,7 +5,7 @@ using KumikoUI.Core.Tests.TestHelpers;
 namespace KumikoUI.Core.Tests;
 
 /// <summary>
-/// Behaviour of <see cref="DataGridStyle.PinBottomSummaryRows"/>: the bottom table summary is a fixed
+/// Behaviour of <see cref="KumikoStyle.PinBottomSummaryRows"/>: the bottom table summary is a fixed
 /// footer at the viewport bottom that hit testing, keyboard navigation and z-order all respect.
 /// </summary>
 public class PinnedBottomSummaryTests
@@ -21,12 +21,12 @@ public class PinnedBottomSummaryTests
 
     private sealed class Grid
     {
-        public DataGridSource Source { get; } = new();
-        public DataGridStyle Style { get; } = new();
+        public KumikoSource Source { get; } = new();
+        public KumikoStyle Style { get; } = new();
         public ScrollState Scroll { get; init; } = new() { ViewportWidth = ViewportWidth, ViewportHeight = DefaultViewportHeight };
-        public SelectionModel Selection { get; } = new();
-        public GridInputController Input { get; } = new();
-        public DataGridRenderer Renderer { get; } = new();
+        public KumikoSelectionModel Selection { get; } = new();
+        public KumikoInputController Input { get; } = new();
+        public KumikoRenderer Renderer { get; } = new();
 
         public float ViewportHeight => Scroll.ViewportHeight;
 
@@ -40,11 +40,11 @@ public class PinnedBottomSummaryTests
             return ctx;
         }
 
-        public void Key(GridKey key) =>
-            Input.HandleKey(new GridKeyEventArgs { Key = key }, Scroll, Selection, Style, Source);
+        public void Key(KumikoKey key) =>
+            Input.HandleKey(new KumikoKeyEventArgs { Key = key }, Scroll, Selection, Style, Source);
 
-        public HitTestResult HitTest(float x, float y) =>
-            new GridHitTester().HitTest(x, y, Scroll, Style, Source.Columns, Source.RowCount, Source);
+        public KumikoHitTestResult HitTest(float x, float y) =>
+            new KumikoHitTester().HitTest(x, y, Scroll, Style, Source.Columns, Source.RowCount, Source);
     }
 
     private static Grid CreateGrid(int rowCount = 100, bool pinned = true, int frozenRows = 0, bool grouped = false,
@@ -54,8 +54,8 @@ public class PinnedBottomSummaryTests
         grid.Style.PinBottomSummaryRows = pinned;
         grid.Source.SetColumns(new[]
         {
-            new DataGridColumn { Header = "Name", PropertyName = "Name", Width = 200 },
-            new DataGridColumn { Header = "Age", PropertyName = "Age", Width = 100, ColumnType = DataGridColumnType.Numeric },
+            new KumikoColumn { Header = "Name", PropertyName = "Name", Width = 200 },
+            new KumikoColumn { Header = "Age", PropertyName = "Age", Width = 100, ColumnType = KumikoColumnType.Numeric },
         });
         grid.Source.SetItems(Enumerable.Range(0, rowCount)
             .Select(i => new Person { Name = $"P{i:D3}", Age = i % 7 })
@@ -132,9 +132,9 @@ public class PinnedBottomSummaryTests
         var grid = CreateGrid(viewportHeight: 60);
         float y = grid.FooterTop + 6;
 
-        grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Pressed },
+        grid.Input.HandlePointer(new KumikoPointerEventArgs { X = 50, Y = y, Action = InputAction.Pressed },
             grid.Scroll, grid.Selection, grid.Style, grid.Source);
-        grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Released },
+        grid.Input.HandlePointer(new KumikoPointerEventArgs { X = 50, Y = y, Action = InputAction.Released },
             grid.Scroll, grid.Selection, grid.Style, grid.Source);
 
         Assert.Empty(grid.Source.ActiveSortColumns);
@@ -176,9 +176,9 @@ public class PinnedBottomSummaryTests
         var grid = CreateGrid();
         float y = grid.FooterTop + 10;
 
-        grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Pressed },
+        grid.Input.HandlePointer(new KumikoPointerEventArgs { X = 50, Y = y, Action = InputAction.Pressed },
             grid.Scroll, grid.Selection, grid.Style, grid.Source);
-        grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Released },
+        grid.Input.HandlePointer(new KumikoPointerEventArgs { X = 50, Y = y, Action = InputAction.Released },
             grid.Scroll, grid.Selection, grid.Style, grid.Source);
 
         Assert.Empty(grid.Selection.SelectedRows);
@@ -200,7 +200,7 @@ public class PinnedBottomSummaryTests
 
         for (int i = 0; i < 40; i++)
         {
-            grid.Key(GridKey.Down);
+            grid.Key(KumikoKey.Down);
             grid.Render();
 
             int row = grid.Selection.CurrentCell.Row;
@@ -219,7 +219,7 @@ public class PinnedBottomSummaryTests
         var grid = CreateGrid();
         grid.Selection.CurrentCell = new CellPosition(0, 0);
 
-        grid.Input.HandleKey(new GridKeyEventArgs { Key = GridKey.End, Modifiers = InputModifiers.Control },
+        grid.Input.HandleKey(new KumikoKeyEventArgs { Key = KumikoKey.End, Modifiers = InputModifiers.Control },
             grid.Scroll, grid.Selection, grid.Style, grid.Source);
         grid.Render();
 
@@ -237,7 +237,7 @@ public class PinnedBottomSummaryTests
         grid.Scroll.OffsetY = grid.Scroll.MaxOffsetY;
 
         grid.Selection.CurrentCell = new CellPosition(5, 0);
-        grid.Key(GridKey.Up);
+        grid.Key(KumikoKey.Up);
 
         Assert.Equal(4, grid.Selection.CurrentCell.Row);
         Assert.Equal(4 * grid.Style.RowHeight, grid.Scroll.OffsetY, 2);
@@ -265,7 +265,7 @@ public class PinnedBottomSummaryTests
         for (int press = 1; press <= 6; press++)
         {
             int before = grid.Selection.CurrentCell.Row;
-            grid.Key(GridKey.PageDown);
+            grid.Key(KumikoKey.PageDown);
             grid.Render();
 
             int row = grid.Selection.CurrentCell.Row;
@@ -289,9 +289,9 @@ public class PinnedBottomSummaryTests
         float y = grid.FooterTop - 6;
         foreach (var clicks in new[] { 1, 2 })
         {
-            grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Pressed, ClickCount = clicks },
+            grid.Input.HandlePointer(new KumikoPointerEventArgs { X = 50, Y = y, Action = InputAction.Pressed, ClickCount = clicks },
                 grid.Scroll, grid.Selection, grid.Style, grid.Source);
-            grid.Input.HandlePointer(new GridPointerEventArgs { X = 50, Y = y, Action = InputAction.Released, ClickCount = clicks },
+            grid.Input.HandlePointer(new KumikoPointerEventArgs { X = 50, Y = y, Action = InputAction.Released, ClickCount = clicks },
                 grid.Scroll, grid.Selection, grid.Style, grid.Source);
         }
 

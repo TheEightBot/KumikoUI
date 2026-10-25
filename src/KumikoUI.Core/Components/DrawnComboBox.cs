@@ -10,32 +10,32 @@ namespace KumikoUI.Core.Components;
 /// </summary>
 public class DrawnComboBox : DrawnComponent
 {
-    private readonly List<ComboBoxItem> _items = new();
+    private readonly List<DrawnComboBoxItem> _items = new();
     private int _selectedIndex = -1;
     private int _highlightedIndex = -1;
     private bool _isDropdownOpen;
     private int _pressedItemIndex = -1;
     private string _filterText = string.Empty;
-    private List<ComboBoxItem>? _filteredItems;
+    private List<DrawnComboBoxItem>? _filteredItems;
 
     // ── Style ───────────────────────────────────────────────────
 
     /// <summary>Font used for both the selected text and dropdown items.</summary>
-    public GridFont Font { get; set; } = new("Default", 13);
+    public KumikoFont Font { get; set; } = new("Default", 13);
     /// <summary>Text color for items and the selected display text.</summary>
-    public GridColor TextColor { get; set; } = new(30, 30, 30);
+    public KumikoColor TextColor { get; set; } = new(30, 30, 30);
     /// <summary>Background fill color of the main combo box area.</summary>
-    public GridColor BackgroundColor { get; set; } = GridColor.White;
+    public KumikoColor BackgroundColor { get; set; } = KumikoColor.White;
     /// <summary>Border color of the combo box when not focused.</summary>
-    public GridColor BorderColor { get; set; } = new(180, 180, 180);
+    public KumikoColor BorderColor { get; set; } = new(180, 180, 180);
     /// <summary>Border color applied when the combo box has input focus.</summary>
-    public GridColor FocusedBorderColor { get; set; } = new(0, 120, 215);
+    public KumikoColor FocusedBorderColor { get; set; } = new(0, 120, 215);
     /// <summary>Background fill color of the dropdown list area.</summary>
-    public GridColor DropdownBackgroundColor { get; set; } = GridColor.White;
+    public KumikoColor DropdownBackgroundColor { get; set; } = KumikoColor.White;
     /// <summary>Color used to highlight the item under the pointer or keyboard focus.</summary>
-    public GridColor HighlightColor { get; set; } = new(0, 120, 215, 40);
+    public KumikoColor HighlightColor { get; set; } = new(0, 120, 215, 40);
     /// <summary>Color of the dropdown toggle arrow.</summary>
-    public GridColor ArrowColor { get; set; } = new(100, 100, 100);
+    public KumikoColor ArrowColor { get; set; } = new(100, 100, 100);
     /// <summary>Horizontal padding inside the combo box text area.</summary>
     public float Padding { get; set; } = 6f;
     /// <summary>Width reserved for the dropdown arrow button.</summary>
@@ -50,10 +50,10 @@ public class DrawnComboBox : DrawnComponent
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Applies theme colors from a <see cref="DataGridStyle"/> so the combo box
+    /// Applies theme colors from a <see cref="KumikoStyle"/> so the combo box
     /// visually matches the current grid theme.
     /// </summary>
-    public void ApplyTheme(DataGridStyle style)
+    public void ApplyTheme(KumikoStyle style)
     {
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
@@ -66,7 +66,7 @@ public class DrawnComboBox : DrawnComponent
         HighlightColor = style.AccentColor.WithAlpha(40);
 
         // Arrow: midpoint between text and background
-        ArrowColor = new GridColor(
+        ArrowColor = new KumikoColor(
             (byte)((txt.R + bg.R) / 2),
             (byte)((txt.G + bg.G) / 2),
             (byte)((txt.B + bg.B) / 2));
@@ -75,7 +75,7 @@ public class DrawnComboBox : DrawnComponent
     // ── Properties ──────────────────────────────────────────────
 
     /// <summary>Items in the dropdown.</summary>
-    public IReadOnlyList<ComboBoxItem> Items => _items;
+    public IReadOnlyList<DrawnComboBoxItem> Items => _items;
 
     /// <summary>The selected item index (-1 = none).</summary>
     public int SelectedIndex
@@ -92,7 +92,7 @@ public class DrawnComboBox : DrawnComponent
     }
 
     /// <summary>The selected item (null if none).</summary>
-    public ComboBoxItem? SelectedItem => _selectedIndex >= 0 && _selectedIndex < _items.Count ? _items[_selectedIndex] : null;
+    public DrawnComboBoxItem? SelectedItem => _selectedIndex >= 0 && _selectedIndex < _items.Count ? _items[_selectedIndex] : null;
 
     /// <summary>The value of the selected item.</summary>
     public object? SelectedValue => SelectedItem?.Value;
@@ -137,7 +137,7 @@ public class DrawnComboBox : DrawnComponent
     /// <summary>Add an item to the dropdown.</summary>
     public void AddItem(string displayText, object? value = null)
     {
-        _items.Add(new ComboBoxItem(displayText, value ?? displayText));
+        _items.Add(new DrawnComboBoxItem(displayText, value ?? displayText));
         _filteredItems = null;
     }
 
@@ -145,12 +145,12 @@ public class DrawnComboBox : DrawnComponent
     public void AddItems(IEnumerable<string> displayTexts)
     {
         foreach (var text in displayTexts)
-            _items.Add(new ComboBoxItem(text, text));
+            _items.Add(new DrawnComboBoxItem(text, text));
         _filteredItems = null;
     }
 
     /// <summary>Set items from a collection with display/value paths.</summary>
-    public void SetItems(IEnumerable<ComboBoxItem> items)
+    public void SetItems(IEnumerable<DrawnComboBoxItem> items)
     {
         _items.Clear();
         _items.AddRange(items);
@@ -190,7 +190,7 @@ public class DrawnComboBox : DrawnComponent
                 ? GetPropertyValue(item, ValueMemberPath)
                 : item;
 
-            _items.Add(new ComboBoxItem(displayText, value));
+            _items.Add(new DrawnComboBoxItem(displayText, value));
         }
 
         InvalidateVisual();
@@ -227,7 +227,7 @@ public class DrawnComboBox : DrawnComponent
         return current;
     }
 
-    private List<ComboBoxItem> GetVisibleItems()
+    private List<DrawnComboBoxItem> GetVisibleItems()
     {
         if (!IsFilterable || string.IsNullOrEmpty(_filterText))
             return _items;
@@ -255,8 +255,8 @@ public class DrawnComboBox : DrawnComponent
         var b = Bounds;
 
         // Background
-        ctx.FillRect(b, new GridPaint { Color = BackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(b, new GridPaint
+        ctx.FillRect(b, new KumikoPaint { Color = BackgroundColor, Style = PaintStyle.Fill });
+        ctx.DrawRect(b, new KumikoPaint
         {
             Color = IsFocused ? FocusedBorderColor : BorderColor,
             Style = PaintStyle.Stroke,
@@ -269,7 +269,7 @@ public class DrawnComboBox : DrawnComponent
         float textWidth = b.Width - ArrowWidth - Padding * 2;
 
         ctx.Save();
-        ctx.ClipRect(new GridRect(textX, b.Y, textWidth, b.Height));
+        ctx.ClipRect(new KumikoRect(textX, b.Y, textWidth, b.Height));
 
         string displayText = IsFilterable && _isDropdownOpen && IsFocused
             ? _filterText
@@ -277,12 +277,12 @@ public class DrawnComboBox : DrawnComponent
 
         if (!string.IsNullOrEmpty(displayText))
         {
-            ctx.DrawText(displayText, textX, textY, new GridPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font });
+            ctx.DrawText(displayText, textX, textY, new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font });
         }
         else if (!string.IsNullOrEmpty(Placeholder))
         {
             ctx.DrawText(Placeholder, textX, textY,
-                new GridPaint { Color = new GridColor(160, 160, 160), Style = PaintStyle.Fill, Font = Font });
+                new KumikoPaint { Color = new KumikoColor(160, 160, 160), Style = PaintStyle.Fill, Font = Font });
         }
 
         ctx.Restore();
@@ -293,7 +293,7 @@ public class DrawnComboBox : DrawnComponent
 
     private void DrawArrow(IDrawingContext ctx, float x, float y, float w, float h)
     {
-        var paint = new GridPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
+        var paint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
         float cx = x + w / 2;
         float cy = y + h / 2;
         float aw = 7; // arrow half-width
@@ -319,15 +319,15 @@ public class DrawnComboBox : DrawnComponent
         if (items.Count == 0) return;
 
         float dropdownHeight = Math.Min(items.Count * ItemHeight, MaxDropdownHeight);
-        var dropRect = new GridRect(Bounds.X, Bounds.Y + Bounds.Height, Bounds.Width, dropdownHeight);
+        var dropRect = new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height, Bounds.Width, dropdownHeight);
 
         // Shadow
-        ctx.FillRect(new GridRect(dropRect.X + 2, dropRect.Y + 2, dropRect.Width, dropRect.Height),
-            new GridPaint { Color = new GridColor(0, 0, 0, 30), Style = PaintStyle.Fill });
+        ctx.FillRect(new KumikoRect(dropRect.X + 2, dropRect.Y + 2, dropRect.Width, dropRect.Height),
+            new KumikoPaint { Color = new KumikoColor(0, 0, 0, 30), Style = PaintStyle.Fill });
 
         // Background
-        ctx.FillRect(dropRect, new GridPaint { Color = DropdownBackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(dropRect, new GridPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
+        ctx.FillRect(dropRect, new KumikoPaint { Color = DropdownBackgroundColor, Style = PaintStyle.Fill });
+        ctx.DrawRect(dropRect, new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
 
         // Items
         ctx.Save();
@@ -339,19 +339,19 @@ public class DrawnComboBox : DrawnComponent
             if (y + ItemHeight < dropRect.Y) { y += ItemHeight; continue; }
             if (y > dropRect.Y + dropRect.Height) break;
 
-            var itemRect = new GridRect(dropRect.X, y, dropRect.Width, ItemHeight);
+            var itemRect = new KumikoRect(dropRect.X, y, dropRect.Width, ItemHeight);
 
             // Highlight
             if (i == _highlightedIndex)
             {
-                ctx.FillRect(itemRect, new GridPaint { Color = HighlightColor, Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, new KumikoPaint { Color = HighlightColor, Style = PaintStyle.Fill });
             }
 
             // Item text
             float itemTextX = dropRect.X + Padding;
             float itemTextY = y + ItemHeight / 2;
             ctx.DrawText(items[i].DisplayText, itemTextX, itemTextY,
-                new GridPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font });
+                new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font });
 
             y += ItemHeight;
         }
@@ -360,11 +360,11 @@ public class DrawnComboBox : DrawnComponent
     }
 
     /// <summary>Get the bounding rect of the dropdown area (for popup hit testing).</summary>
-    public GridRect GetDropdownBounds()
+    public KumikoRect GetDropdownBounds()
     {
         var items = GetVisibleItems();
         float dropdownHeight = Math.Min(items.Count * ItemHeight, MaxDropdownHeight);
-        return new GridRect(Bounds.X, Bounds.Y + Bounds.Height, Bounds.Width, dropdownHeight);
+        return new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height, Bounds.Width, dropdownHeight);
     }
 
     /// <summary>
@@ -382,7 +382,7 @@ public class DrawnComboBox : DrawnComponent
     // ── Input ───────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public override bool OnPointerDown(GridPointerEventArgs e)
+    public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
         if (!IsEnabled) return false;
 
@@ -418,7 +418,7 @@ public class DrawnComboBox : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerUp(GridPointerEventArgs e)
+    public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
         if (_isDropdownOpen && _pressedItemIndex >= 0)
         {
@@ -447,7 +447,7 @@ public class DrawnComboBox : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerMove(GridPointerEventArgs e)
+    public override bool OnPointerMove(KumikoPointerEventArgs e)
     {
         if (!_isDropdownOpen) return false;
 
@@ -462,21 +462,21 @@ public class DrawnComboBox : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnKeyDown(GridKeyEventArgs e)
+    public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
         switch (e.Key)
         {
-            case GridKey.Down:
+            case KumikoKey.Down:
                 if (!_isDropdownOpen) { OpenDropdown(); return true; }
                 MoveHighlight(1);
                 return true;
 
-            case GridKey.Up:
+            case KumikoKey.Up:
                 if (!_isDropdownOpen) { OpenDropdown(); return true; }
                 MoveHighlight(-1);
                 return true;
 
-            case GridKey.Enter:
+            case KumikoKey.Enter:
                 if (_isDropdownOpen && _highlightedIndex >= 0)
                 {
                     SelectItemFromFiltered(_highlightedIndex);
@@ -484,11 +484,11 @@ public class DrawnComboBox : DrawnComponent
                 }
                 return true;
 
-            case GridKey.Escape:
+            case KumikoKey.Escape:
                 CloseDropdown();
                 return true;
 
-            case GridKey.Space:
+            case KumikoKey.Space:
                 if (!_isDropdownOpen) { OpenDropdown(); return true; }
                 break;
 
@@ -501,7 +501,7 @@ public class DrawnComboBox : DrawnComponent
                     InvalidateVisual();
                     return true;
                 }
-                if (e.Key == GridKey.Backspace && IsFilterable && _filterText.Length > 0)
+                if (e.Key == KumikoKey.Backspace && IsFilterable && _filterText.Length > 0)
                 {
                     _filterText = _filterText[..^1];
                     _filteredItems = null;
@@ -578,40 +578,5 @@ public class DrawnComboBox : DrawnComponent
     {
         CloseDropdown();
         base.OnLostFocus();
-    }
-}
-
-/// <summary>An item in a combo box.</summary>
-public class ComboBoxItem
-{
-    /// <summary>Text shown in the dropdown list.</summary>
-    public string DisplayText { get; }
-    /// <summary>Underlying value associated with this item.</summary>
-    public object? Value { get; }
-
-    /// <summary>Initializes a new <see cref="ComboBoxItem"/>.</summary>
-    /// <param name="displayText">Text displayed in the dropdown list.</param>
-    /// <param name="value">The value associated with this item; defaults to <paramref name="displayText"/> when <see langword="null"/>.</param>
-    public ComboBoxItem(string displayText, object? value = null)
-    {
-        DisplayText = displayText;
-        Value = value ?? displayText;
-    }
-}
-
-/// <summary>Combo box selection changed event args.</summary>
-public class ComboBoxSelectionChangedEventArgs : EventArgs
-{
-    /// <summary>The previously selected item, or <see langword="null"/> if none was selected.</summary>
-    public ComboBoxItem? OldItem { get; }
-    /// <summary>The newly selected item, or <see langword="null"/> if the selection was cleared.</summary>
-    public ComboBoxItem? NewItem { get; }
-    /// <summary>Initializes a new instance of the <see cref="ComboBoxSelectionChangedEventArgs"/> class.</summary>
-    /// <param name="old">The previously selected item.</param>
-    /// <param name="new">The newly selected item.</param>
-    public ComboBoxSelectionChangedEventArgs(ComboBoxItem? old, ComboBoxItem? @new)
-    {
-        OldItem = old;
-        NewItem = @new;
     }
 }

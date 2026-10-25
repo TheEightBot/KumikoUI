@@ -38,44 +38,44 @@ public sealed partial class CustomFontsPage : Page
     private void BuildJapaneseGrid()
     {
         // Apply NotoSansJP for both header and cell text so Japanese characters render correctly.
-        var style = new DataGridStyle
+        var style = new KumikoStyle
         {
-            HeaderFont = new GridFont("NotoSansJP", 14, bold: true),
-            CellFont = new GridFont("NotoSansJP", 13),
+            HeaderFont = new KumikoFont("NotoSansJP", 14, bold: true),
+            CellFont = new KumikoFont("NotoSansJP", 13),
         };
 
         japaneseGrid.GridStyle = style;
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new KumikoColumn
         {
             Header = "現品票ID",   // 現品票ID
             PropertyName = nameof(InventoryItem.ItemId),
             Width = 110,
-            ColumnType = DataGridColumnType.Numeric,
-            TextAlignment = GridTextAlignment.Right,
+            ColumnType = KumikoColumnType.Numeric,
+            TextAlignment = KumikoTextAlignment.Right,
             IsReadOnly = true,
             IsFrozen = true,
         });
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new KumikoColumn
         {
             Header = "RFID",
             PropertyName = nameof(InventoryItem.Rfid),
             Width = 160,
         });
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new KumikoColumn
         {
             Header = "品番",           // 品番
             PropertyName = nameof(InventoryItem.PartNumber),
             Width = 130,
         });
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new KumikoColumn
         {
             Header = "数量",           // 数量
             PropertyName = nameof(InventoryItem.Quantity),
             Width = 90,
-            ColumnType = DataGridColumnType.Numeric,
-            TextAlignment = GridTextAlignment.Right,
+            ColumnType = KumikoColumnType.Numeric,
+            TextAlignment = KumikoTextAlignment.Right,
         });
-        japaneseGrid.Columns!.Add(new DataGridColumn
+        japaneseGrid.Columns!.Add(new KumikoColumn
         {
             Header = "倉庫",           // 倉庫
             PropertyName = nameof(InventoryItem.Warehouse),
@@ -111,37 +111,37 @@ public sealed partial class CustomFontsPage : Page
     private void BuildIconGrid()
     {
         // Regular columns use the default font; only the Priority/Done columns use MaterialIcons.
-        iconGrid.Columns!.Add(new DataGridColumn
+        iconGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Name",
             PropertyName = nameof(TaskItem.Name),
             Width = 180,
             IsFrozen = true,
         });
-        iconGrid.Columns!.Add(new DataGridColumn
+        iconGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Assignee",
             PropertyName = nameof(TaskItem.Assignee),
             Width = 130,
         });
-        iconGrid.Columns!.Add(new DataGridColumn
+        iconGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Priority",
             PropertyName = nameof(TaskItem.PriorityIcon),
             Width = 80,
             IsReadOnly = true,
-            TextAlignment = GridTextAlignment.Center,
+            TextAlignment = KumikoTextAlignment.Center,
             // Override the font for this column's cells so glyphs are drawn
             // from the MaterialIcons typeface registered at startup.
             CustomCellRenderer = new IconFontCellRenderer("MaterialIcons", 22f),
         });
-        iconGrid.Columns!.Add(new DataGridColumn
+        iconGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Done",
             PropertyName = nameof(TaskItem.DoneIcon),
             Width = 60,
             IsReadOnly = true,
-            TextAlignment = GridTextAlignment.Center,
+            TextAlignment = KumikoTextAlignment.Center,
             CustomCellRenderer = new IconFontCellRenderer("MaterialIcons", 22f),
         });
 
@@ -230,7 +230,7 @@ public class TaskItem : INotifyPropertyChanged
 internal sealed class IconFontCellRenderer : ICellRenderer
 {
     // Cached once: the font never changes, and only the colour varies per cell, so no per-repaint allocations.
-    private readonly GridPaint _paint;
+    private readonly KumikoPaint _paint;
 
     /// <param name="fontFamily">
     /// Family name registered in <see cref="KumikoUI.SkiaSharp.SkiaFontRegistrar"/>.
@@ -238,19 +238,19 @@ internal sealed class IconFontCellRenderer : ICellRenderer
     /// <param name="fontSize">Glyph size in pixels.</param>
     public IconFontCellRenderer(string fontFamily, float fontSize)
     {
-        _paint = new GridPaint { IsAntiAlias = true, Font = new GridFont(fontFamily, fontSize) };
+        _paint = new KumikoPaint { IsAntiAlias = true, Font = new KumikoFont(fontFamily, fontSize) };
     }
 
     /// <inheritdoc />
     public void Render(
         IDrawingContext ctx,
-        GridRect cellRect,
+        KumikoRect cellRect,
         object? value,
         string displayText,
-        DataGridColumn column,
-        DataGridStyle style,
+        KumikoColumn column,
+        KumikoStyle style,
         bool isSelected,
-        CellStyle? cellStyle = null)
+        KumikoCellStyle? cellStyle = null)
     {
         if (string.IsNullOrEmpty(displayText))
             return;
@@ -258,6 +258,6 @@ internal sealed class IconFontCellRenderer : ICellRenderer
         _paint.Color = isSelected ? style.SelectionTextColor : style.CellTextColor;
 
         ctx.DrawTextInRect(displayText, cellRect, _paint,
-            GridTextAlignment.Center, GridVerticalAlignment.Center);
+            KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
     }
 }

@@ -231,4 +231,4 @@ still required:
 - [x] `KumikoUI.Core`, `KumikoUI.SkiaSharp`, and `KumikoUI.Maui` are byte-for-byte unchanged (only
   read, never edited; source mtimes remain at their May dates).
 
-➡️ Next: [03 — DataGridView host](03-datagridview-host.md)
+➡️ Next: [03 — KumikoDataGrid host](03-kumikodatagrid-host.md)

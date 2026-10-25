@@ -8,7 +8,7 @@
 
     <!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
     <PackageId>KumikoUI.Core</PackageId>
-    <Description>Core data models, abstractions, and data-source logic for the KumikoUI control. Platform-independent — no rendering or UI framework references.</Description>
+    <Description>Core data models, abstractions, and data-source logic for KumikoUI DataGrid. Platform-independent — no rendering or UI framework references.</Description>
     <PackageTags>maui;datagrid;data;grid;table;core</PackageTags>
   </PropertyGroup>
 

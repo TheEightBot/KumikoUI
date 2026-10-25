@@ -22,8 +22,8 @@
                Padding="16,0,16,6"
                Grid.Row="1" />
 
-        <!-- Grid with Japanese headers — uses NotoSansJP via DataGridStyle.HeaderFont -->
-        <dg:DataGridView x:Name="japaneseGrid"
+        <!-- Grid with Japanese headers — uses NotoSansJP via KumikoStyle.HeaderFont -->
+        <dg:KumikoDataGrid x:Name="japaneseGrid"
                          Grid.Row="2"
                          RowHeight="36"
                          HeaderHeight="44"
@@ -39,7 +39,7 @@
                Grid.Row="3" />
 
         <!-- Grid with a status column rendered as Material Design icon glyphs -->
-        <dg:DataGridView x:Name="iconGrid"
+        <dg:KumikoDataGrid x:Name="iconGrid"
                          Grid.Row="4"
                          RowHeight="40"
                          HeaderHeight="44"

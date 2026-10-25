@@ -17,7 +17,7 @@ pixel-perfect across iOS, Android, macOS Catalyst, and Windows.
 ```
 KumikoUI.Core         net10.0         — platform-agnostic models, layout, rendering pipeline
 KumikoUI.SkiaSharp    net10.0         — IDrawingContext → SKCanvas implementation
-KumikoUI.Maui         net10.0-*maui*  — DataGridView control, SKCanvasView host
+KumikoUI.Maui         net10.0-*maui*  — KumikoDataGrid control, SKCanvasView host
 ```
 
 **Dependency direction — strict, never violate:**
@@ -49,14 +49,14 @@ KumikoUI.Core  ←  KumikoUI.SkiaSharp  ←  KumikoUI.Maui
 
 | Namespace | Key types |
 |---|---|
-| `KumikoUI.Core.Models` | `DataGridColumn`, `DataGridStyle`, `DataGridSource`, `SelectionModel`, `ScrollState`, `CellStyle`, `RowStyle`, `FilterDescription`, `GroupDescription`, `TableSummaryRow`, `SummaryColumnDescription` |
-| `KumikoUI.Core.Rendering` | `IDrawingContext`, `ICellRenderer`, `GridRect`, `GridColor`, `GridPaint`, `GridFont`, `GridSize`, `GridFontMetrics`, `PaintStyle`, `GridTextAlignment`, `GridVerticalAlignment` |
-| `KumikoUI.Core.Layout` | `GridLayoutEngine` |
-| `KumikoUI.Core.Input` | `GridInputController`, `InertialScroller`, `ScrollSettings`, `GridPointerEventArgs`, `GridKeyEventArgs`, `HitTesting` |
+| `KumikoUI.Core.Models` | `KumikoColumn`, `KumikoStyle`, `KumikoSource`, `KumikoSelectionModel`, `ScrollState`, `KumikoCellStyle`, `KumikoRowStyle`, `FilterDescription`, `GroupDescription`, `TableSummaryRow`, `SummaryColumnDescription` |
+| `KumikoUI.Core.Rendering` | `IDrawingContext`, `ICellRenderer`, `KumikoRect`, `KumikoColor`, `KumikoPaint`, `KumikoFont`, `KumikoSize`, `KumikoFontMetrics`, `PaintStyle`, `KumikoTextAlignment`, `KumikoVerticalAlignment` |
+| `KumikoUI.Core.Layout` | `KumikoLayoutEngine` |
+| `KumikoUI.Core.Input` | `KumikoInputController`, `InertialScroller`, `ScrollSettings`, `KumikoPointerEventArgs`, `KumikoKeyEventArgs`, `HitTesting` |
 | `KumikoUI.Core.Editing` | `EditSession`, `CellEditorFactory`, `EditorDescriptor`, `EditTrigger`, `CellValidationResult` |
-| `KumikoUI.Core.Components` | `DrawnComponent`, `DrawnTextBox`, `DrawnComboBox`, `DrawnDatePicker`, `DrawnNumericUpDown`, `DrawnScrollPicker`, `DrawnCheckBox`, `DrawnFilterPopup`, `FocusManager`, `PopupManager` |
+| `KumikoUI.Core.Components` | `DrawnComponent`, `DrawnTextBox`, `DrawnComboBox`, `DrawnDatePicker`, `DrawnNumericUpDown`, `DrawnScrollPicker`, `DrawnCheckBox`, `DrawnFilterPopup`, `DrawnFocusManager`, `PopupManager` |
 | `KumikoUI.SkiaSharp` | `SkiaDrawingContext` |
-| `KumikoUI.Maui` | `DataGridView`, `DataGridHostingExtensions` |
+| `KumikoUI.Maui` | `KumikoDataGrid`, `KumikoUIHostingExtensions` |
 
 ---
 
@@ -64,9 +64,9 @@ KumikoUI.Core  ←  KumikoUI.SkiaSharp  ←  KumikoUI.Maui
 
 - **C# 12+**, nullable reference types enabled project-wide.
 - All public API members have `/// <summary>` XML doc comments.
-- `readonly struct` for value types (`GridRect`, `GridSize`, `CellPosition`).
+- `readonly struct` for value types (`KumikoRect`, `KumikoSize`, `CellPosition`).
 - `record struct` for cache keys in `SkiaDrawingContext`.
 - Prefer `switch` expressions over `if/else` chains for type dispatch.
 - **No LINQ** inside render-loop hot paths — use `for` loops.
 - Use `float` for all coordinate/dimension math (not `double`).
-- Use `GridColor(r, g, b[, a])` everywhere — never hex strings, never `SKColor`, never `Color` from MAUI.
+- Use `KumikoColor(r, g, b[, a])` everywhere — never hex strings, never `SKColor`, never `Color` from MAUI.

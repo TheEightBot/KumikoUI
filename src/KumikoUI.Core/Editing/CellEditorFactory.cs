@@ -14,20 +14,20 @@ public static class CellEditorFactory
     /// positioned at the cell bounds.
     /// </summary>
     public static DrawnComponent? CreateEditor(
-        DataGridColumn column, object? currentValue,
-        GridRect cellBounds, char? initialCharacter = null,
+        KumikoColumn column, object? currentValue,
+        KumikoRect cellBounds, char? initialCharacter = null,
         EditTextSelectionMode selectionMode = EditTextSelectionMode.SelectAll)
     {
         return column.ColumnType switch
         {
-            DataGridColumnType.Text => CreateTextEditor(column, currentValue, cellBounds, initialCharacter, selectionMode),
-            DataGridColumnType.Numeric => CreateNumericEditor(column, currentValue, cellBounds, initialCharacter, selectionMode),
-            DataGridColumnType.Date => CreateDateEditor(column, currentValue, cellBounds),
-            DataGridColumnType.Boolean => null, // Toggled directly, no overlay editor
-            DataGridColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds),
-            DataGridColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
-            DataGridColumnType.Image => null, // Not editable
-            DataGridColumnType.Template => CreateTemplateEditor(column, currentValue, cellBounds),
+            KumikoColumnType.Text => CreateTextEditor(column, currentValue, cellBounds, initialCharacter, selectionMode),
+            KumikoColumnType.Numeric => CreateNumericEditor(column, currentValue, cellBounds, initialCharacter, selectionMode),
+            KumikoColumnType.Date => CreateDateEditor(column, currentValue, cellBounds),
+            KumikoColumnType.Boolean => null, // Toggled directly, no overlay editor
+            KumikoColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds),
+            KumikoColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
+            KumikoColumnType.Image => null, // Not editable
+            KumikoColumnType.Template => CreateTemplateEditor(column, currentValue, cellBounds),
             _ => null
         };
     }
@@ -35,7 +35,7 @@ public static class CellEditorFactory
     /// <summary>
     /// Extract the current value from an active editor.
     /// </summary>
-    public static object? GetEditorValue(DrawnComponent editor, DataGridColumn column)
+    public static object? GetEditorValue(DrawnComponent editor, KumikoColumn column)
     {
         return editor switch
         {
@@ -49,10 +49,10 @@ public static class CellEditorFactory
     }
 
     /// <summary>
-    /// Applies theme colors from a <see cref="DataGridStyle"/> to the given editor component.
+    /// Applies theme colors from a <see cref="KumikoStyle"/> to the given editor component.
     /// Dispatches to the component-specific <c>ApplyTheme</c> method.
     /// </summary>
-    public static void ApplyThemeToEditor(DrawnComponent editor, DataGridStyle style)
+    public static void ApplyThemeToEditor(DrawnComponent editor, KumikoStyle style)
     {
         switch (editor)
         {
@@ -68,13 +68,13 @@ public static class CellEditorFactory
     // ── Editor creation ─────────────────────────────────────────
 
     private static DrawnTextBox CreateTextEditor(
-        DataGridColumn column, object? value, GridRect cellBounds, char? initialCharacter,
+        KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter,
         EditTextSelectionMode selectionMode)
     {
         var textBox = new DrawnTextBox
         {
             Bounds = cellBounds,
-            Font = new GridFont("Default", 13),
+            Font = new KumikoFont("Default", 13),
             IsVisible = true,
             Padding = 4f,
             InitialSelectionMode = initialCharacter.HasValue
@@ -95,13 +95,13 @@ public static class CellEditorFactory
     }
 
     private static DrawnComponent CreateNumericEditor(
-        DataGridColumn column, object? value, GridRect cellBounds, char? initialCharacter,
+        KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter,
         EditTextSelectionMode selectionMode)
     {
         var textBox = new DrawnTextBox
         {
             Bounds = cellBounds,
-            Font = new GridFont("Default", 13),
+            Font = new KumikoFont("Default", 13),
             IsVisible = true,
             NumericOnly = true,
             Padding = 4f,
@@ -126,7 +126,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnDatePicker CreateDateEditor(
-        DataGridColumn column, object? value, GridRect cellBounds)
+        KumikoColumn column, object? value, KumikoRect cellBounds)
     {
         var picker = new DrawnDatePicker
         {
@@ -148,7 +148,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnComboBox CreateComboBoxEditor(
-        DataGridColumn column, object? value, GridRect cellBounds)
+        KumikoColumn column, object? value, KumikoRect cellBounds)
     {
         var comboBox = new DrawnComboBox
         {
@@ -175,7 +175,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnScrollPicker CreatePickerEditor(
-        DataGridColumn column, object? value, GridRect cellBounds)
+        KumikoColumn column, object? value, KumikoRect cellBounds)
     {
         var picker = new DrawnScrollPicker
         {
@@ -193,7 +193,7 @@ public static class CellEditorFactory
         // Expand the picker to popup-size below the cell so items are visible.
         // The picker needs height = VisibleItemCount * ItemHeight to display its scroll-wheel.
         float pickerHeight = picker.VisibleItemCount * picker.ItemHeight;
-        picker.Bounds = new GridRect(
+        picker.Bounds = new KumikoRect(
             cellBounds.X,
             cellBounds.Y,
             cellBounds.Width,
@@ -210,7 +210,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnComponent? CreateTemplateEditor(
-        DataGridColumn column, object? value, GridRect cellBounds)
+        KumikoColumn column, object? value, KumikoRect cellBounds)
     {
         // Priority: explicit factory → EditorDescriptor → renderer self-creates → text fallback
         if (column.CustomEditorFactory != null)
@@ -228,12 +228,12 @@ public static class CellEditorFactory
 
     // ── Value conversion ────────────────────────────────────────
 
-    private static object? ConvertTextToValue(string text, DataGridColumn column)
+    private static object? ConvertTextToValue(string text, KumikoColumn column)
     {
         return column.ColumnType switch
         {
-            DataGridColumnType.Numeric => ParseNumeric(text),
-            DataGridColumnType.Date => DateTime.TryParse(text, out var dt) ? dt : text,
+            KumikoColumnType.Numeric => ParseNumeric(text),
+            KumikoColumnType.Date => DateTime.TryParse(text, out var dt) ? dt : text,
             _ => text
         };
     }

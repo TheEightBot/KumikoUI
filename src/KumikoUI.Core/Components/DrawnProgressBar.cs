@@ -15,13 +15,13 @@ public class DrawnProgressBar : DrawnComponent
     // ── Style ───────────────────────────────────────────────────
 
     /// <summary>Background color of the unfilled portion of the track.</summary>
-    public GridColor TrackColor { get; set; } = new(220, 220, 220);
+    public KumikoColor TrackColor { get; set; } = new(220, 220, 220);
     /// <summary>Color of the filled portion of the progress track.</summary>
-    public GridColor FillColor { get; set; } = new(0, 120, 215);
+    public KumikoColor FillColor { get; set; } = new(0, 120, 215);
     /// <summary>Color of the draggable thumb handle.</summary>
-    public GridColor ThumbColor { get; set; } = new(0, 100, 200);
+    public KumikoColor ThumbColor { get; set; } = new(0, 100, 200);
     /// <summary>Border color of the progress bar track.</summary>
-    public GridColor BorderColor { get; set; } = new(180, 180, 180);
+    public KumikoColor BorderColor { get; set; } = new(180, 180, 180);
     /// <summary>Height of the progress track in device-independent pixels.</summary>
     public float TrackHeight { get; set; } = 6f;
     /// <summary>Radius of the circular thumb handle.</summary>
@@ -65,10 +65,10 @@ public class DrawnProgressBar : DrawnComponent
     {
         var b = Bounds;
         float trackTop = b.Y + (b.Height - TrackHeight) / 2;
-        var trackRect = new GridRect(b.X, trackTop, b.Width, TrackHeight);
+        var trackRect = new KumikoRect(b.X, trackTop, b.Width, TrackHeight);
 
         // Track background
-        ctx.FillRoundRect(trackRect, CornerRadius, new GridPaint { Color = TrackColor, Style = PaintStyle.Fill });
+        ctx.FillRoundRect(trackRect, CornerRadius, new KumikoPaint { Color = TrackColor, Style = PaintStyle.Fill });
 
         // Fill
         double range = Maximum - Minimum;
@@ -76,8 +76,8 @@ public class DrawnProgressBar : DrawnComponent
         float fillWidth = b.Width * fraction;
         if (fillWidth > 0)
         {
-            var fillRect = new GridRect(b.X, trackTop, fillWidth, TrackHeight);
-            ctx.FillRoundRect(fillRect, CornerRadius, new GridPaint { Color = FillColor, Style = PaintStyle.Fill });
+            var fillRect = new KumikoRect(b.X, trackTop, fillWidth, TrackHeight);
+            ctx.FillRoundRect(fillRect, CornerRadius, new KumikoPaint { Color = FillColor, Style = PaintStyle.Fill });
         }
 
         // Thumb
@@ -86,14 +86,14 @@ public class DrawnProgressBar : DrawnComponent
             float thumbX = b.X + fillWidth;
             float thumbY = b.Y + b.Height / 2;
             // Draw thumb as a filled circle approximated with a round rect
-            var thumbRect = new GridRect(thumbX - ThumbRadius, thumbY - ThumbRadius, ThumbRadius * 2, ThumbRadius * 2);
-            ctx.FillRoundRect(thumbRect, ThumbRadius, new GridPaint { Color = ThumbColor, Style = PaintStyle.Fill });
+            var thumbRect = new KumikoRect(thumbX - ThumbRadius, thumbY - ThumbRadius, ThumbRadius * 2, ThumbRadius * 2);
+            ctx.FillRoundRect(thumbRect, ThumbRadius, new KumikoPaint { Color = ThumbColor, Style = PaintStyle.Fill });
 
             if (IsFocused)
             {
-                ctx.DrawRoundRect(thumbRect, ThumbRadius, new GridPaint
+                ctx.DrawRoundRect(thumbRect, ThumbRadius, new KumikoPaint
                 {
-                    Color = new GridColor(0, 120, 215),
+                    Color = new KumikoColor(0, 120, 215),
                     Style = PaintStyle.Stroke,
                     StrokeWidth = 2
                 });
@@ -104,7 +104,7 @@ public class DrawnProgressBar : DrawnComponent
     // ── Input ───────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public override bool OnPointerDown(GridPointerEventArgs e)
+    public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
         if (!IsInteractive || !IsEnabled) return false;
         _isDragging = true;
@@ -113,7 +113,7 @@ public class DrawnProgressBar : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerMove(GridPointerEventArgs e)
+    public override bool OnPointerMove(KumikoPointerEventArgs e)
     {
         if (!_isDragging) return false;
         UpdateValueFromPointer(e.X);
@@ -121,26 +121,26 @@ public class DrawnProgressBar : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerUp(GridPointerEventArgs e)
+    public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
         _isDragging = false;
         return true;
     }
 
     /// <inheritdoc />
-    public override bool OnKeyDown(GridKeyEventArgs e)
+    public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
         if (!IsInteractive) return false;
 
         double step = (Maximum - Minimum) / 20;
         switch (e.Key)
         {
-            case GridKey.Left:
-            case GridKey.Down:
+            case KumikoKey.Left:
+            case KumikoKey.Down:
                 Value -= step;
                 return true;
-            case GridKey.Right:
-            case GridKey.Up:
+            case KumikoKey.Right:
+            case KumikoKey.Up:
                 Value += step;
                 return true;
         }

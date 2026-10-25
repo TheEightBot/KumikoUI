@@ -21,7 +21,7 @@ particular, CJK and icon fonts garble without an explicitly registered typeface 
 | `TryGetTypeface(string family, out SKTypeface?)` | Used internally by `SkiaDrawingContext`. |
 | `Clear()` | Reset (tests). |
 
-A family registered here is then usable from `DataGridStyle` / `GridFont.Family` (e.g. header/cell
+A family registered here is then usable from `KumikoStyle` / `KumikoFont.Family` (e.g. header/cell
 fonts), identical to MAUI.
 
 ## 2. Loading assets on Uno (the platform-specific bit)
@@ -78,7 +78,7 @@ font-agnostic exactly like `KumikoUI.Maui`; only the *helper* moved into the lib
 - [x] Register **before** the first grid render. In the Uno app, `await` registration early in
   `App.OnLaunched` (before activating the main window), or inside `UseKumikoUI()` startup. Because the
   grid falls back to the system font, an acceptable alternative is fire-and-forget registration followed
-  by a `DataGridView.Invalidate()` once complete.
+  by a `KumikoDataGrid.Invalidate()` once complete.
   > Avoid `.GetAwaiter().GetResult()` blocking on Uno startup (unlike MAUI's pre-loop `CreateMauiApp`,
   > Uno has a live dispatcher and could deadlock). Prefer `await`.
 

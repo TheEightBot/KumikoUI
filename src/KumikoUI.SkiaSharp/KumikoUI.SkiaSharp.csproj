@@ -16,7 +16,7 @@
 
     <!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
     <PackageId>KumikoUI.SkiaSharp</PackageId>
-    <Description>SkiaSharp rendering engine for the KumikoUI control. Provides cross-platform grid painting including cells, headers, selection, scrolling, and editing overlays.</Description>
+    <Description>SkiaSharp rendering engine for KumikoUI DataGrid. Provides cross-platform grid painting including cells, headers, selection, scrolling, and editing overlays.</Description>
     <PackageTags>maui;datagrid;skiasharp;rendering;grid;table</PackageTags>
   </PropertyGroup>
 

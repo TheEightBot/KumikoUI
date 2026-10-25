@@ -5,9 +5,6 @@ using KumikoUI.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-// Disambiguate Core's SelectionMode from Microsoft.UI.Xaml.Controls.SelectionMode.
-using SelectionMode = KumikoUI.Core.Models.SelectionMode;
-
 namespace SampleApp.Uno;
 
 /// <summary>
@@ -24,7 +21,7 @@ public sealed partial class BasicGridPage : Page
 
     private readonly BasicGridViewModel _viewModel = new();
     private readonly Random _random = new(42);
-    private DataGridThemeMode _themeMode = DataGridThemeMode.Light;
+    private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
 
     public BasicGridPage()
     {
@@ -103,25 +100,25 @@ public sealed partial class BasicGridPage : Page
     {
         // Cycle: Light → Dark → HighContrast → Light.
         // The Uno control has no Theme DP (unlike MAUI); apply the theme by assigning the
-        // DataGridStyle produced by DataGridTheme.Create — same end result.
+        // KumikoStyle produced by KumikoTheme.Create — same end result.
         _themeMode = _themeMode switch
         {
-            DataGridThemeMode.Light => DataGridThemeMode.Dark,
-            DataGridThemeMode.Dark => DataGridThemeMode.HighContrast,
-            _ => DataGridThemeMode.Light
+            KumikoThemeMode.Light => KumikoThemeMode.Dark,
+            KumikoThemeMode.Dark => KumikoThemeMode.HighContrast,
+            _ => KumikoThemeMode.Light
         };
 
-        kumiko.GridStyle = DataGridTheme.Create(_themeMode);
+        kumiko.GridStyle = KumikoTheme.Create(_themeMode);
         themeToggle.Content = $"Theme: {_themeMode}";
     }
 
     private void OnToggleSelectionModeClicked(object sender, RoutedEventArgs e)
     {
-        kumiko.GridSelectionMode = kumiko.GridSelectionMode == SelectionMode.Extended
-            ? SelectionMode.Single
-            : SelectionMode.Extended;
+        kumiko.GridSelectionMode = kumiko.GridSelectionMode == KumikoSelectionMode.Extended
+            ? KumikoSelectionMode.Single
+            : KumikoSelectionMode.Extended;
 
-        selectionModeToggle.Content = kumiko.GridSelectionMode == SelectionMode.Extended
+        selectionModeToggle.Content = kumiko.GridSelectionMode == KumikoSelectionMode.Extended
             ? "Select: All"
             : "Select: Single";
     }

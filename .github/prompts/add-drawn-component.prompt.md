@@ -66,12 +66,12 @@ public class Drawn{Name} : DrawnComponent
 
     // ── Theming ───────────────────────────────────────────────────────────────────
 
-    private GridColor _backgroundColor = new GridColor(255, 255, 255);
-    private GridColor _foregroundColor  = new GridColor(30, 30, 30);
-    private GridColor _accentColor      = new GridColor(0, 120, 215);
+    private KumikoColor _backgroundColor = new KumikoColor(255, 255, 255);
+    private KumikoColor _foregroundColor  = new KumikoColor(30, 30, 30);
+    private KumikoColor _accentColor      = new KumikoColor(0, 120, 215);
 
-    /// <summary>Applies colors from the active DataGridStyle.</summary>
-    public void ApplyTheme(DataGridStyle style)
+    /// <summary>Applies colors from the active KumikoStyle.</summary>
+    public void ApplyTheme(KumikoStyle style)
     {
         _backgroundColor = style.EditorBackgroundColor;
         _foregroundColor  = style.EditorTextColor;
@@ -85,31 +85,31 @@ public class Drawn{Name} : DrawnComponent
     public override void OnDraw(IDrawingContext ctx)
     {
         // Background
-        ctx.FillRect(Bounds, new GridPaint { Color = _backgroundColor, Style = PaintStyle.Fill });
+        ctx.FillRect(Bounds, new KumikoPaint { Color = _backgroundColor, Style = PaintStyle.Fill });
 
         // Border
-        ctx.DrawRect(Bounds, new GridPaint
+        ctx.DrawRect(Bounds, new KumikoPaint
         {
-            Color = _isPressed ? _accentColor : new GridColor(180, 180, 180),
+            Color = _isPressed ? _accentColor : new KumikoColor(180, 180, 180),
             Style = PaintStyle.Stroke,
             StrokeWidth = 1f
         });
 
         // TODO: draw the value representation inside Bounds using IDrawingContext methods.
-        // Use GridColor, GridPaint, GridFont, GridRect — never SkiaSharp types.
+        // Use KumikoColor, KumikoPaint, KumikoFont, KumikoRect — never SkiaSharp types.
     }
 
     // ── Input ─────────────────────────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public override void OnPointerDown(GridPointerEventArgs e)
+    public override void OnPointerDown(KumikoPointerEventArgs e)
     {
         _isPressed = true;
         InvalidateVisual();
     }
 
     /// <inheritdoc />
-    public override void OnPointerUp(GridPointerEventArgs e)
+    public override void OnPointerUp(KumikoPointerEventArgs e)
     {
         _isPressed = false;
         // TODO: handle tap confirm
@@ -117,14 +117,14 @@ public class Drawn{Name} : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override void OnKeyDown(GridKeyEventArgs e)
+    public override void OnKeyDown(KumikoKeyEventArgs e)
     {
         switch (e.Key)
         {
-            case GridKey.Escape:
+            case KumikoKey.Escape:
                 // Let the edit session handle cancel.
                 break;
-            case GridKey.Enter:
+            case KumikoKey.Enter:
                 RaiseEditCompleted();
                 e.Handled = true;
                 break;
@@ -142,7 +142,7 @@ In `src/KumikoUI.Core/Editing/CellEditorFactory.cs`:
 **`CreateEditor` switch:**
 ```csharp
 // add inside CreateEditor(...)  switch (column.ColumnType)
-case DataGridColumnType.{NewType}:
+case KumikoColumnType.{NewType}:
     return new Drawn{Name}
     {
         Bounds = cellBounds,
@@ -180,7 +180,7 @@ public class {Name}EditorDescriptor : EditorDescriptor
     public int SomeOption { get; set; } = 1;
 
     /// <inheritdoc />
-    public override DrawnComponent? CreateEditor(object? currentValue, GridRect cellBounds)
+    public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
         => new Drawn{Name}
         {
             Bounds = cellBounds,
@@ -191,11 +191,11 @@ public class {Name}EditorDescriptor : EditorDescriptor
 
 **XAML usage:**
 ```xml
-<core:DataGridColumn Header="..." PropertyName="..." ColumnType="Template" Width="120">
-    <core:DataGridColumn.EditorDescriptor>
+<core:KumikoColumn Header="..." PropertyName="..." ColumnType="Template" Width="120">
+    <core:KumikoColumn.EditorDescriptor>
         <editing:{Name}EditorDescriptor SomeOption="42" />
-    </core:DataGridColumn.EditorDescriptor>
-</core:DataGridColumn>
+    </core:KumikoColumn.EditorDescriptor>
+</core:KumikoColumn>
 ```
 
 ---
@@ -203,9 +203,9 @@ public class {Name}EditorDescriptor : EditorDescriptor
 ## Rules checklist
 
 - [ ] Class is in namespace `KumikoUI.Core.Components`
-- [ ] No SkiaSharp APIs — only `IDrawingContext` primitives and `GridColor`/`GridPaint`/`GridFont`
+- [ ] No SkiaSharp APIs — only `IDrawingContext` primitives and `KumikoColor`/`KumikoPaint`/`KumikoFont`
 - [ ] `InvalidateVisual()` called whenever visual state changes
 - [ ] `RaiseValueChanged(old, new)` called when value changes
 - [ ] `RaiseEditCompleted()` called when the user confirms their selection
-- [ ] `ApplyTheme(DataGridStyle)` implemented (no interface — `CellEditorFactory` calls it via `switch`)
+- [ ] `ApplyTheme(KumikoStyle)` implemented (no interface — `CellEditorFactory` calls it via `switch`)
 - [ ] `CellEditorFactory` updated with `CreateEditor`, `GetEditorValue`, and `ApplyThemeToEditor` cases

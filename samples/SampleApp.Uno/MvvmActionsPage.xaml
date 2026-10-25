@@ -30,7 +30,7 @@
             wires its buttons to the ViewModel's ICommands (Details / Delete). x:Name lets the
             code-behind populate Columns and ItemsSource after the VM is constructed.
         -->
-        <kumiko:DataGridView x:Name="actionsGrid"
+        <kumiko:KumikoDataGrid x:Name="actionsGrid"
                              Grid.Row="2"
                              EditTriggers="DoubleTap,F2Key,Typing"
                              RowHeight="44"

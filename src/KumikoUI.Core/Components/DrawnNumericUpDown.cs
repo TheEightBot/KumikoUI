@@ -19,21 +19,21 @@ public class DrawnNumericUpDown : DrawnComponent
     // ── Style ───────────────────────────────────────────────────
 
     /// <summary>Font used to render the numeric value text.</summary>
-    public GridFont Font { get; set; } = new("Default", 14);
+    public KumikoFont Font { get; set; } = new("Default", 14);
     /// <summary>Color of the displayed numeric value text.</summary>
-    public GridColor TextColor { get; set; } = new(30, 30, 30);
+    public KumikoColor TextColor { get; set; } = new(30, 30, 30);
     /// <summary>Background fill color of the control.</summary>
-    public GridColor BackgroundColor { get; set; } = GridColor.White;
+    public KumikoColor BackgroundColor { get; set; } = KumikoColor.White;
     /// <summary>Border color of the control when not focused.</summary>
-    public GridColor BorderColor { get; set; } = new(180, 180, 180);
+    public KumikoColor BorderColor { get; set; } = new(180, 180, 180);
     /// <summary>Border color of the control when focused.</summary>
-    public GridColor FocusedBorderColor { get; set; } = new(0, 120, 215);
+    public KumikoColor FocusedBorderColor { get; set; } = new(0, 120, 215);
     /// <summary>Background color of the increment and decrement buttons.</summary>
-    public GridColor ButtonBackgroundColor { get; set; } = new(240, 240, 240);
+    public KumikoColor ButtonBackgroundColor { get; set; } = new(240, 240, 240);
     /// <summary>Color of the plus and minus symbols on the buttons.</summary>
-    public GridColor ButtonSymbolColor { get; set; } = new(60, 60, 60);
+    public KumikoColor ButtonSymbolColor { get; set; } = new(60, 60, 60);
     /// <summary>Background color of a button while it is being pressed.</summary>
-    public GridColor ButtonPressedColor { get; set; } = new(200, 200, 200);
+    public KumikoColor ButtonPressedColor { get; set; } = new(200, 200, 200);
     /// <summary>Inner padding between the control border and its content.</summary>
     public float Padding { get; set; } = 4f;
 
@@ -49,10 +49,10 @@ public class DrawnNumericUpDown : DrawnComponent
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Applies theme colors from a <see cref="DataGridStyle"/> so the numeric
+    /// Applies theme colors from a <see cref="KumikoStyle"/> so the numeric
     /// up/down visually matches the current grid theme.
     /// </summary>
-    public void ApplyTheme(DataGridStyle style)
+    public void ApplyTheme(KumikoStyle style)
     {
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
@@ -63,7 +63,7 @@ public class DrawnNumericUpDown : DrawnComponent
         FocusedBorderColor = style.AccentColor;
 
         // Button background: slight shift from main background toward text
-        ButtonBackgroundColor = new GridColor(
+        ButtonBackgroundColor = new KumikoColor(
             (byte)(bg.R + (txt.R - bg.R) * 0.08),
             (byte)(bg.G + (txt.G - bg.G) * 0.08),
             (byte)(bg.B + (txt.B - bg.B) * 0.08));
@@ -71,7 +71,7 @@ public class DrawnNumericUpDown : DrawnComponent
         ButtonSymbolColor = txt;
 
         // Button pressed: stronger shift toward text
-        ButtonPressedColor = new GridColor(
+        ButtonPressedColor = new KumikoColor(
             (byte)(bg.R + (txt.R - bg.R) * 0.2),
             (byte)(bg.G + (txt.G - bg.G) * 0.2),
             (byte)(bg.B + (txt.B - bg.B) * 0.2));
@@ -127,25 +127,25 @@ public class DrawnNumericUpDown : DrawnComponent
         return Math.Max(Bounds.Height, 36f);
     }
 
-    private GridRect GetMinusButtonRect()
+    private KumikoRect GetMinusButtonRect()
     {
         var b = Bounds;
         float bw = GetButtonWidth();
-        return new GridRect(b.X, b.Y, bw, b.Height);
+        return new KumikoRect(b.X, b.Y, bw, b.Height);
     }
 
-    private GridRect GetPlusButtonRect()
+    private KumikoRect GetPlusButtonRect()
     {
         var b = Bounds;
         float bw = GetButtonWidth();
-        return new GridRect(b.Right - bw, b.Y, bw, b.Height);
+        return new KumikoRect(b.Right - bw, b.Y, bw, b.Height);
     }
 
-    private GridRect GetValueRect()
+    private KumikoRect GetValueRect()
     {
         var b = Bounds;
         float bw = GetButtonWidth();
-        return new GridRect(b.X + bw, b.Y, b.Width - bw * 2, b.Height);
+        return new KumikoRect(b.X + bw, b.Y, b.Width - bw * 2, b.Height);
     }
 
     // ── Drawing ─────────────────────────────────────────────────
@@ -156,8 +156,8 @@ public class DrawnNumericUpDown : DrawnComponent
         var b = Bounds;
 
         // Outer background + border
-        ctx.FillRoundRect(b, CornerRadius, new GridPaint { Color = BackgroundColor });
-        ctx.DrawRoundRect(b, CornerRadius, new GridPaint
+        ctx.FillRoundRect(b, CornerRadius, new KumikoPaint { Color = BackgroundColor });
+        ctx.DrawRoundRect(b, CornerRadius, new KumikoPaint
         {
             Color = IsFocused ? FocusedBorderColor : BorderColor,
             Style = PaintStyle.Stroke,
@@ -169,22 +169,22 @@ public class DrawnNumericUpDown : DrawnComponent
         var valueRect = GetValueRect();
 
         // [−] button
-        ctx.FillRect(minusRect, new GridPaint
+        ctx.FillRect(minusRect, new KumikoPaint
         {
             Color = _isDecrementing ? ButtonPressedColor : ButtonBackgroundColor
         });
-        ctx.DrawRect(minusRect, new GridPaint
+        ctx.DrawRect(minusRect, new KumikoPaint
         {
             Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 0.5f
         });
         DrawMinus(ctx, minusRect);
 
         // [+] button
-        ctx.FillRect(plusRect, new GridPaint
+        ctx.FillRect(plusRect, new KumikoPaint
         {
             Color = _isIncrementing ? ButtonPressedColor : ButtonBackgroundColor
         });
-        ctx.DrawRect(plusRect, new GridPaint
+        ctx.DrawRect(plusRect, new KumikoPaint
         {
             Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 0.5f
         });
@@ -192,17 +192,17 @@ public class DrawnNumericUpDown : DrawnComponent
 
         // Value text (centered between buttons)
         string text = FormatValue();
-        var textPaint = new GridPaint
+        var textPaint = new KumikoPaint
         {
             Color = TextColor, Style = PaintStyle.Fill, Font = Font, IsAntiAlias = true
         };
         ctx.DrawTextInRect(text, valueRect, textPaint,
-            GridTextAlignment.Center, GridVerticalAlignment.Center);
+            KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
     }
 
-    private void DrawMinus(IDrawingContext ctx, GridRect r)
+    private void DrawMinus(IDrawingContext ctx, KumikoRect r)
     {
-        var paint = new GridPaint
+        var paint = new KumikoPaint
         {
             Color = ButtonSymbolColor, Style = PaintStyle.Stroke,
             StrokeWidth = 2f, IsAntiAlias = true
@@ -213,9 +213,9 @@ public class DrawnNumericUpDown : DrawnComponent
         ctx.DrawLine(cx - armLen, cy, cx + armLen, cy, paint);
     }
 
-    private void DrawPlus(IDrawingContext ctx, GridRect r)
+    private void DrawPlus(IDrawingContext ctx, KumikoRect r)
     {
-        var paint = new GridPaint
+        var paint = new KumikoPaint
         {
             Color = ButtonSymbolColor, Style = PaintStyle.Stroke,
             StrokeWidth = 2f, IsAntiAlias = true
@@ -237,7 +237,7 @@ public class DrawnNumericUpDown : DrawnComponent
     // ── Input ───────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public override bool OnPointerDown(GridPointerEventArgs e)
+    public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
         if (!IsEnabled || IsReadOnly) return false;
 
@@ -266,7 +266,7 @@ public class DrawnNumericUpDown : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerUp(GridPointerEventArgs e)
+    public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
         _isIncrementing = false;
         _isDecrementing = false;
@@ -305,28 +305,28 @@ public class DrawnNumericUpDown : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnKeyDown(GridKeyEventArgs e)
+    public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
         if (IsReadOnly) return false;
 
         switch (e.Key)
         {
-            case GridKey.Up:
+            case KumikoKey.Up:
                 Increment();
                 return true;
-            case GridKey.Down:
+            case KumikoKey.Down:
                 Decrement();
                 return true;
-            case GridKey.PageUp:
+            case KumikoKey.PageUp:
                 Value += Step * 10;
                 return true;
-            case GridKey.PageDown:
+            case KumikoKey.PageDown:
                 Value -= Step * 10;
                 return true;
-            case GridKey.Home:
+            case KumikoKey.Home:
                 if (Maximum < double.MaxValue) Value = Maximum;
                 return true;
-            case GridKey.End:
+            case KumikoKey.End:
                 if (Minimum > double.MinValue) Value = Minimum;
                 return true;
         }

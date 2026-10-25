@@ -11,14 +11,14 @@ SKCanvasView.InvalidateSurface()
   ↓
 OnPaintSurface(SKPaintSurfaceEventArgs)
   ↓
-DataGridRenderer.Render(IDrawingContext, width, height)
+KumikoRenderer.Render(IDrawingContext, width, height)
   ↓
 ┌──────────────────────────────────────────────────────┐
 │ 1. Compute effective grouping & summary descriptors  │
 │ 2. Compute row drag offsets (if dragging)            │
 │ 3. ComputeColumnWidths (Auto/Star/Fixed)             │
 │ 4. ClampOffset (scroll bounds)                       │
-│ 5. PaintCache.Update (style → ~60 GridPaint objects) │
+│ 5. PaintCache.Update (style → ~60 KumikoPaint objects) │
 │ 6. Fill background                                   │
 │ 7. Draw grouping panel (if grouped)                  │
 │ 8. SCROLLABLE COLUMNS                                │
@@ -54,13 +54,13 @@ The grid calls `InvalidateSurface()` in response to:
 | Editing | Cell editor open/close, commit |
 | Resize | Column resize drag, viewport size change |
 | Sort / Filter / Group | Header tap, filter popup close |
-| Style change | BindableProperty change on DataGridView |
+| Style change | BindableProperty change on KumikoDataGrid |
 | Expand / Collapse | Group header chevron tap |
 | Drag & Drop | Row drag in progress |
 
 ## Column Width Computation
 
-`GridLayoutEngine.ComputeColumnWidths()` resolves column widths in order:
+`KumikoLayoutEngine.ComputeColumnWidths()` resolves column widths in order:
 
 1. **Fixed** — Column's `Width` value is used directly (DIP).
 2. **Auto** — Measures header text + padding + sort/filter icons. If data rows are available, samples up to the first N visible rows.
@@ -97,7 +97,7 @@ for each visible FlatViewRow:
     switch row.Kind:
         case Data:
             for each visible column:
-                → Resolve CellStyle (cascade: cell → column → grid)
+                → Resolve KumikoCellStyle (cascade: cell → column → grid)
                 → PaintCache.CellBackgroundPaint(style, isAlternate, isSelected)
                 → context.FillRect(cellRect, backgroundPaint)
                 → cellRenderer.Draw(context, cellRect, value, paint)
@@ -127,11 +127,11 @@ Each column type selects an `ICellRenderer`:
 `PaintCache` eliminates per-frame allocation of paint objects:
 
 ```
-DataGridStyle (immutable input)
+KumikoStyle (immutable input)
        ↓
 PaintCache.Update()
        ↓
-~60 pre-computed GridPaint objects:
+~60 pre-computed KumikoPaint objects:
   ├─ BackgroundPaint
   ├─ HeaderBackgroundPaint
   ├─ HeaderTextPaint
@@ -144,7 +144,7 @@ PaintCache.Update()
   └─ ... (filter icons, drag handles, etc.)
 ```
 
-Factory methods like `CellBackgroundPaint(style, isAlternate, isSelected)` and `CellTextPaint(style)` handle dynamic per-cell overrides by constructing a `GridPaint` from cached base values with minimal property mutation.
+Factory methods like `CellBackgroundPaint(style, isAlternate, isSelected)` and `CellTextPaint(style)` handle dynamic per-cell overrides by constructing a `KumikoPaint` from cached base values with minimal property mutation.
 
 ## SkiaDrawingContext Caching
 
@@ -154,7 +154,7 @@ Factory methods like `CellBackgroundPaint(style, isAlternate, isSelected)` and `
 2. **SKFont cache** — Keyed by `(typeface, size)`. Created per frame, disposed at frame end.
 3. **SKPaint cache** — Keyed by `(color, strokeWidth, style, isAntialias)`. Created per frame, disposed at frame end.
 
-Each `IDrawingContext` method (e.g., `FillRect`, `DrawText`) resolves its `GridPaint` to an `SKPaint` via the cache, avoiding per-call native allocations.
+Each `IDrawingContext` method (e.g., `FillRect`, `DrawText`) resolves its `KumikoPaint` to an `SKPaint` via the cache, avoiding per-call native allocations.
 
 ## Scroll & Viewport
 
@@ -168,7 +168,7 @@ Each `IDrawingContext` method (e.g., `FillRect`, `DrawText`) resolves its `GridP
 firstVisibleRow = (int)(offsetY / rowHeight)
 lastVisibleRow  = firstVisibleRow + (int)(viewportHeight / rowHeight) + 1
 
-Column range computed by GridLayoutEngine, walking column widths from
+Column range computed by KumikoLayoutEngine, walking column widths from
 the scroll offset until cumulative width exceeds viewport width.
 ```
 
@@ -187,7 +187,7 @@ When a cell enters edit mode:
 
 1. `EditSession.BeginEdit()` captures the cell position, original value, and column type.
 2. `CellEditorFactory` creates the appropriate `DrawnComponent` editor (e.g., `DrawnTextBox` for text columns).
-3. The editor is positioned at the cell's viewport rect and registered with `FocusManager`.
+3. The editor is positioned at the cell's viewport rect and registered with `DrawnFocusManager`.
 4. The editor draws **on top of** the cell in step 17 of the pipeline.
 5. On commit: `EditSession.CommitEdit()` validates, writes back via compiled property setter, and fires `CellEditEnded`.
 6. On cancel: `EditSession.CancelEdit()` restores original value.

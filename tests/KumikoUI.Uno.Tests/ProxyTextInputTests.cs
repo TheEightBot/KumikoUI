@@ -10,7 +10,7 @@ public class ProxyTextInputTests
 {
     private const string Sentinel = "​";
 
-    private static ProxyTextInput.Dispatch Char(char c) => new(GridKey.Character, c);
+    private static ProxyTextInput.Dispatch Char(char c) => new(KumikoKey.Character, c);
 
     // ── ExtractInserted ──────────────────────────────────────────
 
@@ -29,7 +29,7 @@ public class ProxyTextInputTests
     [Fact]
     public void Plan_PrintableCharacters_AreSentAsGridKeyCharacter()
     {
-        Assert.Equal(new[] { Char('a'), Char('1'), Char(' ') }, ProxyTextInput.Plan("a1 ", GridKey.None));
+        Assert.Equal(new[] { Char('a'), Char('1'), Char(' ') }, ProxyTextInput.Plan("a1 ", KumikoKey.None));
     }
 
     // ── Plan: macOS function-key characters (F2 → U+F705) ────────
@@ -41,19 +41,19 @@ public class ProxyTextInputTests
     [InlineData('')] // end of the AppKit range
     public void Plan_AppKitFunctionKeyCharacter_IsDropped(char functionKey)
     {
-        Assert.Empty(ProxyTextInput.Plan(functionKey.ToString(), GridKey.None));
+        Assert.Empty(ProxyTextInput.Plan(functionKey.ToString(), KumikoKey.None));
     }
 
     [Fact]
     public void Plan_FunctionKeyMixedWithText_KeepsOnlyText()
     {
-        Assert.Equal(new[] { Char('a'), Char('b') }, ProxyTextInput.Plan("ab", GridKey.None));
+        Assert.Equal(new[] { Char('a'), Char('b') }, ProxyTextInput.Plan("ab", KumikoKey.None));
     }
 
     [Fact]
     public void Plan_OtherControlCharacters_AreDropped()
     {
-        Assert.Empty(ProxyTextInput.Plan("\u0001\u001B\u007F", GridKey.None));
+        Assert.Empty(ProxyTextInput.Plan("\u0001\u001B\u007F", KumikoKey.None));
     }
 
     // ── Plan: Tab / Enter echoes ─────────────────────────────────
@@ -61,19 +61,19 @@ public class ProxyTextInputTests
     [Fact]
     public void Plan_TabEchoAfterKeyDownTab_IsDroppedSoTabFiresOnce()
     {
-        Assert.Empty(ProxyTextInput.Plan("\t", GridKey.Tab));
+        Assert.Empty(ProxyTextInput.Plan("\t", KumikoKey.Tab));
     }
 
     [Fact]
     public void Plan_TabWithoutKeyDown_IsSentAsTab()
     {
-        Assert.Equal(new[] { new ProxyTextInput.Dispatch(GridKey.Tab, '\t') }, ProxyTextInput.Plan("\t", GridKey.None));
+        Assert.Equal(new[] { new ProxyTextInput.Dispatch(KumikoKey.Tab, '\t') }, ProxyTextInput.Plan("\t", KumikoKey.None));
     }
 
     [Fact]
     public void Plan_OnlyOneEchoIsDropped()
     {
-        Assert.Equal(new[] { new ProxyTextInput.Dispatch(GridKey.Tab, '\t') }, ProxyTextInput.Plan("\t\t", GridKey.Tab));
+        Assert.Equal(new[] { new ProxyTextInput.Dispatch(KumikoKey.Tab, '\t') }, ProxyTextInput.Plan("\t\t", KumikoKey.Tab));
     }
 
     [Theory]
@@ -81,18 +81,18 @@ public class ProxyTextInputTests
     [InlineData("\r")]
     public void Plan_EnterEchoAfterKeyDownEnter_IsDropped(string echo)
     {
-        Assert.Empty(ProxyTextInput.Plan(echo, GridKey.Enter));
+        Assert.Empty(ProxyTextInput.Plan(echo, KumikoKey.Enter));
     }
 
     [Fact]
     public void Plan_SoftKeyboardReturn_IsOneEnter()
     {
-        Assert.Equal(new[] { new ProxyTextInput.Dispatch(GridKey.Enter, '\r') }, ProxyTextInput.Plan("\r\n", GridKey.None));
+        Assert.Equal(new[] { new ProxyTextInput.Dispatch(KumikoKey.Enter, '\r') }, ProxyTextInput.Plan("\r\n", KumikoKey.None));
     }
 
     [Fact]
     public void Plan_EchoOfDifferentKey_IsNotDropped()
     {
-        Assert.Equal(new[] { new ProxyTextInput.Dispatch(GridKey.Tab, '\t') }, ProxyTextInput.Plan("\t", GridKey.Enter));
+        Assert.Equal(new[] { new ProxyTextInput.Dispatch(KumikoKey.Tab, '\t') }, ProxyTextInput.Plan("\t", KumikoKey.Enter));
     }
 }

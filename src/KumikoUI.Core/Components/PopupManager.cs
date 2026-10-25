@@ -26,7 +26,7 @@ public class PopupManager
     public event Action? NeedsRedraw;
 
     /// <summary>Show a component as a popup at the given position.</summary>
-    public void Show(DrawnComponent component, GridRect anchor, PopupPlacement placement = PopupPlacement.Below)
+    public void Show(DrawnComponent component, KumikoRect anchor, PopupPlacement placement = PopupPlacement.Below)
     {
         // Calculate popup position based on anchor and placement
         var bounds = CalculatePopupBounds(component, anchor, placement);
@@ -103,7 +103,7 @@ public class PopupManager
     ///  • If Pressed lands outside all popups → dismiss all popups.
     ///    The press is NOT consumed so the grid can still handle it (e.g. selecting a cell).
     /// </summary>
-    public bool HandlePointer(GridPointerEventArgs e)
+    public bool HandlePointer(KumikoPointerEventArgs e)
     {
         if (!HasActivePopups) return false;
 
@@ -160,7 +160,7 @@ public class PopupManager
     /// 
     /// Returns true if the event was consumed.
     /// </summary>
-    public bool HandleKey(GridKeyEventArgs e)
+    public bool HandleKey(KumikoKeyEventArgs e)
     {
         if (!HasActivePopups)
             return false;
@@ -189,54 +189,41 @@ public class PopupManager
         return best;
     }
 
-    private static GridRect CalculatePopupBounds(
-        DrawnComponent component, GridRect anchor, PopupPlacement placement)
+    private static KumikoRect CalculatePopupBounds(
+        DrawnComponent component, KumikoRect anchor, PopupPlacement placement)
     {
         float width = component.Bounds.Width > 0 ? component.Bounds.Width : anchor.Width;
         float height = component.Bounds.Height > 0 ? component.Bounds.Height : 200; // Default height
 
         return placement switch
         {
-            PopupPlacement.Below => new GridRect(anchor.X, anchor.Y + anchor.Height, width, height),
-            PopupPlacement.Above => new GridRect(anchor.X, anchor.Y - height, width, height),
-            PopupPlacement.Right => new GridRect(anchor.X + anchor.Width, anchor.Y, width, height),
-            PopupPlacement.Left => new GridRect(anchor.X - width, anchor.Y, width, height),
-            _ => new GridRect(anchor.X, anchor.Y + anchor.Height, width, height)
+            PopupPlacement.Below => new KumikoRect(anchor.X, anchor.Y + anchor.Height, width, height),
+            PopupPlacement.Above => new KumikoRect(anchor.X, anchor.Y - height, width, height),
+            PopupPlacement.Right => new KumikoRect(anchor.X + anchor.Width, anchor.Y, width, height),
+            PopupPlacement.Left => new KumikoRect(anchor.X - width, anchor.Y, width, height),
+            _ => new KumikoRect(anchor.X, anchor.Y + anchor.Height, width, height)
         };
     }
 
-    private static void DrawPopupShadow(IDrawingContext ctx, GridRect bounds)
+    private static void DrawPopupShadow(IDrawingContext ctx, KumikoRect bounds)
     {
-        var shadowColor = new GridColor(0, 0, 0, 40);
-        var shadowPaint = new GridPaint { Color = shadowColor, Style = PaintStyle.Fill };
+        var shadowColor = new KumikoColor(0, 0, 0, 40);
+        var shadowPaint = new KumikoPaint { Color = shadowColor, Style = PaintStyle.Fill };
         // Offset shadow
-        ctx.FillRect(new GridRect(bounds.X + 2, bounds.Y + 2, bounds.Width, bounds.Height), shadowPaint);
+        ctx.FillRect(new KumikoRect(bounds.X + 2, bounds.Y + 2, bounds.Width, bounds.Height), shadowPaint);
     }
 
     private class PopupEntry
     {
         public DrawnComponent Component { get; }
-        public GridRect Anchor { get; }
+        public KumikoRect Anchor { get; }
         public PopupPlacement Placement { get; }
 
-        public PopupEntry(DrawnComponent component, GridRect anchor, PopupPlacement placement)
+        public PopupEntry(DrawnComponent component, KumikoRect anchor, PopupPlacement placement)
         {
             Component = component;
             Anchor = anchor;
             Placement = placement;
         }
     }
-}
-
-/// <summary>Where to place a popup relative to its anchor.</summary>
-public enum PopupPlacement
-{
-    /// <summary>Place the popup below the anchor.</summary>
-    Below,
-    /// <summary>Place the popup above the anchor.</summary>
-    Above,
-    /// <summary>Place the popup to the left of the anchor.</summary>
-    Left,
-    /// <summary>Place the popup to the right of the anchor.</summary>
-    Right
 }

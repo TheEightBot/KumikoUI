@@ -7,7 +7,7 @@ applyTo: "tests/**"
 ## Rules
 
 - Framework: **xUnit** (`[Fact]` and `[Theory]` + `[InlineData]`). Never NUnit or MSTest.
-- One test class per source class — `GridRectTests` for `GridRect`, etc.
+- One test class per source class — `KumikoRectTests` for `KumikoRect`, etc.
 - File name: `{ClassName}Tests.cs`.
 - No SkiaSharp or MAUI dependencies — `KumikoUI.Core` only.
 - Tests target `net10.0`.
@@ -48,14 +48,14 @@ public void {MethodName}_{Scenario}({Type} input, {Type} expected)
 
 ---
 
-## Example: `DataGridSource` sorting
+## Example: `KumikoSource` sorting
 
 ```csharp
 public class DataGridSourceSortingTests
 {
-    private static DataGridSource MakeSource(IList items, List<DataGridColumn> columns)
+    private static KumikoSource MakeSource(IList items, List<KumikoColumn> columns)
     {
-        var source = new DataGridSource();
+        var source = new KumikoSource();
         foreach (var col in columns) source.Columns.Add(col);
         source.ItemsSource = items;
         return source;
@@ -70,7 +70,7 @@ public class DataGridSourceSortingTests
             new() { Id = 1, Name = "Alice" },
             new() { Id = 2, Name = "Bob" },
         };
-        var col    = new DataGridColumn { PropertyName = "Name", ColumnType = DataGridColumnType.Text };
+        var col    = new KumikoColumn { PropertyName = "Name", ColumnType = KumikoColumnType.Text };
         var source = MakeSource(items, [col]);
 
         source.ApplySort(col);
@@ -91,8 +91,8 @@ It records every `IDrawingContext` call as a `DrawOp` in call order (so index = 
 coordinates with the active clip, and measures text monospace (8 px per character, 14 px tall).
 `DrawOp.Visible` is the part of an op its clip lets reach the screen.
 
-For `DataGridRenderer`, use `RenderHarness` (same folder): it builds a four-column grid of people, gives
-every `GridColor` on the style a distinct value (so a recorded colour identifies its style role) and
+For `KumikoRenderer`, use `RenderHarness` (same folder): it builds a four-column grid of people, gives
+every `KumikoColor` on the style a distinct value (so a recorded colour identifies its style role) and
 renders into a fresh recording context:
 
 ```csharp
@@ -103,7 +103,7 @@ h.Scroll.OffsetX = 50;
 var ctx = h.Render();
 
 var cell = ctx.SingleText("P00");
-Assert.Equal(new GridRect(0, 0, 150, 400), cell.Clip);
+Assert.Equal(new KumikoRect(0, 0, 150, 400), cell.Clip);
 ```
 
 Known renderer defects are pinned as `[Fact(Skip = "<finding>, fixed by #<issue>: …")]` tests in

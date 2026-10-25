@@ -58,7 +58,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <kumiko:DataGridView x:Name="kumiko"
+        <kumiko:KumikoDataGrid x:Name="kumiko"
                              Grid.Row="3"
                              ItemsSource="{Binding Products}"
                              RowHeight="34"
@@ -66,21 +66,21 @@
                              GridDescription="Themed product grid"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
-            <kumiko:DataGridView.Columns>
-                <core:DataGridColumn Header="SKU" PropertyName="Sku" Width="110" IsFrozen="True" />
-                <core:DataGridColumn Header="Product" PropertyName="ProductName" Width="180" />
-                <core:DataGridColumn Header="Category" PropertyName="Category" Width="120" />
-                <core:DataGridColumn Header="Price" PropertyName="Price" Width="110"
+            <kumiko:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="SKU" PropertyName="Sku" Width="110" IsFrozen="True" />
+                <core:KumikoColumn Header="Product" PropertyName="ProductName" Width="180" />
+                <core:KumikoColumn Header="Category" PropertyName="Category" Width="120" />
+                <core:KumikoColumn Header="Price" PropertyName="Price" Width="110"
                                      Format="C2" ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="Stock" PropertyName="Stock" Width="90"
+                <core:KumikoColumn Header="Stock" PropertyName="Stock" Width="90"
                                      ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="In Stock" PropertyName="InStock" Width="80"
+                <core:KumikoColumn Header="In Stock" PropertyName="InStock" Width="80"
                                      ColumnType="Boolean" AllowTabStop="False" />
-                <core:DataGridColumn Header="Rating" PropertyName="Rating" Width="90"
+                <core:KumikoColumn Header="Rating" PropertyName="Rating" Width="90"
                                      Format="N1" ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="Supplier" PropertyName="Supplier" Width="140" />
-            </kumiko:DataGridView.Columns>
-        </kumiko:DataGridView>
+                <core:KumikoColumn Header="Supplier" PropertyName="Supplier" Width="140" />
+            </kumiko:KumikoDataGrid.Columns>
+        </kumiko:KumikoDataGrid>
     </Grid>
 
 </Page>

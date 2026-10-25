@@ -36,7 +36,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <kumiko:DataGridView x:Name="kumiko"
+        <kumiko:KumikoDataGrid x:Name="kumiko"
                              Grid.Row="2"
                              ItemsSource="{Binding Employees}"
                              RowHeight="34"
@@ -44,20 +44,20 @@
                              GridDescription="Grouped employee data grid"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
-            <kumiko:DataGridView.Columns>
-                <core:DataGridColumn Header="Id" PropertyName="Id" Width="60"
+            <kumiko:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="Id" PropertyName="Id" Width="60"
                                      ColumnType="Numeric" TextAlignment="Right"
                                      IsReadOnly="True" AllowTabStop="False" />
-                <core:DataGridColumn Header="Name" PropertyName="Name" Width="170" />
-                <core:DataGridColumn Header="Department" PropertyName="Department" Width="140" />
-                <core:DataGridColumn Header="Level" PropertyName="Level" Width="120" />
-                <core:DataGridColumn Header="Salary" PropertyName="Salary" Width="120"
+                <core:KumikoColumn Header="Name" PropertyName="Name" Width="170" />
+                <core:KumikoColumn Header="Department" PropertyName="Department" Width="140" />
+                <core:KumikoColumn Header="Level" PropertyName="Level" Width="120" />
+                <core:KumikoColumn Header="Salary" PropertyName="Salary" Width="120"
                                      Format="C0" ColumnType="Numeric" TextAlignment="Right" />
-                <core:DataGridColumn Header="Active" PropertyName="IsActive" Width="80"
+                <core:KumikoColumn Header="Active" PropertyName="IsActive" Width="80"
                                      ColumnType="Boolean" AllowTabStop="False" />
-                <core:DataGridColumn Header="City" PropertyName="City" Width="140" />
-            </kumiko:DataGridView.Columns>
-        </kumiko:DataGridView>
+                <core:KumikoColumn Header="City" PropertyName="City" Width="140" />
+            </kumiko:KumikoDataGrid.Columns>
+        </kumiko:KumikoDataGrid>
     </Grid>
 
 </Page>

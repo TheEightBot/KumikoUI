@@ -24,8 +24,8 @@ namespace KumikoUI.Core.Components;
 ///     RowItem = value,
 ///     Buttons =
 ///     [
-///         new() { Label = "Edit",   BackgroundColor = new GridColor(13, 110, 253), Command = vm.EditCommand   },
-///         new() { Label = "Delete", BackgroundColor = new GridColor(220, 53, 69),  Command = vm.DeleteCommand }
+///         new() { Label = "Edit",   BackgroundColor = new KumikoColor(13, 110, 253), Command = vm.EditCommand   },
+///         new() { Label = "Delete", BackgroundColor = new KumikoColor(220, 53, 69),  Command = vm.DeleteCommand }
 ///     ]
 /// };
 /// </code>
@@ -75,7 +75,7 @@ public class DrawnActionButtons : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerDown(GridPointerEventArgs e)
+    public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
         var rects = ActionButtonLayout.ComputeButtonRects(Bounds, Buttons.Count, CellPadding, ButtonSpacing);
         for (int i = 0; i < rects.Count; i++)
@@ -91,7 +91,7 @@ public class DrawnActionButtons : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerUp(GridPointerEventArgs e)
+    public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
         int wasPressed = _pressedIndex;
         _pressedIndex = -1;
@@ -117,27 +117,27 @@ public class DrawnActionButtons : DrawnComponent
     /// Called by <c>CellEditorFactory.ApplyThemeToEditor</c> to adapt button
     /// colors to the active grid theme. Override to customize.
     /// </summary>
-    public virtual void ApplyTheme(DataGridStyle style) { }
+    public virtual void ApplyTheme(KumikoStyle style) { }
 
     // ── Drawing ──────────────────────────────────────────────────
 
-    private void DrawButton(IDrawingContext ctx, GridRect rect, IActionButtonDefinition btn, bool pressed)
+    private void DrawButton(IDrawingContext ctx, KumikoRect rect, IActionButtonDefinition btn, bool pressed)
     {
         var bg = pressed
-            ? new GridColor(
+            ? new KumikoColor(
                 (byte)Math.Max(0, btn.BackgroundColor.R - 40),
                 (byte)Math.Max(0, btn.BackgroundColor.G - 40),
                 (byte)Math.Max(0, btn.BackgroundColor.B - 40),
                 btn.BackgroundColor.A)
             : btn.BackgroundColor;
 
-        ctx.FillRoundRect(rect, CornerRadius, new GridPaint { Color = bg, IsAntiAlias = true });
-        ctx.DrawTextInRect(btn.Label, rect, new GridPaint
+        ctx.FillRoundRect(rect, CornerRadius, new KumikoPaint { Color = bg, IsAntiAlias = true });
+        ctx.DrawTextInRect(btn.Label, rect, new KumikoPaint
         {
             Color = btn.TextColor,
-            Font = new GridFont("Default", 11, bold: true),
+            Font = new KumikoFont("Default", 11, bold: true),
             IsAntiAlias = true
-        }, GridTextAlignment.Center, GridVerticalAlignment.Center);
+        }, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
     }
 }
 

@@ -7,12 +7,12 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Tests.TestHelpers;
 
 /// <summary>
-/// A grid wired to a <see cref="DataGridRenderer"/> and a <see cref="RecordingDrawingContext"/>.
-/// Every <see cref="GridColor"/> on the style is given a distinct value, so a recorded colour
+/// A grid wired to a <see cref="KumikoRenderer"/> and a <see cref="RecordingDrawingContext"/>.
+/// Every <see cref="KumikoColor"/> on the style is given a distinct value, so a recorded colour
 /// identifies the style role that produced it.
 /// </summary>
 /// <remarks>
-/// Default geometry (DataGridStyle defaults): header 40 px, rows 36 px, summary rows 36 px,
+/// Default geometry (KumikoStyle defaults): header 40 px, rows 36 px, summary rows 36 px,
 /// grouping panel 40 px, cell and header padding 8 px. Default columns: Name 150 px (x 0),
 /// Age 100 px (x 150), City 150 px (x 250), Salary 150 px (x 400) — 550 px of content.
 /// </remarks>
@@ -27,11 +27,11 @@ internal sealed class RenderHarness
         public bool Active { get; set; }
     }
 
-    public DataGridSource Source { get; } = new();
-    public DataGridStyle Style { get; } = WithDistinctColors(new DataGridStyle());
+    public KumikoSource Source { get; } = new();
+    public KumikoStyle Style { get; } = WithDistinctColors(new KumikoStyle());
     public ScrollState Scroll { get; }
-    public SelectionModel Selection { get; } = new();
-    public DataGridRenderer Renderer { get; } = new();
+    public KumikoSelectionModel Selection { get; } = new();
+    public KumikoRenderer Renderer { get; } = new();
     public List<Person> People { get; }
 
     private RenderHarness(float width, float height, List<Person> people)
@@ -59,17 +59,17 @@ internal sealed class RenderHarness
         var h = new RenderHarness(width, height, people);
         h.Source.SetColumns(new[]
         {
-            new DataGridColumn { Header = "Name", PropertyName = "Name", Width = 150 },
-            new DataGridColumn { Header = "Age", PropertyName = "Age", Width = 100, ColumnType = DataGridColumnType.Numeric },
-            new DataGridColumn { Header = "City", PropertyName = "City", Width = 150 },
-            new DataGridColumn { Header = "Salary", PropertyName = "Salary", Width = 150, ColumnType = DataGridColumnType.Numeric },
+            new KumikoColumn { Header = "Name", PropertyName = "Name", Width = 150 },
+            new KumikoColumn { Header = "Age", PropertyName = "Age", Width = 100, ColumnType = KumikoColumnType.Numeric },
+            new KumikoColumn { Header = "City", PropertyName = "City", Width = 150 },
+            new KumikoColumn { Header = "Salary", PropertyName = "Salary", Width = 150, ColumnType = KumikoColumnType.Numeric },
         });
         h.Source.SetItems(people);
         configure?.Invoke(h);
         return h;
     }
 
-    public DataGridColumn Column(string propertyName) =>
+    public KumikoColumn Column(string propertyName) =>
         Source.Columns.Single(c => c.PropertyName == propertyName);
 
     public RecordingDrawingContext Render(
@@ -92,14 +92,14 @@ internal sealed class RenderHarness
 
     public static bool Near(float a, float b) => Math.Abs(a - b) < 0.01f;
 
-    private static DataGridStyle WithDistinctColors(DataGridStyle style)
+    private static KumikoStyle WithDistinctColors(KumikoStyle style)
     {
         byte n = 1;
-        foreach (var p in typeof(DataGridStyle).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                     .Where(p => p.PropertyType == typeof(GridColor) && p.CanWrite)
+        foreach (var p in typeof(KumikoStyle).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                     .Where(p => p.PropertyType == typeof(KumikoColor) && p.CanWrite)
                      .OrderBy(p => p.Name, StringComparer.Ordinal))
         {
-            p.SetValue(style, new GridColor(n, (byte)(255 - n), 77));
+            p.SetValue(style, new KumikoColor(n, (byte)(255 - n), 77));
             n++;
         }
         return style;
@@ -109,8 +109,8 @@ internal sealed class RenderHarness
 /// <summary>A drawn component that fills its bounds, to observe where and when it is drawn.</summary>
 internal sealed class ProbeComponent : DrawnComponent
 {
-    public static readonly GridColor ProbeColor = new(1, 2, 3);
+    public static readonly KumikoColor ProbeColor = new(1, 2, 3);
 
     public override void OnDraw(IDrawingContext ctx) =>
-        ctx.FillRect(Bounds, new GridPaint { Color = ProbeColor });
+        ctx.FillRect(Bounds, new KumikoPaint { Color = ProbeColor });
 }

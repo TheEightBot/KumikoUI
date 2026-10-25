@@ -38,18 +38,18 @@ public sealed partial class MvvmActionsPage : Page
     private void BuildColumns()
     {
         // Id — read-only.
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Id",
             PropertyName = "Id",
-            ColumnType = DataGridColumnType.Numeric,
+            ColumnType = KumikoColumnType.Numeric,
             Width = 52,
             IsReadOnly = true,
             AllowTabStop = false,
         });
 
         // Name — single-tap, F2, OR typing starts editing (most accessible).
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Name",
             PropertyName = "Name",
@@ -58,45 +58,45 @@ public sealed partial class MvvmActionsPage : Page
         });
 
         // Department — double-tap or F2 only (typing excluded for a ComboBox).
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Department",
             PropertyName = "Department",
-            ColumnType = DataGridColumnType.ComboBox,
+            ColumnType = KumikoColumnType.ComboBox,
             Width = 130,
             EditorItemsString = "Engineering,Marketing,Finance,HR,Design,Product,Sales",
             EditTriggers = EditTrigger.DoubleTap | EditTrigger.F2Key,
         });
 
         // Level — double-tap ONLY.
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Level",
             PropertyName = "Level",
-            ColumnType = DataGridColumnType.Picker,
+            ColumnType = KumikoColumnType.Picker,
             Width = 90,
             EditorItemsString = "Junior,Mid,Senior,Lead,Principal",
             EditTriggers = EditTrigger.DoubleTap,
         });
 
         // Salary — F2 key ONLY (protects financial data from pointer gestures).
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Salary",
             PropertyName = "Salary",
-            ColumnType = DataGridColumnType.Numeric,
+            ColumnType = KumikoColumnType.Numeric,
             Format = "C0",
             Width = 110,
-            TextAlignment = GridTextAlignment.Right,
+            TextAlignment = KumikoTextAlignment.Right,
             EditTriggers = EditTrigger.F2Key,
         });
 
         // Active — Boolean; toggles on tap.
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Active",
             PropertyName = "IsActive",
-            ColumnType = DataGridColumnType.Boolean,
+            ColumnType = KumikoColumnType.Boolean,
             Width = 60,
             AllowTabStop = false,
         });
@@ -105,11 +105,11 @@ public sealed partial class MvvmActionsPage : Page
         // Column-level EditTriggers=SingleTap ensures buttons activate on a single tap even though
         // the grid default is DoubleTap. PropertyName="" passes the full Employee as the cell value,
         // so DrawnActionButtons.RowItem (→ Command parameter) is the row's Employee.
-        actionsGrid.Columns!.Add(new DataGridColumn
+        actionsGrid.Columns!.Add(new KumikoColumn
         {
             Header = "Actions",
             PropertyName = "",
-            ColumnType = DataGridColumnType.Template,
+            ColumnType = KumikoColumnType.Template,
             Width = 200,
             IsReadOnly = false,
             AllowSorting = false,
@@ -125,13 +125,13 @@ public sealed partial class MvvmActionsPage : Page
                     new ActionButtonDefinition
                     {
                         Label = "Details",
-                        BackgroundColor = new GridColor(13, 110, 253),
+                        BackgroundColor = new KumikoColor(13, 110, 253),
                         Command = _viewModel.ViewDetailsCommand,
                     },
                     new ActionButtonDefinition
                     {
                         Label = "Delete",
-                        BackgroundColor = new GridColor(220, 53, 69),
+                        BackgroundColor = new KumikoColor(220, 53, 69),
                         Command = _viewModel.DeleteCommand,
                     },
                 },
@@ -187,7 +187,7 @@ public sealed partial class MvvmActionsPage : Page
 /// </summary>
 public class MvvmActionsViewModel
 {
-    /// <summary>The collection bound to the DataGridView.</summary>
+    /// <summary>The collection bound to the KumikoDataGrid.</summary>
     public ObservableCollection<Employee> Employees { get; } = new();
 
     /// <summary>Raised to request confirmation and removal of an employee.</summary>

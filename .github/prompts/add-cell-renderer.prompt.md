@@ -21,7 +21,7 @@ values in a custom visual style.
 | Action | File |
 |---|---|
 | **Create** | `src/KumikoUI.Core/Rendering/{ClassName}.cs` |
-| **Modify** (optional, if new column type) | `src/KumikoUI.Core/Models/DataGridColumn.cs` — add enum value |
+| **Modify** (optional, if new column type) | `src/KumikoUI.Core/Models/KumikoColumn.cs` — add enum value |
 | **Create** | `tests/KumikoUI.Core.Tests/{ClassName}Tests.cs` |
 
 ---
@@ -52,19 +52,19 @@ public class {ClassName} : ICellRenderer
     /// <inheritdoc />
     public void Render(
         IDrawingContext ctx,
-        GridRect cellRect,
+        KumikoRect cellRect,
         object? value,
         string displayText,
-        DataGridColumn column,
-        DataGridStyle style,
+        KumikoColumn column,
+        KumikoStyle style,
         bool isSelected,
-        CellStyle? cellStyle = null)
+        KumikoCellStyle? cellStyle = null)
     {
         // ── Background ────────────────────────────────────────────────────────────
         var bg = cellStyle?.BackgroundColor
             ?? (isSelected ? style.SelectionColor : style.CellBackgroundColor);
 
-        ctx.FillRect(cellRect, new GridPaint { Color = bg, Style = PaintStyle.Fill });
+        ctx.FillRect(cellRect, new KumikoPaint { Color = bg, Style = PaintStyle.Fill });
 
         // ── Value parsing ─────────────────────────────────────────────────────────
         float numericValue = value switch
@@ -85,8 +85,8 @@ public class {ClassName} : ICellRenderer
         //
         // RULES:
         //  • Use only IDrawingContext methods — no SkiaSharp APIs.
-        //  • Use GridColor, GridPaint, GridFont from KumikoUI.Core.Rendering.
-        //  • Never hardcode colors; fall back to DataGridStyle properties.
+        //  • Use KumikoColor, KumikoPaint, KumikoFont from KumikoUI.Core.Rendering.
+        //  • Never hardcode colors; fall back to KumikoStyle properties.
         //  • Stay within cellRect bounds.
     }
 }
@@ -99,22 +99,22 @@ public class {ClassName} : ICellRenderer
 ### In XAML (Template column)
 
 ```xml
-<core:DataGridColumn Header="My Column" PropertyName="Value"
+<core:KumikoColumn Header="My Column" PropertyName="Value"
                      ColumnType="Template" Width="140" IsReadOnly="True">
-    <core:DataGridColumn.CustomCellRenderer>
+    <core:KumikoColumn.CustomCellRenderer>
         <render:{ClassName} Minimum="0" Maximum="100" />
-    </core:DataGridColumn.CustomCellRenderer>
-</core:DataGridColumn>
+    </core:KumikoColumn.CustomCellRenderer>
+</core:KumikoColumn>
 ```
 
 ### In code
 
 ```csharp
-var column = new DataGridColumn
+var column = new KumikoColumn
 {
     Header = "My Column",
     PropertyName = "Value",
-    ColumnType = DataGridColumnType.Template,
+    ColumnType = KumikoColumnType.Template,
     Width = 140,
     IsReadOnly = true,
     CustomCellRenderer = new {ClassName} { Minimum = 0, Maximum = 100 }
@@ -132,16 +132,16 @@ using KumikoUI.Core.Rendering;
 
 public class {ClassName}Tests
 {
-    private static DataGridColumn MakeColumn() =>
-        new DataGridColumn { PropertyName = "Value", ColumnType = DataGridColumnType.Template };
+    private static KumikoColumn MakeColumn() =>
+        new KumikoColumn { PropertyName = "Value", ColumnType = KumikoColumnType.Template };
 
     [Fact]
     public void Render_WithNullValue_DoesNotThrow()
     {
         var renderer = new {ClassName}();
-        var style    = DataGridTheme.Create(DataGridThemeMode.Light);
+        var style    = KumikoTheme.Create(KumikoThemeMode.Light);
         var ctx      = new FakeDrawingContext();
-        renderer.Render(ctx, new GridRect(0, 0, 100, 30), null, "", MakeColumn(), style, false);
+        renderer.Render(ctx, new KumikoRect(0, 0, 100, 30), null, "", MakeColumn(), style, false);
         // No assertion needed — simply must not throw.
     }
 

@@ -42,7 +42,7 @@
     <!-- Package Publisher -->
     <ApplicationPublisher>Eight-Bot, Inc.</ApplicationPublisher>
     <!-- Package Description -->
-    <Description>KumikoUI.Uno sample app — exercises the DataGridView control across every Uno head.</Description>
+    <Description>KumikoUI.Uno sample app — exercises the KumikoDataGrid control across every Uno head.</Description>
 
     <!--
       SkiaSharpVersion comes from the repo-root Directory.Packages.props so the app's implicit SkiaSharp

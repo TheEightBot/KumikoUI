@@ -48,6 +48,14 @@ dotnet build src/KumikoUI.SkiaSharp
 dotnet test tests/KumikoUI.Core.Tests
 ```
 
+Check public type names after building (see [Public type names](#public-type-names)):
+
+```bash
+dotnet run --project eng/TypeNameCheck -c Release -- \
+  src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll \
+  src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
+```
+
 Hosts and samples (one head at a time with `-f`):
 
 ```bash
@@ -126,10 +134,39 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 
 ### Code
 
-- Follow the conventions in [`.github/instructions/`](.github/instructions) and the surrounding code: nullable enabled, `float` coordinates, `GridColor` for colours, no LINQ or allocations in the render loop.
+- Follow the conventions in [`.github/instructions/`](.github/instructions) and the surrounding code: nullable enabled, `float` coordinates, `KumikoColor` for colours, no LINQ or allocations in the render loop.
 - Every public member gets an XML doc comment.
+- One public type per file, in a file named after the type (`KumikoStyle` lives in `KumikoStyle.cs`). Small enums and event-args types get their own file too.
+- Public type names follow the rules in [Public type names](#public-type-names).
 - KumikoUI.Core must stay free of UI-framework and SkiaSharp references; host-specific code belongs in KumikoUI.Maui or KumikoUI.Uno.
 - Add or update tests with every behaviour change (xUnit; see [`tests/`](tests)). Bug fixes start with a failing test.
+
+### Public type names
+
+KumikoUI types are imported next to other UI frameworks' types, so a public type must never share its simple name with a public type of:
+
+- .NET MAUI (`Microsoft.Maui.*`) and CommunityToolkit.Maui (`CommunityToolkit.Maui.*`)
+- WinUI and Uno (`Microsoft.UI.Xaml.*`, including Uno's own types) and the Windows Community Toolkit DataGrid (`CommunityToolkit.WinUI.*`)
+- WPF and Windows Forms (`System.Windows.*`)
+- Avalonia and its DataGrid (`Avalonia.*`)
+- another public KumikoUI type (two hosts may each define the same type, such as `KumikoDataGrid`)
+
+`SelectionMode`, `FocusManager`, `TextChangedEventArgs`, `HitTestResult` and `DataGridColumn` are examples that clash; other grids use the `DataGrid` and `Grid` prefixes themselves. KumikoUI therefore uses one prefix:
+
+| Prefix | For |
+|---|---|
+| `Kumiko` | every grid type: the host control and entry points (`KumikoDataGrid`, `KumikoFonts`), models (`KumikoSource`, `KumikoColumn`, `KumikoStyle`, `KumikoCellStyle`), enums (`KumikoSelectionMode`, `KumikoSortDirection`), primitives (`KumikoRect`, `KumikoColor`, `KumikoFont`), input (`KumikoKey`, `KumikoPointerEventArgs`) and event arguments (`KumikoTextChangedEventArgs`) |
+| `Drawn` | drawn components and the types that belong to them (`DrawnTextBox`, `DrawnComboBox`, `DrawnComboBoxItem`) |
+
+Do not introduce new `DataGrid*` or `Grid*` type names. Other types keep descriptive, unprefixed names (`FilterDescription`, `EditSession`, `TableSummaryRow`) as long as the check below passes.
+
+CI enforces this with `eng/TypeNameCheck`, a small console tool (not part of `KumikoUI.sln` and not packed). It lists the public top-level type names in the built KumikoUI assemblies and compares them with each other and with the names read, via `System.Reflection.Metadata`, from pinned packages: `Microsoft.Maui.Controls.Core`, `.Xaml`, `Microsoft.Maui.Core` and `Microsoft.Maui.Graphics` (at `MauiVersion`); `Microsoft.WindowsAppSDK.WinUI` and `Uno.WinUI`; `Microsoft.WindowsDesktop.App.Ref`; `CommunityToolkit.WinUI.UI.Controls.DataGrid`; `CommunityToolkit.Maui`; `Avalonia` and `Avalonia.Controls.DataGrid`. The versions are in `Directory.Packages.props`; the tool needs no workloads and runs on any OS:
+
+```bash
+dotnet run --project eng/TypeNameCheck -c Release -- src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
+```
+
+It exits non-zero and lists every collision. Raising one of those versions can surface a new collision, which is then fixed by renaming the KumikoUI type.
 
 ### Pull requests
 

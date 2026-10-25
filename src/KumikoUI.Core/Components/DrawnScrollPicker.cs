@@ -28,27 +28,27 @@ public class DrawnScrollPicker : DrawnComponent
     /// <summary>Number of items visible at once (odd numbers recommended for center alignment).</summary>
     public int VisibleItemCount { get; set; } = 5; // Odd number recommended
     /// <summary>Font used for non-selected items.</summary>
-    public GridFont Font { get; set; } = new("Default", 14);
+    public KumikoFont Font { get; set; } = new("Default", 14);
     /// <summary>Font used for the currently selected (center) item.</summary>
-    public GridFont SelectedFont { get; set; } = new("Default", 16, bold: true);
+    public KumikoFont SelectedFont { get; set; } = new("Default", 16, bold: true);
     /// <summary>Text color for non-selected items.</summary>
-    public GridColor TextColor { get; set; } = new(120, 120, 120);
+    public KumikoColor TextColor { get; set; } = new(120, 120, 120);
     /// <summary>Text color for the currently selected item.</summary>
-    public GridColor SelectedTextColor { get; set; } = new(30, 30, 30);
+    public KumikoColor SelectedTextColor { get; set; } = new(30, 30, 30);
     /// <summary>Background fill color of the picker.</summary>
-    public GridColor BackgroundColor { get; set; } = GridColor.White;
+    public KumikoColor BackgroundColor { get; set; } = KumikoColor.White;
     /// <summary>Background color of the selection band highlighting the selected item.</summary>
-    public GridColor SelectionBandColor { get; set; } = new(0, 120, 215, 20);
+    public KumikoColor SelectionBandColor { get; set; } = new(0, 120, 215, 20);
     /// <summary>Color of the horizontal separator lines above and below the selection band.</summary>
-    public GridColor SeparatorColor { get; set; } = new(200, 200, 200);
+    public KumikoColor SeparatorColor { get; set; } = new(200, 200, 200);
 
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Applies theme colors from a <see cref="DataGridStyle"/> so the scroll picker
+    /// Applies theme colors from a <see cref="KumikoStyle"/> so the scroll picker
     /// visually matches the current grid theme.
     /// </summary>
-    public void ApplyTheme(DataGridStyle style)
+    public void ApplyTheme(KumikoStyle style)
     {
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
@@ -59,7 +59,7 @@ public class DrawnScrollPicker : DrawnComponent
         SeparatorColor = style.GridLineColor;
 
         // Non-selected text: midpoint between text and background
-        TextColor = new GridColor(
+        TextColor = new KumikoColor(
             (byte)((txt.R + bg.R) / 2),
             (byte)((txt.G + bg.G) / 2),
             (byte)((txt.B + bg.B) / 2));
@@ -115,7 +115,7 @@ public class DrawnScrollPicker : DrawnComponent
         var b = Bounds;
 
         // Background
-        ctx.FillRect(b, new GridPaint { Color = BackgroundColor, Style = PaintStyle.Fill });
+        ctx.FillRect(b, new KumikoPaint { Color = BackgroundColor, Style = PaintStyle.Fill });
 
         ctx.Save();
         ctx.ClipRect(b);
@@ -125,11 +125,11 @@ public class DrawnScrollPicker : DrawnComponent
 
         // Selection band
         float bandY = centerY - ItemHeight / 2;
-        ctx.FillRect(new GridRect(b.X, bandY, b.Width, ItemHeight),
-            new GridPaint { Color = SelectionBandColor, Style = PaintStyle.Fill });
+        ctx.FillRect(new KumikoRect(b.X, bandY, b.Width, ItemHeight),
+            new KumikoPaint { Color = SelectionBandColor, Style = PaintStyle.Fill });
 
         // Separator lines
-        var sepPaint = new GridPaint { Color = SeparatorColor, Style = PaintStyle.Stroke, StrokeWidth = 1 };
+        var sepPaint = new KumikoPaint { Color = SeparatorColor, Style = PaintStyle.Stroke, StrokeWidth = 1 };
         ctx.DrawLine(b.X, bandY, b.X + b.Width, bandY, sepPaint);
         ctx.DrawLine(b.X, bandY + ItemHeight, b.X + b.Width, bandY + ItemHeight, sepPaint);
 
@@ -154,10 +154,10 @@ public class DrawnScrollPicker : DrawnComponent
             bool isSelected = i == GetNearestIndex();
             var font = isSelected ? SelectedFont : Font;
             var color = isSelected ? SelectedTextColor : TextColor;
-            color = new GridColor(color.R, color.G, color.B, (byte)(color.A * alpha));
+            color = new KumikoColor(color.R, color.G, color.B, (byte)(color.A * alpha));
 
             string text = _items[i];
-            var itemPaint = new GridPaint { Color = color, Style = PaintStyle.Fill, Font = font };
+            var itemPaint = new KumikoPaint { Color = color, Style = PaintStyle.Fill, Font = font };
             float tw = ctx.MeasureText(text, itemPaint).Width;
             float textX = b.X + (b.Width - tw) / 2;
             float textY2 = centerY + (i * ItemHeight - _scrollOffset);
@@ -177,7 +177,7 @@ public class DrawnScrollPicker : DrawnComponent
     // ── Input ───────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public override bool OnPointerDown(GridPointerEventArgs e)
+    public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
         _isDragging = true;
         _lastDragY = e.Y;
@@ -186,7 +186,7 @@ public class DrawnScrollPicker : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerMove(GridPointerEventArgs e)
+    public override bool OnPointerMove(KumikoPointerEventArgs e)
     {
         if (!_isDragging) return false;
 
@@ -200,7 +200,7 @@ public class DrawnScrollPicker : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerUp(GridPointerEventArgs e)
+    public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
         _isDragging = false;
         // Snap to nearest item and signal edit complete
@@ -210,15 +210,15 @@ public class DrawnScrollPicker : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnKeyDown(GridKeyEventArgs e)
+    public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
         switch (e.Key)
         {
-            case GridKey.Up:
+            case KumikoKey.Up:
                 SelectedIndex = Math.Max(0, _selectedIndex - 1);
                 SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
                 return true;
-            case GridKey.Down:
+            case KumikoKey.Down:
                 SelectedIndex = Math.Min(_items.Count - 1, _selectedIndex + 1);
                 SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
                 return true;
@@ -281,14 +281,4 @@ public class DrawnScrollPicker : DrawnComponent
         InvalidateVisual();
         return true;
     }
-}
-
-/// <summary>Picker selection changed event args.</summary>
-public class PickerSelectionChangedEventArgs : EventArgs
-{
-    /// <summary>Index of the currently selected item.</summary>
-    public int SelectedIndex { get; }
-    /// <summary>Initializes a new instance of the <see cref="PickerSelectionChangedEventArgs"/> class.</summary>
-    /// <param name="index">The index of the selected item.</param>
-    public PickerSelectionChangedEventArgs(int index) { SelectedIndex = index; }
 }

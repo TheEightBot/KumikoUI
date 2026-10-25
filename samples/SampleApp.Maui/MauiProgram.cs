@@ -20,7 +20,7 @@ public static class MauiProgram
 
 		// Register custom SkiaSharp typefaces for use in the grid renderer.
 		// Fonts placed in Resources/Raw/ can be loaded here and made available
-		// to DataGridStyle via GridFont.Family.  This is the recommended fix for
+		// to KumikoStyle via KumikoFont.Family.  This is the recommended fix for
 		// garbled CJK text and icon-font glyphs on Android, where the system font
 		// manager does not expose Japanese or icon-font typefaces.
 		RegisterSkiaFonts();
@@ -40,7 +40,7 @@ public static class MauiProgram
 	private static void RegisterSkiaFonts()
 	{
 		// Noto Sans JP — covers Japanese, Chinese and Korean characters.
-		// Family name "NotoSansJP" can be used in DataGridStyle.HeaderFont / CellFont.
+		// Family name "NotoSansJP" can be used in KumikoStyle.HeaderFont / CellFont.
 		TryRegisterFont("NotoSansJP", "NotoSansJP-Regular.ttf");
 
 		// Material Icons — icon glyph font. Use the Unicode code points (e.g. "\uE88A")
