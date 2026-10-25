@@ -49,7 +49,7 @@ public static class KumikoAccessorRegistry
                         "Trim=true) for Native AOT and TrimMode=full, so the trimmer removes the reflection path; " +
                         "partial trimming keeps app types' metadata, which the reflection path reads.")]
     public static bool IsReflectionPropertyAccessSupported =>
-        AppContext.TryGetSwitch(ReflectionSwitchName, out bool enabled) ? enabled : true;
+        !AppContext.TryGetSwitch(ReflectionSwitchName, out bool enabled) || enabled;
 
     /// <summary>
     /// Registers the accessor provider for <paramref name="itemType"/> and the types derived from it.

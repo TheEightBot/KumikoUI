@@ -70,16 +70,14 @@ public sealed class KumikoGridItemGenerator : IIncrementalGenerator
         for (INamedTypeSymbol? t = type; t != null && t.SpecialType is not (SpecialType.System_Object or SpecialType.System_ValueType); t = t.BaseType)
         {
             ct.ThrowIfCancellationRequested();
-            foreach (var member in t.GetMembers())
+            var candidates = t.GetMembers()
+                .OfType<IPropertySymbol>()
+                .Where(p => seen.Add(p.Name) && IsSupported(p))
+                .Select(p => (Property: p, CanRead: CanRead(p), CanWrite: CanWrite(p)))
+                .Where(c => c.CanRead || c.CanWrite);
+
+            foreach (var (property, canRead, canWrite) in candidates)
             {
-                if (member is not IPropertySymbol property || !seen.Add(property.Name) || !IsSupported(property))
-                    continue;
-
-                bool canRead = property.GetMethod is { } get && IsAccessible(get.DeclaredAccessibility);
-                bool canWrite = property.SetMethod is { } set && !set.IsInitOnly && IsAccessible(set.DeclaredAccessibility);
-                if (!canRead && !canWrite)
-                    continue;
-
                 bool dynamic = property.Type.TypeKind == TypeKind.Dynamic;
                 string propertyType = dynamic ? "object" : property.Type.ToDisplayString(TypeFormat);
                 string castType = dynamic ? "object?" : property.Type.ToDisplayString(CastFormat);
@@ -96,6 +94,12 @@ public sealed class KumikoGridItemGenerator : IIncrementalGenerator
             Properties: new EquatableArray<PropertyModel>(properties.ToImmutableArray()),
             Diagnostic: null);
     }
+
+    private static bool CanRead(IPropertySymbol property) =>
+        property.GetMethod is { } get && IsAccessible(get.DeclaredAccessibility);
+
+    private static bool CanWrite(IPropertySymbol property) =>
+        property.SetMethod is { } set && !set.IsInitOnly && IsAccessible(set.DeclaredAccessibility);
 
     private static bool IsSupported(IPropertySymbol property) =>
         !property.IsStatic
