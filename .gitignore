@@ -40,3 +40,6 @@ artifacts/
 Thumbs.db
 
 *.lscache
+
+# BenchmarkDotNet output (bench/)
+BenchmarkDotNet.Artifacts/

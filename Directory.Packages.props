@@ -82,6 +82,18 @@
     <PackageVersion Include="Avalonia.Controls.DataGrid" Version="$(AvaloniaDataGridVersion)" />
   </ItemGroup>
 
+  <!--
+    Roslyn for the [KumikoGridItem] source generator: the oldest compiler the generator supports. Apps on
+    .NET 10 compile with a newer Roslyn, which loads generators built against older ones.
+  -->
+  <ItemGroup Label="Source generator">
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Benchmarks">
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+  </ItemGroup>
+
   <ItemGroup Label="Tests">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />

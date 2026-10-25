@@ -121,6 +121,18 @@ public class DrawnComboBox : DrawnComponent
     /// </summary>
     public string? ValueMemberPath { get; set; }
 
+    /// <summary>
+    /// Returns the display text of a source item. Takes precedence over <see cref="DisplayMemberPath"/>;
+    /// reflection-free.
+    /// </summary>
+    public Func<object, string?>? DisplaySelector { get; set; }
+
+    /// <summary>
+    /// Returns the value of a source item. Takes precedence over <see cref="ValueMemberPath"/>;
+    /// reflection-free.
+    /// </summary>
+    public Func<object, object?>? ValueSelector { get; set; }
+
     // ── Events ──────────────────────────────────────────────────
 
     /// <summary>Raised when the selected item changes.</summary>
@@ -182,13 +194,17 @@ public class DrawnComboBox : DrawnComponent
         {
             if (item == null) continue;
 
-            string displayText = DisplayMemberPath != null
-                ? GetPropertyValue(item, DisplayMemberPath)?.ToString() ?? string.Empty
-                : item.ToString() ?? string.Empty;
+            string displayText = DisplaySelector != null
+                ? DisplaySelector(item) ?? string.Empty
+                : DisplayMemberPath != null
+                    ? GetPropertyValue(item, DisplayMemberPath)?.ToString() ?? string.Empty
+                    : item.ToString() ?? string.Empty;
 
-            object? value = ValueMemberPath != null
-                ? GetPropertyValue(item, ValueMemberPath)
-                : item;
+            object? value = ValueSelector != null
+                ? ValueSelector(item)
+                : ValueMemberPath != null
+                    ? GetPropertyValue(item, ValueMemberPath)
+                    : item;
 
             _items.Add(new DrawnComboBoxItem(displayText, value));
         }
@@ -212,20 +228,8 @@ public class DrawnComboBox : DrawnComponent
         SelectedIndex = -1;
     }
 
-    private static object? GetPropertyValue(object obj, string propertyPath)
-    {
-        object? current = obj;
-        foreach (var part in propertyPath.Split('.'))
-        {
-            if (current == null) return null;
-            var type = current.GetType();
-            var prop = type.GetProperty(part,
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
-            if (prop == null) return null;
-            current = prop.GetValue(current);
-        }
-        return current;
-    }
+    private static object? GetPropertyValue(object obj, string propertyPath) =>
+        Data.KumikoAccessorRegistry.GetPath(obj.GetType(), propertyPath).GetValue(obj);
 
     private List<DrawnComboBoxItem> GetVisibleItems()
     {

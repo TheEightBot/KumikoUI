@@ -11,6 +11,8 @@
     -->
     <TargetFrameworks>net10.0;net10.0-ios;net10.0-android;net10.0-browserwasm;net10.0-desktop</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.26100</TargetFrameworks>
+    <!-- Native AOT and trimming safe; analyzer warnings are errors (Directory.Build.targets, #17). -->
+    <IsAotCompatible>true</IsAotCompatible>
 
     <UnoSingleProject>true</UnoSingleProject>
     <OutputType>Library</OutputType>

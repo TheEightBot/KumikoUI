@@ -51,6 +51,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 - [Custom Fonts](#-custom-fonts)
 - [Scrolling & Performance](#-scrolling--performance)
 - [Live Data](#-live-data)
+- [Native AOT & Trimming](#-native-aot--trimming)
 - [Architecture](#-architecture)
 - [Sample Application](#-sample-application)
 - [Requirements](#-requirements)
@@ -88,6 +89,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 | **Theming** | Built-in Light / Dark / HighContrast; fully customisable style object |
 | **Momentum scrolling** | Physics-based inertial scroll with configurable friction |
 | **Live data** | `INotifyPropertyChanged` and `ObservableCollection` O(1) updates |
+| **Native AOT & trimming** | Warning-free under `PublishAot`; `[KumikoGridItem]` source-generated accessors or per-column delegates |
 | **Column resizing** | Drag column border |
 
 ---
@@ -815,7 +817,49 @@ public class Employee : INotifyPropertyChanged
 <core:KumikoColumn Header="City" PropertyName="Address.City" Width="120" />
 ```
 
-Accessors are compiled once via `Expression.Property` chains and cached.
+Each path segment is resolved once per item type and cached. A `null` value part-way along the path reads as an empty cell, and an edit to it is ignored. How the properties are read is covered in [Native AOT & Trimming](#-native-aot--trimming).
+
+---
+
+## 🧩 Native AOT & Trimming
+
+All KumikoUI packages are marked `IsAotCompatible` and build with no trimming or Native AOT warnings. The grid reads and writes item properties named by `PropertyName` through, in order:
+
+1. **Column delegates**: `ValueAccessor` and `ValueSetter` on `KumikoColumn` (and `EditorDisplaySelector` / `EditorValueSelector` for ComboBox items).
+2. **Generated accessors**: types marked `[KumikoGridItem]`. The `KumikoUI.Core` package includes a source generator that writes typed accessors for their public properties and registers them when the assembly loads.
+3. **Registered providers**: `KumikoAccessorRegistry.Register(type, provider)` or `AddProvider(provider)` with your own `IKumikoAccessorProvider`, for example to read dictionary entries or data rows.
+4. **Reflection**: everything else. This fallback is turned off automatically for `PublishAot=true` and `TrimMode=full`, because those publishes remove the metadata it reads. Partial trimming (the .NET MAUI default) keeps it on.
+
+With reflection off, a property that no tier can serve reads as `null`, edits to it are ignored, and a warning naming the type and property is traced once.
+
+```csharp
+using KumikoUI.Core.Data;
+
+[KumikoGridItem]          // generated accessors for Name, Age, Address, …
+public class Employee
+{
+    public string Name { get; set; } = "";
+    public int Age { get; set; }
+    public Address? Address { get; set; }
+}
+
+[KumikoGridItem]          // mark every type a path walks through ("Address.City")
+public class Address
+{
+    public string City { get; set; } = "";
+}
+
+// Or per column, without attributes:
+var bonus = new KumikoColumn
+{
+    Header = "Bonus",
+    PropertyName = "Bonus",                                   // still names the column for summaries and grouping
+    ValueAccessor = item => ((Employee)item).Age * 10m,
+    ValueSetter = (item, value) => { /* write it back */ },
+};
+```
+
+Generated accessors and delegates are faster than the expression trees the grid compiled before, and need no runtime code generation. `bench/KumikoUI.Benchmarks` measures them. The generator reports `KUMIKO001` for generic types and `KUMIKO002` for types it cannot reference (private, protected or file-local); use delegates or a provider for those. Set the `KumikoReflectionPropertyAccess` MSBuild property to `true` or `false` to override the automatic choice.
 
 ---
 

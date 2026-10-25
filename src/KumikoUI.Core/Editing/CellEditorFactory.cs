@@ -158,11 +158,12 @@ public static class CellEditorFactory
 
         if (column.EditorItems != null)
         {
+            // Paths and selectors first: SetItemsFromSource reads them while it builds the items.
+            comboBox.DisplayMemberPath = column.EditorDisplayMemberPath;
+            comboBox.ValueMemberPath = column.EditorValueMemberPath;
+            comboBox.DisplaySelector = column.EditorDisplaySelector;
+            comboBox.ValueSelector = column.EditorValueSelector;
             comboBox.SetItemsFromSource(column.EditorItems);
-            if (column.EditorDisplayMemberPath != null)
-                comboBox.DisplayMemberPath = column.EditorDisplayMemberPath;
-            if (column.EditorValueMemberPath != null)
-                comboBox.ValueMemberPath = column.EditorValueMemberPath;
         }
 
         if (value != null)
