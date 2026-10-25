@@ -19,7 +19,7 @@
     <!--
       Minimum .NET MAUI version KumikoUI.Maui supports. It becomes the package's dependency floor, so it
       no longer floats with whatever MAUI workload the build machine has. 10.0.20 is also the floor of
-      SkiaSharp.Views.Maui.Controls 4.153.1.
+      SkiaSharp.Views.Maui.Controls 4.153.1. Dependabot ignores it (.github/dependabot.yml); raise it by hand.
     -->
     <MauiVersion>10.0.20</MauiVersion>
 
