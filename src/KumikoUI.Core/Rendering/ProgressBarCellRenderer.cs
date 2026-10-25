@@ -48,7 +48,7 @@ public class ProgressBarCellRenderer : ICellRenderer
         if (value is IConvertible conv)
         {
             try { numValue = conv.ToDouble(null); }
-            catch { /* leave at 0 */ }
+            catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException) { /* leave at 0 */ }
         }
 
         double range = Maximum - Minimum;

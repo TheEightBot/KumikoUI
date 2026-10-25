@@ -21,7 +21,6 @@ if (assemblyPaths.Length == 0 || assemblyPaths.Any(a => a is "-h" or "--help"))
 
 try
 {
-    string packageRoot = Metadata("NuGetPackageRoot");
     string mauiVersion = Metadata("MauiControlsVersion");
     string winUIVersion = Metadata("WindowsAppSdkWinUIVersion");
     string unoVersion = Metadata("UnoWinUIVersion");
@@ -49,14 +48,9 @@ try
     foreach (var source in sources)
     {
         var names = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
-        foreach (string file in source.Files)
-        {
-            foreach (var type in PublicTopLevelTypes(file))
-            {
-                if (InNamespace(type.Namespace, source.NamespacePrefix))
-                    Add(names, type);
-            }
-        }
+        foreach (var type in source.Files.SelectMany(PublicTopLevelTypes)
+                     .Where(t => InNamespace(t.Namespace, source.NamespacePrefix)))
+            Add(names, type);
 
         if (!names.Values.Any(set => set.Contains(source.Sentinel)))
             throw new InvalidOperationException(
@@ -80,12 +74,11 @@ try
     var collisions = new List<(TypeName Kumiko, List<string> Platform)>();
     foreach (var type in kumikoTypes.OrderBy(t => t.FullName, StringComparer.Ordinal))
     {
-        var clashes = new List<string>();
-        foreach (var source in sources)
-        {
-            if (platformNames[source.Label].TryGetValue(type.SimpleName, out var fullNames))
-                clashes.AddRange(fullNames);
-        }
+        var clashes = sources
+            .Select(source => platformNames[source.Label].GetValueOrDefault(type.SimpleName))
+            .Where(fullNames => fullNames is not null)
+            .SelectMany(fullNames => fullNames!)
+            .ToList();
 
         if (clashes.Count > 0)
             collisions.Add((type, clashes.Distinct(StringComparer.Ordinal).ToList()));
@@ -130,7 +123,7 @@ string Metadata(string key) =>
 IEnumerable<string> Package(string id, string version, string folder, string pattern)
 {
     // NuGet's global-packages layout: <root>/<lower-case id>/<version>/...
-    string directory = Path.Combine(Metadata("NuGetPackageRoot"), id, version.ToLowerInvariant(), folder);
+    string directory = Path.Join(Metadata("NuGetPackageRoot"), id, version.ToLowerInvariant(), folder);
     if (!Directory.Exists(directory))
         throw new DirectoryNotFoundException($"Package folder not found: {directory}. Restore eng/TypeNameCheck first.");
 
@@ -163,23 +156,16 @@ static IEnumerable<TypeName> PublicTopLevelTypes(string path)
 
     var reader = pe.GetMetadataReader();
     string assemblyName = Path.GetFileName(path);
-    var result = new List<TypeName>();
-    foreach (var handle in reader.TypeDefinitions)
-    {
-        var definition = reader.GetTypeDefinition(handle);
-        if ((definition.Attributes & TypeAttributes.VisibilityMask) != TypeAttributes.Public)
-            continue;
-
-        string name = reader.GetString(definition.Name);
-        string ns = reader.GetString(definition.Namespace);
-        int arity = name.IndexOf('`');
-        if (arity >= 0)
-            name = name[..arity];
-
-        result.Add(new TypeName(ns, name, assemblyName));
-    }
-
-    return result;
+    return reader.TypeDefinitions
+        .Select(handle => reader.GetTypeDefinition(handle))
+        .Where(definition => (definition.Attributes & TypeAttributes.VisibilityMask) == TypeAttributes.Public)
+        .Select(definition =>
+        {
+            string name = reader.GetString(definition.Name);
+            int arity = name.IndexOf('`');
+            return new TypeName(reader.GetString(definition.Namespace), arity >= 0 ? name[..arity] : name, assemblyName);
+        })
+        .ToList();
 }
 
 internal sealed record PlatformSource(string Label, string NamespacePrefix, string Sentinel, IEnumerable<string> Files);

@@ -66,16 +66,14 @@ public class GridColorTypeConverter : TypeConverter
 
         // CSV: R,G,B  or  R,G,B,A
         var parts = s.Split(',');
-        if (parts.Length is 3 or 4)
+        if (parts.Length is 3 or 4 &&
+            byte.TryParse(parts[0].Trim(), out byte red) &&
+            byte.TryParse(parts[1].Trim(), out byte green) &&
+            byte.TryParse(parts[2].Trim(), out byte blue))
         {
-            if (byte.TryParse(parts[0].Trim(), out byte r) &&
-                byte.TryParse(parts[1].Trim(), out byte g) &&
-                byte.TryParse(parts[2].Trim(), out byte b))
-            {
-                if (parts.Length == 4 && byte.TryParse(parts[3].Trim(), out byte a))
-                    return new GridColor(r, g, b, a);
-                return new GridColor(r, g, b);
-            }
+            if (parts.Length == 4 && byte.TryParse(parts[3].Trim(), out byte alpha))
+                return new GridColor(red, green, blue, alpha);
+            return new GridColor(red, green, blue);
         }
 
         throw new FormatException(

@@ -40,7 +40,7 @@ public class NumericUpDownEditorDescriptor : EditorDescriptor
         if (currentValue != null)
         {
             try { value = Convert.ToDouble(currentValue); }
-            catch { /* use default */ }
+            catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException) { /* use default */ }
         }
 
         return new DrawnNumericUpDown
