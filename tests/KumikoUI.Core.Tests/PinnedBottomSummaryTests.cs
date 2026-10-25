@@ -312,14 +312,14 @@ public class PinnedBottomSummaryTests
         grid.Style.ShowRowDragHandle = true;
         grid.Style.RowDragHandlePosition = DragHandlePosition.Left;
 
-        var fills = grid.Render().Fills;
+        var fills = grid.Render().Fills.ToList();
 
         int footerIndex = fills.FindLastIndex(f =>
             f.Color == grid.Style.SummaryRowBackgroundColor &&
             Math.Abs(f.Rect.Y - grid.FooterTop) < 0.01f &&
             f.Rect.Width >= ViewportWidth);
         int lastGripIndex = fills.FindLastIndex(f =>
-            f.Kind == "FillRoundRect" && f.Color == grid.Style.RowDragHandleColor);
+            f.Kind == DrawOpKind.FillRoundRect && f.Color == grid.Style.RowDragHandleColor);
 
         Assert.True(footerIndex >= 0, "pinned footer background was not drawn");
         Assert.True(lastGripIndex >= 0, "drag handle grips were not drawn");
@@ -332,7 +332,7 @@ public class PinnedBottomSummaryTests
         var grid = CreateGrid(rowCount: 3, pinned: false);
         float expectedY = grid.Style.HeaderHeight + 3 * grid.Style.RowHeight;
 
-        var fills = grid.Render().Fills;
+        var fills = grid.Render().Fills.ToList();
 
         Assert.Contains(fills, f => f.Color == grid.Style.SummaryRowBackgroundColor && Math.Abs(f.Rect.Y - expectedY) < 0.01f);
         Assert.DoesNotContain(fills, f => f.Color == grid.Style.SummaryRowBackgroundColor && Math.Abs(f.Rect.Y - grid.FooterTop) < 0.01f);

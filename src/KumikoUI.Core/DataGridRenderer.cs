@@ -307,11 +307,6 @@ public class DataGridRenderer
         popupManager?.DrawPopups(ctx);
     }
 
-    private static float ColumnScreenX(float colContentX, ScrollState scroll, bool isFrozen)
-    {
-        return isFrozen ? colContentX : colContentX - scroll.OffsetX;
-    }
-
     /// <summary>
     /// Returns screen X for a column, handling left-frozen, right-frozen, and scrollable.
     /// For right-frozen columns, the X is already an absolute screen position from GetVisibleRightFrozenColumns.
@@ -324,13 +319,6 @@ public class DataGridRenderer
             ColumnFreezeMode.Right => colContentX, // already absolute screen X
             _ => colContentX - scroll.OffsetX
         };
-    }
-
-    private void DrawFrozenBackground(
-        IDrawingContext ctx, float frozenWidth, ScrollState scroll, DataGridStyle style)
-    {
-        ctx.FillRect(new GridRect(0, 0, frozenWidth, scroll.ViewportHeight),
-            _paintCache.FrozenColumnBackground);
     }
 
     private void DrawRightFrozenBackground(
