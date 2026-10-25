@@ -7,10 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Native AOT and trimming support (#17). Item properties are read and written, in order, through:
+  - `KumikoColumn.ValueAccessor` / `ValueSetter` delegates (and `EditorDisplaySelector` / `EditorValueSelector` for ComboBox items, `DrawnComboBox.DisplaySelector` / `ValueSelector`);
+  - accessors generated for types marked `[KumikoGridItem]` (`KumikoUI.Core.Data`), by a source generator now included in the KumikoUI.Core package;
+  - providers registered with `KumikoAccessorRegistry.Register` / `AddProvider` (`IKumikoAccessorProvider`, `KumikoPropertyAccessor`);
+  - reflection, as before.
+
+  Generated and delegate reads are 3–5× faster than the previous compiled expression trees, with 80% less allocation (`bench/KumikoUI.Benchmarks`). All four packages are marked `IsAotCompatible` and build with no trimming or AOT analyzer warnings; such warnings now fail the build.
 - **KumikoUI.Uno**: a new package hosting the grid on the Uno Platform (Windows App SDK, desktop on Windows/macOS/Linux, WebAssembly, Android, iOS) with the same engine, rendering and features as KumikoUI.Maui, plus `KumikoFonts` for registering custom fonts from app assets, and the `SampleApp.Uno` sample.
-- `DataGridStyle.PinBottomSummaryRows` (default `true`): `Position=Bottom` table summary rows are pinned to the bottom of the viewport as a fixed footer instead of scrolling after the last row. **Behaviour change** for existing users of bottom summaries; set it to `false` to restore the previous layout.
+- `KumikoStyle.PinBottomSummaryRows` (default `true`): `Position=Bottom` table summary rows are pinned to the bottom of the viewport as a fixed footer instead of scrolling after the last row. **Behaviour change** for existing users of bottom summaries; set it to `false` to restore the previous layout.
 
 ### Changed
+- The reflection fallback for item properties is off for `PublishAot=true` and `TrimMode=full` publishes (KumikoUI.Core build targets set the `KumikoUI.Core.IsReflectionPropertyAccessSupported` switch). A property with no generated accessor, delegate or provider then reads as null and is traced once. Override with the `KumikoReflectionPropertyAccess` MSBuild property. Partial trimming, the .NET MAUI default, is unaffected.
+- A nested property path with a `null` value part-way (`Address.City` when `Address` is null) now reads as an empty cell instead of throwing, and an edit to it is ignored.
 - **Breaking:** naming pass: every grid type now uses the `Kumiko` prefix (drawn components keep `Drawn`), and no public name collides with types of MAUI, CommunityToolkit.Maui, WinUI/Uno, the Windows Community Toolkit DataGrid, WPF, Windows Forms or Avalonia (#16). Namespaces are unchanged (`KumikoUI.*`); member names are unchanged (for example `KumikoColumn.SortDirection`, `KumikoDataGrid.GridSelectionMode` and `KumikoDataGrid.GridStyle` keep their names, only their types change). Update XAML and code as follows:
   - Host control: `DataGridView` → `KumikoDataGrid` in both `KumikoUI.Maui` and `KumikoUI.Uno`, including XAML (`<dg:DataGridView …>` → `<dg:KumikoDataGrid …>`, `<dg:DataGridView.Columns>` → `<dg:KumikoDataGrid.Columns>`, and the same for `TableSummaryRows` and `GroupSummaryRows`).
   - Models: `DataGridSource` → `KumikoSource`, `DataGridColumn` → `KumikoColumn` (including `<core:DataGridColumn …>` in XAML), `DataGridColumnType` → `KumikoColumnType`, `DataGridStyle` → `KumikoStyle`, `DataGridTheme` → `KumikoTheme`, `DataGridThemeMode` → `KumikoThemeMode`, `CellStyle` → `KumikoCellStyle`, `RowStyle` → `KumikoRowStyle`, `DataGridRenderer` → `KumikoRenderer`
@@ -36,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno is built with Uno.Sdk 6.7.30 (was 6.5.31).
 
 ### Fixed
+- ComboBox editors now apply the column's `EditorDisplayMemberPath` and `EditorValueMemberPath`; they were set after the items were built, so items showed `ToString()` and the current value was not selected.
 - An unknown font family now falls back to the default family in the requested weight and slant instead of producing a null typeface. Styled typefaces are resolved through `SKFontManager` with an explicit family, which SkiaSharp 4 needs to keep bold and italic.
 - Taps on the pinned summary footer no longer select or edit the data row behind it; unpinned bottom summary rows are also reported as `HitRegion.TableSummaryRow`.
 - Keyboard navigation keeps the current row fully visible between the header/frozen rows and the pinned footer, and accounts for the grouping panel and top summary rows (previously the scroll offset was counted twice).

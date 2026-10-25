@@ -1,8 +1,7 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq.Expressions;
-using System.Reflection;
+using KumikoUI.Core.Data;
 
 namespace KumikoUI.Core.Models;
 
@@ -18,7 +17,6 @@ public class KumikoSource
     private List<int> _viewIndices = new();          // filtered + sorted mapping
     private List<FlatViewRow>? _flatView;            // null when no grouping; otherwise group headers + data rows
     private List<KumikoColumn> _columns = new();
-    private readonly Dictionary<string, Func<object, object?>> _accessors = new();
     private Func<object, bool>? _filterPredicate;
 
     // ── Observable collection tracking ───────────────────────────
@@ -240,8 +238,6 @@ public class KumikoSource
         else
             _sourceItems = items.Cast<object>().ToList();
 
-        _accessors.Clear();
-
         // Subscribe to INotifyCollectionChanged if supported
         if (items is INotifyCollectionChanged incc)
         {
@@ -327,11 +323,6 @@ public class KumikoSource
                 SubscribeToItemPropertyChanged();
                 break;
         }
-
-        // Note: we do NOT clear _accessors here. The compiled expression-tree
-        // delegates are keyed by "{type.FullName}.{propertyPath}" and remain
-        // valid across add/remove/replace operations (the item type doesn't change).
-        // Clearing them here would force expensive recompilation on every INCC event.
 
         // For simple Add/Remove with no active sort, filter, or grouping we can
         // do an incremental update instead of a full O(n) rebuild.
@@ -432,8 +423,6 @@ public class KumikoSource
 
         if (needsRebuild)
         {
-            // Note: we do NOT clear _accessors here. Property value changes
-            // don't alter the item type, so compiled accessors remain valid.
             RebuildView();
         }
         else
@@ -449,7 +438,6 @@ public class KumikoSource
     public void SetColumns(IEnumerable<KumikoColumn> columns)
     {
         _columns = columns.ToList();
-        _accessors.Clear();
     }
 
     /// <summary>
@@ -667,9 +655,7 @@ public class KumikoSource
     public object? GetCellValue(int visibleRow, KumikoColumn column)
     {
         if (IsGroupHeaderRow(visibleRow)) return null;
-        var item = GetItem(visibleRow);
-        var accessor = GetOrCreateAccessor(item.GetType(), column.PropertyName);
-        return accessor(item);
+        return ReadColumnValue(GetItem(visibleRow), column);
     }
 
     /// <summary>
@@ -867,53 +853,19 @@ public class KumikoSource
     }
 
     /// <summary>
-    /// Set a cell value for a visible row and column via reflection.
+    /// Set a cell value for a visible row and column, through <see cref="KumikoColumn.ValueSetter"/> when
+    /// it is set and through the column's property path otherwise (converting the value to the property
+    /// type). A value that cannot be written (read-only or unknown property, null intermediate value,
+    /// failed conversion) is ignored.
     /// </summary>
     public void SetCellValue(int visibleRow, KumikoColumn column, object? value)
     {
         var item = GetItem(visibleRow);
-        SetPropertyValue(item, column.PropertyName, value);
+        if (column.ValueSetter != null)
+            column.ValueSetter(item, value);
+        else
+            column.ResolvePath(item.GetType()).TrySetValue(item, value);
         DataChanged?.Invoke();
-    }
-
-    /// <summary>
-    /// Set a property value on an object using reflection. Supports dotted paths.
-    /// </summary>
-    private static void SetPropertyValue(object target, string propertyPath, object? value)
-    {
-        var parts = propertyPath.Split('.');
-        object current = target;
-
-        // Navigate to the parent object for nested paths
-        for (int i = 0; i < parts.Length - 1; i++)
-        {
-            var prop = current.GetType().GetProperty(parts[i],
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            if (prop == null) return;
-            var next = prop.GetValue(current);
-            if (next == null) return;
-            current = next;
-        }
-
-        // Set the final property
-        var finalProp = current.GetType().GetProperty(parts[^1],
-            BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-        if (finalProp == null || !finalProp.CanWrite) return;
-
-        try
-        {
-            // Convert to the target type if needed
-            if (value != null && !finalProp.PropertyType.IsAssignableFrom(value.GetType()))
-            {
-                var targetType = Nullable.GetUnderlyingType(finalProp.PropertyType) ?? finalProp.PropertyType;
-                value = Convert.ChangeType(value, targetType);
-            }
-            finalProp.SetValue(current, value);
-        }
-        catch
-        {
-            // Graceful fallback — skip if conversion/set fails
-        }
     }
 
     // ── Internal ─────────────────────────────────────────────────
@@ -971,11 +923,20 @@ public class KumikoSource
     /// <summary>
     /// Get a cell value directly from an item (bypasses view indices).
     /// </summary>
-    private object? GetCellValueDirect(object item, KumikoColumn column)
-    {
-        var accessor = GetOrCreateAccessor(item.GetType(), column.PropertyName);
-        return accessor(item);
-    }
+    private static object? GetCellValueDirect(object item, KumikoColumn column) => ReadColumnValue(item, column);
+
+    /// <summary>
+    /// Read a column's value from an item: <see cref="KumikoColumn.ValueAccessor"/> when it is set,
+    /// otherwise the column's property path (an empty path is the item itself).
+    /// </summary>
+    private static object? ReadColumnValue(object item, KumikoColumn column) =>
+        column.ValueAccessor != null
+            ? column.ValueAccessor(item)
+            : column.ResolvePath(item.GetType()).GetValue(item);
+
+    /// <summary>A reader for one column, for tight loops (sorting, aggregates).</summary>
+    private static Func<object, object?> CreateColumnReader(KumikoColumn column) =>
+        column.ValueAccessor ?? (item => column.ResolvePath(item.GetType()).GetValue(item));
 
     /// <summary>
     /// Format a cell value as display text.
@@ -1088,12 +1049,10 @@ public class KumikoSource
 
         if (sortedColumns.Count > 0 && _sourceItems.Count > 0)
         {
-            var itemType = _sourceItems[0]!.GetType();
-
-            // Pre-build accessors and comparers for each sort column
+            // Pre-build readers and comparers for each sort column
             var sortSpecs = sortedColumns.Select(col => new
             {
-                Accessor = GetOrCreateAccessor(itemType, col.PropertyName),
+                Accessor = CreateColumnReader(col),
                 Comparer = col.CustomComparer ?? Comparer<object>.Default,
                 Direction = col.SortDirection == KumikoSortDirection.Ascending ? 1 : -1
             }).ToList();
@@ -1167,8 +1126,7 @@ public class KumikoSource
             object? rawValue;
             if (column != null)
             {
-                var accessor = GetOrCreateAccessor(item.GetType(), groupDesc.PropertyName);
-                rawValue = accessor(item);
+                rawValue = ReadColumnValue(item, column);
             }
             else
             {
@@ -1372,10 +1330,10 @@ public class KumikoSource
 
         if (column == null || _sourceItems.Count == 0) return result;
 
-        var accessor = GetOrCreateAccessor(_sourceItems[0]!.GetType(), propertyName);
+        var reader = CreateColumnReader(column);
         foreach (var idx in sourceIndices)
         {
-            result.Add(accessor(_sourceItems[idx]!));
+            result.Add(reader(_sourceItems[idx]!));
         }
         return result;
     }
@@ -1511,46 +1469,5 @@ public class KumikoSource
             SummaryType.Custom => "",
             _ => ""
         };
-    }
-
-    private Func<object, object?> GetOrCreateAccessor(Type type, string propertyPath)
-    {
-        var key = $"{type.FullName}.{propertyPath}";
-        if (_accessors.TryGetValue(key, out var existing))
-            return existing;
-
-        var accessor = BuildAccessor(type, propertyPath);
-        _accessors[key] = accessor;
-        return accessor;
-    }
-
-    /// <summary>
-    /// Build a compiled expression tree accessor for fast property access.
-    /// Supports dotted paths: "Address.City".
-    /// </summary>
-    private static Func<object, object?> BuildAccessor(Type type, string propertyPath)
-    {
-        // Empty path: return the item itself. Useful for Template/action columns
-        // that need the whole row object as the cell value (e.g. CustomEditorFactory).
-        if (string.IsNullOrEmpty(propertyPath))
-            return item => item;
-
-        var param = Expression.Parameter(typeof(object), "item");
-        Expression body = Expression.Convert(param, type);
-
-        foreach (var part in propertyPath.Split('.'))
-        {
-            var prop = body.Type.GetProperty(part,
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            if (prop == null)
-                return _ => null; // Graceful fallback
-            body = Expression.Property(body, prop);
-        }
-
-        // Box value types
-        if (body.Type.IsValueType)
-            body = Expression.Convert(body, typeof(object));
-
-        return Expression.Lambda<Func<object, object?>>(body, param).Compile();
     }
 }

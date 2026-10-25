@@ -35,6 +35,7 @@ jobs:
         run: dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
           && dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
           && dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
+          && dotnet restore tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
 
       - name: Build — Core
         run: dotnet build src/KumikoUI.Core/KumikoUI.Core.csproj
@@ -53,6 +54,10 @@ jobs:
 
       - name: Test
         run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
+          --no-restore -c Release --logger "trx" --results-directory TestResults
+
+      - name: Test — source generator
+        run: dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
           --no-restore -c Release --logger "trx" --results-directory TestResults
 
       - name: Upload test results

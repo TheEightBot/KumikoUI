@@ -20,6 +20,10 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/KumikoUI.Core/KumikoUI.Core.csproj" />
+    <!-- Runs the [KumikoGridItem] generator over the test models, as the package does in apps. -->
+    <ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

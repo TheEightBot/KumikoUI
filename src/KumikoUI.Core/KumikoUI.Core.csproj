@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- Native AOT and trimming safe; analyzer warnings are errors (Directory.Build.targets, #17). -->
+    <IsAotCompatible>true</IsAotCompatible>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -11,5 +13,24 @@
     <Description>Core data models, abstractions, and data-source logic for KumikoUI DataGrid. Platform-independent — no rendering or UI framework references.</Description>
     <PackageTags>maui;datagrid;data;grid;table;core</PackageTags>
   </PropertyGroup>
+
+  <!--
+    The [KumikoGridItem] source generator ships inside this package (analyzers/dotnet/cs). Built first,
+    never referenced at compile time, and not a package dependency.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+    <None Include="../KumikoUI.SourceGenerators/bin/$(Configuration)/netstandard2.0/KumikoUI.SourceGenerators.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/cs"
+          Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Switches the reflection fallback off for Native AOT and full-trim publishes (see the file). -->
+    <None Include="buildTransitive/KumikoUI.Core.targets" Pack="true" PackagePath="buildTransitive/;build/" />
+  </ItemGroup>
 
 </Project>

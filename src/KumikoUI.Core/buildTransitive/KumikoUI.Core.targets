@@ -1,0 +1,23 @@
+<Project>
+  <!--
+    KumikoUI reads item properties through generated accessors ([KumikoGridItem]), column delegates
+    (KumikoColumn.ValueAccessor/ValueSetter) or registered providers, and falls back to reflection.
+    Reflection cannot see members that full trimming removed, so the fallback is switched off for
+    Native AOT and TrimMode=full publishes: the trimmer then removes it, and a property without an
+    accessor reads as null (traced once). Partial trimming (the .NET MAUI default) keeps app types and
+    leaves the fallback on.
+
+    Override with the KumikoReflectionPropertyAccess MSBuild property (true or false).
+  -->
+  <Target Name="KumikoConfigureReflectionPropertyAccess"
+          BeforeTargets="GenerateRuntimeConfigurationFiles;PrepareForILLink;_ComputeIlcCompileInputs">
+    <PropertyGroup>
+      <KumikoReflectionPropertyAccess Condition="'$(KumikoReflectionPropertyAccess)' == '' and ('$(PublishAot)' == 'true' or ('$(PublishTrimmed)' == 'true' and '$(TrimMode)' == 'full'))">false</KumikoReflectionPropertyAccess>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(KumikoReflectionPropertyAccess)' != '' and '@(RuntimeHostConfigurationOption->WithMetadataValue('Identity', 'KumikoUI.Core.IsReflectionPropertyAccessSupported'))' == ''">
+      <RuntimeHostConfigurationOption Include="KumikoUI.Core.IsReflectionPropertyAccessSupported"
+                                      Value="$(KumikoReflectionPropertyAccess)"
+                                      Trim="true" />
+    </ItemGroup>
+  </Target>
+</Project>

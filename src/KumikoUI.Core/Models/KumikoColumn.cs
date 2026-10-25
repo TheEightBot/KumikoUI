@@ -15,8 +15,39 @@ public class KumikoColumn
     /// <summary>Display header text.</summary>
     public string Header { get; set; } = string.Empty;
 
-    /// <summary>Property path on the data item (supports nested: "Address.City").</summary>
+    /// <summary>
+    /// Property path on the data item (supports nested: "Address.City"; empty means the item itself).
+    /// Resolved through <see cref="Data.KumikoAccessorRegistry"/>: accessors generated for types marked
+    /// <see cref="Data.KumikoGridItemAttribute"/>, registered providers, then reflection where it is
+    /// supported. <see cref="ValueAccessor"/> and <see cref="ValueSetter"/> take precedence.
+    /// </summary>
     public string PropertyName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Reads the cell value from a row item. When set, it is used instead of <see cref="PropertyName"/>
+    /// for display, sorting, grouping, filtering and summaries. Reflection-free, so it works under
+    /// Native AOT and full trimming.
+    /// </summary>
+    public Func<object, object?>? ValueAccessor { get; set; }
+
+    /// <summary>
+    /// Writes an edited value back to a row item. When set, it is used instead of
+    /// <see cref="PropertyName"/>; the editor's value is passed as is, without conversion.
+    /// Reflection-free, so it works under Native AOT and full trimming.
+    /// </summary>
+    public Action<object, object?>? ValueSetter { get; set; }
+
+    // The path resolved for the last item type seen, so a cell read costs no registry lookup.
+    private Data.KumikoValuePath? _resolvedPath;
+
+    /// <summary>Resolves <see cref="PropertyName"/> for <paramref name="itemType"/>, caching the last result.</summary>
+    internal Data.KumikoValuePath ResolvePath(Type itemType)
+    {
+        var path = _resolvedPath;
+        if (path == null || !path.IsCurrentFor(itemType, PropertyName))
+            _resolvedPath = path = Data.KumikoAccessorRegistry.GetPath(itemType, PropertyName);
+        return path;
+    }
 
     /// <summary>Type of column for rendering dispatch.</summary>
     public KumikoColumnType ColumnType { get; set; } = KumikoColumnType.Text;
@@ -145,6 +176,18 @@ public class KumikoColumn
 
     /// <summary>Property path for value in ComboBox editor items.</summary>
     public string? EditorValueMemberPath { get; set; }
+
+    /// <summary>
+    /// Returns the display text of a ComboBox editor item. Takes precedence over
+    /// <see cref="EditorDisplayMemberPath"/>; reflection-free.
+    /// </summary>
+    public Func<object, string?>? EditorDisplaySelector { get; set; }
+
+    /// <summary>
+    /// Returns the value of a ComboBox editor item. Takes precedence over
+    /// <see cref="EditorValueMemberPath"/>; reflection-free.
+    /// </summary>
+    public Func<object, object?>? EditorValueSelector { get; set; }
 
     /// <summary>
     /// Custom editor factory for Template columns.

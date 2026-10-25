@@ -13,6 +13,9 @@ updates:
       # MauiVersion (Directory.Packages.props) is the deliberate minimum KumikoUI.Maui supports,
       # not a version to track: raising it forces every consumer onto that MAUI. Raise it by hand.
       - dependency-name: "Microsoft.Maui.Controls"
+      # The [KumikoGridItem] generator is built against the oldest Roslyn it supports; a newer
+      # Microsoft.CodeAnalysis.CSharp would stop older compilers from loading it. Raise it by hand.
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp"
     groups:
       # One major version across the whole repository (see Directory.Packages.props).
       skiasharp:
