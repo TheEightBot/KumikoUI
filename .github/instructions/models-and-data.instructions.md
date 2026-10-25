@@ -73,11 +73,11 @@ source.EndUpdate();
 
 ```csharp
 source.ApplySort(column);                         // cycles None → Asc → Desc → None
-source.ApplySort(column, SortDirection.Ascending);
+source.ApplySort(column, DataGridSortDirection.Ascending);
 
 // Multi-column:
-col1.SortDirection = SortDirection.Ascending; col1.SortOrder = 1;
-col2.SortDirection = SortDirection.Descending; col2.SortOrder = 2;
+col1.SortDirection = DataGridSortDirection.Ascending; col1.SortOrder = 1;
+col2.SortDirection = DataGridSortDirection.Descending; col2.SortOrder = 2;
 source.ApplySorts();
 ```
 
@@ -154,11 +154,11 @@ style.CellStyleResolver = (item, column) =>
 // Dynamic per-row styling:
 style.RowStyleResolver = item =>
     item is Employee e && e.Salary > 200_000
-        ? new RowStyle { BackgroundColor = new GridColor(255, 250, 220) }
+        ? new DataGridRowStyle { BackgroundColor = new GridColor(255, 250, 220) }
         : null;
 ```
 
-### `CellStyle` / `RowStyle` nullable properties
+### `CellStyle` / `DataGridRowStyle` nullable properties
 
 All properties are nullable — `null` means "inherit from grid-level `DataGridStyle`".
 `CellStyle.Merge(primary, fallback)` combines two instances with `primary` taking precedence.
@@ -167,7 +167,7 @@ All properties are nullable — `null` means "inherit from grid-level `DataGridS
 
 ## Adding a new `DataGridStyle` property
 
-1. Add property (with `///` XML doc) to `DataGridStyle` in `GridState.cs`.
+1. Add property (with `///` XML doc) to `DataGridStyle` in `DataGridStyle.cs`.
 2. Set value in `DataGridTheme.CreateDark()` and `DataGridTheme.CreateHighContrast()`.
 3. Use in `DataGridRenderer.cs`.
 4. Add `[Fact]` tests in `DataGridThemeTests.cs` for Dark and HighContrast values.

@@ -10,13 +10,13 @@ namespace KumikoUI.Core.Components;
 /// </summary>
 public class DrawnComboBox : DrawnComponent
 {
-    private readonly List<ComboBoxItem> _items = new();
+    private readonly List<DrawnComboBoxItem> _items = new();
     private int _selectedIndex = -1;
     private int _highlightedIndex = -1;
     private bool _isDropdownOpen;
     private int _pressedItemIndex = -1;
     private string _filterText = string.Empty;
-    private List<ComboBoxItem>? _filteredItems;
+    private List<DrawnComboBoxItem>? _filteredItems;
 
     // ── Style ───────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ public class DrawnComboBox : DrawnComponent
     // ── Properties ──────────────────────────────────────────────
 
     /// <summary>Items in the dropdown.</summary>
-    public IReadOnlyList<ComboBoxItem> Items => _items;
+    public IReadOnlyList<DrawnComboBoxItem> Items => _items;
 
     /// <summary>The selected item index (-1 = none).</summary>
     public int SelectedIndex
@@ -92,7 +92,7 @@ public class DrawnComboBox : DrawnComponent
     }
 
     /// <summary>The selected item (null if none).</summary>
-    public ComboBoxItem? SelectedItem => _selectedIndex >= 0 && _selectedIndex < _items.Count ? _items[_selectedIndex] : null;
+    public DrawnComboBoxItem? SelectedItem => _selectedIndex >= 0 && _selectedIndex < _items.Count ? _items[_selectedIndex] : null;
 
     /// <summary>The value of the selected item.</summary>
     public object? SelectedValue => SelectedItem?.Value;
@@ -137,7 +137,7 @@ public class DrawnComboBox : DrawnComponent
     /// <summary>Add an item to the dropdown.</summary>
     public void AddItem(string displayText, object? value = null)
     {
-        _items.Add(new ComboBoxItem(displayText, value ?? displayText));
+        _items.Add(new DrawnComboBoxItem(displayText, value ?? displayText));
         _filteredItems = null;
     }
 
@@ -145,12 +145,12 @@ public class DrawnComboBox : DrawnComponent
     public void AddItems(IEnumerable<string> displayTexts)
     {
         foreach (var text in displayTexts)
-            _items.Add(new ComboBoxItem(text, text));
+            _items.Add(new DrawnComboBoxItem(text, text));
         _filteredItems = null;
     }
 
     /// <summary>Set items from a collection with display/value paths.</summary>
-    public void SetItems(IEnumerable<ComboBoxItem> items)
+    public void SetItems(IEnumerable<DrawnComboBoxItem> items)
     {
         _items.Clear();
         _items.AddRange(items);
@@ -190,7 +190,7 @@ public class DrawnComboBox : DrawnComponent
                 ? GetPropertyValue(item, ValueMemberPath)
                 : item;
 
-            _items.Add(new ComboBoxItem(displayText, value));
+            _items.Add(new DrawnComboBoxItem(displayText, value));
         }
 
         InvalidateVisual();
@@ -227,7 +227,7 @@ public class DrawnComboBox : DrawnComponent
         return current;
     }
 
-    private List<ComboBoxItem> GetVisibleItems()
+    private List<DrawnComboBoxItem> GetVisibleItems()
     {
         if (!IsFilterable || string.IsNullOrEmpty(_filterText))
             return _items;
@@ -578,40 +578,5 @@ public class DrawnComboBox : DrawnComponent
     {
         CloseDropdown();
         base.OnLostFocus();
-    }
-}
-
-/// <summary>An item in a combo box.</summary>
-public class ComboBoxItem
-{
-    /// <summary>Text shown in the dropdown list.</summary>
-    public string DisplayText { get; }
-    /// <summary>Underlying value associated with this item.</summary>
-    public object? Value { get; }
-
-    /// <summary>Initializes a new <see cref="ComboBoxItem"/>.</summary>
-    /// <param name="displayText">Text displayed in the dropdown list.</param>
-    /// <param name="value">The value associated with this item; defaults to <paramref name="displayText"/> when <see langword="null"/>.</param>
-    public ComboBoxItem(string displayText, object? value = null)
-    {
-        DisplayText = displayText;
-        Value = value ?? displayText;
-    }
-}
-
-/// <summary>Combo box selection changed event args.</summary>
-public class ComboBoxSelectionChangedEventArgs : EventArgs
-{
-    /// <summary>The previously selected item, or <see langword="null"/> if none was selected.</summary>
-    public ComboBoxItem? OldItem { get; }
-    /// <summary>The newly selected item, or <see langword="null"/> if the selection was cleared.</summary>
-    public ComboBoxItem? NewItem { get; }
-    /// <summary>Initializes a new instance of the <see cref="ComboBoxSelectionChangedEventArgs"/> class.</summary>
-    /// <param name="old">The previously selected item.</param>
-    /// <param name="new">The newly selected item.</param>
-    public ComboBoxSelectionChangedEventArgs(ComboBoxItem? old, ComboBoxItem? @new)
-    {
-        OldItem = old;
-        NewItem = @new;
     }
 }

@@ -37,7 +37,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <kumiko:DataGridView x:Name="kumiko"
+        <kumiko:KumikoDataGrid x:Name="kumiko"
                              Grid.Row="2"
                              ItemsSource="{Binding Employees}"
                              EditTriggers="DoubleTap,F2Key,Typing"
@@ -51,7 +51,7 @@
                              VerticalAlignment="Stretch">
 
             <!-- Column definitions — showcasing every column/component type -->
-            <kumiko:DataGridView.Columns>
+            <kumiko:KumikoDataGrid.Columns>
 
                 <!-- NUMERIC column (frozen left) -->
                 <core:DataGridColumn Header="Id"
@@ -139,10 +139,10 @@
                                      PropertyName="City"
                                      Width="130"
                                      FreezeMode="Right" />
-            </kumiko:DataGridView.Columns>
+            </kumiko:KumikoDataGrid.Columns>
 
             <!-- Table summary rows -->
-            <kumiko:DataGridView.TableSummaryRows>
+            <kumiko:KumikoDataGrid.TableSummaryRows>
                 <core:TableSummaryRow Name="Averages" Position="Top" Title="Averages">
                     <core:TableSummaryRow.Columns>
                         <core:SummaryColumnDescription PropertyName="Salary"
@@ -170,9 +170,9 @@
                                                        Label="Best: " />
                     </core:TableSummaryRow.Columns>
                 </core:TableSummaryRow>
-            </kumiko:DataGridView.TableSummaryRows>
+            </kumiko:KumikoDataGrid.TableSummaryRows>
 
-        </kumiko:DataGridView>
+        </kumiko:KumikoDataGrid>
     </Grid>
 
 </Page>

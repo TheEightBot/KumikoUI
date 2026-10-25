@@ -48,6 +48,14 @@ dotnet build src/KumikoUI.SkiaSharp
 dotnet test tests/KumikoUI.Core.Tests
 ```
 
+Check public type names after building (see [Public type names](#public-type-names)):
+
+```bash
+dotnet run --project eng/TypeNameCheck -c Release -- \
+  src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll \
+  src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
+```
+
 Hosts and samples (one head at a time with `-f`):
 
 ```bash
@@ -128,8 +136,23 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 
 - Follow the conventions in [`.github/instructions/`](.github/instructions) and the surrounding code: nullable enabled, `float` coordinates, `GridColor` for colours, no LINQ or allocations in the render loop.
 - Every public member gets an XML doc comment.
+- One public type per file, in a file named after the type (`DataGridStyle` lives in `DataGridStyle.cs`). Small enums and event-args types get their own file too.
+- Public type names follow the rules in [Public type names](#public-type-names).
 - KumikoUI.Core must stay free of UI-framework and SkiaSharp references; host-specific code belongs in KumikoUI.Maui or KumikoUI.Uno.
 - Add or update tests with every behaviour change (xUnit; see [`tests/`](tests)). Bug fixes start with a failing test.
+
+### Public type names
+
+KumikoUI types are imported next to MAUI, WinUI/Uno and Windows Forms types, so a public type must never share its simple name with one in `Microsoft.Maui.Controls.*`, `Microsoft.UI.Xaml.*` (including Uno's own `Microsoft.UI.Xaml` types) or `System.Windows.Forms.*` (`SelectionMode`, `FocusManager`, `TextChangedEventArgs` and `SelectionModel` are examples). Prefix instead:
+
+| Prefix | For |
+|---|---|
+| `DataGrid` | grid-level models and enums (`DataGridColumn`, `DataGridSortDirection`) |
+| `Drawn` | drawn components and the types that belong to them (`DrawnComboBox`, `DrawnComboBoxItem`) |
+| `Grid` | primitives and event arguments (`GridRect`, `GridTextChangedEventArgs`) |
+| `Kumiko` | the host controls and library entry points (`KumikoDataGrid`, `KumikoFonts`) |
+
+CI enforces this with `eng/TypeNameCheck`, a small console tool (not part of `KumikoUI.sln` and not packed). It lists the public top-level type names in the built KumikoUI assemblies and compares them with the names read, via `System.Reflection.Metadata`, from the pinned packages: `Microsoft.Maui.Controls.Core` and `.Xaml` (at `MauiVersion`), `Microsoft.WindowsAppSDK.WinUI` and `Uno.WinUI` (`Microsoft.UI.Xaml`), and `Microsoft.WindowsDesktop.App.Ref` (`System.Windows.Forms`). The versions are in `Directory.Packages.props`; the tool needs no workloads and runs on any OS. It exits non-zero and lists every collision. Raising one of those versions can surface a new collision, which is then fixed by renaming the KumikoUI type.
 
 ### Pull requests
 

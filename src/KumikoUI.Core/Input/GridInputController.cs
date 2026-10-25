@@ -1,5 +1,4 @@
 using KumikoUI.Core.Models;
-using KumikoUI.Core.Layout;
 using KumikoUI.Core.Rendering;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Components;
@@ -67,10 +66,10 @@ public class GridInputController
     /// <summary>Raised when the mouse cursor style should change. <c>true</c> indicates a resize cursor; <c>false</c> restores the default cursor.</summary>
     public event Action<bool>? CursorChanged;  // true = resize cursor, false = default
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized;
-    public event EventHandler<ColumnReorderedEventArgs>? ColumnReordered;
+    public event EventHandler<GridColumnReorderedEventArgs>? ColumnReordered;
     public event EventHandler<RowReorderedEventArgs>? RowReordered;
-    public event EventHandler<RowTappedEventArgs2>? RowTapped;
-    public event EventHandler<RowTappedEventArgs2>? RowDoubleTapped;
+    public event EventHandler<RowTappedEventArgs>? RowTapped;
+    public event EventHandler<RowTappedEventArgs>? RowDoubleTapped;
 
     /// <summary>Gets the popup manager for drawing overlays.</summary>
     public PopupManager PopupManager => _popupManager;
@@ -107,7 +106,7 @@ public class GridInputController
     /// </summary>
     public void HandlePointer(
         GridPointerEventArgs e,
-        ScrollState scroll, SelectionModel selection, DataGridStyle style,
+        ScrollState scroll, DataGridSelectionModel selection, DataGridStyle style,
         DataGridSource dataSource)
     {
         EnsurePopupRedrawWired();
@@ -147,7 +146,7 @@ public class GridInputController
     /// </summary>
     public void HandleKey(
         GridKeyEventArgs e,
-        ScrollState scroll, SelectionModel selection, DataGridStyle style,
+        ScrollState scroll, DataGridSelectionModel selection, DataGridStyle style,
         DataGridSource dataSource)
     {
         if (!e.IsKeyDown) return;
@@ -417,7 +416,7 @@ public class GridInputController
 
     private void HandlePointerDown(
         GridPointerEventArgs e, ScrollState scroll,
-        SelectionModel selection, DataGridStyle style,
+        DataGridSelectionModel selection, DataGridStyle style,
         IReadOnlyList<DataGridColumn> columns, int totalRows,
         DataGridSource dataSource)
     {
@@ -471,9 +470,9 @@ public class GridInputController
             if (hit.GroupDescriptionIndex < groups.Count)
             {
                 var group = groups[hit.GroupDescriptionIndex];
-                group.GroupSortDirection = group.GroupSortDirection == SortDirection.Ascending
-                    ? SortDirection.Descending
-                    : SortDirection.Ascending;
+                group.GroupSortDirection = group.GroupSortDirection == DataGridSortDirection.Ascending
+                    ? DataGridSortDirection.Descending
+                    : DataGridSortDirection.Ascending;
                 dataSource.RebuildView();
                 Redraw();
             }
@@ -525,7 +524,7 @@ public class GridInputController
 
     private void HandlePointerMove(
         GridPointerEventArgs e, ScrollState scroll,
-        SelectionModel selection, DataGridStyle style,
+        DataGridSelectionModel selection, DataGridStyle style,
         IReadOnlyList<DataGridColumn> columns, int totalRows,
         DataGridSource dataSource)
     {
@@ -647,7 +646,7 @@ public class GridInputController
 
     private void HandlePointerUp(
         GridPointerEventArgs e, ScrollState scroll,
-        SelectionModel selection, DataGridStyle style,
+        DataGridSelectionModel selection, DataGridStyle style,
         IReadOnlyList<DataGridColumn> columns, int totalRows,
         DataGridSource dataSource)
     {
@@ -772,12 +771,12 @@ public class GridInputController
             selection.HandleRowSelection(hit.RowIndex, shift, ctrl, totalRows);
             selection.CurrentCell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
 
-            RowTapped?.Invoke(this, new RowTappedEventArgs2(
+            RowTapped?.Invoke(this, new RowTappedEventArgs(
                 hit.RowIndex, hit.ColumnIndex, dataSource.GetItem(hit.RowIndex)));
 
             if (e.ClickCount == 2)
             {
-                RowDoubleTapped?.Invoke(this, new RowTappedEventArgs2(
+                RowDoubleTapped?.Invoke(this, new RowTappedEventArgs(
                     hit.RowIndex, hit.ColumnIndex, dataSource.GetItem(hit.RowIndex)));
 
                 // Double-tap edit trigger
@@ -877,7 +876,7 @@ public class GridInputController
     /// </summary>
     private void HandleLongPress(
         GridPointerEventArgs e,
-        ScrollState scroll, SelectionModel selection, DataGridStyle style,
+        ScrollState scroll, DataGridSelectionModel selection, DataGridStyle style,
         IReadOnlyList<DataGridColumn> columns, int totalRows,
         DataGridSource dataSource)
     {
@@ -946,7 +945,7 @@ public class GridInputController
         {
             // The columns list is from DataGridSource which uses List<DataGridColumn>
             // We need to reorder via the source
-            ColumnReordered?.Invoke(this, new ColumnReorderedEventArgs(
+            ColumnReordered?.Invoke(this, new GridColumnReorderedEventArgs(
                 _dragColumnIndex, dropIndex, columns[_dragColumnIndex]));
         }
     }
@@ -1019,7 +1018,7 @@ public class GridInputController
     }
 
     private void EnsureCurrentCellVisible(
-        ScrollState scroll, SelectionModel selection,
+        ScrollState scroll, DataGridSelectionModel selection,
         DataGridStyle style, IReadOnlyList<DataGridColumn> columns,
         DataGridSource? dataSource = null)
     {
@@ -1172,7 +1171,7 @@ public class GridInputController
             // Clear existing sorts and set this column
             foreach (var c in dataSource.Columns)
             {
-                c.SortDirection = SortDirection.None;
+                c.SortDirection = DataGridSortDirection.None;
                 c.SortOrder = 0;
             }
             column.SortDirection = dir;
@@ -1227,7 +1226,7 @@ public class GridInputController
     /// Try to begin editing the current cell.
     /// </summary>
     private void TryBeginEdit(
-        SelectionModel selection, DataGridSource dataSource,
+        DataGridSelectionModel selection, DataGridSource dataSource,
         ScrollState scroll, DataGridStyle style, char? initialCharacter,
         GridPointerEventArgs? triggeringTap = null)
     {
@@ -1388,7 +1387,7 @@ public class GridInputController
     /// direction: +1 = right, -1 = left.
     /// </summary>
     private void NavigateToNextEditableCell(
-        SelectionModel selection, DataGridSource dataSource,
+        DataGridSelectionModel selection, DataGridSource dataSource,
         ScrollState scroll, DataGridStyle style, int direction)
     {
         if (!selection.CurrentCell.IsValid) return;
@@ -1447,92 +1446,5 @@ public class GridInputController
             EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
             return;
         }
-    }
-}
-
-/// <summary>Provides data for the <see cref="GridInputController.ColumnResized"/> event.</summary>
-public class ColumnResizedEventArgs : EventArgs
-{
-    /// <summary>Zero-based index of the resized column.</summary>
-    public int ColumnIndex { get; }
-    /// <summary>The column that was resized.</summary>
-    public DataGridColumn Column { get; }
-    /// <summary>Initializes a new instance of the <see cref="ColumnResizedEventArgs"/> class.</summary>
-    /// <param name="index">The zero-based column index.</param>
-    /// <param name="column">The resized column.</param>
-    public ColumnResizedEventArgs(int index, DataGridColumn column) { ColumnIndex = index; Column = column; }
-}
-
-/// <summary>Provides data for the <see cref="GridInputController.ColumnReordered"/> event.</summary>
-public class ColumnReorderedEventArgs : EventArgs
-{
-    /// <summary>Original zero-based index of the column before it was moved.</summary>
-    public int OldIndex { get; }
-    /// <summary>New zero-based index of the column after it was moved.</summary>
-    public int NewIndex { get; }
-    /// <summary>The column that was reordered.</summary>
-    public DataGridColumn Column { get; }
-    /// <summary>Initializes a new instance of the <see cref="ColumnReorderedEventArgs"/> class.</summary>
-    /// <param name="oldIndex">The original column index.</param>
-    /// <param name="newIndex">The new column index.</param>
-    /// <param name="column">The reordered column.</param>
-    public ColumnReorderedEventArgs(int oldIndex, int newIndex, DataGridColumn column)
-    {
-        OldIndex = oldIndex; NewIndex = newIndex; Column = column;
-    }
-}
-
-/// <summary>Provides data for the <see cref="GridInputController.RowReordered"/> event.</summary>
-public class RowReorderedEventArgs : EventArgs
-{
-    /// <summary>Original zero-based index of the row before it was moved.</summary>
-    public int OldIndex { get; }
-    /// <summary>New zero-based index of the row after it was moved.</summary>
-    public int NewIndex { get; }
-    /// <summary>The data item associated with the reordered row.</summary>
-    public object? DataItem { get; }
-    /// <summary>Initializes a new instance of the <see cref="RowReorderedEventArgs"/> class.</summary>
-    /// <param name="oldIndex">The original row index.</param>
-    /// <param name="newIndex">The new row index.</param>
-    /// <param name="dataItem">The data item of the reordered row.</param>
-    public RowReorderedEventArgs(int oldIndex, int newIndex, object? dataItem)
-    {
-        OldIndex = oldIndex; NewIndex = newIndex; DataItem = dataItem;
-    }
-}
-
-/// <summary>Provides data for the <see cref="GridInputController.RowTapped"/> and <see cref="GridInputController.RowDoubleTapped"/> events.</summary>
-public class RowTappedEventArgs2 : EventArgs
-{
-    /// <summary>Zero-based index of the tapped row.</summary>
-    public int RowIndex { get; }
-    /// <summary>Zero-based index of the tapped column.</summary>
-    public int ColumnIndex { get; }
-    /// <summary>The data item associated with the tapped row.</summary>
-    public object DataItem { get; }
-    /// <summary>Initializes a new instance of the <see cref="RowTappedEventArgs2"/> class.</summary>
-    /// <param name="row">The tapped row index.</param>
-    /// <param name="col">The tapped column index.</param>
-    /// <param name="item">The row's data item.</param>
-    public RowTappedEventArgs2(int row, int col, object item)
-    {
-        RowIndex = row; ColumnIndex = col; DataItem = item;
-    }
-}
-
-/// <summary>Provides data when a column auto-fit is requested (e.g., double-click on a column resize handle).</summary>
-public class AutoFitColumnEventArgs : EventArgs
-{
-    /// <summary>Zero-based index of the column to auto-fit.</summary>
-    public int ColumnIndex { get; }
-    /// <summary>The column to auto-fit.</summary>
-    public DataGridColumn Column { get; }
-    /// <summary>Initializes a new instance of the <see cref="AutoFitColumnEventArgs"/> class.</summary>
-    /// <param name="index">The zero-based column index.</param>
-    /// <param name="column">The column to auto-fit.</param>
-    public AutoFitColumnEventArgs(int index, DataGridColumn column)
-    {
-        ColumnIndex = index;
-        Column = column;
     }
 }

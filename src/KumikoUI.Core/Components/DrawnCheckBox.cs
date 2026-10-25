@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Components;
 /// </summary>
 public class DrawnCheckBox : DrawnComponent
 {
-    private CheckState _state = CheckState.Unchecked;
+    private DrawnCheckState _state = DrawnCheckState.Unchecked;
 
     // ── Style ───────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ public class DrawnCheckBox : DrawnComponent
     // ── Properties ──────────────────────────────────────────────
 
     /// <summary>Current check state.</summary>
-    public CheckState State
+    public DrawnCheckState State
     {
         get => _state;
         set
@@ -50,8 +50,8 @@ public class DrawnCheckBox : DrawnComponent
     /// <summary>Whether the checkbox is checked.</summary>
     public bool IsChecked
     {
-        get => _state == CheckState.Checked;
-        set => State = value ? CheckState.Checked : CheckState.Unchecked;
+        get => _state == DrawnCheckState.Checked;
+        set => State = value ? DrawnCheckState.Checked : DrawnCheckState.Unchecked;
     }
 
     /// <summary>Whether to support tri-state (checked/unchecked/indeterminate).</summary>
@@ -74,7 +74,7 @@ public class DrawnCheckBox : DrawnComponent
         var boxRect = new GridRect(boxX, boxY, BoxSize, BoxSize);
 
         // Draw box background
-        var fillColor = _state == CheckState.Checked ? CheckedBoxFillColor : BoxFillColor;
+        var fillColor = _state == DrawnCheckState.Checked ? CheckedBoxFillColor : BoxFillColor;
         ctx.FillRoundRect(boxRect, CornerRadius, new GridPaint { Color = fillColor, Style = PaintStyle.Fill });
 
         // Draw box border
@@ -88,10 +88,10 @@ public class DrawnCheckBox : DrawnComponent
         // Draw check mark or indeterminate dash
         switch (_state)
         {
-            case CheckState.Checked:
+            case DrawnCheckState.Checked:
                 DrawCheckMark(ctx, boxX, boxY);
                 break;
-            case CheckState.Indeterminate:
+            case DrawnCheckState.Indeterminate:
                 DrawIndeterminate(ctx, boxX, boxY);
                 break;
         }
@@ -161,43 +161,15 @@ public class DrawnCheckBox : DrawnComponent
         _state = IsThreeState
             ? _state switch
             {
-                CheckState.Unchecked => CheckState.Checked,
-                CheckState.Checked => CheckState.Indeterminate,
-                CheckState.Indeterminate => CheckState.Unchecked,
-                _ => CheckState.Unchecked
+                DrawnCheckState.Unchecked => DrawnCheckState.Checked,
+                DrawnCheckState.Checked => DrawnCheckState.Indeterminate,
+                DrawnCheckState.Indeterminate => DrawnCheckState.Unchecked,
+                _ => DrawnCheckState.Unchecked
             }
-            : _state == CheckState.Checked ? CheckState.Unchecked : CheckState.Checked;
+            : _state == DrawnCheckState.Checked ? DrawnCheckState.Unchecked : DrawnCheckState.Checked;
 
         CheckStateChanged?.Invoke(this, new CheckStateChangedEventArgs(old, _state));
         RaiseValueChanged(old, _state);
         InvalidateVisual();
-    }
-}
-
-/// <summary>Check state for a checkbox.</summary>
-public enum CheckState
-{
-    /// <summary>The checkbox is unchecked.</summary>
-    Unchecked,
-    /// <summary>The checkbox is checked.</summary>
-    Checked,
-    /// <summary>The checkbox is in an indeterminate (tri-state) state.</summary>
-    Indeterminate
-}
-
-/// <summary>Check state changed event args.</summary>
-public class CheckStateChangedEventArgs : EventArgs
-{
-    /// <summary>The previous check state before the change.</summary>
-    public CheckState OldState { get; }
-    /// <summary>The new check state after the change.</summary>
-    public CheckState NewState { get; }
-    /// <summary>Initializes a new instance of the <see cref="CheckStateChangedEventArgs"/> class.</summary>
-    /// <param name="oldState">The previous check state.</param>
-    /// <param name="newState">The new check state.</param>
-    public CheckStateChangedEventArgs(CheckState oldState, CheckState newState)
-    {
-        OldState = oldState;
-        NewState = newState;
     }
 }

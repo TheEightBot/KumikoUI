@@ -262,7 +262,7 @@ public class DataGridRendererTests
     {
         var h = Create();
         var highlight = new GridColor(200, 10, 10);
-        h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Age == 22 ? new RowStyle { BackgroundColor = highlight } : null;
+        h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Age == 22 ? new DataGridRowStyle { BackgroundColor = highlight } : null;
 
         var ctx = h.Render();
 
@@ -275,7 +275,7 @@ public class DataGridRendererTests
     {
         var h = Create();
         var red = new GridColor(255, 0, 0);
-        h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Name == "P00" ? new RowStyle { TextColor = red } : null;
+        h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Name == "P00" ? new DataGridRowStyle { TextColor = red } : null;
 
         var ctx = h.Render();
 
@@ -481,9 +481,9 @@ public class DataGridRendererTests
     public void SortIndicator_MultiSort_DrawsOrderBadges()
     {
         var h = Create();
-        h.Column("City").SortDirection = SortDirection.Ascending;
+        h.Column("City").SortDirection = DataGridSortDirection.Ascending;
         h.Column("City").SortOrder = 1;
-        h.Column("Age").SortDirection = SortDirection.Descending;
+        h.Column("Age").SortDirection = DataGridSortDirection.Descending;
         h.Column("Age").SortOrder = 2;
 
         var ctx = h.Render();

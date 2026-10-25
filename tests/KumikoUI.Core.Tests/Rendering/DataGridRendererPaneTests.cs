@@ -257,7 +257,7 @@ public class DataGridRendererPaneTests
         h.Selection.HandleRowSelection(0, shift: false, ctrl: false, totalRows: 20);
         h.Selection.CurrentCell = new CellPosition(1, 0);
         h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Name == "P02"
-            ? new RowStyle { BackgroundColor = highlight, TextColor = rowText }
+            ? new DataGridRowStyle { BackgroundColor = highlight, TextColor = rowText }
             : null;
         h.Style.CellStyleResolver = (item, column) =>
             column.PropertyName == "Age" && ((RenderHarness.Person)item!).Name == "P00" ? new CellStyle { TextColor = warn } : null;

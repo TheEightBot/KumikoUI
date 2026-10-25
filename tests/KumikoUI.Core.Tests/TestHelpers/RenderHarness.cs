@@ -30,7 +30,7 @@ internal sealed class RenderHarness
     public DataGridSource Source { get; } = new();
     public DataGridStyle Style { get; } = WithDistinctColors(new DataGridStyle());
     public ScrollState Scroll { get; }
-    public SelectionModel Selection { get; } = new();
+    public DataGridSelectionModel Selection { get; } = new();
     public DataGridRenderer Renderer { get; } = new();
     public List<Person> People { get; }
 

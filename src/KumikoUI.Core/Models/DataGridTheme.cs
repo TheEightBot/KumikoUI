@@ -3,19 +3,6 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Models;
 
 /// <summary>
-/// Identifies built-in themes.
-/// </summary>
-public enum DataGridThemeMode
-{
-    /// <summary>Light theme with white background and dark text.</summary>
-    Light,
-    /// <summary>Dark theme with dark background and light text.</summary>
-    Dark,
-    /// <summary>High-contrast theme for accessibility.</summary>
-    HighContrast
-}
-
-/// <summary>
 /// Factory for creating preconfigured <see cref="DataGridStyle"/> instances
 /// representing complete visual themes.
 /// </summary>

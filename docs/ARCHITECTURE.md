@@ -1,6 +1,6 @@
 # Architecture Overview
 
-This document describes the architecture of the .NET MAUI SkiaSharp KumikoUI for contributors and maintainers.
+This document describes the architecture of KumikoUI DataGrid (the canvas-drawn DataGrid for .NET MAUI and Uno, rendered with SkiaSharp) for contributors and maintainers.
 
 ## Project Structure
 
@@ -55,8 +55,8 @@ KumikoUI.Maui (net10.0-ios/android/maccatalyst → MAUI + SkiaSharp.Views.Maui.C
 | Class | Responsibility |
 |-------|---------------|
 | `GridInputController` | Routes pointer and keyboard events to appropriate handlers |
-| `SelectionModel` | Row/cell selection state, Single/Multiple/Extended modes, navigation |
-| `FocusManager` | Single-component focus model with Tab cycling |
+| `DataGridSelectionModel` | Row/cell selection state, Single/Multiple/Extended modes, navigation |
+| `DrawnFocusManager` | Single-component focus model with Tab cycling |
 | `PopupManager` | Popup lifecycle, z-order, input priority routing |
 | `InertialScroller` | Physics-based scroll deceleration |
 
@@ -81,7 +81,7 @@ KumikoUI.Maui (net10.0-ios/android/maccatalyst → MAUI + SkiaSharp.Views.Maui.C
 
 | Class | Responsibility |
 |-------|---------------|
-| `DataGridView` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
+| `KumikoDataGrid` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
 | `KumikoUIHostingExtensions` | `builder.UseSkiaKumikoUI()` service registration |
 
 ## Drawn Components

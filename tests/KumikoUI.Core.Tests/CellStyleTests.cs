@@ -160,35 +160,35 @@ public class RowStyleTests
     [Fact]
     public void HasOverrides_EmptyStyle_ReturnsFalse()
     {
-        var style = new RowStyle();
+        var style = new DataGridRowStyle();
         Assert.False(style.HasOverrides);
     }
 
     [Fact]
     public void HasOverrides_WithBackgroundColor_ReturnsTrue()
     {
-        var style = new RowStyle { BackgroundColor = GridColor.Red };
+        var style = new DataGridRowStyle { BackgroundColor = GridColor.Red };
         Assert.True(style.HasOverrides);
     }
 
     [Fact]
     public void HasOverrides_WithHeight_ReturnsTrue()
     {
-        var style = new RowStyle { Height = 48f };
+        var style = new DataGridRowStyle { Height = 48f };
         Assert.True(style.HasOverrides);
     }
 
     [Fact]
     public void HasOverrides_WithFont_ReturnsTrue()
     {
-        var style = new RowStyle { Font = new GridFont("Arial", 14f) };
+        var style = new DataGridRowStyle { Font = new GridFont("Arial", 14f) };
         Assert.True(style.HasOverrides);
     }
 
     [Fact]
     public void HasOverrides_WithTextColor_ReturnsTrue()
     {
-        var style = new RowStyle { TextColor = GridColor.Green };
+        var style = new DataGridRowStyle { TextColor = GridColor.Green };
         Assert.True(style.HasOverrides);
     }
 }

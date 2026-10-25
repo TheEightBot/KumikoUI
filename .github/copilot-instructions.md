@@ -2,7 +2,7 @@
 
 ## What This Project Is
 
-**KumikoUI** is a high-performance, fully canvas-drawn DataGrid for .NET MAUI. Every visual
+**KumikoUI DataGrid** is a high-performance, fully canvas-drawn DataGrid for .NET MAUI. Every visual
 element — cells, headers, editors, popups, scrollbars — is rendered directly on a SkiaSharp
 `SKCanvas`. There are **zero native UIKit / AppKit / WinUI controls**; everything is drawn
 in software, giving pixel-perfect, identical output across iOS, Android, macOS Catalyst, and
@@ -55,7 +55,7 @@ declarable editor config, `EditSession` pipeline (begin → draw → commit/canc
 Everything about the data layer. Covers: all `DataGridColumn` properties and column types,
 `DataGridSource` API (get/set values, bulk updates, sorting, filtering, grouping, summaries),
 `DataGridStyle` theming (built-in themes, `CellStyleResolver`, `RowStyleResolver`), `CellStyle`/
-`RowStyle` nullable merge semantics, and step-by-step recipes for adding a new style property
+`DataGridRowStyle` nullable merge semantics, and step-by-step recipes for adding a new style property
 or column type.
 
 ---
@@ -64,9 +64,9 @@ or column type.
 **Applies to:** `src/KumikoUI.Maui/**`, `samples/**`
 
 Everything about consuming the control. Covers: `MauiProgram.UseSkiaKumikoUI()` bootstrap,
-required XAML namespaces, all `DataGridView` bindable properties, XAML examples for every column
+required XAML namespaces, all `KumikoDataGrid` bindable properties, XAML examples for every column
 type (Numeric, Text, ComboBox, Picker, Date, Boolean, Template with renderer, Template with
-`EditorDescriptor`), summary row XAML, and `DataGridView` internals (keyboard proxy, platform-
+`EditorDescriptor`), summary row XAML, and `KumikoDataGrid` internals (keyboard proxy, platform-
 specific gesture/IME handling, timer setup).
 
 ---

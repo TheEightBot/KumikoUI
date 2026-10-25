@@ -8,6 +8,8 @@
     0.2.0-alpha.0.5 (5 commits after the last tag). All four packages always share one version.
   -->
   <PropertyGroup>
+    <!-- Product name, used in every package description and the README. -->
+    <Product>KumikoUI DataGrid</Product>
     <Authors>Eight-Bot, Inc.; Michael Stonis</Authors>
     <Company>Eight-Bot, Inc.</Company>
     <!-- Fixed year (not the build date) so package metadata is reproducible; bump when releasing in a new year. -->

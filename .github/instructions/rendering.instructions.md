@@ -104,7 +104,7 @@ column.CustomCellRenderer = new MyRenderer();   // code
 ## `DataGridRenderer` — Render loop structure
 
 ```
-DataGridView.OnPaintSurface
+KumikoDataGrid.OnPaintSurface
   └─ DataGridRenderer.Render(IDrawingContext, ...)
        ├─ DrawHeaderRow          — headers, sort indicator, filter icon, resize handle
        ├─ DrawFrozenRows         — pinned-top data rows

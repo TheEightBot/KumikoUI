@@ -23,7 +23,7 @@ themes (Light, Dark, HighContrast) and the renderer that uses it.
 
 | File | Change |
 |---|---|
-| `src/KumikoUI.Core/Models/GridState.cs` | Add property to `DataGridStyle` |
+| `src/KumikoUI.Core/Models/DataGridStyle.cs` | Add property to `DataGridStyle` |
 | `src/KumikoUI.Core/Models/DataGridTheme.cs` | Set value in Dark and HighContrast themes |
 | `src/KumikoUI.Core/DataGridRenderer.cs` | Use the property in the rendering path |
 | `tests/KumikoUI.Core.Tests/DataGridThemeTests.cs` | Add two `[Fact]` tests |
@@ -32,7 +32,7 @@ themes (Light, Dark, HighContrast) and the renderer that uses it.
 
 ## Step 1 — `DataGridStyle` property
 
-In `src/KumikoUI.Core/Models/GridState.cs`, add the property inside `DataGridStyle`:
+In `src/KumikoUI.Core/Models/DataGridStyle.cs`, add the property inside `DataGridStyle`:
 
 ```csharp
 /// <summary>

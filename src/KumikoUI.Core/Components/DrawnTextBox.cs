@@ -167,7 +167,7 @@ public class DrawnTextBox : DrawnComponent
     // ── Events ──────────────────────────────────────────────────
 
     /// <summary>Raised when text changes via user input.</summary>
-    public event EventHandler<TextChangedEventArgs>? TextChanged;
+    public event EventHandler<GridTextChangedEventArgs>? TextChanged;
 
     /// <summary>Raised when Enter is pressed during editing.</summary>
     public event Action? Committed;
@@ -329,7 +329,7 @@ public class DrawnTextBox : DrawnComponent
                 var old = _text;
                 _text = formatted;
                 _cursorPosition = Math.Min(_cursorPosition, _text.Length);
-                TextChanged?.Invoke(this, new TextChangedEventArgs(old, _text));
+                TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
                 RaiseValueChanged(old, _text);
             }
         }
@@ -537,7 +537,7 @@ public class DrawnTextBox : DrawnComponent
 
         if (old != _text)
         {
-            TextChanged?.Invoke(this, new TextChangedEventArgs(old, _text));
+            TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
             RaiseValueChanged(old, _text);
         }
 
@@ -593,7 +593,7 @@ public class DrawnTextBox : DrawnComponent
         _text = _text.Remove(deleteStart, deleteCount);
         _cursorPosition = deleteStart;
         EnsureCursorVisible();
-        TextChanged?.Invoke(this, new TextChangedEventArgs(old, _text));
+        TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
         RaiseValueChanged(old, _text);
         InvalidateVisual();
     }
@@ -613,7 +613,7 @@ public class DrawnTextBox : DrawnComponent
 
         var old = _text;
         _text = _text.Remove(_cursorPosition, deleteCount);
-        TextChanged?.Invoke(this, new TextChangedEventArgs(old, _text));
+        TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
         RaiseValueChanged(old, _text);
         InvalidateVisual();
     }
@@ -629,7 +629,7 @@ public class DrawnTextBox : DrawnComponent
         _cursorPosition = start;
         ClearSelection();
         EnsureCursorVisible();
-        TextChanged?.Invoke(this, new TextChangedEventArgs(old, _text));
+        TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
         RaiseValueChanged(old, _text);
         InvalidateVisual();
     }
@@ -735,47 +735,4 @@ public class DrawnTextBox : DrawnComponent
         if (!string.IsNullOrEmpty(args.Text))
             InsertText(args.Text);
     }
-}
-
-/// <summary>Text changed event args.</summary>
-public class TextChangedEventArgs : EventArgs
-{
-    /// <summary>The text value before the change.</summary>
-    public string OldText { get; }
-    /// <summary>The text value after the change.</summary>
-    public string NewText { get; }
-    /// <summary>Initializes a new instance of the <see cref="TextChangedEventArgs"/> class.</summary>
-    /// <param name="oldText">The previous text value.</param>
-    /// <param name="newText">The new text value.</param>
-    public TextChangedEventArgs(string oldText, string newText) { OldText = oldText; NewText = newText; }
-}
-
-/// <summary>Clipboard request (for paste — host fills in the Text).</summary>
-public class ClipboardRequestEventArgs : EventArgs
-{
-    /// <summary>The clipboard text provided by the host for paste operations.</summary>
-    public string? Text { get; set; }
-}
-
-/// <summary>Clipboard text event (for copy/cut — host reads the Text).</summary>
-public class ClipboardTextEventArgs : EventArgs
-{
-    /// <summary>The text to be placed on the clipboard.</summary>
-    public string Text { get; }
-    /// <summary>Initializes a new instance of the <see cref="ClipboardTextEventArgs"/> class.</summary>
-    /// <param name="text">The text to copy to the clipboard.</param>
-    public ClipboardTextEventArgs(string text) { Text = text; }
-}
-
-/// <summary>Validation state for input controls.</summary>
-public enum ValidationState
-{
-    /// <summary>No validation applied.</summary>
-    None,
-    /// <summary>Input is valid.</summary>
-    Valid,
-    /// <summary>Input has a warning.</summary>
-    Warning,
-    /// <summary>Input is invalid.</summary>
-    Error
 }

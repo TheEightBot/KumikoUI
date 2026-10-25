@@ -8,8 +8,8 @@ Core entry points (unchanged):
 `HandleKey(GridKeyEventArgs, …)`, `UpdateInertialScroll(scroll, 16f)`.
 
 > **Status:** Implemented for all heads (desktop, iOS, Android, WASM). Wiring lives in
-> `src/KumikoUI.Uno/DataGridView.Input.cs` (pointer + keyboard + timer, a partial of `DataGridView`),
-> `src/KumikoUI.Uno/DataGridView.Editing.cs` (hidden-TextBox proxy — the keyboard sink on all heads;
+> `src/KumikoUI.Uno/KumikoDataGrid.Input.cs` (pointer + keyboard + timer, a partial of `KumikoDataGrid`),
+> `src/KumikoUI.Uno/KumikoDataGrid.Editing.cs` (hidden-TextBox proxy — the keyboard sink on all heads;
 > see §3a), and `src/KumikoUI.Uno/Input/InputMapping.cs` (pure enum mapping).
 > Build verified: `dotnet build … -f net9.0-desktop` → **0 errors, 0 new warnings**;
 > `dotnet build … -f net10.0-desktop` (sample) → **0 errors**.
@@ -22,11 +22,11 @@ Core entry points (unchanged):
 
 ## 1. Pointer input
 
-WinUI delivers pointer events on any `UIElement`; subscribe on the `DataGridView` (or its
+WinUI delivers pointer events on any `UIElement`; subscribe on the `KumikoDataGrid` (or its
 `SKXamlCanvas`). `GetCurrentPoint(this).Position` is already in **logical DIPs** — the same coordinate
-space the renderer was fed in [03 §4](03-datagridview-host.md#4-dpi--scaling), so hit-testing lines up.
+space the renderer was fed in [03 §4](03-kumikodatagrid-host.md#4-dpi--scaling), so hit-testing lines up.
 
-> **Deviation (subscription target):** handlers are attached on the `DataGridView` itself (a
+> **Deviation (subscription target):** handlers are attached on the `KumikoDataGrid` itself (a
 > `Grid`), **not** the child `SKXamlCanvas`. The control is the focusable element and the canvas
 > `Stretch`-fills it, so coordinates and capture are identical, and a single attach/detach point
 > keeps lifecycle clean.
@@ -176,7 +176,7 @@ from an edit-only sink to the **permanent keyboard sink for non-touch input**:
   proxy dismisses the soft keyboard on mobile, which is the correct behavior.
 
 ```csharp
-// OnPointerPressed (DataGridView.Input.cs)
+// OnPointerPressed (KumikoDataGrid.Input.cs)
 CapturePointer(e.Pointer);
 _lastPointerWasTouch = e.Pointer.PointerDeviceType == PointerDeviceType.Touch;
 // … double-tap detection …
@@ -184,7 +184,7 @@ DispatchPointer(e, point, InputAction.Pressed, clickCount);
 if (!_lastPointerWasTouch)
     FocusKeyboardInput();   // proxy becomes the keyboard sink for this and all subsequent events
 
-// OnEditSessionCellEndEdit (DataGridView.cs)
+// OnEditSessionCellEndEdit (KumikoDataGrid.cs)
 ResetProxy();
 if (_lastPointerWasTouch)
     Focus(FocusState.Programmatic);   // touch: blur proxy → soft keyboard dismisses
@@ -219,7 +219,7 @@ proxy is now forwarded via `HandleEditChar` regardless of edit state. Core's `Ha
 
 The sentinel-diff algorithm, Backspace detection, and `ResetProxy()` call are unchanged.
 
-### 3a. Hidden-TextBox proxy — full design (DataGridView.Editing.cs)
+### 3a. Hidden-TextBox proxy — full design (KumikoDataGrid.Editing.cs)
 
 **Proxy construction** (field initializer, added to `Children` in `SetupInputProxy()` called from ctor):
 ```csharp
@@ -383,7 +383,7 @@ else
 | Mac Catalyst | trackpad + keyboard | full — same as desktop | Like desktop; validate momentum-scroll feel vs. the inertial timer. |
 
 > **Root cause note:** `UIElement.CharacterReceived` is `[Uno.NotImplemented]` on iOS (and WASM) —
-> confirmed by Uno build warnings (`Uno0001`) on those heads. Additionally, `DataGridView` derives
+> confirmed by Uno build warnings (`Uno0001`) on those heads. Additionally, `KumikoDataGrid` derives
 > from `Grid` (a `Panel`), which is not reliably keyboard-focusable on WASM. The hidden-TextBox
 > proxy (`_inputProxy`) fully replaces `CharacterReceived` and the `Grid`-focus approach for all
 > heads. Since the proxy is a real `TextBox`, Uno maps its `TextChanged`/`KeyDown` to the native

@@ -13,7 +13,7 @@ rendering pipeline.
 ## Pipeline overview
 
 ```
-DataGridView.OnPaintSurface
+KumikoDataGrid.OnPaintSurface
   │
   └─ DataGridRenderer.Render(IDrawingContext, DataGridSource, GridLayoutEngine, ...)
         │
@@ -139,5 +139,5 @@ switch (hit.Region)
 | Frozen columns show wrong content | Scrollable x-offset applied to frozen draw pass | Ensure frozen pass does NOT offset by `scroll.HorizontalOffset` |
 | Clipping bleeds outside cell | Missing `ctx.ClipRect(cellRect)` before text draw | Wrap text draw in `Save`/`ClipRect(cellRect)`/`Restore` |
 | Editor flickers or paints behind data | `DrawActiveEditor` called before data rows | Move `DrawActiveEditor` call to after all data/group passes |
-| Selection highlight not updating | `InvalidateSurface()` not called after `SelectionModel` change | Subscribe to `SelectionModel.Changed` and call `InvalidateSurface()` |
+| Selection highlight not updating | `InvalidateSurface()` not called after `DataGridSelectionModel` change | Subscribe to `DataGridSelectionModel.Changed` and call `InvalidateSurface()` |
 | Font size not scaling with device | DPI scaling not applied | Multiply `GridFont.Size` by `SKCanvasView.CanvasSize / DeviceSize` ratio |

@@ -25,7 +25,7 @@ public class DataGridColumnTests
         Assert.True(col.AllowResize);
         Assert.True(col.AllowReorder);
         Assert.True(col.AllowFiltering);
-        Assert.Equal(SortDirection.None, col.SortDirection);
+        Assert.Equal(DataGridSortDirection.None, col.SortDirection);
         Assert.Equal(0, col.SortOrder);
         Assert.Equal(ColumnFreezeMode.None, col.FreezeMode);
         Assert.Null(col.ActiveFilter);

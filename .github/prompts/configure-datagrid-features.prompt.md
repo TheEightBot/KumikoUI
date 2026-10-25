@@ -1,11 +1,11 @@
 ---
 mode: agent
-description: Set up sorting, filtering, grouping, and summaries on DataGridView
+description: Set up sorting, filtering, grouping, and summaries on KumikoDataGrid
 ---
 
 # Configure DataGridSource Features
 
-Adds sorting, filtering, grouping, and/or summary rows to an existing `DataGridView`
+Adds sorting, filtering, grouping, and/or summary rows to an existing `KumikoDataGrid`
 binding. All configuration targets `DataGridSource` in `KumikoUI.Core.Models`.
 
 ## What to ask before generating
@@ -34,14 +34,14 @@ column.AllowSorting = false;  // disable for specific column
 **Programmatic sort:**
 ```csharp
 // Single column ascending:
-dataGridView.Source.ApplySort(column, SortDirection.Ascending);
+kumikoDataGrid.Source.ApplySort(column, DataGridSortDirection.Ascending);
 
 // Multi-column (set SortOrder to control priority):
-columnA.SortDirection = SortDirection.Ascending;
+columnA.SortDirection = DataGridSortDirection.Ascending;
 columnA.SortOrder     = 1;
-columnB.SortDirection = SortDirection.Descending;
+columnB.SortDirection = DataGridSortDirection.Descending;
 columnB.SortOrder     = 2;
-dataGridView.Source.ApplySorts();
+kumikoDataGrid.Source.ApplySorts();
 ```
 
 ---
@@ -60,7 +60,7 @@ var filter = new FilterDescription(column)
         Value        = "Engineering"
     }
 };
-dataGridView.Source.ApplyFilter(column, filter);
+kumikoDataGrid.Source.ApplyFilter(column, filter);
 
 // Numeric range filter (AND):
 var numFilter = new FilterDescription(numericColumn)
@@ -77,10 +77,10 @@ var numFilter = new FilterDescription(numericColumn)
         Value = 150000d
     }
 };
-dataGridView.Source.ApplyFilter(numericColumn, numFilter);
+kumikoDataGrid.Source.ApplyFilter(numericColumn, numFilter);
 
 // Clear filter:
-dataGridView.Source.ApplyFilter(column, null);
+kumikoDataGrid.Source.ApplyFilter(column, null);
 ```
 
 **Excel-style value-checklist filter** (built into the column header popup; user-driven):
@@ -92,19 +92,19 @@ Enabled by default when `AllowFiltering="True"` on the column (the default).
 
 ```csharp
 // Code — add before or after ItemsSource is set:
-dataGridView.Source.GroupDescriptions.Add(
+kumikoDataGrid.Source.GroupDescriptions.Add(
     new GroupDescription("Department"));
 
 // Multi-level:
-dataGridView.Source.GroupDescriptions.Add(
+kumikoDataGrid.Source.GroupDescriptions.Add(
     new GroupDescription("Department"));
-dataGridView.Source.GroupDescriptions.Add(
+kumikoDataGrid.Source.GroupDescriptions.Add(
     new GroupDescription("City"));
 
-dataGridView.Source.RebuildView();   // required after changing GroupDescriptions
+kumikoDataGrid.Source.RebuildView();   // required after changing GroupDescriptions
 
 // Custom display text:
-dataGridView.Source.GroupDescriptions.Add(new GroupDescription("HireDate")
+kumikoDataGrid.Source.GroupDescriptions.Add(new GroupDescription("HireDate")
 {
     DisplayTextSelector = key => key is DateTime dt ? dt.ToString("yyyy") : key?.ToString() ?? ""
 });
@@ -112,7 +112,7 @@ dataGridView.Source.GroupDescriptions.Add(new GroupDescription("HireDate")
 
 **Group summary rows (in XAML):**
 ```xml
-<dg:DataGridView.GroupSummaryRows>
+<dg:KumikoDataGrid.GroupSummaryRows>
     <core:GroupSummaryRow Name="GroupTotals">
         <core:GroupSummaryRow.Columns>
             <core:SummaryColumnDescription PropertyName="Salary"
@@ -121,7 +121,7 @@ dataGridView.Source.GroupDescriptions.Add(new GroupDescription("HireDate")
                                            Label="Group Total: " />
         </core:GroupSummaryRow.Columns>
     </core:GroupSummaryRow>
-</dg:DataGridView.GroupSummaryRows>
+</dg:KumikoDataGrid.GroupSummaryRows>
 ```
 
 ---
@@ -130,7 +130,7 @@ dataGridView.Source.GroupDescriptions.Add(new GroupDescription("HireDate")
 
 **In XAML:**
 ```xml
-<dg:DataGridView.TableSummaryRows>
+<dg:KumikoDataGrid.TableSummaryRows>
 
     <core:TableSummaryRow Name="Averages" Position="Top" Title="Averages">
         <core:TableSummaryRow.Columns>
@@ -154,7 +154,7 @@ dataGridView.Source.GroupDescriptions.Add(new GroupDescription("HireDate")
         </core:TableSummaryRow.Columns>
     </core:TableSummaryRow>
 
-</dg:DataGridView.TableSummaryRows>
+</dg:KumikoDataGrid.TableSummaryRows>
 ```
 
 **In code:**
@@ -169,7 +169,7 @@ var summaryRow = new TableSummaryRow("Totals", SummaryPosition.Bottom)
         new SummaryColumnDescription("Rating", SummaryType.Max)   { Label = "Best: " }
     }
 };
-dataGridView.TableSummaryRows.Add(summaryRow);
+kumikoDataGrid.TableSummaryRows.Add(summaryRow);
 ```
 
 **Summary types:**
@@ -191,14 +191,14 @@ dataGridView.TableSummaryRows.Add(summaryRow);
 Employees = new ObservableCollection<Employee>(data);
 
 // Bind:
-dataGridView.ItemsSource = Employees;
+kumikoDataGrid.ItemsSource = Employees;
 
 // Add/remove — grid updates automatically:
 Employees.Add(new Employee { ... });
 Employees.RemoveAt(index);
 
 // For bulk changes, batch with BeginUpdate/EndUpdate:
-dataGridView.Source.BeginUpdate();
+kumikoDataGrid.Source.BeginUpdate();
 for (var item in newItems) Employees.Add(item);
-dataGridView.Source.EndUpdate();
+kumikoDataGrid.Source.EndUpdate();
 ```

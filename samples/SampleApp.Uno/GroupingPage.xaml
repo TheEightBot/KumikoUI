@@ -36,7 +36,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <kumiko:DataGridView x:Name="kumiko"
+        <kumiko:KumikoDataGrid x:Name="kumiko"
                              Grid.Row="2"
                              ItemsSource="{Binding Employees}"
                              RowHeight="34"
@@ -44,7 +44,7 @@
                              GridDescription="Grouped employee data grid"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
-            <kumiko:DataGridView.Columns>
+            <kumiko:KumikoDataGrid.Columns>
                 <core:DataGridColumn Header="Id" PropertyName="Id" Width="60"
                                      ColumnType="Numeric" TextAlignment="Right"
                                      IsReadOnly="True" AllowTabStop="False" />
@@ -56,8 +56,8 @@
                 <core:DataGridColumn Header="Active" PropertyName="IsActive" Width="80"
                                      ColumnType="Boolean" AllowTabStop="False" />
                 <core:DataGridColumn Header="City" PropertyName="City" Width="140" />
-            </kumiko:DataGridView.Columns>
-        </kumiko:DataGridView>
+            </kumiko:KumikoDataGrid.Columns>
+        </kumiko:KumikoDataGrid>
     </Grid>
 
 </Page>

@@ -24,7 +24,7 @@
             <Button Text="Toggle Filtering" Clicked="OnToggleFilteringClicked" Margin="4,0,0,4" />
         </FlexLayout>
 
-        <dg:DataGridView x:Name="kumiko"
+        <dg:KumikoDataGrid x:Name="kumiko"
                          Grid.Row="2"
                          ItemsSource="{Binding Employees}"
                          AllowFiltering="True"
@@ -35,7 +35,7 @@
                          HorizontalOptions="Fill"
                          VerticalOptions="Fill">
 
-            <dg:DataGridView.Columns>
+            <dg:KumikoDataGrid.Columns>
                 <core:DataGridColumn Header="Id"
                                      PropertyName="Id"
                                      Width="60"
@@ -74,9 +74,9 @@
                 <core:DataGridColumn Header="City"
                                      PropertyName="City"
                                      Width="130" />
-            </dg:DataGridView.Columns>
+            </dg:KumikoDataGrid.Columns>
 
-            <dg:DataGridView.TableSummaryRows>
+            <dg:KumikoDataGrid.TableSummaryRows>
                 <core:TableSummaryRow Name="Totals" Position="Bottom" Title="Totals">
                     <core:TableSummaryRow.Columns>
                         <core:SummaryColumnDescription PropertyName="Salary"
@@ -87,9 +87,9 @@
                                                        Label="Rows: " />
                     </core:TableSummaryRow.Columns>
                 </core:TableSummaryRow>
-            </dg:DataGridView.TableSummaryRows>
+            </dg:KumikoDataGrid.TableSummaryRows>
 
-        </dg:DataGridView>
+        </dg:KumikoDataGrid>
     </Grid>
 
 </ContentPage>

@@ -25,10 +25,10 @@ xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
 
 ---
 
-## `DataGridView` — All bindable properties
+## `KumikoDataGrid` — All bindable properties
 
 ```xml
-<dg:DataGridView
+<dg:KumikoDataGrid
     ItemsSource="{Binding Employees}"
     EditTriggers="DoubleTap,F2Key,Typing"
     EditTextSelectionMode="SelectAll"
@@ -48,11 +48,11 @@ xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
 ## Minimal column declaration
 
 ```xml
-<dg:DataGridView ItemsSource="{Binding Items}">
-    <dg:DataGridView.Columns>
+<dg:KumikoDataGrid ItemsSource="{Binding Items}">
+    <dg:KumikoDataGrid.Columns>
         <core:DataGridColumn Header="Name" PropertyName="Name" Width="180" />
-    </dg:DataGridView.Columns>
-</dg:DataGridView>
+    </dg:KumikoDataGrid.Columns>
+</dg:KumikoDataGrid>
 ```
 
 ---
@@ -111,7 +111,7 @@ xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
 ## Summary rows in XAML
 
 ```xml
-<dg:DataGridView.TableSummaryRows>
+<dg:KumikoDataGrid.TableSummaryRows>
     <core:TableSummaryRow Name="Averages" Position="Top" Title="Averages">
         <core:TableSummaryRow.Columns>
             <core:SummaryColumnDescription PropertyName="Salary"
@@ -129,12 +129,12 @@ xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
                                            SummaryType="Count" Label="Rows: " />
         </core:TableSummaryRow.Columns>
     </core:TableSummaryRow>
-</dg:DataGridView.TableSummaryRows>
+</dg:KumikoDataGrid.TableSummaryRows>
 ```
 
 ---
 
-## `DataGridView` internals (for platform-specific work)
+## `KumikoDataGrid` internals (for platform-specific work)
 
 - Extends `Grid`; contains `SKCanvasView` (render surface) + hidden `Entry` (keyboard proxy).
 - `[ContentProperty(nameof(Columns))]` — columns are XAML content.

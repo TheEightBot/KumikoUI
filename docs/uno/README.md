@@ -114,7 +114,7 @@ Core is already the seam — the host only adapts framework events into Core cal
 | timer tick (~16 ms) | — | `InputController.UpdateInertialScroll(scroll, 16f)` |
 | `InputController.NeedsRedraw` | — | `skXamlCanvas.Invalidate()` |
 
-These are the exact members exercised by [`src/KumikoUI.Maui/DataGridView.cs`](../../src/KumikoUI.Maui/DataGridView.cs) today.
+These are the exact members exercised by [`src/KumikoUI.Maui/KumikoDataGrid.cs`](../../src/KumikoUI.Maui/KumikoDataGrid.cs) today.
 
 ---
 
@@ -122,7 +122,7 @@ These are the exact members exercised by [`src/KumikoUI.Maui/DataGridView.cs`](.
 
 - [ ] **[01 — Prerequisites & tooling](01-prerequisites.md)** — SDKs, Uno templates, `uno-check`, workloads, per-OS build constraints.
 - [ ] **[02 — Library scaffold](02-library-scaffold.md)** — `dotnet new unolib`, solution wiring, TFMs, conditional SkiaSharp.Views references, packaging metadata.
-- [ ] **[03 — DataGridView host](03-datagridview-host.md)** — the control: `SKXamlCanvas` hosting, paint loop, `DependencyProperty` surface, lifecycle.
+- [ ] **[03 — KumikoDataGrid host](03-kumikodatagrid-host.md)** — the control: `SKXamlCanvas` hosting, paint loop, `DependencyProperty` surface, lifecycle.
 - [ ] **[04 — Input, keyboard & focus](04-input-keyboard-focus.md)** — pointer/keyboard/focus bridge into `GridInputController`, inertial scroll, per-head nuances.
 - [ ] **[05 — Fonts & assets](05-fonts-and-assets.md)** — `SkiaFontRegistrar` reuse (CJK/icons), Uno library-asset packaging rules.
 - [ ] **[06 — Sample app](06-sample-app.md)** — `dotnet new unoapp` `SampleApp.Uno`, font registration, demo pages, per-head run commands.

@@ -53,13 +53,13 @@
             x:Name="actionsGrid" is referenced by the command bindings below.
             BindingContext = MvvmActionsViewModel (set in code-behind).
         -->
-        <dg:DataGridView x:Name="actionsGrid"
+        <dg:KumikoDataGrid x:Name="actionsGrid"
                          Grid.Row="2"
                          ItemsSource="{Binding Employees}"
                          EditTriggers="DoubleTap, F2Key, Typing"
                          RowHeight="44"
                          HeaderHeight="40">
-            <dg:DataGridView.Columns>
+            <dg:KumikoDataGrid.Columns>
 
                 <!-- Id \u2014 read-only; no EditTriggers needed -->
                 <core:DataGridColumn Header="Id"
@@ -166,8 +166,8 @@
                     </core:DataGridColumn.CustomCellRenderer>
                 </core:DataGridColumn>
 
-            </dg:DataGridView.Columns>
-        </dg:DataGridView>
+            </dg:KumikoDataGrid.Columns>
+        </dg:KumikoDataGrid>
     </Grid>
 
 </ContentPage>

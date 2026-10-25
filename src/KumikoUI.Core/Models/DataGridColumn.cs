@@ -1,72 +1,8 @@
 using System.Collections;
-using System.ComponentModel;
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Editing;
-using KumikoUI.Core.Rendering;
 
 namespace KumikoUI.Core.Models;
-
-/// <summary>
-/// Defines column types for data binding and rendering dispatch.
-/// </summary>
-public enum DataGridColumnType
-{
-    /// <summary>Plain text column.</summary>
-    Text,
-    /// <summary>Numeric column with numeric formatting.</summary>
-    Numeric,
-    /// <summary>Boolean column rendered as a checkbox.</summary>
-    Boolean,
-    /// <summary>Date/time column with date formatting.</summary>
-    Date,
-    /// <summary>Custom template column.</summary>
-    Template,
-    /// <summary>Image column.</summary>
-    Image,
-    /// <summary>Drop-down combo box column.</summary>
-    ComboBox,
-    /// <summary>Scroll-picker column.</summary>
-    Picker
-}
-
-/// <summary>
-/// Sort direction used by columns and the data source.
-/// </summary>
-public enum SortDirection
-{
-    /// <summary>No sorting applied.</summary>
-    None,
-    /// <summary>Sorted in ascending order (A–Z, 0–9).</summary>
-    Ascending,
-    /// <summary>Sorted in descending order (Z–A, 9–0).</summary>
-    Descending
-}
-
-/// <summary>
-/// Defines how a column is frozen (pinned).
-/// </summary>
-public enum ColumnFreezeMode
-{
-    /// <summary>Column scrolls normally.</summary>
-    None,
-    /// <summary>Column is pinned to the left edge.</summary>
-    Left,
-    /// <summary>Column is pinned to the right edge.</summary>
-    Right
-}
-
-/// <summary>
-/// Defines how a column is sized.
-/// </summary>
-public enum ColumnSizeMode
-{
-    /// <summary>Fixed pixel width.</summary>
-    Fixed,
-    /// <summary>Weighted share of remaining space (star sizing).</summary>
-    Star,
-    /// <summary>Size to fit content (measure cells on first load).</summary>
-    Auto
-}
 
 /// <summary>
 /// Platform-independent column definition.
@@ -154,7 +90,7 @@ public class DataGridColumn
     public ColumnFreezeMode FreezeMode { get; set; } = ColumnFreezeMode.None;
 
     /// <summary>Current sort direction.</summary>
-    public SortDirection SortDirection { get; set; } = SortDirection.None;
+    public DataGridSortDirection SortDirection { get; set; } = DataGridSortDirection.None;
 
     /// <summary>
     /// Sort priority in multi-sort mode. 0 = not part of multi-sort.

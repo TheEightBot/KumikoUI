@@ -32,7 +32,7 @@ it can be unit-tested without a live UI:
 - [x] Put `VirtualKey → GridKey` and `VirtualKeyModifiers → InputModifiers` in a small static class
   (e.g. `KumikoUI.Uno.Input.InputMapping`) with no control state. *(Done in Phase 04:
   `src/KumikoUI.Uno/Input/InputMapping.cs` — `ToGridKey`, `ToInputModifiers` are pure enum→enum
-  with zero `DataGridView`/element dependency.)*
+  with zero `KumikoDataGrid`/element dependency.)*
 - [x] These reference WinUI types, so the tests live in an **Uno runtime test project** (below), not in
   `KumikoUI.Core.Tests` (which must stay WinUI-free). Assert the full key table from
   [04 §3](04-input-keyboard-focus.md#3-keyboard--focus).

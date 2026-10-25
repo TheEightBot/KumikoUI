@@ -24,7 +24,7 @@ public class PinnedBottomSummaryTests
         public DataGridSource Source { get; } = new();
         public DataGridStyle Style { get; } = new();
         public ScrollState Scroll { get; init; } = new() { ViewportWidth = ViewportWidth, ViewportHeight = DefaultViewportHeight };
-        public SelectionModel Selection { get; } = new();
+        public DataGridSelectionModel Selection { get; } = new();
         public GridInputController Input { get; } = new();
         public DataGridRenderer Renderer { get; } = new();
 

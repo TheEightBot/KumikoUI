@@ -29,6 +29,19 @@
       the high-severity advisories reported against 10.0.12 (NU1903).
     -->
     <WindowsCompatibilityVersion>10.0.13</WindowsCompatibilityVersion>
+
+    <!--
+      Versions of the platform packages eng/TypeNameCheck reads to compare public type names. They are only
+      downloaded by that build tool (PackageDownload); nothing in the shipped packages references them.
+        - WinUI: the Microsoft.UI.Xaml.* metadata (Windows App SDK).
+        - Uno: Uno's own Microsoft.UI.Xaml implementation, which has public types WinUI lacks. Keep it at the
+          Uno.WinUI version that Uno.Sdk (global.json) resolves.
+        - Windows Forms: the System.Windows.Forms.* reference assemblies.
+      MAUI uses MauiVersion above (the minimum KumikoUI.Maui supports).
+    -->
+    <WindowsAppSdkWinUIVersion>1.8.260528001</WindowsAppSdkWinUIVersion>
+    <UnoWinUIVersion>6.7.135</UnoWinUIVersion>
+    <WindowsDesktopRefVersion>10.0.13</WindowsDesktopRefVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Rendering (SkiaSharp)">
@@ -48,6 +61,16 @@
 
   <ItemGroup Label="Build">
     <PackageVersion Include="MinVer" Version="8.0.0" />
+  </ItemGroup>
+
+  <!--
+    Listed so Dependabot sees them. The MAUI packages follow MauiVersion and Uno.WinUI follows Uno.Sdk, so
+    they are deliberately not listed here: a PackageVersion for them could override the versions the MAUI
+    and Uno SDKs choose for the real projects.
+  -->
+  <ItemGroup Label="Build tools (eng/TypeNameCheck)">
+    <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="$(WindowsAppSdkWinUIVersion)" />
+    <PackageVersion Include="Microsoft.WindowsDesktop.App.Ref" Version="$(WindowsDesktopRefVersion)" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">

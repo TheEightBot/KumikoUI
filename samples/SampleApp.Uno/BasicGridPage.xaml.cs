@@ -5,9 +5,6 @@ using KumikoUI.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-// Disambiguate Core's SelectionMode from Microsoft.UI.Xaml.Controls.SelectionMode.
-using SelectionMode = KumikoUI.Core.Models.SelectionMode;
-
 namespace SampleApp.Uno;
 
 /// <summary>
@@ -117,11 +114,11 @@ public sealed partial class BasicGridPage : Page
 
     private void OnToggleSelectionModeClicked(object sender, RoutedEventArgs e)
     {
-        kumiko.GridSelectionMode = kumiko.GridSelectionMode == SelectionMode.Extended
-            ? SelectionMode.Single
-            : SelectionMode.Extended;
+        kumiko.GridSelectionMode = kumiko.GridSelectionMode == DataGridSelectionMode.Extended
+            ? DataGridSelectionMode.Single
+            : DataGridSelectionMode.Extended;
 
-        selectionModeToggle.Content = kumiko.GridSelectionMode == SelectionMode.Extended
+        selectionModeToggle.Content = kumiko.GridSelectionMode == DataGridSelectionMode.Extended
             ? "Select: All"
             : "Select: Single";
     }

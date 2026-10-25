@@ -44,6 +44,13 @@ jobs:
         run: dotnet build src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
           --no-restore -c Release
 
+      # No public type may share a simple name with Microsoft.Maui.Controls.*, Microsoft.UI.Xaml.* or
+      # System.Windows.Forms.* (eng/TypeNameCheck reads the names from the pinned platform packages).
+      - name: Check public type names — Core + SkiaSharp
+        run: dotnet run --project eng/TypeNameCheck/TypeNameCheck.csproj -c Release
+          -- src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll
+          src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
+
       - name: Test
         run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           --no-restore -c Release --logger "trx" --results-directory TestResults
@@ -87,6 +94,10 @@ jobs:
         run: dotnet build src/KumikoUI.Maui/KumikoUI.Maui.csproj
           --no-restore -c Release
 
+      - name: Check public type names — Maui
+        run: dotnet run --project eng/TypeNameCheck/TypeNameCheck.csproj -c Release
+          -- src/KumikoUI.Maui/bin/Release/net10.0-windows10.0.19041.0/KumikoUI.Maui.dll
+
       # Validate packability (dry run)
       - name: Pack — Maui (dry run)
         run: dotnet pack src/KumikoUI.Maui/KumikoUI.Maui.csproj
@@ -114,6 +125,10 @@ jobs:
       - name: Build — Uno
         run: dotnet build src/KumikoUI.Uno/KumikoUI.Uno.csproj
           --no-restore -c Release
+
+      - name: Check public type names — Uno
+        run: dotnet run --project eng/TypeNameCheck/TypeNameCheck.csproj -c Release
+          -- src/KumikoUI.Uno/bin/Release/net10.0-desktop/KumikoUI.Uno.dll
 
       # Validate packability (dry run — exercises the full multi-head pack)
       - name: Pack — Uno (dry run)

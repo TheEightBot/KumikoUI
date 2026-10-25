@@ -54,7 +54,7 @@ The grid calls `InvalidateSurface()` in response to:
 | Editing | Cell editor open/close, commit |
 | Resize | Column resize drag, viewport size change |
 | Sort / Filter / Group | Header tap, filter popup close |
-| Style change | BindableProperty change on DataGridView |
+| Style change | BindableProperty change on KumikoDataGrid |
 | Expand / Collapse | Group header chevron tap |
 | Drag & Drop | Row drag in progress |
 
@@ -187,7 +187,7 @@ When a cell enters edit mode:
 
 1. `EditSession.BeginEdit()` captures the cell position, original value, and column type.
 2. `CellEditorFactory` creates the appropriate `DrawnComponent` editor (e.g., `DrawnTextBox` for text columns).
-3. The editor is positioned at the cell's viewport rect and registered with `FocusManager`.
+3. The editor is positioned at the cell's viewport rect and registered with `DrawnFocusManager`.
 4. The editor draws **on top of** the cell in step 17 of the pipeline.
 5. On commit: `EditSession.CommitEdit()` validates, writes back via compiled property setter, and fires `CellEditEnded`.
 6. On cancel: `EditSession.CancelEdit()` restores original value.

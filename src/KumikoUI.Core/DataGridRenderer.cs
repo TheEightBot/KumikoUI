@@ -54,7 +54,7 @@ public class DataGridRenderer
         IDrawingContext ctx,
         DataGridSource dataSource,
         ScrollState scroll,
-        SelectionModel selection,
+        DataGridSelectionModel selection,
         DataGridStyle style,
         int dragColumnIndex = -1,
         float dragColumnScreenX = 0,
@@ -454,7 +454,7 @@ public class DataGridRenderer
         List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
         int firstRow, int lastRow,
         ScrollState scroll,
-        SelectionModel selection,
+        DataGridSelectionModel selection,
         DataGridStyle style,
         bool isFrozen,
         float frozenWidth,
@@ -473,7 +473,7 @@ public class DataGridRenderer
         List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
         int firstRow, int lastRow,
         ScrollState scroll,
-        SelectionModel selection,
+        DataGridSelectionModel selection,
         DataGridStyle style,
         ColumnFreezeMode freezeMode,
         float frozenWidth,
@@ -501,7 +501,7 @@ public class DataGridRenderer
 
             // Resolve conditional row style
             object? dataItem = null;
-            RowStyle? dynamicRowStyle = null;
+            DataGridRowStyle? dynamicRowStyle = null;
             if (style.RowStyleResolver != null || style.CellStyleResolver != null)
             {
                 dataItem = dataSource.GetItem(row);
@@ -608,7 +608,7 @@ public class DataGridRenderer
         List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
         int frozenRowCount,
         ScrollState scroll,
-        SelectionModel selection,
+        DataGridSelectionModel selection,
         DataGridStyle style,
         bool isFrozenCol,
         float frozenWidth,
@@ -625,7 +625,7 @@ public class DataGridRenderer
         List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
         int frozenRowCount,
         ScrollState scroll,
-        SelectionModel selection,
+        DataGridSelectionModel selection,
         DataGridStyle style,
         ColumnFreezeMode freezeMode,
         float frozenWidth,
@@ -648,7 +648,7 @@ public class DataGridRenderer
 
             // Resolve conditional row style
             object? dataItem = null;
-            RowStyle? dynamicRowStyle = null;
+            DataGridRowStyle? dynamicRowStyle = null;
             if (style.RowStyleResolver != null || style.CellStyleResolver != null)
             {
                 dataItem = dataSource.GetItem(row);
@@ -916,7 +916,7 @@ public class DataGridRenderer
         IDrawingContext ctx,
         List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
-        SelectionModel selection,
+        DataGridSelectionModel selection,
         DataGridStyle style,
         bool isFrozen,
         float frozenWidth,
@@ -933,7 +933,7 @@ public class DataGridRenderer
         IDrawingContext ctx,
         List<(DataGridColumn Column, float X, int OriginalIndex)> visibleCols,
         ScrollState scroll,
-        SelectionModel selection,
+        DataGridSelectionModel selection,
         DataGridStyle style,
         ColumnFreezeMode freezeMode,
         float frozenWidth,
@@ -1002,7 +1002,7 @@ public class DataGridRenderer
     {
         foreach (var (col, colX, _) in visibleCols)
         {
-            if (col.SortDirection == SortDirection.None) continue;
+            if (col.SortDirection == DataGridSortDirection.None) continue;
 
             float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
             float arrowX = screenX + col.Width - style.CellPadding - 8;
@@ -1010,7 +1010,7 @@ public class DataGridRenderer
 
             var paint = _paintCache.SortIndicator;
 
-            if (col.SortDirection == SortDirection.Ascending)
+            if (col.SortDirection == DataGridSortDirection.Ascending)
             {
                 ctx.DrawLine(arrowX, arrowCenterY + 3, arrowX + 4, arrowCenterY - 3, paint);
                 ctx.DrawLine(arrowX + 4, arrowCenterY - 3, arrowX + 8, arrowCenterY + 3, paint);
@@ -1217,7 +1217,7 @@ public class DataGridRenderer
                 StrokeWidth = 2f,
                 IsAntiAlias = true
             };
-            if (group.GroupSortDirection == SortDirection.Ascending)
+            if (group.GroupSortDirection == DataGridSortDirection.Ascending)
             {
                 // Up arrow
                 float ax = arrowX + 6;

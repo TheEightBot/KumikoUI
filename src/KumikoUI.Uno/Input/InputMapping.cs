@@ -11,8 +11,8 @@ namespace KumikoUI.Uno.Input;
 /// platform-independent input contract (<see cref="GridKey"/>, <see cref="InputModifiers"/>).
 /// </summary>
 /// <remarks>
-/// Kept deliberately free of any <c>DataGridView</c> / framework-element dependency so it can be
-/// unit-tested directly in Phase 07. The <see cref="DataGridView"/> control is the only caller;
+/// Kept deliberately free of any <c>KumikoDataGrid</c> / framework-element dependency so it can be
+/// unit-tested directly in Phase 07. The <see cref="KumikoDataGrid"/> control is the only caller;
 /// it owns event subscription and merely defers the enum mapping here.
 /// </remarks>
 public static class InputMapping

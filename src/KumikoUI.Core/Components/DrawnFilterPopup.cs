@@ -81,7 +81,7 @@ public class DrawnFilterPopup : DrawnComponent
     /// <summary>Raised when the user cancels the filter popup without applying.</summary>
     public event Action? FilterCancelled;
     /// <summary>Raised when the user requests a sort direction from the popup.</summary>
-    public event Action<SortDirection>? SortRequested;
+    public event Action<DataGridSortDirection>? SortRequested;
 
     /// <summary>Raised when the search box is tapped and needs platform keyboard focus.</summary>
     public event Action? KeyboardFocusRequested;
@@ -584,9 +584,9 @@ public class DrawnFilterPopup : DrawnComponent
         if (relY >= 0 && relY < SortRowHeight)
         {
             if (relX < contentWidth / 2)
-                SortRequested?.Invoke(SortDirection.Ascending);
+                SortRequested?.Invoke(DataGridSortDirection.Ascending);
             else
-                SortRequested?.Invoke(SortDirection.Descending);
+                SortRequested?.Invoke(DataGridSortDirection.Descending);
             return true;
         }
 

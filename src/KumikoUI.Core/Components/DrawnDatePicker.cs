@@ -180,7 +180,7 @@ public class DrawnDatePicker : DrawnComponent
     public event EventHandler<DateRangeSelectedEventArgs>? RangeSelected;
 
     /// <summary>Raised when the time portion changes.</summary>
-    public event EventHandler<TimeChangedEventArgs>? TimeChanged;
+    public event EventHandler<GridTimeChangedEventArgs>? TimeChanged;
 
     // ── Drawing ─────────────────────────────────────────────────
 
@@ -897,7 +897,7 @@ public class DrawnDatePicker : DrawnComponent
 
         if (oldHour != SelectedHour || oldMinute != SelectedMinute)
         {
-            TimeChanged?.Invoke(this, new TimeChangedEventArgs(oldHour, oldMinute, SelectedHour, SelectedMinute));
+            TimeChanged?.Invoke(this, new GridTimeChangedEventArgs(oldHour, oldMinute, SelectedHour, SelectedMinute));
             InvalidateVisual();
         }
     }
@@ -907,50 +907,4 @@ public class DrawnDatePicker : DrawnComponent
         CloseCalendar();
         base.OnLostFocus();
     }
-}
-
-/// <summary>Date selected event args.</summary>
-public class DateSelectedEventArgs : EventArgs
-{
-    /// <summary>The previously selected date.</summary>
-    public DateTime OldDate { get; }
-    /// <summary>The newly selected date.</summary>
-    public DateTime NewDate { get; }
-    /// <summary>Initializes a new instance of the <see cref="DateSelectedEventArgs"/> class.</summary>
-    /// <param name="oldDate">The previously selected date.</param>
-    /// <param name="newDate">The newly selected date.</param>
-    public DateSelectedEventArgs(DateTime oldDate, DateTime newDate) { OldDate = oldDate; NewDate = newDate; }
-}
-
-/// <summary>Date range selected event args.</summary>
-public class DateRangeSelectedEventArgs : EventArgs
-{
-    /// <summary>The start date of the selected range.</summary>
-    public DateTime StartDate { get; }
-    /// <summary>The end date of the selected range, or <see langword="null"/> if only the start was chosen.</summary>
-    public DateTime? EndDate { get; }
-    /// <summary>Initializes a new instance of the <see cref="DateRangeSelectedEventArgs"/> class.</summary>
-    /// <param name="start">The start date of the range.</param>
-    /// <param name="end">The end date of the range.</param>
-    public DateRangeSelectedEventArgs(DateTime start, DateTime? end) { StartDate = start; EndDate = end; }
-}
-
-/// <summary>Time changed event args.</summary>
-public class TimeChangedEventArgs : EventArgs
-{
-    /// <summary>The hour value before the change (0–23).</summary>
-    public int OldHour { get; }
-    /// <summary>The minute value before the change (0–59).</summary>
-    public int OldMinute { get; }
-    /// <summary>The hour value after the change (0–23).</summary>
-    public int NewHour { get; }
-    /// <summary>The minute value after the change (0–59).</summary>
-    public int NewMinute { get; }
-    /// <summary>Initializes a new instance of the <see cref="TimeChangedEventArgs"/> class.</summary>
-    /// <param name="oldH">The previous hour.</param>
-    /// <param name="oldM">The previous minute.</param>
-    /// <param name="newH">The new hour.</param>
-    /// <param name="newM">The new minute.</param>
-    public TimeChangedEventArgs(int oldH, int oldM, int newH, int newM)
-    { OldHour = oldH; OldMinute = oldM; NewHour = newH; NewMinute = newM; }
 }

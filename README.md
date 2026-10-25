@@ -1,6 +1,6 @@
 <p align="center">
   <img src="images/logo.svg" alt="KumikoUI logo" width="120" />
-  <h1 align="center">.NET KumikoUI</h1>
+  <h1 align="center">KumikoUI DataGrid</h1>
   <p align="center">
     A high-performance, fully canvas-drawn DataGrid for .NET — zero native controls, pixel-perfect on every platform.
   </p>
@@ -104,7 +104,7 @@ dotnet add package KumikoUI.Maui
 
 | Package | Description |
 |---|---|
-| [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `DataGridView` MAUI control + MAUI hosting extensions |
+| [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `KumikoDataGrid` MAUI control + MAUI hosting extensions |
 | [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | SkiaSharp drawing context implementation |
 | [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Platform-agnostic layout, rendering pipeline, and models |
 
@@ -129,21 +129,21 @@ builder
     xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core">
 ```
 
-### 3. Declare the DataGridView
+### 3. Declare the KumikoDataGrid
 
 ```xml
-<dg:DataGridView x:Name="kumiko"
+<dg:KumikoDataGrid x:Name="kumiko"
                  ItemsSource="{Binding Items}"
                  RowHeight="36"
                  HeaderHeight="40">
-    <dg:DataGridView.Columns>
+    <dg:KumikoDataGrid.Columns>
         <core:DataGridColumn Header="Name"   PropertyName="Name"     Width="180" />
         <core:DataGridColumn Header="Age"    PropertyName="Age"      Width="80"
                              ColumnType="Numeric" TextAlignment="Right" />
         <core:DataGridColumn Header="Active" PropertyName="IsActive" Width="80"
                              ColumnType="Boolean" />
-    </dg:DataGridView.Columns>
-</dg:DataGridView>
+    </dg:KumikoDataGrid.Columns>
+</dg:KumikoDataGrid>
 ```
 
 ---
@@ -213,8 +213,8 @@ Set `PropertyName=""` so the full row item is passed as the value to both the re
 xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
 xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
 
-<dg:DataGridView x:Name="actionsGrid" ...>
-    <dg:DataGridView.Columns>
+<dg:KumikoDataGrid x:Name="actionsGrid" ...>
+    <dg:KumikoDataGrid.Columns>
         <core:DataGridColumn Header="Actions"
                              PropertyName=""
                              ColumnType="Template"
@@ -240,8 +240,8 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
                 </render:ActionButtonsCellRenderer>
             </core:DataGridColumn.CustomCellRenderer>
         </core:DataGridColumn>
-    </dg:DataGridView.Columns>
-</dg:DataGridView>
+    </dg:KumikoDataGrid.Columns>
+</dg:KumikoDataGrid>
 ```
 
 > **Note:** `MauiActionButtonDefinition` is not in the visual tree, so it does **not** inherit `BindingContext` automatically. Use `Source={x:Reference …}` or `Source={RelativeSource …}` to point bindings at the correct source object.
@@ -330,7 +330,7 @@ The renderer uses 3-pass clip regions so frozen columns naturally overlay scroll
 Pin the first N rows so they remain visible while the rest of the data scrolls:
 
 ```xml
-<dg:DataGridView FrozenRowCount="2" ... />
+<dg:KumikoDataGrid FrozenRowCount="2" ... />
 ```
 
 ---
@@ -343,7 +343,7 @@ Tap any column header to sort. The indicator cycles through **Ascending → Desc
 
 ```csharp
 // Set ascending sort on a column, then refresh:
-lastNameColumn.SortDirection = SortDirection.Ascending;
+lastNameColumn.SortDirection = DataGridSortDirection.Ascending;
 kumiko.DataSource.Refresh();
 ```
 
@@ -392,7 +392,7 @@ Summaries appear as pinned rows at the top or bottom of the grid (table summarie
 ### Table summaries (XAML)
 
 ```xml
-<dg:DataGridView.TableSummaryRows>
+<dg:KumikoDataGrid.TableSummaryRows>
     <core:TableSummaryRow Name="Totals" Position="Bottom" Title="Totals">
         <core:TableSummaryRow.Columns>
             <core:SummaryColumnDescription PropertyName="Salary"
@@ -404,7 +404,7 @@ Summaries appear as pinned rows at the top or bottom of the grid (table summarie
                                            Label="Avg: " />
         </core:TableSummaryRow.Columns>
     </core:TableSummaryRow>
-</dg:DataGridView.TableSummaryRows>
+</dg:KumikoDataGrid.TableSummaryRows>
 ```
 
 ### Group summaries (code)
@@ -433,7 +433,7 @@ kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
 Configure which gestures or keys open the inline editor:
 
 ```xml
-<dg:DataGridView EditTriggers="DoubleTap,F2Key,Typing"
+<dg:KumikoDataGrid EditTriggers="DoubleTap,F2Key,Typing"
                  EditTextSelectionMode="SelectAll"
                  DismissKeyboardOnEnter="True" />
 ```
@@ -453,8 +453,8 @@ Triggers are flags — combine freely: `"DoubleTap,F2Key,Typing"`.
 Each column can override the grid-level `EditTriggers` independently via its own `EditTriggers` property. When set, that column uses its own trigger flags; when `null` (the default), the column inherits the grid-level setting.
 
 ```xml
-<dg:DataGridView EditTriggers="DoubleTap, F2Key, Typing">
-    <dg:DataGridView.Columns>
+<dg:KumikoDataGrid EditTriggers="DoubleTap, F2Key, Typing">
+    <dg:KumikoDataGrid.Columns>
 
         <!-- Most accessible: single-tap, F2, or typing to edit -->
         <core:DataGridColumn Header="Name" PropertyName="Name"
@@ -476,8 +476,8 @@ Each column can override the grid-level `EditTriggers` independently via its own
                              ColumnType="Template"
                              EditTriggers="SingleTap" />
 
-    </dg:DataGridView.Columns>
-</dg:DataGridView>
+    </dg:KumikoDataGrid.Columns>
+</dg:KumikoDataGrid>
 ```
 
 Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column without making it fully read-only via `IsReadOnly`.
@@ -486,10 +486,10 @@ Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column
 
 ```xml
 <!-- Select all existing text when the editor opens -->
-<dg:DataGridView EditTextSelectionMode="SelectAll" />
+<dg:KumikoDataGrid EditTextSelectionMode="SelectAll" />
 
 <!-- Or keep cursor at end -->
-<dg:DataGridView EditTextSelectionMode="End" />
+<dg:KumikoDataGrid EditTextSelectionMode="End" />
 ```
 
 ### Commit / cancel
@@ -519,10 +519,10 @@ var column = new DataGridColumn
 ### Selection mode
 
 ```xml
-<dg:DataGridView GridSelectionMode="Multiple" />
+<dg:KumikoDataGrid GridSelectionMode="Multiple" />
 ```
 
-| `SelectionMode` | Behavior |
+| `DataGridSelectionMode` | Behavior |
 |---|---|
 | `Single` | One item at a time |
 | `Multiple` | Each tap toggles the item |
@@ -594,9 +594,9 @@ A visual overlay tracks the dragged row. The row list is updated on drop.
 ### Built-in themes
 
 ```xml
-<dg:DataGridView Theme="Light" />        <!-- default -->
-<dg:DataGridView Theme="Dark" />
-<dg:DataGridView Theme="HighContrast" />
+<dg:KumikoDataGrid Theme="Light" />        <!-- default -->
+<dg:KumikoDataGrid Theme="Dark" />
+<dg:KumikoDataGrid Theme="HighContrast" />
 ```
 
 ### Custom style
@@ -841,14 +841,14 @@ KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 | `GridHitTester` | Resolves pointer coordinates to one of 14 `HitRegion` types across 3 column panes |
 | `PaintCache` | Pre-computes ~60 `GridPaint` objects per frame from `DataGridStyle` |
 | `GridInputController` | Routes pointer and keyboard events to selection, editing, resizing, drag handlers |
-| `SelectionModel` | Row/cell selection state, Single / Multiple / Extended modes |
+| `DataGridSelectionModel` | Row/cell selection state, Single / Multiple / Extended modes |
 | `EditSession` | Cell edit lifecycle — begin, commit, cancel, validation, write-back |
 | `CellEditorFactory` | Instantiates the correct `DrawnComponent` editor for each column type |
 | `InertialScroller` | Physics-based scroll deceleration with configurable friction |
 | `PopupManager` | Popup z-order and input priority routing (filter, ComboBox, DatePicker) |
 | `IDrawingContext` | Platform-independent drawing API: fill, stroke, text, images, clipping |
 | `SkiaDrawingContext` | `SKCanvas` implementation with 3-tier native object caching |
-| `DataGridView` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
+| `KumikoDataGrid` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor guide and [docs/RENDERING.md](docs/RENDERING.md) for the full 18-step rendering pipeline.
 

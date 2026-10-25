@@ -41,7 +41,7 @@
                    Padding="16,2,16,8"
                    Grid.Row="2" />
 
-        <kumiko:DataGridView x:Name="kumiko"
+        <kumiko:KumikoDataGrid x:Name="kumiko"
                              Grid.Row="3"
                              ItemsSource="{Binding Items}"
                              RowHeight="32"
@@ -49,7 +49,7 @@
                              GridDescription="Large dataset stress-test grid"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
-            <kumiko:DataGridView.Columns>
+            <kumiko:KumikoDataGrid.Columns>
                 <core:DataGridColumn Header="#" PropertyName="RowNumber" Width="80"
                                      ColumnType="Numeric" TextAlignment="Right"
                                      IsReadOnly="True" AllowTabStop="False" IsFrozen="True" />
@@ -67,8 +67,8 @@
                 <core:DataGridColumn Header="Score" PropertyName="Score" Width="90"
                                      Format="N1" ColumnType="Numeric" TextAlignment="Right" />
                 <core:DataGridColumn Header="Notes" PropertyName="Notes" Width="160" />
-            </kumiko:DataGridView.Columns>
-        </kumiko:DataGridView>
+            </kumiko:KumikoDataGrid.Columns>
+        </kumiko:KumikoDataGrid>
     </Grid>
 
 </Page>

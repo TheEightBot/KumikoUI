@@ -170,7 +170,7 @@ public class DataGridSourceTests
         source.ToggleSort(col); // Ascending
         source.ToggleSort(col); // Descending
         source.ToggleSort(col); // None
-        Assert.Equal(SortDirection.None, col.SortDirection);
+        Assert.Equal(DataGridSortDirection.None, col.SortDirection);
     }
 
     [Fact]
@@ -181,8 +181,8 @@ public class DataGridSourceTests
         var ageCol = source.Columns.First(c => c.PropertyName == "Age");
         source.ToggleSort(nameCol);
         source.ToggleSort(ageCol);
-        Assert.Equal(SortDirection.None, nameCol.SortDirection);
-        Assert.Equal(SortDirection.Ascending, ageCol.SortDirection);
+        Assert.Equal(DataGridSortDirection.None, nameCol.SortDirection);
+        Assert.Equal(DataGridSortDirection.Ascending, ageCol.SortDirection);
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class DataGridSourceTests
         var col = source.Columns.First(c => c.PropertyName == "Name");
         source.ToggleSort(col);
         source.ClearSort();
-        Assert.Equal(SortDirection.None, col.SortDirection);
+        Assert.Equal(DataGridSortDirection.None, col.SortDirection);
         Assert.Empty(source.ActiveSortColumns);
     }
 
@@ -229,7 +229,7 @@ public class DataGridSourceTests
         var col = source.Columns.First(c => c.PropertyName == "Name");
         source.SortColumnsChanging += (_, e) => e.Cancel = true;
         source.ToggleSort(col);
-        Assert.Equal(SortDirection.None, col.SortDirection);
+        Assert.Equal(DataGridSortDirection.None, col.SortDirection);
     }
 
     [Fact]

@@ -56,9 +56,9 @@ public class DataGridRendererOverlayTests
     }
 
     [Theory]
-    [InlineData(SortDirection.Ascending, 16f)]  // arrow head at the top of the 26 px chip (centre 20)
-    [InlineData(SortDirection.Descending, 24f)] // arrow head at the bottom
-    public void GroupingPanel_ChipArrow_ShowsTheGroupSortDirection(SortDirection direction, float headY)
+    [InlineData(DataGridSortDirection.Ascending, 16f)]  // arrow head at the top of the 26 px chip (centre 20)
+    [InlineData(DataGridSortDirection.Descending, 24f)] // arrow head at the bottom
+    public void GroupingPanel_ChipArrow_ShowsTheGroupSortDirection(DataGridSortDirection direction, float headY)
     {
         var h = Create();
         h.Source.AddGroupDescription(new GroupDescription("City") { GroupSortDirection = direction });
@@ -369,7 +369,7 @@ public class DataGridRendererOverlayTests
         var name = h.Column("Name");
         name.CellStyle = new CellStyle { Padding = 4 };
         var red = new GridColor(255, 0, 0);
-        h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Name == "P00" ? new RowStyle { TextColor = red } : null;
+        h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Name == "P00" ? new DataGridRowStyle { TextColor = red } : null;
 
         var ctx = h.Render();
 

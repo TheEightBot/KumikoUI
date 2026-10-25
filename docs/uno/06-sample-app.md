@@ -80,7 +80,7 @@ with the same data/columns. **All six pages were ported** (none deferred), reach
   summary row, toggle filtering — all via `kumiko.DataSource.*`. (← `GroupingPage`)
 - [x] **Theming** — `ThemingPage`: built-in Light/Dark/HighContrast (via `DataGridTheme.Create(mode)`), three
   hand-built custom palettes (Ocean/Forest/Sunset), and live header-colour RGB sliders. **Note:** the Uno
-  `DataGridView` exposes **no `Theme` DP** (unlike MAUI's `kumiko.Theme`); themes are applied by assigning the
+  `KumikoDataGrid` exposes **no `Theme` DP** (unlike MAUI's `kumiko.Theme`); themes are applied by assigning the
   produced `DataGridStyle` to `kumiko.GridStyle` — same end result. (← `ThemingPage`)
 - [x] **MVVM actions** — `MvvmActionsPage`: per-column `EditTriggers` overrides + an Actions column
   (`ActionButtonsCellRenderer` w/ Details/Delete). **Note:** uses the framework-agnostic Core
@@ -94,7 +94,7 @@ with the same data/columns. **All six pages were ported** (none deferred), reach
 XAML usage (declare the library namespace and drop the control in):
 ```xml
 <Page xmlns:kumiko="using:KumikoUI.Uno">
-    <kumiko:DataGridView x:Name="Grid"
+    <kumiko:KumikoDataGrid x:Name="Grid"
                          ItemsSource="{Binding Items}"
                          RowHeight="36" HeaderHeight="40" />
 </Page>

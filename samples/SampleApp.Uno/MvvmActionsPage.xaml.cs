@@ -187,7 +187,7 @@ public sealed partial class MvvmActionsPage : Page
 /// </summary>
 public class MvvmActionsViewModel
 {
-    /// <summary>The collection bound to the DataGridView.</summary>
+    /// <summary>The collection bound to the KumikoDataGrid.</summary>
     public ObservableCollection<Employee> Employees { get; } = new();
 
     /// <summary>Raised to request confirmation and removal of an employee.</summary>

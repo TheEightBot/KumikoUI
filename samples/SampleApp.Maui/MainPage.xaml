@@ -28,7 +28,7 @@
             <Button x:Name="selectionModeToggle" Text="Select: All" Clicked="OnToggleSelectionModeClicked" Margin="4,0,0,4" />
         </FlexLayout>
 
-        <dg:DataGridView x:Name="kumiko"
+        <dg:KumikoDataGrid x:Name="kumiko"
                          Grid.Row="2"
                          ItemsSource="{Binding Employees}"
                          EditTriggers="DoubleTap,F2Key,Typing"
@@ -42,7 +42,7 @@
                          VerticalOptions="Fill">
 
             <!-- Column definitions — showcasing every column/component type -->
-            <dg:DataGridView.Columns>
+            <dg:KumikoDataGrid.Columns>
 
                 <!-- NUMERIC column (frozen left) -->
                 <core:DataGridColumn Header="Id"
@@ -130,10 +130,10 @@
                                      PropertyName="City"
                                      Width="130"
                                      FreezeMode="Right" />
-            </dg:DataGridView.Columns>
+            </dg:KumikoDataGrid.Columns>
 
             <!-- Table summary rows -->
-            <dg:DataGridView.TableSummaryRows>
+            <dg:KumikoDataGrid.TableSummaryRows>
                 <core:TableSummaryRow Name="Averages" Position="Top" Title="Averages">
                     <core:TableSummaryRow.Columns>
                         <core:SummaryColumnDescription PropertyName="Salary"
@@ -161,9 +161,9 @@
                                                        Label="Best: " />
                     </core:TableSummaryRow.Columns>
                 </core:TableSummaryRow>
-            </dg:DataGridView.TableSummaryRows>
+            </dg:KumikoDataGrid.TableSummaryRows>
 
-        </dg:DataGridView>
+        </dg:KumikoDataGrid>
     </Grid>
 
 </ContentPage>
