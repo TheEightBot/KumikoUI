@@ -10,13 +10,13 @@ Add xUnit tests to `tests/KumikoUI.Core.Tests/` for a class in `KumikoUI.Core`.
 ## Key rules (read before generating)
 
 - Test framework: **xUnit** (`[Fact]` and `[Theory]` + `[InlineData]`). Never use NUnit or MSTest.
-- One test class per source class (e.g., `GridRectTests` for `GridRect`).
+- One test class per source class (e.g., `KumikoRectTests` for `KumikoRect`).
 - Test file name: `{ClassName}Tests.cs` — must match the existing naming convention.
 - No SkiaSharp or MAUI dependencies — `KumikoUI.Core` only.
 - Test project targets `net10.0`.
 - Tests go in `tests/KumikoUI.Core.Tests/`.
-- Existing test files for reference: `GridRectTests.cs`, `DataGridSelectionModelTests.cs`,
-  `DataGridSourceTests.cs`, `InertialScrollerTests.cs`, `GridLayoutEngineTests.cs`.
+- Existing test files for reference: `KumikoRectTests.cs`, `KumikoSelectionModelTests.cs`,
+  `KumikoSourceTests.cs`, `InertialScrollerTests.cs`, `KumikoLayoutEngineTests.cs`.
 
 ## What to ask before generating
 
@@ -58,14 +58,14 @@ public void {MethodName}_{GeneralScenario}(/* paramType input */, /* resultType 
 
 ---
 
-## Example: `DataGridSource` sorting test
+## Example: `KumikoSource` sorting test
 
 ```csharp
 public class DataGridSourceSortingTests
 {
-    private static DataGridSource MakeSource(IList items, List<GridColumn> columns)
+    private static KumikoSource MakeSource(IList items, List<KumikoColumn> columns)
     {
-        var source = new DataGridSource();
+        var source = new KumikoSource();
         foreach (var col in columns) source.Columns.Add(col);
         source.ItemsSource = items;
         return source;
@@ -80,7 +80,7 @@ public class DataGridSourceSortingTests
             new Employee { Id = 1, Name = "Alice" },
             new Employee { Id = 2, Name = "Bob" },
         };
-        var col     = new GridColumn { PropertyName = "Name", ColumnType = GridColumnType.Text };
+        var col     = new KumikoColumn { PropertyName = "Name", ColumnType = KumikoColumnType.Text };
         var source  = MakeSource(items, [col]);
 
         source.ApplySort(col);   // ascending first
@@ -106,23 +106,23 @@ namespace KumikoUI.Core.Tests.TestHelpers;
 
 internal sealed class FakeDrawingContext : IDrawingContext
 {
-    public void DrawRect(GridRect r, GridPaint p) { }
-    public void FillRect(GridRect r, GridPaint p) { }
-    public void DrawRoundRect(GridRect r, float cr, GridPaint p) { }
-    public void FillRoundRect(GridRect r, float cr, GridPaint p) { }
-    public void DrawLine(float x1, float y1, float x2, float y2, GridPaint p) { }
-    public void DrawText(string t, float x, float y, GridPaint p) { }
-    public void DrawTextInRect(string t, GridRect r, GridPaint p,
-        GridTextAlignment h = GridTextAlignment.Left,
-        GridVerticalAlignment v = GridVerticalAlignment.Center,
+    public void DrawRect(KumikoRect r, KumikoPaint p) { }
+    public void FillRect(KumikoRect r, KumikoPaint p) { }
+    public void DrawRoundRect(KumikoRect r, float cr, KumikoPaint p) { }
+    public void FillRoundRect(KumikoRect r, float cr, KumikoPaint p) { }
+    public void DrawLine(float x1, float y1, float x2, float y2, KumikoPaint p) { }
+    public void DrawText(string t, float x, float y, KumikoPaint p) { }
+    public void DrawTextInRect(string t, KumikoRect r, KumikoPaint p,
+        KumikoTextAlignment h = KumikoTextAlignment.Left,
+        KumikoVerticalAlignment v = KumikoVerticalAlignment.Center,
         bool clip = true) { }
-    public GridSize MeasureText(string t, GridPaint p) => new GridSize(t.Length * 8, 14);
-    public GridFontMetrics GetFontMetrics(GridPaint p) => new GridFontMetrics(14, 0, 2);
-    public void ClipRect(GridRect r) { }
+    public KumikoSize MeasureText(string t, KumikoPaint p) => new KumikoSize(t.Length * 8, 14);
+    public KumikoFontMetrics GetFontMetrics(KumikoPaint p) => new KumikoFontMetrics(14, 0, 2);
+    public void ClipRect(KumikoRect r) { }
     public void Save() { }
     public void Restore() { }
     public void Translate(float dx, float dy) { }
-    public void DrawImage(object image, GridRect dest) { }
+    public void DrawImage(object image, KumikoRect dest) { }
     public void Dispose() { }
 }
 ```

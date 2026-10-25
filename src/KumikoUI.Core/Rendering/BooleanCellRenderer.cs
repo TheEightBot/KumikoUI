@@ -8,10 +8,10 @@ namespace KumikoUI.Core.Rendering;
 public class BooleanCellRenderer : ICellRenderer
 {
     public void Render(
-        IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, GridColumn column,
-        DataGridStyle style, bool isSelected,
-        DataGridCellStyle? cellStyle = null)
+        IDrawingContext ctx, KumikoRect cellRect, object? value,
+        string displayText, KumikoColumn column,
+        KumikoStyle style, bool isSelected,
+        KumikoCellStyle? cellStyle = null)
     {
         bool isChecked = value is true
             || string.Equals(displayText, "True", StringComparison.OrdinalIgnoreCase);
@@ -19,10 +19,10 @@ public class BooleanCellRenderer : ICellRenderer
         float boxSize = Math.Min(16f, cellRect.Height - 8);
         float centerY = cellRect.Y + (cellRect.Height - boxSize) / 2;
         float centerX = cellRect.X + (cellRect.Width - boxSize) / 2;
-        var boxRect = new GridRect(centerX, centerY, boxSize, boxSize);
+        var boxRect = new KumikoRect(centerX, centerY, boxSize, boxSize);
 
         // Checkbox border
-        ctx.DrawRect(boxRect, new GridPaint
+        ctx.DrawRect(boxRect, new KumikoPaint
         {
             Color = style.GridLineColor,
             Style = PaintStyle.Stroke,
@@ -33,7 +33,7 @@ public class BooleanCellRenderer : ICellRenderer
         // Checkmark
         if (isChecked)
         {
-            var checkPaint = new GridPaint
+            var checkPaint = new KumikoPaint
             {
                 Color = style.AccentColor,
                 Style = PaintStyle.Stroke,

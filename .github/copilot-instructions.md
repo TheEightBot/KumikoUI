@@ -23,17 +23,17 @@ read the relevant files directly — each is self-contained.
 
 Always-active baseline. Covers: three-layer project structure (`Core` → `SkiaSharp` → `Maui`),
 strict dependency rules, full namespace map, and repo-wide C# code style rules (nullable,
-`readonly struct`, no LINQ in hot paths, `GridColor` usage, `float` for coordinates).
+`readonly struct`, no LINQ in hot paths, `KumikoColor` usage, `float` for coordinates).
 
 ---
 
 ### [rendering.instructions.md](.github/instructions/rendering.instructions.md)
-**Applies to:** `src/KumikoUI.Core/Rendering/**`, `src/KumikoUI.SkiaSharp/**`, `src/KumikoUI.Core/DataGridRenderer.cs`
+**Applies to:** `src/KumikoUI.Core/Rendering/**`, `src/KumikoUI.SkiaSharp/**`, `src/KumikoUI.Core/KumikoRenderer.cs`
 
-Everything about drawing. Covers: all `IDrawingContext` methods, `GridPaint`/`GridColor`/`GridRect`
-usage, `ICellRenderer` interface + how to attach custom renderers to columns, `DataGridRenderer`
+Everything about drawing. Covers: all `IDrawingContext` methods, `KumikoPaint`/`KumikoColor`/`KumikoRect`
+usage, `ICellRenderer` interface + how to attach custom renderers to columns, `KumikoRenderer`
 render-loop structure and z-order, `PaintCache`, `SkiaDrawingContext` internals (per-frame
-paint/font cache, SkiaSharp 3.x API), `GridLayoutEngine` layout methods, and performance rules
+paint/font cache, SkiaSharp 3.x API), `KumikoLayoutEngine` layout methods, and performance rules
 (no allocation, no LINQ, virtual scrolling).
 
 ---
@@ -52,10 +52,10 @@ declarable editor config, `EditSession` pipeline (begin → draw → commit/canc
 ### [models-and-data.instructions.md](.github/instructions/models-and-data.instructions.md)
 **Applies to:** `src/KumikoUI.Core/Models/**`
 
-Everything about the data layer. Covers: all `GridColumn` properties and column types,
-`DataGridSource` API (get/set values, bulk updates, sorting, filtering, grouping, summaries),
-`DataGridStyle` theming (built-in themes, `CellStyleResolver`, `RowStyleResolver`), `DataGridCellStyle`/
-`DataGridRowStyle` nullable merge semantics, and step-by-step recipes for adding a new style property
+Everything about the data layer. Covers: all `KumikoColumn` properties and column types,
+`KumikoSource` API (get/set values, bulk updates, sorting, filtering, grouping, summaries),
+`KumikoStyle` theming (built-in themes, `CellStyleResolver`, `RowStyleResolver`), `KumikoCellStyle`/
+`KumikoRowStyle` nullable merge semantics, and step-by-step recipes for adding a new style property
 or column type.
 
 ---
@@ -75,7 +75,7 @@ specific gesture/IME handling, timer setup).
 **Applies to:** `tests/**`
 
 Everything about writing tests. Covers: xUnit-only rules (no NUnit/MSTest), file/class naming
-convention, `[Fact]` and `[Theory]+[InlineData]` templates, a concrete `DataGridSource` sorting
+convention, `[Fact]` and `[Theory]+[InlineData]` templates, a concrete `KumikoSource` sorting
 example, and the `FakeDrawingContext` no-op test double needed to test renderers and components
 without SkiaSharp.
 
@@ -89,8 +89,8 @@ Reusable task prompts live in [`.github/prompts/`](.github/prompts/):
 |---|---|
 | [`add-cell-renderer.prompt.md`](.github/prompts/add-cell-renderer.prompt.md) | Creating a new `ICellRenderer` |
 | [`add-drawn-component.prompt.md`](.github/prompts/add-drawn-component.prompt.md) | Creating a new canvas-drawn inline editor |
-| [`add-column-type.prompt.md`](.github/prompts/add-column-type.prompt.md) | Adding a new `GridColumnType` end-to-end |
-| [`add-theme-property.prompt.md`](.github/prompts/add-theme-property.prompt.md) | Adding a new `DataGridStyle` visual property |
+| [`add-column-type.prompt.md`](.github/prompts/add-column-type.prompt.md) | Adding a new `KumikoColumnType` end-to-end |
+| [`add-theme-property.prompt.md`](.github/prompts/add-theme-property.prompt.md) | Adding a new `KumikoStyle` visual property |
 | [`add-unit-test.prompt.md`](.github/prompts/add-unit-test.prompt.md) | Writing xUnit tests for Core classes |
 | [`configure-datagrid-features.prompt.md`](.github/prompts/configure-datagrid-features.prompt.md) | Wiring sorting, filtering, grouping, or summaries |
 | [`rendering-pipeline.prompt.md`](.github/prompts/rendering-pipeline.prompt.md) | Debugging or extending the render pipeline |

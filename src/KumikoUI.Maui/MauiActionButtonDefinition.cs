@@ -35,11 +35,11 @@ public class MauiActionButtonDefinition : BindableObject, IActionButtonDefinitio
 
     /// <summary>Backing store for <see cref="BackgroundColor"/>.</summary>
     public static readonly BindableProperty BackgroundColorProperty =
-        BindableProperty.Create(nameof(BackgroundColor), typeof(GridColor), typeof(MauiActionButtonDefinition), new GridColor(13, 110, 253));
+        BindableProperty.Create(nameof(BackgroundColor), typeof(KumikoColor), typeof(MauiActionButtonDefinition), new KumikoColor(13, 110, 253));
 
     /// <summary>Backing store for <see cref="TextColor"/>.</summary>
     public static readonly BindableProperty TextColorProperty =
-        BindableProperty.Create(nameof(TextColor), typeof(GridColor), typeof(MauiActionButtonDefinition), GridColor.White);
+        BindableProperty.Create(nameof(TextColor), typeof(KumikoColor), typeof(MauiActionButtonDefinition), KumikoColor.White);
 
     /// <summary>Backing store for <see cref="Command"/>.</summary>
     public static readonly BindableProperty CommandProperty =
@@ -61,18 +61,18 @@ public class MauiActionButtonDefinition : BindableObject, IActionButtonDefinitio
     /// <summary>
     /// Button pill background color.
     /// Supports the <c>R,G,B</c> / <c>#RRGGBB</c> / named-color string formats
-    /// from <see cref="GridColorTypeConverter"/> in XAML.
+    /// from <see cref="KumikoColorTypeConverter"/> in XAML.
     /// </summary>
-    public GridColor BackgroundColor
+    public KumikoColor BackgroundColor
     {
-        get => (GridColor)GetValue(BackgroundColorProperty);
+        get => (KumikoColor)GetValue(BackgroundColorProperty);
         set => SetValue(BackgroundColorProperty, value);
     }
 
-    /// <summary>Button label text color. Defaults to <see cref="GridColor.White"/>.</summary>
-    public GridColor TextColor
+    /// <summary>Button label text color. Defaults to <see cref="KumikoColor.White"/>.</summary>
+    public KumikoColor TextColor
     {
-        get => (GridColor)GetValue(TextColorProperty);
+        get => (KumikoColor)GetValue(TextColorProperty);
         set => SetValue(TextColorProperty, value);
     }
 

@@ -49,10 +49,10 @@ KumikoUI.Core  ←  KumikoUI.SkiaSharp  ←  KumikoUI.Maui
 
 | Namespace | Key types |
 |---|---|
-| `KumikoUI.Core.Models` | `GridColumn`, `DataGridStyle`, `DataGridSource`, `DataGridSelectionModel`, `ScrollState`, `DataGridCellStyle`, `DataGridRowStyle`, `FilterDescription`, `GroupDescription`, `TableSummaryRow`, `SummaryColumnDescription` |
-| `KumikoUI.Core.Rendering` | `IDrawingContext`, `ICellRenderer`, `GridRect`, `GridColor`, `GridPaint`, `GridFont`, `GridSize`, `GridFontMetrics`, `PaintStyle`, `GridTextAlignment`, `GridVerticalAlignment` |
-| `KumikoUI.Core.Layout` | `GridLayoutEngine` |
-| `KumikoUI.Core.Input` | `GridInputController`, `InertialScroller`, `ScrollSettings`, `GridPointerEventArgs`, `GridKeyEventArgs`, `HitTesting` |
+| `KumikoUI.Core.Models` | `KumikoColumn`, `KumikoStyle`, `KumikoSource`, `KumikoSelectionModel`, `ScrollState`, `KumikoCellStyle`, `KumikoRowStyle`, `FilterDescription`, `GroupDescription`, `TableSummaryRow`, `SummaryColumnDescription` |
+| `KumikoUI.Core.Rendering` | `IDrawingContext`, `ICellRenderer`, `KumikoRect`, `KumikoColor`, `KumikoPaint`, `KumikoFont`, `KumikoSize`, `KumikoFontMetrics`, `PaintStyle`, `KumikoTextAlignment`, `KumikoVerticalAlignment` |
+| `KumikoUI.Core.Layout` | `KumikoLayoutEngine` |
+| `KumikoUI.Core.Input` | `KumikoInputController`, `InertialScroller`, `ScrollSettings`, `KumikoPointerEventArgs`, `KumikoKeyEventArgs`, `HitTesting` |
 | `KumikoUI.Core.Editing` | `EditSession`, `CellEditorFactory`, `EditorDescriptor`, `EditTrigger`, `CellValidationResult` |
 | `KumikoUI.Core.Components` | `DrawnComponent`, `DrawnTextBox`, `DrawnComboBox`, `DrawnDatePicker`, `DrawnNumericUpDown`, `DrawnScrollPicker`, `DrawnCheckBox`, `DrawnFilterPopup`, `DrawnFocusManager`, `PopupManager` |
 | `KumikoUI.SkiaSharp` | `SkiaDrawingContext` |
@@ -64,9 +64,9 @@ KumikoUI.Core  ←  KumikoUI.SkiaSharp  ←  KumikoUI.Maui
 
 - **C# 12+**, nullable reference types enabled project-wide.
 - All public API members have `/// <summary>` XML doc comments.
-- `readonly struct` for value types (`GridRect`, `GridSize`, `CellPosition`).
+- `readonly struct` for value types (`KumikoRect`, `KumikoSize`, `CellPosition`).
 - `record struct` for cache keys in `SkiaDrawingContext`.
 - Prefer `switch` expressions over `if/else` chains for type dispatch.
 - **No LINQ** inside render-loop hot paths — use `for` loops.
 - Use `float` for all coordinate/dimension math (not `double`).
-- Use `GridColor(r, g, b[, a])` everywhere — never hex strings, never `SKColor`, never `Color` from MAUI.
+- Use `KumikoColor(r, g, b[, a])` everywhere — never hex strings, never `SKColor`, never `Color` from MAUI.

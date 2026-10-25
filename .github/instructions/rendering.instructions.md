@@ -1,5 +1,5 @@
 ---
-applyTo: "src/KumikoUI.Core/Rendering/**,src/KumikoUI.SkiaSharp/**,src/KumikoUI.Core/DataGridRenderer.cs"
+applyTo: "src/KumikoUI.Core/Rendering/**,src/KumikoUI.SkiaSharp/**,src/KumikoUI.Core/KumikoRenderer.cs"
 ---
 
 # KumikoUI — Rendering Pipeline
@@ -10,55 +10,55 @@ All drawing goes through `IDrawingContext`. **Never call SkiaSharp APIs from Cor
 `SkiaDrawingContext` (in `KumikoUI.SkiaSharp`) maps these to `SKCanvas`.
 
 ```csharp
-void DrawRect(GridRect rect, GridPaint paint);
-void FillRect(GridRect rect, GridPaint paint);
-void DrawRoundRect(GridRect rect, float cornerRadius, GridPaint paint);
-void FillRoundRect(GridRect rect, float cornerRadius, GridPaint paint);
-void DrawLine(float x1, float y1, float x2, float y2, GridPaint paint);
-void DrawText(string text, float x, float y, GridPaint paint);
-void DrawTextInRect(string text, GridRect rect, GridPaint paint,
-    GridTextAlignment hAlign = GridTextAlignment.Left,
-    GridVerticalAlignment vAlign = GridVerticalAlignment.Center,
+void DrawRect(KumikoRect rect, KumikoPaint paint);
+void FillRect(KumikoRect rect, KumikoPaint paint);
+void DrawRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint);
+void FillRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint);
+void DrawLine(float x1, float y1, float x2, float y2, KumikoPaint paint);
+void DrawText(string text, float x, float y, KumikoPaint paint);
+void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
+    KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
+    KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center,
     bool clip = true);
-GridSize MeasureText(string text, GridPaint paint);
-GridFontMetrics GetFontMetrics(GridPaint paint);
-void ClipRect(GridRect rect);
+KumikoSize MeasureText(string text, KumikoPaint paint);
+KumikoFontMetrics GetFontMetrics(KumikoPaint paint);
+void ClipRect(KumikoRect rect);
 void Save();
 void Restore();
 void Translate(float dx, float dy);
-void DrawImage(object image, GridRect destRect);
+void DrawImage(object image, KumikoRect destRect);
 ```
 
 ---
 
-## `GridPaint` — Describe how to draw
+## `KumikoPaint` — Describe how to draw
 
 ```csharp
-var paint = new GridPaint
+var paint = new KumikoPaint
 {
-    Color       = new GridColor(r, g, b),   // or (r, g, b, a)
+    Color       = new KumikoColor(r, g, b),   // or (r, g, b, a)
     StrokeWidth = 1.5f,
     Style       = PaintStyle.Fill,           // Fill | Stroke | FillAndStroke
     IsAntiAlias = true,
-    Font        = new GridFont("Default", 13, bold: false)
+    Font        = new KumikoFont("Default", 13, bold: false)
 };
 ```
 
 Never construct `SKPaint`, `SKFont`, or `SKColor` in Core. `SkiaDrawingContext` caches
 all Skia objects per frame; they are disposed at end-of-frame.
 
-## `GridColor`
+## `KumikoColor`
 
 ```csharp
-new GridColor(r, g, b)      // alpha = 255
-new GridColor(r, g, b, a)   // explicit alpha
-GridColor.White / GridColor.Black
+new KumikoColor(r, g, b)      // alpha = 255
+new KumikoColor(r, g, b, a)   // explicit alpha
+KumikoColor.White / KumikoColor.Black
 ```
 
-## `GridRect`
+## `KumikoRect`
 
 ```csharp
-new GridRect(x, y, width, height)
+new KumikoRect(x, y, width, height)
 rect.Inflate(dx, dy)    // expanded copy
 rect.Offset(dx, dy)     // shifted copy
 rect.Contains(px, py)   // hit test
@@ -74,13 +74,13 @@ public class MyRenderer : ICellRenderer
 {
     public void Render(
         IDrawingContext ctx,
-        GridRect cellRect,       // padded cell area — stay inside this
-        object? value,           // raw value from DataGridSource
-        string displayText,      // formatted via GridColumn.Format
-        GridColumn column,
-        DataGridStyle style,
+        KumikoRect cellRect,       // padded cell area — stay inside this
+        object? value,           // raw value from KumikoSource
+        string displayText,      // formatted via KumikoColumn.Format
+        KumikoColumn column,
+        KumikoStyle style,
         bool isSelected,
-        DataGridCellStyle? cellStyle = null)
+        KumikoCellStyle? cellStyle = null)
     {
         // Use ctx.* only. No SkiaSharp. No allocation.
     }
@@ -94,18 +94,18 @@ Attach to column:
 column.CustomCellRenderer = new MyRenderer();   // code
 ```
 ```xml
-<core:GridColumn.CustomCellRenderer>
+<core:KumikoColumn.CustomCellRenderer>
     <render:MyRenderer />
-</core:GridColumn.CustomCellRenderer>
+</core:KumikoColumn.CustomCellRenderer>
 ```
 
 ---
 
-## `DataGridRenderer` — Render loop structure
+## `KumikoRenderer` — Render loop structure
 
 ```
 KumikoDataGrid.OnPaintSurface
-  └─ DataGridRenderer.Render(IDrawingContext, ...)
+  └─ KumikoRenderer.Render(IDrawingContext, ...)
        ├─ DrawHeaderRow          — headers, sort indicator, filter icon, resize handle
        ├─ DrawFrozenRows         — pinned-top data rows
        ├─ DrawScrollableArea     — virtual row loop (visible rows only)
@@ -126,8 +126,8 @@ and call it from `Render(...)` at the correct z-order. Always wrap clip/translat
 
 ## `PaintCache`
 
-`KumikoUI.Core.Rendering.PaintCache` holds pre-built `GridPaint` instances derived from
-`DataGridStyle`. When adding new style-driven paints, add them to `PaintCache` and rebuild
+`KumikoUI.Core.Rendering.PaintCache` holds pre-built `KumikoPaint` instances derived from
+`KumikoStyle`. When adding new style-driven paints, add them to `PaintCache` and rebuild
 it on theme change.
 
 ---
@@ -145,14 +145,14 @@ it on theme change.
 ## Performance Rules
 
 1. **No per-frame heap allocations** — no `new` inside `Render(...)` or methods it calls.
-2. Use `Populate*` variants on `GridLayoutEngine` (write into pre-allocated `List<>`).
+2. Use `Populate*` variants on `KumikoLayoutEngine` (write into pre-allocated `List<>`).
 3. No LINQ in any method called from the render loop.
 4. Virtual scrolling: only rows in `GetVisibleRowRange()` and columns in `GetVisibleScrollableColumns()` are drawn.
 5. Frozen column draw passes must **not** apply `scroll.HorizontalOffset`.
 
 ---
 
-## `GridLayoutEngine` — Key methods
+## `KumikoLayoutEngine` — Key methods
 
 ```csharp
 engine.ComputeColumnWidths(columns, viewportWidth);

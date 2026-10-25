@@ -50,7 +50,7 @@ xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
 ```xml
 <dg:KumikoDataGrid ItemsSource="{Binding Items}">
     <dg:KumikoDataGrid.Columns>
-        <core:GridColumn Header="Name" PropertyName="Name" Width="180" />
+        <core:KumikoColumn Header="Name" PropertyName="Name" Width="180" />
     </dg:KumikoDataGrid.Columns>
 </dg:KumikoDataGrid>
 ```
@@ -61,49 +61,49 @@ xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
 
 ```xml
 <!-- Numeric, frozen left, read-only -->
-<core:GridColumn Header="Id" PropertyName="Id" ColumnType="Numeric"
+<core:KumikoColumn Header="Id" PropertyName="Id" ColumnType="Numeric"
                      Width="60" IsReadOnly="True" IsFrozen="True" AllowTabStop="False"
                      TextAlignment="Right" />
 
 <!-- Text, frozen right -->
-<core:GridColumn Header="City" PropertyName="City" Width="130" FreezeMode="Right" />
+<core:KumikoColumn Header="City" PropertyName="City" Width="130" FreezeMode="Right" />
 
 <!-- ComboBox — items as CSV -->
-<core:GridColumn Header="Department" PropertyName="Department" Width="140"
+<core:KumikoColumn Header="Department" PropertyName="Department" Width="140"
                      ColumnType="ComboBox"
                      EditorItemsString="Engineering,Marketing,Sales,HR,Finance" />
 
 <!-- Picker — scroll-wheel -->
-<core:GridColumn Header="Level" PropertyName="Level" Width="120"
+<core:KumikoColumn Header="Level" PropertyName="Level" Width="120"
                      ColumnType="Picker"
                      EditorItemsString="Junior,Mid,Senior,Staff,Principal" />
 
 <!-- Date -->
-<core:GridColumn Header="Hire Date" PropertyName="HireDate" Width="120"
+<core:KumikoColumn Header="Hire Date" PropertyName="HireDate" Width="120"
                      ColumnType="Date" Format="yyyy-MM-dd" />
 
 <!-- Boolean -->
-<core:GridColumn Header="Active" PropertyName="IsActive" Width="80"
+<core:KumikoColumn Header="Active" PropertyName="IsActive" Width="80"
                      ColumnType="Boolean" AllowTabStop="False" />
 
 <!-- Template — custom renderer (display only) -->
-<core:GridColumn Header="Performance" PropertyName="Performance"
+<core:KumikoColumn Header="Performance" PropertyName="Performance"
                      ColumnType="Template" Width="140" IsReadOnly="True">
-    <core:GridColumn.CustomCellRenderer>
+    <core:KumikoColumn.CustomCellRenderer>
         <render:ProgressBarCellRenderer Minimum="0" Maximum="100"
                                         TrackHeight="12" CornerRadius="6"
                                         ShowText="True" TextFormat="N0" />
-    </core:GridColumn.CustomCellRenderer>
-</core:GridColumn>
+    </core:KumikoColumn.CustomCellRenderer>
+</core:KumikoColumn>
 
 <!-- Template — declarative editor -->
-<core:GridColumn Header="Rating" PropertyName="Rating"
+<core:KumikoColumn Header="Rating" PropertyName="Rating"
                      ColumnType="Template" Width="100">
-    <core:GridColumn.EditorDescriptor>
+    <core:KumikoColumn.EditorDescriptor>
         <editing:NumericUpDownEditorDescriptor Minimum="1" Maximum="5"
                                                Step="1" DecimalPlaces="0" />
-    </core:GridColumn.EditorDescriptor>
-</core:GridColumn>
+    </core:KumikoColumn.EditorDescriptor>
+</core:KumikoColumn>
 ```
 
 ---

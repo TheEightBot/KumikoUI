@@ -23,7 +23,7 @@ public partial class App : Application
         // ── Register custom SkiaSharp typefaces before the first grid renders ──
         // The demo fonts live under Assets/Fonts/ (marked Content in the csproj) and are
         // resolved via the ms-appx:/// scheme. KumikoUI.Uno stays font-agnostic — the app
-        // registers them here so DataGridStyle / IconFontCellRenderer can resolve them by
+        // registers them here so KumikoStyle / IconFontCellRenderer can resolve them by
         // family name. Awaited before Activate() so the very first paint already sees the
         // typefaces (no flash of fallback/tofu glyphs). Registration is non-fatal: a missing
         // font is logged and the grid falls back to the system default.

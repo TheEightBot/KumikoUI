@@ -1,11 +1,11 @@
 ---
 mode: agent
-description: Add a new GridColumnType and wire it end-to-end in KumikoUI
+description: Add a new KumikoColumnType and wire it end-to-end in KumikoUI
 ---
 
 # Add a New Column Type
 
-Adds a new `GridColumnType` enum value and wires it through all five required
+Adds a new `KumikoColumnType` enum value and wires it through all five required
 touch-points in the codebase.
 
 ## What to ask the user before generating code
@@ -22,20 +22,20 @@ touch-points in the codebase.
 
 | Action | File | What to change |
 |---|---|---|
-| **Modify** | `src/KumikoUI.Core/Models/GridColumn.cs` | Add enum value to `GridColumnType` |
+| **Modify** | `src/KumikoUI.Core/Models/KumikoColumn.cs` | Add enum value to `KumikoColumnType` |
 | **Create** (if custom renderer) | `src/KumikoUI.Core/Rendering/{Type}CellRenderer.cs` | New `ICellRenderer` |
 | **Create** (if custom editor) | `src/KumikoUI.Core/Components/Drawn{Type}.cs` | New `DrawnComponent` |
 | **Modify** | `src/KumikoUI.Core/Editing/CellEditorFactory.cs` | Add cases for create, get value, apply theme |
-| **Modify** | `src/KumikoUI.Core/DataGridRenderer.cs` | Dispatch new type to cell renderer |
+| **Modify** | `src/KumikoUI.Core/KumikoRenderer.cs` | Dispatch new type to cell renderer |
 
 ---
 
-## Step 1 — `GridColumnType` enum
+## Step 1 — `KumikoColumnType` enum
 
-In `src/KumikoUI.Core/Models/GridColumn.cs`, add the new value with a doc comment:
+In `src/KumikoUI.Core/Models/KumikoColumn.cs`, add the new value with a doc comment:
 
 ```csharp
-public enum GridColumnType
+public enum KumikoColumnType
 {
     Text,
     Numeric,
@@ -59,7 +59,7 @@ If text display is fine, the existing `TextCellRenderer` will be used automatica
 See `add-cell-renderer.prompt.md` for the full `ICellRenderer` template.
 
 Key rule: implement the renderer inside `KumikoUI.Core.Rendering`; use only
-`IDrawingContext` methods and `GridColor`/`GridPaint`/`GridFont` — no SkiaSharp.
+`IDrawingContext` methods and `KumikoColor`/`KumikoPaint`/`KumikoFont` — no SkiaSharp.
 
 ---
 
@@ -78,7 +78,7 @@ In `src/KumikoUI.Core/Editing/CellEditorFactory.cs`, add three cases:
 
 ### `CreateEditor`
 ```csharp
-case GridColumnType.{NewType}:
+case KumikoColumnType.{NewType}:
     var editor = new Drawn{Type}
     {
         Bounds = cellBounds,
@@ -106,43 +106,43 @@ case Drawn{Type} e:
 
 ## Step 5 — Renderer dispatch
 
-In `src/KumikoUI.Core/DataGridRenderer.cs`, locate the section that selects a
+In `src/KumikoUI.Core/KumikoRenderer.cs`, locate the section that selects a
 cell renderer by column type and add a case:
 
 ```csharp
 // Inside the method that resolves ICellRenderer for a column:
-GridColumnType.{NewType} => new {Type}CellRenderer(),
+KumikoColumnType.{NewType} => new {Type}CellRenderer(),
 // or, if reusing text renderer:
-GridColumnType.{NewType} => _textCellRenderer,
+KumikoColumnType.{NewType} => _textCellRenderer,
 ```
 
 ---
 
 ## Step 6 — Verification checklist
 
-- [ ] `GridColumnType.{NewType}` compiles in `KumikoUI.Core`
+- [ ] `KumikoColumnType.{NewType}` compiles in `KumikoUI.Core`
 - [ ] `CellEditorFactory` switch has `CreateEditor`, `GetEditorValue`, and `ApplyThemeToEditor` cases
-- [ ] `DataGridRenderer` dispatches to the renderer (no missing-case compiler warning)
+- [ ] `KumikoRenderer` dispatches to the renderer (no missing-case compiler warning)
 - [ ] Can declare column in XAML: `ColumnType="{NewType}"` without error
 - [ ] Edit session opens and closes cleanly with `EditTriggers="DoubleTap"`
-- [ ] Value is written back to `DataGridSource` (test with a bound `ObservableCollection`)
+- [ ] Value is written back to `KumikoSource` (test with a bound `ObservableCollection`)
 
 ---
 
 ## XAML usage example (once implemented)
 
 ```xml
-<core:GridColumn Header="Rating" PropertyName="Rating"
+<core:KumikoColumn Header="Rating" PropertyName="Rating"
                      ColumnType="{NewType}"
                      Width="120" />
 ```
 
 If an `EditorDescriptor` was created:
 ```xml
-<core:GridColumn Header="Rating" PropertyName="Rating"
+<core:KumikoColumn Header="Rating" PropertyName="Rating"
                      ColumnType="{NewType}" Width="120">
-    <core:GridColumn.EditorDescriptor>
+    <core:KumikoColumn.EditorDescriptor>
         <editing:{Type}EditorDescriptor Minimum="1" Maximum="5" />
-    </core:GridColumn.EditorDescriptor>
-</core:GridColumn>
+    </core:KumikoColumn.EditorDescriptor>
+</core:KumikoColumn>
 ```

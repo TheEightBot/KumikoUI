@@ -146,9 +146,9 @@ public partial class MainPage : ContentPage
 		// Cycle: Light → Dark → HighContrast → Light
 		kumiko.Theme = kumiko.Theme switch
 		{
-			KumikoUI.Core.Models.DataGridThemeMode.Light => KumikoUI.Core.Models.DataGridThemeMode.Dark,
-			KumikoUI.Core.Models.DataGridThemeMode.Dark => KumikoUI.Core.Models.DataGridThemeMode.HighContrast,
-			_ => KumikoUI.Core.Models.DataGridThemeMode.Light
+			KumikoUI.Core.Models.KumikoThemeMode.Light => KumikoUI.Core.Models.KumikoThemeMode.Dark,
+			KumikoUI.Core.Models.KumikoThemeMode.Dark => KumikoUI.Core.Models.KumikoThemeMode.HighContrast,
+			_ => KumikoUI.Core.Models.KumikoThemeMode.Light
 		};
 
 		themeToggle.Text = $"Theme: {kumiko.Theme}";

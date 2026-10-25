@@ -85,7 +85,7 @@ public partial class KumikoDataGrid
     // The command key (Tab or Enter) that OnProxyKeyDown last sent to Core. Some heads still let the
     // TextBox insert its text form ("\t", "\n") even though KeyDown was marked handled; TextChanged
     // drops that echo once instead of delivering the key a second time.
-    private GridKey _keyHandledOnKeyDown = GridKey.None;
+    private KumikoKey _keyHandledOnKeyDown = KumikoKey.None;
 
     // ── Proxy setup / teardown ───────────────────────────────────
 
@@ -163,7 +163,7 @@ public partial class KumikoDataGrid
         // ── Backspace: sentinel was deleted, text is now empty ───
         if (string.IsNullOrEmpty(newText))
         {
-            HandleEditKey(GridKey.Backspace);
+            HandleEditKey(KumikoKey.Backspace);
             ResetProxy();
             return;
         }
@@ -176,11 +176,11 @@ public partial class KumikoDataGrid
         // that replaces the cell text with an undrawable glyph).
         string inserted = ProxyTextInput.ExtractInserted(oldText, newText, ProxySentinel);
         var dispatches = ProxyTextInput.Plan(inserted, _keyHandledOnKeyDown);
-        _keyHandledOnKeyDown = GridKey.None;
+        _keyHandledOnKeyDown = KumikoKey.None;
 
         foreach (var d in dispatches)
         {
-            if (d.Key == GridKey.Character)
+            if (d.Key == KumikoKey.Character)
                 HandleEditChar(d.Character!.Value);
             else
                 HandleEditKey(d.Key);
@@ -196,30 +196,30 @@ public partial class KumikoDataGrid
         // Navigation/command keys are forwarded to Core and marked Handled so the TextBox doesn't
         // also act on them (move its caret, add a newline, delete the sentinel). Printable characters
         // are handled via TextChanged for correct IME/dead-key ordering — so anything that maps to
-        // GridKey.None is left alone.
-        _keyHandledOnKeyDown = GridKey.None; // a new keystroke: any earlier Tab/Enter echo is stale
+        // KumikoKey.None is left alone.
+        _keyHandledOnKeyDown = KumikoKey.None; // a new keystroke: any earlier Tab/Enter echo is stale
         var key = InputMapping.ToGridKey(e.Key);
-        if (key == GridKey.None) return; // ordinary printable key → flows to TextChanged
+        if (key == KumikoKey.None) return; // ordinary printable key → flows to TextChanged
 
         // CRITICAL: a few mapped keys double as TEXT and must reach TextChanged when typed plainly,
         // otherwise the user literally cannot type them:
-        //   • A/C/V/X/Z map to GridKey only as Ctrl/Cmd clipboard & select-all shortcuts.
+        //   • A/C/V/X/Z map to KumikoKey only as Ctrl/Cmd clipboard & select-all shortcuts.
         //   • Space is a literal space character while editing.
         // Only intercept these when they carry their command meaning; otherwise let the TextBox type them.
-        if (key is GridKey.A or GridKey.C or GridKey.V or GridKey.X or GridKey.Z)
+        if (key is KumikoKey.A or KumikoKey.C or KumikoKey.V or KumikoKey.X or KumikoKey.Z)
         {
             var mods = InputMapping.GetLiveModifiers();
             if ((mods & (InputModifiers.Control | InputModifiers.Meta)) == 0)
                 return; // plain letter → let TextChanged type it
         }
-        else if (key == GridKey.Space && _editSession.IsEditing)
+        else if (key == KumikoKey.Space && _editSession.IsEditing)
         {
             return; // a typed space inside an edit → let TextChanged type it
         }
 
         HandleEditKey(key);
         e.Handled = true;
-        _keyHandledOnKeyDown = key is GridKey.Tab or GridKey.Enter ? key : GridKey.None;
+        _keyHandledOnKeyDown = key is KumikoKey.Tab or KumikoKey.Enter ? key : KumikoKey.None;
     }
 
     // ── Core dispatch helpers ─────────────────────────────────────
@@ -227,9 +227,9 @@ public partial class KumikoDataGrid
     /// <summary>Dispatch a character to Core's HandleKey (text entry path).</summary>
     private void HandleEditChar(char ch)
     {
-        var evt = new GridKeyEventArgs
+        var evt = new KumikoKeyEventArgs
         {
-            Key = GridKey.Character, // same contract as MAUI; DrawnFilterPopup's search box requires it
+            Key = KumikoKey.Character, // same contract as MAUI; DrawnFilterPopup's search box requires it
             Character = ch,
             Modifiers = InputMapping.GetLiveModifiers(),
             IsKeyDown = true,
@@ -238,9 +238,9 @@ public partial class KumikoDataGrid
     }
 
     /// <summary>Dispatch a command key to Core's HandleKey (navigation / action path).</summary>
-    private void HandleEditKey(GridKey key)
+    private void HandleEditKey(KumikoKey key)
     {
-        var evt = new GridKeyEventArgs
+        var evt = new KumikoKeyEventArgs
         {
             Key = key,
             Modifiers = InputMapping.GetLiveModifiers(),

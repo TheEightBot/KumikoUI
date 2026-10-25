@@ -44,31 +44,31 @@ public class DrawnDatePicker : DrawnComponent
     // ── Style ───────────────────────────────────────────────────
 
     /// <summary>Font used for the display field and calendar header.</summary>
-    public GridFont Font { get; set; } = new("Default", 13);
+    public KumikoFont Font { get; set; } = new("Default", 13);
     /// <summary>Font used for individual day numbers in the calendar grid.</summary>
-    public GridFont DayFont { get; set; } = new("Default", 12);
+    public KumikoFont DayFont { get; set; } = new("Default", 12);
     /// <summary>Primary text color for labels and day numbers.</summary>
-    public GridColor TextColor { get; set; } = new(30, 30, 30);
+    public KumikoColor TextColor { get; set; } = new(30, 30, 30);
     /// <summary>Background fill color of the display field.</summary>
-    public GridColor BackgroundColor { get; set; } = GridColor.White;
+    public KumikoColor BackgroundColor { get; set; } = KumikoColor.White;
     /// <summary>Border color of the display field when not focused.</summary>
-    public GridColor BorderColor { get; set; } = new(180, 180, 180);
+    public KumikoColor BorderColor { get; set; } = new(180, 180, 180);
     /// <summary>Border color applied when the date picker has input focus.</summary>
-    public GridColor FocusedBorderColor { get; set; } = new(0, 120, 215);
+    public KumikoColor FocusedBorderColor { get; set; } = new(0, 120, 215);
     /// <summary>Background fill color of the calendar popup.</summary>
-    public GridColor CalendarBackgroundColor { get; set; } = GridColor.White;
+    public KumikoColor CalendarBackgroundColor { get; set; } = KumikoColor.White;
     /// <summary>Highlight color drawn behind today’s date in the calendar.</summary>
-    public GridColor TodayHighlightColor { get; set; } = new(0, 120, 215, 40);
+    public KumikoColor TodayHighlightColor { get; set; } = new(0, 120, 215, 40);
     /// <summary>Background color of the selected day cell.</summary>
-    public GridColor SelectedDayColor { get; set; } = new(0, 120, 215);
+    public KumikoColor SelectedDayColor { get; set; } = new(0, 120, 215);
     /// <summary>Text color of the selected day number.</summary>
-    public GridColor SelectedDayTextColor { get; set; } = GridColor.White;
+    public KumikoColor SelectedDayTextColor { get; set; } = KumikoColor.White;
     /// <summary>Text color for weekend day numbers (Saturday and Sunday).</summary>
-    public GridColor WeekendColor { get; set; } = new(200, 60, 60);
+    public KumikoColor WeekendColor { get; set; } = new(200, 60, 60);
     /// <summary>Text color for days that belong to the previous or next month.</summary>
-    public GridColor OtherMonthColor { get; set; } = new(180, 180, 180);
+    public KumikoColor OtherMonthColor { get; set; } = new(180, 180, 180);
     /// <summary>Color of the month navigation arrows.</summary>
-    public GridColor ArrowColor { get; set; } = new(80, 80, 80);
+    public KumikoColor ArrowColor { get; set; } = new(80, 80, 80);
     /// <summary>Horizontal padding inside the display field.</summary>
     public float Padding { get; set; } = 6f;
     /// <summary>Date format string used to display the selected date.</summary>
@@ -77,10 +77,10 @@ public class DrawnDatePicker : DrawnComponent
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Applies theme colors from a <see cref="DataGridStyle"/> so the date picker
+    /// Applies theme colors from a <see cref="KumikoStyle"/> so the date picker
     /// visually matches the current grid theme.
     /// </summary>
-    public void ApplyTheme(DataGridStyle style)
+    public void ApplyTheme(KumikoStyle style)
     {
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
@@ -95,14 +95,14 @@ public class DrawnDatePicker : DrawnComponent
 
         // Selected day text: contrast against accent
         double accentLum = (0.299 * style.AccentColor.R + 0.587 * style.AccentColor.G + 0.114 * style.AccentColor.B) / 255.0;
-        SelectedDayTextColor = accentLum > 0.5 ? new GridColor(0, 0, 0) : new GridColor(255, 255, 255);
+        SelectedDayTextColor = accentLum > 0.5 ? new KumikoColor(0, 0, 0) : new KumikoColor(255, 255, 255);
 
         // Weekend color: keep distinct but adapt to theme brightness
         double bgLum = (0.299 * bg.R + 0.587 * bg.G + 0.114 * bg.B) / 255.0;
-        WeekendColor = bgLum > 0.5 ? new GridColor(200, 60, 60) : new GridColor(255, 120, 120);
+        WeekendColor = bgLum > 0.5 ? new KumikoColor(200, 60, 60) : new KumikoColor(255, 120, 120);
 
         // Other month days: midpoint between text and background
-        OtherMonthColor = new GridColor(
+        OtherMonthColor = new KumikoColor(
             (byte)((txt.R + bg.R) / 2),
             (byte)((txt.G + bg.G) / 2),
             (byte)((txt.B + bg.B) / 2));
@@ -180,7 +180,7 @@ public class DrawnDatePicker : DrawnComponent
     public event EventHandler<DateRangeSelectedEventArgs>? RangeSelected;
 
     /// <summary>Raised when the time portion changes.</summary>
-    public event EventHandler<GridTimeChangedEventArgs>? TimeChanged;
+    public event EventHandler<KumikoTimeChangedEventArgs>? TimeChanged;
 
     // ── Drawing ─────────────────────────────────────────────────
 
@@ -197,8 +197,8 @@ public class DrawnDatePicker : DrawnComponent
     {
         var b = Bounds;
 
-        ctx.FillRect(b, new GridPaint { Color = BackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(b, new GridPaint
+        ctx.FillRect(b, new KumikoPaint { Color = BackgroundColor, Style = PaintStyle.Fill });
+        ctx.DrawRect(b, new KumikoPaint
         {
             Color = IsFocused ? FocusedBorderColor : BorderColor,
             Style = PaintStyle.Stroke,
@@ -226,7 +226,7 @@ public class DrawnDatePicker : DrawnComponent
         float textX = b.X + Padding;
         float textY = b.Y + b.Height / 2;
         ctx.DrawText(dateText, textX, textY,
-            new GridPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font });
+            new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font });
 
         // Calendar icon (simple grid/lines)
         float iconSize = 16f;
@@ -237,8 +237,8 @@ public class DrawnDatePicker : DrawnComponent
 
     private static void DrawCalendarIcon(IDrawingContext ctx, float x, float y, float size)
     {
-        var paint = new GridPaint { Color = new GridColor(100, 100, 100), Style = PaintStyle.Stroke, StrokeWidth = 1 };
-        ctx.DrawRect(new GridRect(x, y + 3, size, size - 3), paint);
+        var paint = new KumikoPaint { Color = new KumikoColor(100, 100, 100), Style = PaintStyle.Stroke, StrokeWidth = 1 };
+        ctx.DrawRect(new KumikoRect(x, y + 3, size, size - 3), paint);
         ctx.DrawLine(x, y + 7, x + size, y + 7, paint);
         // Top "tabs"
         ctx.DrawLine(x + 4, y, x + 4, y + 4, paint);
@@ -251,13 +251,13 @@ public class DrawnDatePicker : DrawnComponent
         float calHeight = NavRowHeight + HeaderHeight + MaxWeeks * DayCellSize + 8;
         if (ShowTimePicker) calHeight += NavRowHeight + 8;
 
-        var calRect = new GridRect(Bounds.X, Bounds.Y + Bounds.Height + 2, calWidth, calHeight);
+        var calRect = new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height + 2, calWidth, calHeight);
 
         // Shadow + background
-        ctx.FillRect(new GridRect(calRect.X + 2, calRect.Y + 2, calRect.Width, calRect.Height),
-            new GridPaint { Color = new GridColor(0, 0, 0, 30), Style = PaintStyle.Fill });
-        ctx.FillRect(calRect, new GridPaint { Color = CalendarBackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(calRect, new GridPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
+        ctx.FillRect(new KumikoRect(calRect.X + 2, calRect.Y + 2, calRect.Width, calRect.Height),
+            new KumikoPaint { Color = new KumikoColor(0, 0, 0, 30), Style = PaintStyle.Fill });
+        ctx.FillRect(calRect, new KumikoPaint { Color = CalendarBackgroundColor, Style = PaintStyle.Fill });
+        ctx.DrawRect(calRect, new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
 
         float contentX = calRect.X + 4;
         float contentY = calRect.Y + 4;
@@ -293,7 +293,7 @@ public class DrawnDatePicker : DrawnComponent
     private void DrawNavRow(IDrawingContext ctx, float x, float y, float width)
     {
         // Left arrow
-        var arrowPaint = new GridPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
+        var arrowPaint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
         float arrowY = y + NavRowHeight / 2;
         ctx.DrawLine(x + 10, arrowY, x + 5, arrowY, arrowPaint);
         ctx.DrawLine(x + 5, arrowY, x + 8, arrowY - 4, arrowPaint);
@@ -308,8 +308,8 @@ public class DrawnDatePicker : DrawnComponent
         // Month text (clickable for dropdown)
         string monthText = _displayMonth.ToString("MMMM");
         string yearText = _displayMonth.Year.ToString();
-        var textPaint = new GridPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
-        var underlinePaint = new GridPaint { Color = FocusedBorderColor, Style = PaintStyle.Fill, Font = Font };
+        var textPaint = new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
+        var underlinePaint = new KumikoPaint { Color = FocusedBorderColor, Style = PaintStyle.Fill, Font = Font };
 
         float monthWidth = ctx.MeasureText(monthText, textPaint).Width;
         float yearWidth = ctx.MeasureText(yearText, textPaint).Width;
@@ -328,13 +328,13 @@ public class DrawnDatePicker : DrawnComponent
     private void DrawDayHeaders(IDrawingContext ctx, float x, float y)
     {
         string[] dayNames = { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" };
-        var paint = new GridPaint { Color = new GridColor(100, 100, 100), Style = PaintStyle.Fill };
+        var paint = new KumikoPaint { Color = new KumikoColor(100, 100, 100), Style = PaintStyle.Fill };
 
         for (int d = 0; d < DaysPerWeek; d++)
         {
             float cx = x + d * DayCellSize + DayCellSize / 2;
             float cy = y + HeaderHeight / 2;
-            var dayHeaderPaint = new GridPaint { Color = new GridColor(100, 100, 100), Style = PaintStyle.Fill, Font = DayFont };
+            var dayHeaderPaint = new KumikoPaint { Color = new KumikoColor(100, 100, 100), Style = PaintStyle.Fill, Font = DayFont };
             float tw = ctx.MeasureText(dayNames[d], dayHeaderPaint).Width;
             ctx.DrawText(dayNames[d], cx - tw / 2, cy, dayHeaderPaint);
         }
@@ -365,7 +365,7 @@ public class DrawnDatePicker : DrawnComponent
 
                 float cellX = x + dow * DayCellSize;
                 float cellY = y + week * DayCellSize;
-                var cellRect = new GridRect(cellX, cellY, DayCellSize, DayCellSize);
+                var cellRect = new KumikoRect(cellX, cellY, DayCellSize, DayCellSize);
 
                 bool isCurrentMonth = date.Month == firstOfMonth.Month;
                 bool isToday = date.Date == today;
@@ -380,29 +380,29 @@ public class DrawnDatePicker : DrawnComponent
                 // Range background
                 if (isInRange && !isSelected && !isRangeEnd)
                 {
-                    ctx.FillRect(cellRect, new GridPaint { Color = new GridColor(0, 120, 215, 25), Style = PaintStyle.Fill });
+                    ctx.FillRect(cellRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 25), Style = PaintStyle.Fill });
                 }
 
                 // Background highlights
                 if (isSelected || isRangeEnd)
                 {
-                    ctx.FillRoundRect(cellRect, 4, new GridPaint { Color = SelectedDayColor, Style = PaintStyle.Fill });
+                    ctx.FillRoundRect(cellRect, 4, new KumikoPaint { Color = SelectedDayColor, Style = PaintStyle.Fill });
                 }
                 else if (isToday)
                 {
-                    ctx.FillRoundRect(cellRect, 4, new GridPaint { Color = TodayHighlightColor, Style = PaintStyle.Fill });
+                    ctx.FillRoundRect(cellRect, 4, new KumikoPaint { Color = TodayHighlightColor, Style = PaintStyle.Fill });
                 }
 
                 // Day number text
                 string dayText = date.Day.ToString();
-                GridColor textColor;
+                KumikoColor textColor;
                 if (isSelected || isRangeEnd) textColor = SelectedDayTextColor;
-                else if (isDisabled) textColor = new GridColor(200, 200, 200);
+                else if (isDisabled) textColor = new KumikoColor(200, 200, 200);
                 else if (!isCurrentMonth) textColor = OtherMonthColor;
                 else if (isWeekend) textColor = WeekendColor;
                 else textColor = TextColor;
 
-                var dayPaint = new GridPaint { Color = textColor, Style = PaintStyle.Fill, Font = DayFont };
+                var dayPaint = new KumikoPaint { Color = textColor, Style = PaintStyle.Fill, Font = DayFont };
                 float tw = ctx.MeasureText(dayText, dayPaint).Width;
                 float textX = cellX + (DayCellSize - tw) / 2;
                 float textY = cellY + DayCellSize / 2;
@@ -412,12 +412,12 @@ public class DrawnDatePicker : DrawnComponent
     }
 
     /// <summary>Get the bounding rect of the calendar popup.</summary>
-    public GridRect GetCalendarBounds()
+    public KumikoRect GetCalendarBounds()
     {
         float calWidth = DaysPerWeek * DayCellSize + 8;
         float calHeight = NavRowHeight + HeaderHeight + MaxWeeks * DayCellSize + 8;
         if (ShowTimePicker) calHeight += NavRowHeight + 8;
-        return new GridRect(Bounds.X, Bounds.Y + Bounds.Height + 2, calWidth, calHeight);
+        return new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height + 2, calWidth, calHeight);
     }
 
     // ── Input ───────────────────────────────────────────────────
@@ -434,7 +434,7 @@ public class DrawnDatePicker : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerDown(GridPointerEventArgs e)
+    public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
         if (!IsEnabled) return false;
 
@@ -476,7 +476,7 @@ public class DrawnDatePicker : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerUp(GridPointerEventArgs e)
+    public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
         if (_isCalendarOpen && _pressedDate.HasValue)
         {
@@ -498,7 +498,7 @@ public class DrawnDatePicker : DrawnComponent
     /// Hit-test which day cell is at the given pointer coordinates.
     /// Returns null if the pointer is not over a valid, selectable day.
     /// </summary>
-    private DateTime? HitTestDayCell(float px, float py, GridRect calBounds)
+    private DateTime? HitTestDayCell(float px, float py, KumikoRect calBounds)
     {
         float contentX = calBounds.X + 4;
         float contentY = calBounds.Y + 4 + NavRowHeight + HeaderHeight;
@@ -524,7 +524,7 @@ public class DrawnDatePicker : DrawnComponent
     /// Handles the press phase on the calendar — navigates months/years immediately
     /// but only records the pressed day (selection is deferred to OnPointerUp).
     /// </summary>
-    private void HandleCalendarPress(float clickX, float clickY, GridRect calBounds)
+    private void HandleCalendarPress(float clickX, float clickY, KumikoRect calBounds)
     {
         float contentX = calBounds.X + 4;
         float contentY = calBounds.Y + 4;
@@ -624,11 +624,11 @@ public class DrawnDatePicker : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnKeyDown(GridKeyEventArgs e)
+    public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
         if (!_isCalendarOpen)
         {
-            if (e.Key == GridKey.Space || e.Key == GridKey.Enter || e.Key == GridKey.Down)
+            if (e.Key == KumikoKey.Space || e.Key == KumikoKey.Enter || e.Key == KumikoKey.Down)
             {
                 OpenCalendar();
                 return true;
@@ -638,22 +638,22 @@ public class DrawnDatePicker : DrawnComponent
 
         switch (e.Key)
         {
-            case GridKey.Left:
+            case KumikoKey.Left:
                 SelectedDate = _selectedDate.AddDays(-1);
                 return true;
-            case GridKey.Right:
+            case KumikoKey.Right:
                 SelectedDate = _selectedDate.AddDays(1);
                 return true;
-            case GridKey.Up:
+            case KumikoKey.Up:
                 SelectedDate = _selectedDate.AddDays(-7);
                 return true;
-            case GridKey.Down:
+            case KumikoKey.Down:
                 SelectedDate = _selectedDate.AddDays(7);
                 return true;
-            case GridKey.Enter:
+            case KumikoKey.Enter:
                 CloseCalendar();
                 return true;
-            case GridKey.Escape:
+            case KumikoKey.Escape:
                 CloseCalendar();
                 return true;
         }
@@ -697,33 +697,33 @@ public class DrawnDatePicker : DrawnComponent
 
     // ── Month dropdown ──────────────────────────────────────────
 
-    private void DrawMonthDropdown(IDrawingContext ctx, GridRect calRect)
+    private void DrawMonthDropdown(IDrawingContext ctx, KumikoRect calRect)
     {
         float dropX = calRect.X + (calRect.Width - MonthDropdownWidth) / 2 - 20;
         float dropY = calRect.Y + 4 + NavRowHeight;
         float dropH = 12 * DropdownItemHeight;
 
-        var dropRect = new GridRect(dropX, dropY, MonthDropdownWidth, dropH);
+        var dropRect = new KumikoRect(dropX, dropY, MonthDropdownWidth, dropH);
 
-        ctx.FillRect(new GridRect(dropX + 2, dropY + 2, MonthDropdownWidth, dropH),
-            new GridPaint { Color = new GridColor(0, 0, 0, 30), Style = PaintStyle.Fill });
-        ctx.FillRect(dropRect, new GridPaint { Color = CalendarBackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(dropRect, new GridPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
+        ctx.FillRect(new KumikoRect(dropX + 2, dropY + 2, MonthDropdownWidth, dropH),
+            new KumikoPaint { Color = new KumikoColor(0, 0, 0, 30), Style = PaintStyle.Fill });
+        ctx.FillRect(dropRect, new KumikoPaint { Color = CalendarBackgroundColor, Style = PaintStyle.Fill });
+        ctx.DrawRect(dropRect, new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
 
         for (int m = 0; m < 12; m++)
         {
             float itemY = dropY + m * DropdownItemHeight;
-            var itemRect = new GridRect(dropX, itemY, MonthDropdownWidth, DropdownItemHeight);
+            var itemRect = new KumikoRect(dropX, itemY, MonthDropdownWidth, DropdownItemHeight);
 
             if (m == _highlightedMonthIndex)
-                ctx.FillRect(itemRect, new GridPaint { Color = new GridColor(0, 120, 215, 40), Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 40), Style = PaintStyle.Fill });
 
             if (m == _displayMonth.Month - 1)
-                ctx.FillRect(itemRect, new GridPaint { Color = new GridColor(0, 120, 215, 20), Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 20), Style = PaintStyle.Fill });
 
             string monthName = new DateTime(2000, m + 1, 1).ToString("MMMM");
             ctx.DrawText(monthName, dropX + 8, itemY + DropdownItemHeight / 2,
-                new GridPaint { Color = TextColor, Style = PaintStyle.Fill, Font = DayFont });
+                new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = DayFont });
         }
     }
 
@@ -734,7 +734,7 @@ public class DrawnDatePicker : DrawnComponent
         float dropY = calBounds.Y + 4 + NavRowHeight;
         float dropH = 12 * DropdownItemHeight;
 
-        var dropRect = new GridRect(dropX, dropY, MonthDropdownWidth, dropH);
+        var dropRect = new KumikoRect(dropX, dropY, MonthDropdownWidth, dropH);
         if (!dropRect.Contains(clickX, clickY)) return false;
 
         int monthIndex = (int)((clickY - dropY) / DropdownItemHeight);
@@ -750,19 +750,19 @@ public class DrawnDatePicker : DrawnComponent
 
     // ── Year dropdown ───────────────────────────────────────────
 
-    private void DrawYearDropdown(IDrawingContext ctx, GridRect calRect)
+    private void DrawYearDropdown(IDrawingContext ctx, KumikoRect calRect)
     {
         float dropX = calRect.X + (calRect.Width - YearDropdownWidth) / 2 + 20;
         float dropY = calRect.Y + 4 + NavRowHeight;
         int totalYears = YearRangeBefore + YearRangeAfter + 1;
         float dropH = Math.Min(totalYears * DropdownItemHeight, YearDropdownMaxHeight);
 
-        var dropRect = new GridRect(dropX, dropY, YearDropdownWidth, dropH);
+        var dropRect = new KumikoRect(dropX, dropY, YearDropdownWidth, dropH);
 
-        ctx.FillRect(new GridRect(dropX + 2, dropY + 2, YearDropdownWidth, dropH),
-            new GridPaint { Color = new GridColor(0, 0, 0, 30), Style = PaintStyle.Fill });
-        ctx.FillRect(dropRect, new GridPaint { Color = CalendarBackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(dropRect, new GridPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
+        ctx.FillRect(new KumikoRect(dropX + 2, dropY + 2, YearDropdownWidth, dropH),
+            new KumikoPaint { Color = new KumikoColor(0, 0, 0, 30), Style = PaintStyle.Fill });
+        ctx.FillRect(dropRect, new KumikoPaint { Color = CalendarBackgroundColor, Style = PaintStyle.Fill });
+        ctx.DrawRect(dropRect, new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
 
         ctx.Save();
         ctx.ClipRect(dropRect);
@@ -775,16 +775,16 @@ public class DrawnDatePicker : DrawnComponent
             if (itemY > dropY + dropH) break;
 
             int year = startYear + i;
-            var itemRect = new GridRect(dropX, itemY, YearDropdownWidth, DropdownItemHeight);
+            var itemRect = new KumikoRect(dropX, itemY, YearDropdownWidth, DropdownItemHeight);
 
             if (i == _highlightedYearIndex)
-                ctx.FillRect(itemRect, new GridPaint { Color = new GridColor(0, 120, 215, 40), Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 40), Style = PaintStyle.Fill });
 
             if (year == _displayMonth.Year)
-                ctx.FillRect(itemRect, new GridPaint { Color = new GridColor(0, 120, 215, 20), Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 20), Style = PaintStyle.Fill });
 
             ctx.DrawText(year.ToString(), dropX + 8, itemY + DropdownItemHeight / 2,
-                new GridPaint { Color = TextColor, Style = PaintStyle.Fill, Font = DayFont });
+                new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = DayFont });
         }
 
         ctx.Restore();
@@ -798,7 +798,7 @@ public class DrawnDatePicker : DrawnComponent
         int totalYears = YearRangeBefore + YearRangeAfter + 1;
         float dropH = Math.Min(totalYears * DropdownItemHeight, YearDropdownMaxHeight);
 
-        var dropRect = new GridRect(dropX, dropY, YearDropdownWidth, dropH);
+        var dropRect = new KumikoRect(dropX, dropY, YearDropdownWidth, dropH);
         if (!dropRect.Contains(clickX, clickY)) return false;
 
         int index = (int)((clickY - dropY + _yearScrollOffset) / DropdownItemHeight);
@@ -821,9 +821,9 @@ public class DrawnDatePicker : DrawnComponent
     {
         // Separator line
         ctx.DrawLine(x, y - 2, x + width, y - 2,
-            new GridPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 0.5f });
+            new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 0.5f });
 
-        var textPaint = new GridPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
+        var textPaint = new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
         float centerX = x + width / 2;
         float centerY = y + NavRowHeight / 2;
 
@@ -845,7 +845,7 @@ public class DrawnDatePicker : DrawnComponent
 
         // Draw up/down arrows for hour
         float hourX = centerX - textWidth / 2;
-        var arrowPaint = new GridPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.2f };
+        var arrowPaint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.2f };
 
         // Hour up
         ctx.DrawLine(hourX + 8, y + 2, hourX + 4, y + 6, arrowPaint);
@@ -897,7 +897,7 @@ public class DrawnDatePicker : DrawnComponent
 
         if (oldHour != SelectedHour || oldMinute != SelectedMinute)
         {
-            TimeChanged?.Invoke(this, new GridTimeChangedEventArgs(oldHour, oldMinute, SelectedHour, SelectedMinute));
+            TimeChanged?.Invoke(this, new KumikoTimeChangedEventArgs(oldHour, oldMinute, SelectedHour, SelectedMinute));
             InvalidateVisual();
         }
     }

@@ -4,7 +4,7 @@ namespace KumikoUI.Core.Rendering;
 
 /// <summary>
 /// Interface for rendering individual cell content.
-/// Implementations are dispatched by <see cref="GridColumnType"/>.
+/// Implementations are dispatched by <see cref="KumikoColumnType"/>.
 /// </summary>
 public interface ICellRenderer
 {
@@ -21,11 +21,11 @@ public interface ICellRenderer
     /// <param name="cellStyle">Optional per-column style overrides.</param>
     void Render(
         IDrawingContext ctx,
-        GridRect cellRect,
+        KumikoRect cellRect,
         object? value,
         string displayText,
-        GridColumn column,
-        DataGridStyle style,
+        KumikoColumn column,
+        KumikoStyle style,
         bool isSelected,
-        DataGridCellStyle? cellStyle = null);
+        KumikoCellStyle? cellStyle = null);
 }

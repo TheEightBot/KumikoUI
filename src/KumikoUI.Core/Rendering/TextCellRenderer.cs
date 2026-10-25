@@ -8,12 +8,12 @@ namespace KumikoUI.Core.Rendering;
 public class TextCellRenderer : ICellRenderer
 {
     public void Render(
-        IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, GridColumn column,
-        DataGridStyle style, bool isSelected,
-        DataGridCellStyle? cellStyle = null)
+        IDrawingContext ctx, KumikoRect cellRect, object? value,
+        string displayText, KumikoColumn column,
+        KumikoStyle style, bool isSelected,
+        KumikoCellStyle? cellStyle = null)
     {
-        var paint = new GridPaint
+        var paint = new KumikoPaint
         {
             Color = cellStyle?.TextColor ?? style.CellTextColor,
             Font = cellStyle?.Font ?? style.CellFont,
@@ -22,6 +22,6 @@ public class TextCellRenderer : ICellRenderer
 
         var alignment = cellStyle?.TextAlignment ?? column.TextAlignment;
         ctx.DrawTextInRect(displayText, cellRect, paint,
-            alignment, GridVerticalAlignment.Center);
+            alignment, KumikoVerticalAlignment.Center);
     }
 }

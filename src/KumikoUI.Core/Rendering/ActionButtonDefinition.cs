@@ -17,7 +17,7 @@ namespace KumikoUI.Core.Rendering;
 /// new ActionButtonDefinition
 /// {
 ///     Label           = "Archive",
-///     BackgroundColor = new GridColor(108, 117, 125),
+///     BackgroundColor = new KumikoColor(108, 117, 125),
 ///     Action          = () => vm.ArchiveCommand.Execute(item)
 /// }
 /// </code>
@@ -36,10 +36,10 @@ public class ActionButtonDefinition : IActionButtonDefinition
     public string Label { get; set; } = string.Empty;
 
     /// <summary>Button background color.</summary>
-    public GridColor BackgroundColor { get; set; } = new GridColor(13, 110, 253);
+    public KumikoColor BackgroundColor { get; set; } = new KumikoColor(13, 110, 253);
 
     /// <summary>Button label text color.</summary>
-    public GridColor TextColor { get; set; } = GridColor.White;
+    public KumikoColor TextColor { get; set; } = KumikoColor.White;
 
     /// <summary>
     /// Action invoked when this button is tapped in the interactive editor.

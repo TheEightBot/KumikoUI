@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Models;
 public class FilterDescription
 {
     /// <summary>The column this filter applies to.</summary>
-    public GridColumn Column { get; }
+    public KumikoColumn Column { get; }
 
     /// <summary>
     /// When non-null, items are filtered to only show rows whose value
@@ -36,7 +36,7 @@ public class FilterDescription
     public bool IsActive =>
         SelectedValues != null || Condition1 != null;
 
-    public FilterDescription(GridColumn column)
+    public FilterDescription(KumikoColumn column)
     {
         Column = column;
     }

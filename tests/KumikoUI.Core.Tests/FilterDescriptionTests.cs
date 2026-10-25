@@ -4,11 +4,11 @@ namespace KumikoUI.Core.Tests;
 
 public class FilterDescriptionTests
 {
-    private static GridColumn MakeTextColumn() =>
-        new GridColumn { ColumnType = GridColumnType.Text, PropertyName = "Name" };
+    private static KumikoColumn MakeTextColumn() =>
+        new KumikoColumn { ColumnType = KumikoColumnType.Text, PropertyName = "Name" };
 
-    private static GridColumn MakeNumericColumn() =>
-        new GridColumn { ColumnType = GridColumnType.Numeric, PropertyName = "Value" };
+    private static KumikoColumn MakeNumericColumn() =>
+        new KumikoColumn { ColumnType = KumikoColumnType.Numeric, PropertyName = "Value" };
 
     // ── IsActive ──────────────────────────────────────────────────
 

@@ -7,11 +7,11 @@ namespace KumikoUI.Core.Editing;
 /// XAML-declarable editor descriptor for numeric up/down controls.
 /// Usage in XAML:
 /// <code>
-/// &lt;core:GridColumn Header="Rating" ColumnType="Template"&gt;
-///     &lt;core:GridColumn.EditorDescriptor&gt;
+/// &lt;core:KumikoColumn Header="Rating" ColumnType="Template"&gt;
+///     &lt;core:KumikoColumn.EditorDescriptor&gt;
 ///         &lt;editing:NumericUpDownEditorDescriptor Minimum="1" Maximum="5" Step="1" DecimalPlaces="0" /&gt;
-///     &lt;/core:GridColumn.EditorDescriptor&gt;
-/// &lt;/core:GridColumn&gt;
+///     &lt;/core:KumikoColumn.EditorDescriptor&gt;
+/// &lt;/core:KumikoColumn&gt;
 /// </code>
 /// </summary>
 public class NumericUpDownEditorDescriptor : EditorDescriptor
@@ -34,7 +34,7 @@ public class NumericUpDownEditorDescriptor : EditorDescriptor
     /// <summary>Is the control read-only?</summary>
     public bool IsReadOnly { get; set; }
 
-    public override DrawnComponent? CreateEditor(object? currentValue, GridRect cellBounds)
+    public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
     {
         double value = 0;
         if (currentValue != null)

@@ -21,16 +21,16 @@ public class InputMappingTests
     // ──────────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(VirtualKey.Up, GridKey.Up)]
-    [InlineData(VirtualKey.Down, GridKey.Down)]
-    [InlineData(VirtualKey.Left, GridKey.Left)]
-    [InlineData(VirtualKey.Right, GridKey.Right)]
-    [InlineData(VirtualKey.Home, GridKey.Home)]
-    [InlineData(VirtualKey.End, GridKey.End)]
-    [InlineData(VirtualKey.PageUp, GridKey.PageUp)]
-    [InlineData(VirtualKey.PageDown, GridKey.PageDown)]
-    [InlineData(VirtualKey.Tab, GridKey.Tab)]
-    public void ToGridKey_NavigationKeys_MapToMatchingGridKey(VirtualKey key, GridKey expected)
+    [InlineData(VirtualKey.Up, KumikoKey.Up)]
+    [InlineData(VirtualKey.Down, KumikoKey.Down)]
+    [InlineData(VirtualKey.Left, KumikoKey.Left)]
+    [InlineData(VirtualKey.Right, KumikoKey.Right)]
+    [InlineData(VirtualKey.Home, KumikoKey.Home)]
+    [InlineData(VirtualKey.End, KumikoKey.End)]
+    [InlineData(VirtualKey.PageUp, KumikoKey.PageUp)]
+    [InlineData(VirtualKey.PageDown, KumikoKey.PageDown)]
+    [InlineData(VirtualKey.Tab, KumikoKey.Tab)]
+    public void ToGridKey_NavigationKeys_MapToMatchingGridKey(VirtualKey key, KumikoKey expected)
     {
         Assert.Equal(expected, InputMapping.ToGridKey(key));
     }
@@ -40,22 +40,22 @@ public class InputMappingTests
     // ──────────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(VirtualKey.Enter, GridKey.Enter)]
-    [InlineData(VirtualKey.Escape, GridKey.Escape)]
-    [InlineData(VirtualKey.Space, GridKey.Space)]
-    [InlineData(VirtualKey.Delete, GridKey.Delete)]
-    [InlineData(VirtualKey.F2, GridKey.F2)]
-    public void ToGridKey_ActionKeys_MapToMatchingGridKey(VirtualKey key, GridKey expected)
+    [InlineData(VirtualKey.Enter, KumikoKey.Enter)]
+    [InlineData(VirtualKey.Escape, KumikoKey.Escape)]
+    [InlineData(VirtualKey.Space, KumikoKey.Space)]
+    [InlineData(VirtualKey.Delete, KumikoKey.Delete)]
+    [InlineData(VirtualKey.F2, KumikoKey.F2)]
+    public void ToGridKey_ActionKeys_MapToMatchingGridKey(VirtualKey key, KumikoKey expected)
     {
         Assert.Equal(expected, InputMapping.ToGridKey(key));
     }
 
     /// <summary>WinUI's <see cref="VirtualKey.Back"/> is the Backspace key — it must map to
-    /// <see cref="GridKey.Backspace"/>, NOT a "navigate back" gesture.</summary>
+    /// <see cref="KumikoKey.Backspace"/>, NOT a "navigate back" gesture.</summary>
     [Fact]
     public void ToGridKey_Back_MapsToBackspace()
     {
-        Assert.Equal(GridKey.Backspace, InputMapping.ToGridKey(VirtualKey.Back));
+        Assert.Equal(KumikoKey.Backspace, InputMapping.ToGridKey(VirtualKey.Back));
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -63,12 +63,12 @@ public class InputMappingTests
     // ──────────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(VirtualKey.A, GridKey.A)]
-    [InlineData(VirtualKey.C, GridKey.C)]
-    [InlineData(VirtualKey.V, GridKey.V)]
-    [InlineData(VirtualKey.X, GridKey.X)]
-    [InlineData(VirtualKey.Z, GridKey.Z)]
-    public void ToGridKey_ShortcutLetters_MapToMatchingGridKey(VirtualKey key, GridKey expected)
+    [InlineData(VirtualKey.A, KumikoKey.A)]
+    [InlineData(VirtualKey.C, KumikoKey.C)]
+    [InlineData(VirtualKey.V, KumikoKey.V)]
+    [InlineData(VirtualKey.X, KumikoKey.X)]
+    [InlineData(VirtualKey.Z, KumikoKey.Z)]
+    public void ToGridKey_ShortcutLetters_MapToMatchingGridKey(VirtualKey key, KumikoKey expected)
     {
         Assert.Equal(expected, InputMapping.ToGridKey(key));
     }
@@ -79,7 +79,7 @@ public class InputMappingTests
 
     /// <summary>
     /// Keys the grid does not handle as commands (printable text arrives via CharacterReceived,
-    /// and unrelated keys are ignored) must collapse to <see cref="GridKey.None"/>.
+    /// and unrelated keys are ignored) must collapse to <see cref="KumikoKey.None"/>.
     /// </summary>
     [Theory]
     [InlineData(VirtualKey.B)]          // a letter with no grid shortcut
@@ -96,44 +96,44 @@ public class InputMappingTests
     [InlineData(VirtualKey.None)]
     public void ToGridKey_UnmappedKeys_ReturnNone(VirtualKey key)
     {
-        Assert.Equal(GridKey.None, InputMapping.ToGridKey(key));
+        Assert.Equal(KumikoKey.None, InputMapping.ToGridKey(key));
     }
 
     /// <summary>
     /// Guard the WHOLE contract in one shot: exactly the documented set of <see cref="VirtualKey"/>
-    /// values produces a non-<see cref="GridKey.None"/> result; every other VirtualKey maps to None.
+    /// values produces a non-<see cref="KumikoKey.None"/> result; every other VirtualKey maps to None.
     /// This catches an accidental new mapping (or a dropped one) regardless of which arm changed.
     /// </summary>
     [Fact]
     public void ToGridKey_OnlyDocumentedKeys_AreHandled()
     {
-        var handled = new Dictionary<VirtualKey, GridKey>
+        var handled = new Dictionary<VirtualKey, KumikoKey>
         {
-            [VirtualKey.Up] = GridKey.Up,
-            [VirtualKey.Down] = GridKey.Down,
-            [VirtualKey.Left] = GridKey.Left,
-            [VirtualKey.Right] = GridKey.Right,
-            [VirtualKey.Home] = GridKey.Home,
-            [VirtualKey.End] = GridKey.End,
-            [VirtualKey.PageUp] = GridKey.PageUp,
-            [VirtualKey.PageDown] = GridKey.PageDown,
-            [VirtualKey.Tab] = GridKey.Tab,
-            [VirtualKey.Enter] = GridKey.Enter,
-            [VirtualKey.Escape] = GridKey.Escape,
-            [VirtualKey.Space] = GridKey.Space,
-            [VirtualKey.Delete] = GridKey.Delete,
-            [VirtualKey.Back] = GridKey.Backspace,
-            [VirtualKey.F2] = GridKey.F2,
-            [VirtualKey.A] = GridKey.A,
-            [VirtualKey.C] = GridKey.C,
-            [VirtualKey.V] = GridKey.V,
-            [VirtualKey.X] = GridKey.X,
-            [VirtualKey.Z] = GridKey.Z,
+            [VirtualKey.Up] = KumikoKey.Up,
+            [VirtualKey.Down] = KumikoKey.Down,
+            [VirtualKey.Left] = KumikoKey.Left,
+            [VirtualKey.Right] = KumikoKey.Right,
+            [VirtualKey.Home] = KumikoKey.Home,
+            [VirtualKey.End] = KumikoKey.End,
+            [VirtualKey.PageUp] = KumikoKey.PageUp,
+            [VirtualKey.PageDown] = KumikoKey.PageDown,
+            [VirtualKey.Tab] = KumikoKey.Tab,
+            [VirtualKey.Enter] = KumikoKey.Enter,
+            [VirtualKey.Escape] = KumikoKey.Escape,
+            [VirtualKey.Space] = KumikoKey.Space,
+            [VirtualKey.Delete] = KumikoKey.Delete,
+            [VirtualKey.Back] = KumikoKey.Backspace,
+            [VirtualKey.F2] = KumikoKey.F2,
+            [VirtualKey.A] = KumikoKey.A,
+            [VirtualKey.C] = KumikoKey.C,
+            [VirtualKey.V] = KumikoKey.V,
+            [VirtualKey.X] = KumikoKey.X,
+            [VirtualKey.Z] = KumikoKey.Z,
         };
 
         foreach (VirtualKey key in Enum.GetValues<VirtualKey>())
         {
-            var expected = handled.TryGetValue(key, out var mapped) ? mapped : GridKey.None;
+            var expected = handled.TryGetValue(key, out var mapped) ? mapped : KumikoKey.None;
             Assert.Equal(expected, InputMapping.ToGridKey(key));
         }
     }

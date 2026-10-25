@@ -5,7 +5,7 @@ using KumikoUI.Core.Components;
 
 namespace KumikoUI.Core.Input;
 
-/// <summary>Provides data for the <see cref="GridInputController.RowReordered"/> event.</summary>
+/// <summary>Provides data for the <see cref="KumikoInputController.RowReordered"/> event.</summary>
 public class RowReorderedEventArgs : EventArgs
 {
     /// <summary>Original zero-based index of the row before it was moved.</summary>

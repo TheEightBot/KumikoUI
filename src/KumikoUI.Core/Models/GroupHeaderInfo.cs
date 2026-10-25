@@ -2,7 +2,7 @@ namespace KumikoUI.Core.Models;
 
 /// <summary>
 /// Represents a group header entry in the flat view.
-/// Exposed by DataGridSource for rendering and interaction.
+/// Exposed by KumikoSource for rendering and interaction.
 /// </summary>
 public class GroupHeaderInfo
 {

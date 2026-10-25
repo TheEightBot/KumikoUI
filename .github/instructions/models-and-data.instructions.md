@@ -4,14 +4,14 @@ applyTo: "src/KumikoUI.Core/Models/**"
 
 # KumikoUI — Models & Data
 
-## `GridColumn` — Column definition
+## `KumikoColumn` — Column definition
 
 ```csharp
-new GridColumn
+new KumikoColumn
 {
     Header          = "Name",
     PropertyName    = "Name",           // nested paths supported: "Address.City"
-    ColumnType      = GridColumnType.Text,
+    ColumnType      = KumikoColumnType.Text,
     Width           = 180f,
     SizeMode        = ColumnSizeMode.Fixed,   // Fixed | Star | Auto
     StarWeight      = 1f,
@@ -25,7 +25,7 @@ new GridColumn
     AllowTabStop    = true,
     FreezeMode      = ColumnFreezeMode.None,  // None | Left | Right
     Format          = "C2",                   // IFormattable format string
-    TextAlignment   = GridTextAlignment.Left,
+    TextAlignment   = KumikoTextAlignment.Left,
     CustomCellRenderer  = null,
     EditorDescriptor    = null,
     CustomEditorFactory = null,
@@ -38,7 +38,7 @@ new GridColumn
 
 ### Column types
 
-| `GridColumnType` | Cell renderer | Inline editor |
+| `KumikoColumnType` | Cell renderer | Inline editor |
 |---|---|---|
 | `Text` | `TextCellRenderer` | `DrawnTextBox` |
 | `Numeric` | `TextCellRenderer` | `DrawnTextBox` (numeric-only) |
@@ -51,7 +51,7 @@ new GridColumn
 
 ---
 
-## `DataGridSource` — Data pipeline
+## `KumikoSource` — Data pipeline
 
 Manages filtering, sorting, grouping, and the flat view used by the renderer.
 
@@ -73,11 +73,11 @@ source.EndUpdate();
 
 ```csharp
 source.ApplySort(column);                         // cycles None → Asc → Desc → None
-source.ApplySort(column, GridSortDirection.Ascending);
+source.ApplySort(column, KumikoSortDirection.Ascending);
 
 // Multi-column:
-col1.SortDirection = GridSortDirection.Ascending; col1.SortOrder = 1;
-col2.SortDirection = GridSortDirection.Descending; col2.SortOrder = 2;
+col1.SortDirection = KumikoSortDirection.Ascending; col1.SortOrder = 1;
+col2.SortDirection = KumikoSortDirection.Descending; col2.SortOrder = 2;
 source.ApplySorts();
 ```
 
@@ -137,47 +137,47 @@ var row = new TableSummaryRow("Totals", SummaryPosition.Bottom)
 
 ---
 
-## `DataGridStyle` — Theming
+## `KumikoStyle` — Theming
 
 ```csharp
 // Built-in themes:
-DataGridTheme.Create(DataGridThemeMode.Light)
-DataGridTheme.Create(DataGridThemeMode.Dark)
-DataGridTheme.Create(DataGridThemeMode.HighContrast)
+KumikoTheme.Create(KumikoThemeMode.Light)
+KumikoTheme.Create(KumikoThemeMode.Dark)
+KumikoTheme.Create(KumikoThemeMode.HighContrast)
 
 // Dynamic per-cell styling:
 style.CellStyleResolver = (item, column) =>
     item is Employee e && !e.IsActive
-        ? new DataGridCellStyle { TextColor = new GridColor(180, 0, 0) }
+        ? new KumikoCellStyle { TextColor = new KumikoColor(180, 0, 0) }
         : null;
 
 // Dynamic per-row styling:
 style.RowStyleResolver = item =>
     item is Employee e && e.Salary > 200_000
-        ? new DataGridRowStyle { BackgroundColor = new GridColor(255, 250, 220) }
+        ? new KumikoRowStyle { BackgroundColor = new KumikoColor(255, 250, 220) }
         : null;
 ```
 
-### `DataGridCellStyle` / `DataGridRowStyle` nullable properties
+### `KumikoCellStyle` / `KumikoRowStyle` nullable properties
 
-All properties are nullable — `null` means "inherit from grid-level `DataGridStyle`".
-`DataGridCellStyle.Merge(primary, fallback)` combines two instances with `primary` taking precedence.
-
----
-
-## Adding a new `DataGridStyle` property
-
-1. Add property (with `///` XML doc) to `DataGridStyle` in `DataGridStyle.cs`.
-2. Set value in `DataGridTheme.CreateDark()` and `DataGridTheme.CreateHighContrast()`.
-3. Use in `DataGridRenderer.cs`.
-4. Add `[Fact]` tests in `DataGridThemeTests.cs` for Dark and HighContrast values.
+All properties are nullable — `null` means "inherit from grid-level `KumikoStyle`".
+`KumikoCellStyle.Merge(primary, fallback)` combines two instances with `primary` taking precedence.
 
 ---
 
-## Adding a new `GridColumnType`
+## Adding a new `KumikoStyle` property
 
-1. Add enum value to `GridColumnType` in `GridColumn.cs`.
+1. Add property (with `///` XML doc) to `KumikoStyle` in `KumikoStyle.cs`.
+2. Set value in `KumikoTheme.CreateDark()` and `KumikoTheme.CreateHighContrast()`.
+3. Use in `KumikoRenderer.cs`.
+4. Add `[Fact]` tests in `KumikoThemeTests.cs` for Dark and HighContrast values.
+
+---
+
+## Adding a new `KumikoColumnType`
+
+1. Add enum value to `KumikoColumnType` in `KumikoColumn.cs`.
 2. Create cell renderer in `src/KumikoUI.Core/Rendering/` (if display differs from text).
 3. Create editor (`DrawnComponent`) in `src/KumikoUI.Core/Components/` (if needed).
 4. Wire `CellEditorFactory`: `CreateEditor`, `GetEditorValue`, `ApplyThemeToEditor`.
-5. Dispatch in `DataGridRenderer.cs` to the renderer.
+5. Dispatch in `KumikoRenderer.cs` to the renderer.

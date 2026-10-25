@@ -11,7 +11,7 @@ namespace KumikoUI.Uno;
 /// Phase 04 input wiring for <see cref="KumikoDataGrid"/>: pointer, keyboard, focus, and the
 /// input-driven repaint timers (inertial scroll + cursor blink). WinUI delivers all of these as
 /// routed events on the control itself; this partial adapts each to the platform-independent
-/// <see cref="GridInputController"/> API (<c>HandlePointer</c> / <c>HandleKey</c> /
+/// <see cref="KumikoInputController"/> API (<c>HandlePointer</c> / <c>HandleKey</c> /
 /// <c>UpdateInertialScroll</c>) that already owns the behavior.
 /// </summary>
 /// <remarks>
@@ -175,7 +175,7 @@ public partial class KumikoDataGrid
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
         // WinUI/Uno raises PointerMoved on every hover, even with no button pressed. Core's
-        // GridInputController.HandlePointerMove expects Moved only while in contact (matching the
+        // KumikoInputController.HandlePointerMove expects Moved only while in contact (matching the
         // MAUI SKCanvasView contract), so we filter out plain hover here. Only forward when the
         // pointer is actually down — and, for a mouse, only the LEFT button drags/scrolls (a
         // right/middle drag must not pan). Touch/pen contact reports IsInContact without a named
@@ -231,7 +231,7 @@ public partial class KumikoDataGrid
     }
 
     /// <summary>
-    /// Builds a <see cref="GridPointerEventArgs"/> from a WinUI pointer point and forwards it to
+    /// Builds a <see cref="KumikoPointerEventArgs"/> from a WinUI pointer point and forwards it to
     /// the Core input controller. Mirrors MAUI's <c>OnCanvasTouch</c>, differing only in the source
     /// type and the (already-logical) coordinate space.
     /// </summary>
@@ -239,7 +239,7 @@ public partial class KumikoDataGrid
     {
         var props = point.Properties;
 
-        var evt = new GridPointerEventArgs
+        var evt = new KumikoPointerEventArgs
         {
             X = (float)point.Position.X,
             Y = (float)point.Position.Y,
@@ -277,7 +277,7 @@ public partial class KumikoDataGrid
         if (e.HoldingState != HoldingState.Started) return;
 
         var pos = e.GetPosition(this);
-        var evt = new GridPointerEventArgs
+        var evt = new KumikoPointerEventArgs
         {
             X = (float)pos.X,
             Y = (float)pos.Y,
@@ -295,12 +295,12 @@ public partial class KumikoDataGrid
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
         var key = InputMapping.ToGridKey(e.Key);
-        if (key == GridKey.None) return; // printable text comes via the proxy's TextChanged
+        if (key == KumikoKey.None) return; // printable text comes via the proxy's TextChanged
 
         // KeyRoutedEventArgs.KeyboardModifiers is [NotImplemented] on the Uno Skia/WASM heads (the
         // source generator strips it from the public surface there), so read the live modifier
         // state instead — InputKeyboardSource.GetKeyStateForCurrentThread IS implemented on Skia.
-        var evt = new GridKeyEventArgs
+        var evt = new KumikoKeyEventArgs
         {
             Key = key,
             Modifiers = InputMapping.GetLiveModifiers(),

@@ -18,8 +18,8 @@ namespace KumikoUI.Core.Rendering;
 /// {
 ///     Buttons =
 ///     [
-///         new() { Label = "Edit",   BackgroundColor = new GridColor(13, 110, 253) },
-///         new() { Label = "Delete", BackgroundColor = new GridColor(220, 53, 69)  }
+///         new() { Label = "Edit",   BackgroundColor = new KumikoColor(13, 110, 253) },
+///         new() { Label = "Delete", BackgroundColor = new KumikoColor(220, 53, 69)  }
 ///     ]
 /// };
 /// </code>
@@ -44,10 +44,10 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider
 
     /// <inheritdoc />
     public void Render(
-        IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, GridColumn column,
-        DataGridStyle style, bool isSelected,
-        DataGridCellStyle? cellStyle = null)
+        IDrawingContext ctx, KumikoRect cellRect, object? value,
+        string displayText, KumikoColumn column,
+        KumikoStyle style, bool isSelected,
+        KumikoCellStyle? cellStyle = null)
     {
         if (Buttons.Count == 0) return;
         var rects = ActionButtonLayout.ComputeButtonRects(cellRect, Buttons.Count, CellPadding, ButtonSpacing);
@@ -55,13 +55,13 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider
         for (int i = 0; i < Buttons.Count; i++)
         {
             var btn = Buttons[i];
-            ctx.FillRoundRect(rects[i], CornerRadius, new GridPaint { Color = btn.BackgroundColor, IsAntiAlias = true });
-            ctx.DrawTextInRect(btn.Label, rects[i], new GridPaint
+            ctx.FillRoundRect(rects[i], CornerRadius, new KumikoPaint { Color = btn.BackgroundColor, IsAntiAlias = true });
+            ctx.DrawTextInRect(btn.Label, rects[i], new KumikoPaint
             {
                 Color = btn.TextColor,
-                Font = new GridFont("Default", 11, bold: true),
+                Font = new KumikoFont("Default", 11, bold: true),
                 IsAntiAlias = true
-            }, GridTextAlignment.Center, GridVerticalAlignment.Center);
+            }, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
         }
     }
 
@@ -73,7 +73,7 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider
     /// <c>MauiActionButtonDefinition</c> XAML bindings) are immediately available to
     /// the interactive editor without additional wiring.
     /// </remarks>
-    public DrawnComponent? CreateEditor(object? value, GridRect bounds)
+    public DrawnComponent? CreateEditor(object? value, KumikoRect bounds)
         => new KumikoUI.Core.Components.DrawnActionButtons
         {
             Bounds  = bounds,

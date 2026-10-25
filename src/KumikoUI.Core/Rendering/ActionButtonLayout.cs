@@ -14,10 +14,10 @@ public static class ActionButtonLayout
     /// within <paramref name="bounds"/>, applying <paramref name="padding"/> inset
     /// and <paramref name="spacing"/> between buttons.
     /// </summary>
-    public static IReadOnlyList<GridRect> ComputeButtonRects(
-        GridRect bounds, int count, float padding, float spacing)
+    public static IReadOnlyList<KumikoRect> ComputeButtonRects(
+        KumikoRect bounds, int count, float padding, float spacing)
     {
-        var rects = new List<GridRect>(count);
+        var rects = new List<KumikoRect>(count);
         if (count == 0 || bounds.Width <= 0 || bounds.Height <= 0)
             return rects;
 
@@ -29,7 +29,7 @@ public static class ActionButtonLayout
 
         for (int i = 0; i < count; i++)
         {
-            rects.Add(new GridRect(x, btnY, MathF.Max(0, btnW), MathF.Max(0, btnH)));
+            rects.Add(new KumikoRect(x, btnY, MathF.Max(0, btnW), MathF.Max(0, btnH)));
             x += btnW + spacing;
         }
         return rects;

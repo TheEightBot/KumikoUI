@@ -1,7 +1,7 @@
 # 03 — The `KumikoDataGrid` Host Control
 
 Goal: a single Uno control, `KumikoUI.Uno.KumikoDataGrid`, that hosts an `SKXamlCanvas`, drives the
-reused `DataGridRenderer`, and exposes a `DependencyProperty` surface matching `KumikoUI.Maui`.
+reused `KumikoRenderer`, and exposes a `DependencyProperty` surface matching `KumikoUI.Maui`.
 
 Reference implementation to mirror: [`src/KumikoUI.Maui/KumikoDataGrid.cs`](../../src/KumikoUI.Maui/KumikoDataGrid.cs).
 
@@ -25,14 +25,14 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
   public partial class KumikoDataGrid : Grid   // Microsoft.UI.Xaml.Controls.Grid
   {
       private readonly SKXamlCanvas _canvasView = new();
-      private readonly DataGridRenderer _renderer = new();
+      private readonly KumikoRenderer _renderer = new();
       // _dataSource, _scroll, _selection, _style, _editSession, _inputController — same Core types as MAUI
   }
   ```
   > Deviation: deriving from `Microsoft.UI.Xaml.Controls.Grid` pulls
   > `Microsoft.UI.Xaml.Controls.SelectionModel` / `SelectionMode` into scope, which collided with Core's
   > `SelectionModel` / `SelectionMode`. This was first resolved with `using`-aliases; the Core types are now
-  > named `DataGridSelectionModel` / `GridSelectionMode`, so no aliases are needed (#16).
+  > named `KumikoSelectionModel` / `KumikoSelectionMode`, so no aliases are needed (#16).
 - [x] The `unolib` template ships a sample `MyTemplatedControl` + `Themes/Generic.xaml`. Remove the
   sample control. Keep an (empty) `Themes/Generic.xaml` only if you later add stylable resources;
   it is **not** required by the drawn `KumikoDataGrid`.
@@ -41,7 +41,7 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
 
 ## 2. Constructor wiring (parity with MAUI ctor)
 
-- [x] Configure and add the canvas, then subscribe to paint + `GridInputController` events:
+- [x] Configure and add the canvas, then subscribe to paint + `KumikoInputController` events:
   ```csharp
   public KumikoDataGrid()
   {
@@ -50,7 +50,7 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
       Children.Add(_canvasView);
 
       // Auto-init bindable collections so XAML can add items directly (mirrors MAUI ctor).
-      Columns          = new ObservableCollection<GridColumn>();
+      Columns          = new ObservableCollection<KumikoColumn>();
       TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
       _dataSource.DataChanged += OnDataSourceDataChanged;
@@ -97,7 +97,7 @@ differs (see step 4).
       var canvas = e.Surface.Canvas;
       var info   = e.Info;
 
-      var bg = _style.BackgroundColor;            // Core GridColor
+      var bg = _style.BackgroundColor;            // Core KumikoColor
       canvas.Clear(new SKColor(bg.R, bg.G, bg.B, bg.A));
 
       // DPI: e.Info is in physical pixels; ActualWidth/Height are logical DIPs (step 4)
@@ -118,7 +118,7 @@ differs (see step 4).
       canvas.Restore();
   }
   ```
-  > The `Render(...)` argument list matches `DataGridRenderer.Render` and the MAUI call site exactly.
+  > The `Render(...)` argument list matches `KumikoRenderer.Render` and the MAUI call site exactly.
 - [x] Request a redraw on every Core "invalidate" signal:
   ```csharp
   private void InvalidateSurface() => _canvasView.Invalidate();          // MAUI: _canvasView.InvalidateSurface()
@@ -157,9 +157,9 @@ Map each MAUI `BindableProperty` to a WinUI `DependencyProperty`. Same names, sa
   | DependencyProperty | DP type | Default | Callback target (Core) |
   |---|---|---|---|
   | `ItemsSource` | `System.Collections.IEnumerable` | `null` | `_dataSource.SetItems(...)`; (un)subscribes `INotifyCollectionChanged` |
-  | `Columns` | `ObservableCollection<GridColumn>` | `null` | `_dataSource.SetColumns(...)`; subscribes `CollectionChanged` |
+  | `Columns` | `ObservableCollection<KumikoColumn>` | `null` | `_dataSource.SetColumns(...)`; subscribes `CollectionChanged` |
   | `TableSummaryRows` | `ObservableCollection<TableSummaryRow>` | `null` | `_dataSource.ClearTableSummaryRows()` + `AddTableSummaryRow(...)` |
-  | `GridSelectionMode` | `KumikoUI.Core.Models.GridSelectionMode` | `Extended` | `_selection.Mode` |
+  | `GridSelectionMode` | `KumikoUI.Core.Models.KumikoSelectionMode` | `Extended` | `_selection.Mode` |
   | `RowHeight` | `double` | `36` | `_style.RowHeight` (cast `double`→`float`) |
   | `HeaderHeight` | `double` | `40` | `_style.HeaderHeight` (cast `double`→`float`) |
   | `FrozenRowCount` | `int` | `0` | `_dataSource.FrozenRowCount` |
@@ -176,7 +176,7 @@ Map each MAUI `BindableProperty` to a WinUI `DependencyProperty`. Same names, sa
   >   The *DP* keeps the plural name `EditTriggers` (matches MAUI's `BindableProperty`); its CLR type
   >   is `EditTrigger`.
   > - **`RowHeight` / `HeaderHeight`**: registered as `double` (the WinUI idiom for sizes) and cast to
-  >   `float` for `DataGridStyle`. MAUI registered these as `float`; defaults (36 / 40) match.
+  >   `float` for `KumikoStyle`. MAUI registered these as `float`; defaults (36 / 40) match.
   > - **`GridDescription`**: there is no Core "GridDescription" type — it is a plain `string`
   >   accessibility label. MAUI routes it through `SemanticProperties.SetDescription`; the WinUI
   >   equivalent is `AutomationProperties.SetName`.

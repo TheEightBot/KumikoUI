@@ -15,7 +15,7 @@ public class CellBeginEditEventArgs : EventArgs
     public int ColumnIndex { get; }
 
     /// <summary>Column definition for the cell.</summary>
-    public GridColumn Column { get; }
+    public KumikoColumn Column { get; }
 
     /// <summary>Current value of the cell before editing.</summary>
     public object? CellValue { get; }
@@ -23,7 +23,7 @@ public class CellBeginEditEventArgs : EventArgs
     /// <summary>Set to true to cancel the edit operation.</summary>
     public bool Cancel { get; set; }
 
-    public CellBeginEditEventArgs(int row, int col, GridColumn column, object? value)
+    public CellBeginEditEventArgs(int row, int col, KumikoColumn column, object? value)
     {
         RowIndex = row;
         ColumnIndex = col;

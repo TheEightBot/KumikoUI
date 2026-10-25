@@ -16,10 +16,10 @@ public class ImageCellRenderer : ICellRenderer
     public Func<object?, object?>? ImageResolver { get; set; }
 
     public void Render(
-        IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, GridColumn column,
-        DataGridStyle style, bool isSelected,
-        DataGridCellStyle? cellStyle = null)
+        IDrawingContext ctx, KumikoRect cellRect, object? value,
+        string displayText, KumikoColumn column,
+        KumikoStyle style, bool isSelected,
+        KumikoCellStyle? cellStyle = null)
     {
         var image = ImageResolver != null ? ImageResolver(value) : value;
         if (image == null) return;
@@ -32,6 +32,6 @@ public class ImageCellRenderer : ICellRenderer
         float imgX = cellRect.X + (cellRect.Width - maxSize) / 2;
         float imgY = cellRect.Y + (cellRect.Height - maxSize) / 2;
 
-        ctx.DrawImage(image, new GridRect(imgX, imgY, maxSize, maxSize));
+        ctx.DrawImage(image, new KumikoRect(imgX, imgY, maxSize, maxSize));
     }
 }

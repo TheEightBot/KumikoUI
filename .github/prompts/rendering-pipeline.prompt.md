@@ -15,7 +15,7 @@ rendering pipeline.
 ```
 KumikoDataGrid.OnPaintSurface
   │
-  └─ DataGridRenderer.Render(IDrawingContext, DataGridSource, GridLayoutEngine, ...)
+  └─ KumikoRenderer.Render(IDrawingContext, KumikoSource, KumikoLayoutEngine, ...)
         │
         ├─ DrawHeaderRow(...)         — column headers, sort indicators, filter icons
         ├─ DrawFrozenRows(...)         — frozen-top data rows
@@ -42,7 +42,7 @@ All draw calls go through `IDrawingContext` → `SkiaDrawingContext` → `SKCanv
 KumikoUI avoids per-frame heap allocations. When adding render code:
 
 - **Use `for` loops** over `foreach` on `List<>` (avoids enumerator boxing).
-- **Use `PopulateVisible*` methods** on `GridLayoutEngine` (write into pre-allocated `List<>`).
+- **Use `PopulateVisible*` methods** on `KumikoLayoutEngine` (write into pre-allocated `List<>`).
 - **Do NOT use LINQ** (`.Where(...)`, `.Select(...)`) inside `Render(...)` or any method
   it calls.
 - **Do NOT `new` SkiaSharp objects** (`SKPaint`, `SKFont`, `SKPath`) inside the render loop.
@@ -50,15 +50,15 @@ KumikoUI avoids per-frame heap allocations. When adding render code:
 
 ### `PaintCache`
 
-`KumikoUI.Core.Rendering.PaintCache` pre-builds `GridPaint` instances from `DataGridStyle`
+`KumikoUI.Core.Rendering.PaintCache` pre-builds `KumikoPaint` instances from `KumikoStyle`
 at theme-change time. Prefer `paintCache.CellPaint(isSelected, style)` over
-constructing new `GridPaint` objects inline.
+constructing new `KumikoPaint` objects inline.
 
 ---
 
 ## Adding a new draw pass
 
-1. Add a private `Draw{FeatureName}(IDrawingContext ctx, ...)` method to `DataGridRenderer`.
+1. Add a private `Draw{FeatureName}(IDrawingContext ctx, ...)` method to `KumikoRenderer`.
 2. Call it from `Render(...)` at the correct z-order position (before editor overlay).
 3. Use `ctx.Save()` / `ctx.Restore()` around any `ctx.ClipRect()` or `ctx.Translate()`.
 4. Use `style.*` for all colors and sizes — never hardcode.
@@ -67,9 +67,9 @@ Template:
 ```csharp
 private void Draw{FeatureName}(
     IDrawingContext ctx,
-    DataGridSource source,
-    GridLayoutEngine layout,
-    DataGridStyle style,
+    KumikoSource source,
+    KumikoLayoutEngine layout,
+    KumikoStyle style,
     ScrollState scroll)
 {
     ctx.Save();
@@ -139,5 +139,5 @@ switch (hit.Region)
 | Frozen columns show wrong content | Scrollable x-offset applied to frozen draw pass | Ensure frozen pass does NOT offset by `scroll.HorizontalOffset` |
 | Clipping bleeds outside cell | Missing `ctx.ClipRect(cellRect)` before text draw | Wrap text draw in `Save`/`ClipRect(cellRect)`/`Restore` |
 | Editor flickers or paints behind data | `DrawActiveEditor` called before data rows | Move `DrawActiveEditor` call to after all data/group passes |
-| Selection highlight not updating | `InvalidateSurface()` not called after `DataGridSelectionModel` change | Subscribe to `DataGridSelectionModel.Changed` and call `InvalidateSurface()` |
-| Font size not scaling with device | DPI scaling not applied | Multiply `GridFont.Size` by `SKCanvasView.CanvasSize / DeviceSize` ratio |
+| Selection highlight not updating | `InvalidateSurface()` not called after `KumikoSelectionModel` change | Subscribe to `KumikoSelectionModel.Changed` and call `InvalidateSurface()` |
+| Font size not scaling with device | DPI scaling not applied | Multiply `KumikoFont.Size` by `SKCanvasView.CanvasSize / DeviceSize` ratio |

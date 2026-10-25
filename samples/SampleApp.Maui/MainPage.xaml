@@ -45,7 +45,7 @@
             <dg:KumikoDataGrid.Columns>
 
                 <!-- NUMERIC column (frozen left) -->
-                <core:GridColumn Header="Id"
+                <core:KumikoColumn Header="Id"
                                      PropertyName="Id"
                                      Width="60"
                                      ColumnType="Numeric"
@@ -55,20 +55,20 @@
                                      IsFrozen="True" />
 
                 <!-- TEXT column (frozen left) -->
-                <core:GridColumn Header="Name"
+                <core:KumikoColumn Header="Name"
                                      PropertyName="Name"
                                      Width="160"
                                      IsFrozen="True" />
 
                 <!-- COMBOBOX column — dropdown editor with items declared in XAML -->
-                <core:GridColumn Header="Department"
+                <core:KumikoColumn Header="Department"
                                      PropertyName="Department"
                                      Width="140"
                                      ColumnType="ComboBox"
                                      EditorItemsString="Engineering,Marketing,Sales,HR,Finance,Design,Support" />
 
                 <!-- NUMERIC column with currency format -->
-                <core:GridColumn Header="Salary"
+                <core:KumikoColumn Header="Salary"
                                      PropertyName="Salary"
                                      Width="120"
                                      Format="C0"
@@ -76,57 +76,57 @@
                                      TextAlignment="Right" />
 
                 <!-- DATE column — calendar picker editor -->
-                <core:GridColumn Header="Hire Date"
+                <core:KumikoColumn Header="Hire Date"
                                      PropertyName="HireDate"
                                      Width="120"
                                      Format="yyyy-MM-dd"
                                      ColumnType="Date" />
 
                 <!-- BOOLEAN column — checkbox toggle (skipped during tab navigation) -->
-                <core:GridColumn Header="Active"
+                <core:KumikoColumn Header="Active"
                                      PropertyName="IsActive"
                                      Width="80"
                                      ColumnType="Boolean"
                                      AllowTabStop="False" />
 
                 <!-- PICKER column — scroll-wheel picker with items declared in XAML -->
-                <core:GridColumn Header="Level"
+                <core:KumikoColumn Header="Level"
                                      PropertyName="Level"
                                      Width="120"
                                      ColumnType="Picker"
                                      EditorItemsString="Junior,Mid,Senior,Staff,Principal,Director" />
 
                 <!-- TEMPLATE column — progress bar display for Performance (fully declarative) -->
-                <core:GridColumn Header="Performance"
+                <core:KumikoColumn Header="Performance"
                                      PropertyName="Performance"
                                      Width="140"
                                      ColumnType="Template"
                                      IsReadOnly="True">
-                    <core:GridColumn.CustomCellRenderer>
+                    <core:KumikoColumn.CustomCellRenderer>
                         <render:ProgressBarCellRenderer Minimum="0"
                                                         Maximum="100"
                                                         TrackHeight="12"
                                                         CornerRadius="6"
                                                         ShowText="True"
                                                         TextFormat="N0" />
-                    </core:GridColumn.CustomCellRenderer>
-                </core:GridColumn>
+                    </core:KumikoColumn.CustomCellRenderer>
+                </core:KumikoColumn>
 
                 <!-- TEMPLATE column — numeric up/down for Rating (fully declarative) -->
-                <core:GridColumn Header="Rating"
+                <core:KumikoColumn Header="Rating"
                                      PropertyName="Rating"
                                      Width="100"
                                      ColumnType="Template">
-                    <core:GridColumn.EditorDescriptor>
+                    <core:KumikoColumn.EditorDescriptor>
                         <editing:NumericUpDownEditorDescriptor Minimum="1"
                                                                Maximum="5"
                                                                Step="1"
                                                                DecimalPlaces="0" />
-                    </core:GridColumn.EditorDescriptor>
-                </core:GridColumn>
+                    </core:KumikoColumn.EditorDescriptor>
+                </core:KumikoColumn>
 
                 <!-- TEXT column (frozen right) -->
-                <core:GridColumn Header="City"
+                <core:KumikoColumn Header="City"
                                      PropertyName="City"
                                      Width="130"
                                      FreezeMode="Right" />

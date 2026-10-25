@@ -64,7 +64,7 @@ public partial class KumikoDataGrid
 
     private void OnBoundItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        // DataGridSource already rebuilds the view; we just ensure the canvas
+        // KumikoSource already rebuilds the view; we just ensure the canvas
         // repaints. DispatcherQueue marshals to the UI thread if a background
         // thread raised the change.
         if (DispatcherQueue is { } queue && !queue.HasThreadAccess)
@@ -78,13 +78,13 @@ public partial class KumikoDataGrid
     /// <summary>Identifies the <see cref="Columns"/> dependency property.</summary>
     public static readonly DependencyProperty ColumnsProperty =
         DependencyProperty.Register(
-            nameof(Columns), typeof(ObservableCollection<GridColumn>), typeof(KumikoDataGrid),
+            nameof(Columns), typeof(ObservableCollection<KumikoColumn>), typeof(KumikoDataGrid),
             new PropertyMetadata(null, OnColumnsChanged));
 
     /// <summary>Bindable collection of column definitions. Supports runtime add/remove.</summary>
-    public ObservableCollection<GridColumn>? Columns
+    public ObservableCollection<KumikoColumn>? Columns
     {
-        get => (ObservableCollection<GridColumn>?)GetValue(ColumnsProperty);
+        get => (ObservableCollection<KumikoColumn>?)GetValue(ColumnsProperty);
         set => SetValue(ColumnsProperty, value);
     }
 
@@ -92,17 +92,17 @@ public partial class KumikoDataGrid
     {
         var view = (KumikoDataGrid)d;
 
-        if (e.OldValue is ObservableCollection<GridColumn> oldCollection)
+        if (e.OldValue is ObservableCollection<KumikoColumn> oldCollection)
             oldCollection.CollectionChanged -= view.OnColumnsCollectionChanged;
 
-        if (e.NewValue is ObservableCollection<GridColumn> newCollection)
+        if (e.NewValue is ObservableCollection<KumikoColumn> newCollection)
         {
             newCollection.CollectionChanged += view.OnColumnsCollectionChanged;
             view._dataSource.SetColumns(newCollection);
         }
         else
         {
-            view._dataSource.SetColumns(Array.Empty<GridColumn>());
+            view._dataSource.SetColumns(Array.Empty<KumikoColumn>());
         }
 
         view.Invalidate();
@@ -167,20 +167,20 @@ public partial class KumikoDataGrid
     /// <summary>Identifies the <see cref="GridSelectionMode"/> dependency property.</summary>
     public static readonly DependencyProperty GridSelectionModeProperty =
         DependencyProperty.Register(
-            nameof(GridSelectionMode), typeof(GridSelectionMode), typeof(KumikoDataGrid),
-            new PropertyMetadata(GridSelectionMode.Extended, OnGridSelectionModeChanged));
+            nameof(GridSelectionMode), typeof(KumikoSelectionMode), typeof(KumikoDataGrid),
+            new PropertyMetadata(KumikoSelectionMode.Extended, OnGridSelectionModeChanged));
 
     /// <summary>Selection mode: None, Single, Multiple, or Extended.</summary>
-    public GridSelectionMode GridSelectionMode
+    public KumikoSelectionMode GridSelectionMode
     {
-        get => (GridSelectionMode)GetValue(GridSelectionModeProperty);
+        get => (KumikoSelectionMode)GetValue(GridSelectionModeProperty);
         set => SetValue(GridSelectionModeProperty, value);
     }
 
     private static void OnGridSelectionModeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var view = (KumikoDataGrid)d;
-        view._selection.Mode = (GridSelectionMode)e.NewValue;
+        view._selection.Mode = (KumikoSelectionMode)e.NewValue;
         view.Invalidate();
     }
 

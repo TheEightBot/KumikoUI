@@ -39,7 +39,7 @@ public class DrawnFocusManager
         _focused = component;
         component?.SetFocusDirect(true);
 
-        FocusChanged?.Invoke(this, new GridFocusChangedEventArgs(old, component));
+        FocusChanged?.Invoke(this, new KumikoFocusChangedEventArgs(old, component));
     }
 
     /// <summary>Clear focus from all components.</summary>
@@ -68,14 +68,14 @@ public class DrawnFocusManager
     }
 
     /// <summary>Dispatch a key event to the focused component.</summary>
-    public bool DispatchKey(GridKeyEventArgs e)
+    public bool DispatchKey(KumikoKeyEventArgs e)
     {
         if (_focused == null || !_focused.IsEnabled) return false;
         return e.IsKeyDown ? _focused.OnKeyDown(e) : _focused.OnKeyUp(e);
     }
 
     /// <summary>Dispatch a pointer event. Tests components in Z-order (highest first).</summary>
-    public bool DispatchPointer(GridPointerEventArgs e)
+    public bool DispatchPointer(KumikoPointerEventArgs e)
     {
         // Check components in reverse Z-order (highest on top first)
         var sorted = _components
@@ -110,5 +110,5 @@ public class DrawnFocusManager
     }
 
     /// <summary>Raised when the focused component changes.</summary>
-    public event EventHandler<GridFocusChangedEventArgs>? FocusChanged;
+    public event EventHandler<KumikoFocusChangedEventArgs>? FocusChanged;
 }

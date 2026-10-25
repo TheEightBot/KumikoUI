@@ -15,7 +15,7 @@ public class CellEndEditEventArgs : EventArgs
     public int ColumnIndex { get; }
 
     /// <summary>Column definition for the cell.</summary>
-    public GridColumn Column { get; }
+    public KumikoColumn Column { get; }
 
     /// <summary>Cell value before editing.</summary>
     public object? OldValue { get; }
@@ -26,7 +26,7 @@ public class CellEndEditEventArgs : EventArgs
     /// <summary>True if the edit was committed; false if cancelled.</summary>
     public bool Committed { get; }
 
-    public CellEndEditEventArgs(int row, int col, GridColumn column,
+    public CellEndEditEventArgs(int row, int col, KumikoColumn column,
         object? oldValue, object? newValue, bool committed)
     {
         RowIndex = row;

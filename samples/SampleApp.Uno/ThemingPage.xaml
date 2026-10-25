@@ -67,18 +67,18 @@
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
             <kumiko:KumikoDataGrid.Columns>
-                <core:GridColumn Header="SKU" PropertyName="Sku" Width="110" IsFrozen="True" />
-                <core:GridColumn Header="Product" PropertyName="ProductName" Width="180" />
-                <core:GridColumn Header="Category" PropertyName="Category" Width="120" />
-                <core:GridColumn Header="Price" PropertyName="Price" Width="110"
+                <core:KumikoColumn Header="SKU" PropertyName="Sku" Width="110" IsFrozen="True" />
+                <core:KumikoColumn Header="Product" PropertyName="ProductName" Width="180" />
+                <core:KumikoColumn Header="Category" PropertyName="Category" Width="120" />
+                <core:KumikoColumn Header="Price" PropertyName="Price" Width="110"
                                      Format="C2" ColumnType="Numeric" TextAlignment="Right" />
-                <core:GridColumn Header="Stock" PropertyName="Stock" Width="90"
+                <core:KumikoColumn Header="Stock" PropertyName="Stock" Width="90"
                                      ColumnType="Numeric" TextAlignment="Right" />
-                <core:GridColumn Header="In Stock" PropertyName="InStock" Width="80"
+                <core:KumikoColumn Header="In Stock" PropertyName="InStock" Width="80"
                                      ColumnType="Boolean" AllowTabStop="False" />
-                <core:GridColumn Header="Rating" PropertyName="Rating" Width="90"
+                <core:KumikoColumn Header="Rating" PropertyName="Rating" Width="90"
                                      Format="N1" ColumnType="Numeric" TextAlignment="Right" />
-                <core:GridColumn Header="Supplier" PropertyName="Supplier" Width="140" />
+                <core:KumikoColumn Header="Supplier" PropertyName="Supplier" Width="140" />
             </kumiko:KumikoDataGrid.Columns>
         </kumiko:KumikoDataGrid>
     </Grid>

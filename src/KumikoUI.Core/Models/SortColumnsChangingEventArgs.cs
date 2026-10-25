@@ -11,18 +11,18 @@ namespace KumikoUI.Core.Models;
 public class SortColumnsChangingEventArgs : EventArgs
 {
     /// <summary>The column whose sort state is being toggled.</summary>
-    public GridColumn Column { get; }
+    public KumikoColumn Column { get; }
 
     /// <summary>Whether this is a multi-sort operation (modifier key held).</summary>
     public bool IsMultiSort { get; }
 
     /// <summary>The new sort direction that will be applied.</summary>
-    public GridSortDirection NewDirection { get; }
+    public KumikoSortDirection NewDirection { get; }
 
     /// <summary>Set to true to cancel the sort operation.</summary>
     public bool Cancel { get; set; }
 
-    public SortColumnsChangingEventArgs(GridColumn column, bool isMultiSort, GridSortDirection newDirection)
+    public SortColumnsChangingEventArgs(KumikoColumn column, bool isMultiSort, KumikoSortDirection newDirection)
     {
         Column = column;
         IsMultiSort = isMultiSort;

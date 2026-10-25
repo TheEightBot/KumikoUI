@@ -5,7 +5,7 @@ using KumikoUI.Core.Components;
 
 namespace KumikoUI.Core.Input;
 
-/// <summary>Provides data for the <see cref="GridInputController.RowTapped"/> and <see cref="GridInputController.RowDoubleTapped"/> events.</summary>
+/// <summary>Provides data for the <see cref="KumikoInputController.RowTapped"/> and <see cref="KumikoInputController.RowDoubleTapped"/> events.</summary>
 public class RowTappedEventArgs : EventArgs
 {
     /// <summary>Zero-based index of the tapped row.</summary>

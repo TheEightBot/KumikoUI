@@ -46,28 +46,28 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     // ── Rectangles ───────────────────────────────────────────────
 
     /// <inheritdoc />
-    public void DrawRect(GridRect rect, GridPaint paint)
+    public void DrawRect(KumikoRect rect, KumikoPaint paint)
     {
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Stroke);
         _canvas.DrawRect(ToSKRect(rect), skPaint);
     }
 
     /// <inheritdoc />
-    public void FillRect(GridRect rect, GridPaint paint)
+    public void FillRect(KumikoRect rect, KumikoPaint paint)
     {
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
         _canvas.DrawRect(ToSKRect(rect), skPaint);
     }
 
     /// <inheritdoc />
-    public void DrawRoundRect(GridRect rect, float cornerRadius, GridPaint paint)
+    public void DrawRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint)
     {
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Stroke);
         _canvas.DrawRoundRect(ToSKRect(rect), cornerRadius, cornerRadius, skPaint);
     }
 
     /// <inheritdoc />
-    public void FillRoundRect(GridRect rect, float cornerRadius, GridPaint paint)
+    public void FillRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint)
     {
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
         _canvas.DrawRoundRect(ToSKRect(rect), cornerRadius, cornerRadius, skPaint);
@@ -76,7 +76,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     // ── Lines ────────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public void DrawLine(float x1, float y1, float x2, float y2, GridPaint paint)
+    public void DrawLine(float x1, float y1, float x2, float y2, KumikoPaint paint)
     {
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Stroke);
         _canvas.DrawLine(x1, y1, x2, y2, skPaint);
@@ -85,7 +85,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     // ── Text ─────────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public void DrawText(string text, float x, float y, GridPaint paint)
+    public void DrawText(string text, float x, float y, KumikoPaint paint)
     {
         if (string.IsNullOrEmpty(text)) return;
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
@@ -98,9 +98,9 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     /// Text that exceeds the rectangle width is truncated with an ellipsis ("…") using a binary search
     /// to find the optimal truncation point.
     /// </remarks>
-    public void DrawTextInRect(string text, GridRect rect, GridPaint paint,
-        GridTextAlignment hAlign = GridTextAlignment.Left,
-        GridVerticalAlignment vAlign = GridVerticalAlignment.Center,
+    public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
+        KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
+        KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center,
         bool clip = true)
     {
         if (string.IsNullOrEmpty(text)) return;
@@ -122,16 +122,16 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         // Horizontal alignment
         float x = hAlign switch
         {
-            GridTextAlignment.Center => rect.X + (rect.Width - textWidth) / 2,
-            GridTextAlignment.Right => rect.Right - textWidth,
+            KumikoTextAlignment.Center => rect.X + (rect.Width - textWidth) / 2,
+            KumikoTextAlignment.Right => rect.Right - textWidth,
             _ => rect.X
         };
 
         // Vertical alignment (baseline)
         float y = vAlign switch
         {
-            GridVerticalAlignment.Top => rect.Y - metrics.Ascent,
-            GridVerticalAlignment.Bottom => rect.Bottom - metrics.Descent,
+            KumikoVerticalAlignment.Top => rect.Y - metrics.Ascent,
+            KumikoVerticalAlignment.Bottom => rect.Bottom - metrics.Descent,
             _ => rect.Y + (rect.Height - textHeight) / 2 - metrics.Ascent
         };
 
@@ -153,9 +153,9 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     // ── Text measuring ───────────────────────────────────────────
 
     /// <inheritdoc />
-    public GridSize MeasureText(string text, GridPaint paint)
+    public KumikoSize MeasureText(string text, KumikoPaint paint)
     {
-        if (string.IsNullOrEmpty(text)) return GridSize.Empty;
+        if (string.IsNullOrEmpty(text)) return KumikoSize.Empty;
 
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
         var skFont = GetOrCreateFont(paint);
@@ -164,21 +164,21 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         var metrics = skFont.Metrics;
         float height = metrics.Descent - metrics.Ascent;
 
-        return new GridSize(textWidth, height);
+        return new KumikoSize(textWidth, height);
     }
 
     /// <inheritdoc />
-    public GridFontMetrics GetFontMetrics(GridPaint paint)
+    public KumikoFontMetrics GetFontMetrics(KumikoPaint paint)
     {
         var skFont = GetOrCreateFont(paint);
         var metrics = skFont.Metrics;
-        return new GridFontMetrics(metrics.Ascent, metrics.Descent, metrics.Leading);
+        return new KumikoFontMetrics(metrics.Ascent, metrics.Descent, metrics.Leading);
     }
 
     // ── Clipping & transforms ────────────────────────────────────
 
     /// <inheritdoc />
-    public void ClipRect(GridRect rect) => _canvas.ClipRect(ToSKRect(rect));
+    public void ClipRect(KumikoRect rect) => _canvas.ClipRect(ToSKRect(rect));
 
     /// <inheritdoc />
     public void Save() => _canvas.Save();
@@ -196,7 +196,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     /// Supports <see cref="SKImage"/> and <see cref="SKBitmap"/> as the image object.
     /// Other types are silently ignored.
     /// </remarks>
-    public void DrawImage(object image, GridRect destRect)
+    public void DrawImage(object image, KumikoRect destRect)
     {
         // SkiaSharp 4 requires explicit sampling. SKSamplingOptions.Default (nearest neighbour)
         // matches what the v3 paint-less overloads used, so image cells render unchanged.
@@ -212,14 +212,14 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
 
     // ── Conversion helpers ───────────────────────────────────────
 
-    private static SKRect ToSKRect(GridRect r) => new(r.Left, r.Top, r.Right, r.Bottom);
-    private static SKColor ToSKColor(GridColor c) => new(c.R, c.G, c.B, c.A);
+    private static SKRect ToSKRect(KumikoRect r) => new(r.Left, r.Top, r.Right, r.Bottom);
+    private static SKColor ToSKColor(KumikoColor c) => new(c.R, c.G, c.B, c.A);
 
     /// <summary>
     /// Get or create a cached SKPaint for the given configuration.
     /// Cached paints are reused within the same frame to avoid native object churn.
     /// </summary>
-    private SKPaint GetOrCreatePaint(GridPaint paint, SKPaintStyle styleOverride)
+    private SKPaint GetOrCreatePaint(KumikoPaint paint, SKPaintStyle styleOverride)
     {
         var key = new PaintKey(paint.Color.ToUint32(), paint.StrokeWidth, styleOverride, paint.IsAntiAlias);
         if (!_paintCache.TryGetValue(key, out var skPaint))
@@ -240,7 +240,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     /// Get or create a cached SKFont for the given paint's font settings.
     /// Cached fonts are reused within the same frame to avoid native object churn.
     /// </summary>
-    private SKFont GetOrCreateFont(GridPaint paint)
+    private SKFont GetOrCreateFont(KumikoPaint paint)
     {
         var gridFont = paint.Font;
         var family = gridFont?.Family ?? "Default";

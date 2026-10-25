@@ -5,11 +5,11 @@ namespace KumikoUI.Core.Models;
 /// </summary>
 public class FilterChangingEventArgs : EventArgs
 {
-    public GridColumn Column { get; }
+    public KumikoColumn Column { get; }
     public FilterDescription? NewFilter { get; }
     public bool Cancel { get; set; }
 
-    public FilterChangingEventArgs(GridColumn column, FilterDescription? newFilter)
+    public FilterChangingEventArgs(KumikoColumn column, FilterDescription? newFilter)
     {
         Column = column;
         NewFilter = newFilter;

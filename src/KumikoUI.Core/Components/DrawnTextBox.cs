@@ -22,23 +22,23 @@ public class DrawnTextBox : DrawnComponent
     // ── Style ───────────────────────────────────────────────────
 
     /// <summary>Font used for text input and placeholder.</summary>
-    public GridFont Font { get; set; } = new("Default", 13);
+    public KumikoFont Font { get; set; } = new("Default", 13);
     /// <summary>Color of the entered text.</summary>
-    public GridColor TextColor { get; set; } = new(30, 30, 30);
+    public KumikoColor TextColor { get; set; } = new(30, 30, 30);
     /// <summary>Background fill color when the text box is not focused.</summary>
-    public GridColor BackgroundColor { get; set; } = GridColor.White;
+    public KumikoColor BackgroundColor { get; set; } = KumikoColor.White;
     /// <summary>Border color when the text box is not focused.</summary>
-    public GridColor BorderColor { get; set; } = new(180, 180, 180);
+    public KumikoColor BorderColor { get; set; } = new(180, 180, 180);
     /// <summary>Border color applied when the text box has input focus.</summary>
-    public GridColor FocusedBorderColor { get; set; } = new(0, 120, 215);
+    public KumikoColor FocusedBorderColor { get; set; } = new(0, 120, 215);
     /// <summary>Color used to highlight the selected text range.</summary>
-    public GridColor SelectionHighlightColor { get; set; } = new(0, 120, 215, 80);
+    public KumikoColor SelectionHighlightColor { get; set; } = new(0, 120, 215, 80);
     /// <summary>Color of the blinking text cursor.</summary>
-    public GridColor CursorColor { get; set; } = new(0, 0, 0);
+    public KumikoColor CursorColor { get; set; } = new(0, 0, 0);
     /// <summary>Color of the placeholder text shown when the field is empty.</summary>
-    public GridColor PlaceholderColor { get; set; } = new(160, 160, 160);
+    public KumikoColor PlaceholderColor { get; set; } = new(160, 160, 160);
     /// <summary>Background fill color applied when the text box has input focus.</summary>
-    public GridColor EditingBackgroundColor { get; set; } = new(232, 242, 254); // Light blue tint
+    public KumikoColor EditingBackgroundColor { get; set; } = new(232, 242, 254); // Light blue tint
     /// <summary>Horizontal padding inside the text box.</summary>
     public float Padding { get; set; } = 4f;
     /// <summary>Thickness of the border stroke.</summary>
@@ -53,10 +53,10 @@ public class DrawnTextBox : DrawnComponent
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Applies theme colors from a <see cref="DataGridStyle"/> so the text box
+    /// Applies theme colors from a <see cref="KumikoStyle"/> so the text box
     /// visually matches the current grid theme.
     /// </summary>
-    public void ApplyTheme(DataGridStyle style)
+    public void ApplyTheme(KumikoStyle style)
     {
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
@@ -69,13 +69,13 @@ public class DrawnTextBox : DrawnComponent
         CursorColor = txt;
 
         // Editing background: accent with very low alpha blended over bg
-        EditingBackgroundColor = new GridColor(
+        EditingBackgroundColor = new KumikoColor(
             (byte)((style.AccentColor.R * 0.15) + (bg.R * 0.85)),
             (byte)((style.AccentColor.G * 0.15) + (bg.G * 0.85)),
             (byte)((style.AccentColor.B * 0.15) + (bg.B * 0.85)));
 
         // Placeholder: midpoint between text and background
-        PlaceholderColor = new GridColor(
+        PlaceholderColor = new KumikoColor(
             (byte)((txt.R + bg.R) / 2),
             (byte)((txt.G + bg.G) / 2),
             (byte)((txt.B + bg.B) / 2));
@@ -141,10 +141,10 @@ public class DrawnTextBox : DrawnComponent
     public string? ValidationMessage { get; set; }
 
     /// <summary>Border color used when validation state is Error.</summary>
-    public GridColor ErrorBorderColor { get; set; } = new(220, 50, 50);
+    public KumikoColor ErrorBorderColor { get; set; } = new(220, 50, 50);
 
     /// <summary>Border color used when validation state is Warning.</summary>
-    public GridColor WarningBorderColor { get; set; } = new(230, 170, 0);
+    public KumikoColor WarningBorderColor { get; set; } = new(230, 170, 0);
 
     /// <summary>Current cursor position (character index).</summary>
     public int CursorPosition => _cursorPosition;
@@ -167,7 +167,7 @@ public class DrawnTextBox : DrawnComponent
     // ── Events ──────────────────────────────────────────────────
 
     /// <summary>Raised when text changes via user input.</summary>
-    public event EventHandler<GridTextChangedEventArgs>? TextChanged;
+    public event EventHandler<KumikoTextChangedEventArgs>? TextChanged;
 
     /// <summary>Raised when Enter is pressed during editing.</summary>
     public event Action? Committed;
@@ -207,12 +207,12 @@ public class DrawnTextBox : DrawnComponent
         var bgColor = IsFocused ? EditingBackgroundColor : BackgroundColor;
 
         // Background
-        ctx.FillRect(b, new GridPaint { Color = bgColor, Style = PaintStyle.Fill });
+        ctx.FillRect(b, new KumikoPaint { Color = bgColor, Style = PaintStyle.Fill });
 
         // Border — thicker when focused
         float bw = IsFocused ? BorderWidth + 1f : BorderWidth;
         if (Validation == ValidationState.Error) bw = BorderWidth + 1.5f;
-        ctx.DrawRect(b, new GridPaint
+        ctx.DrawRect(b, new KumikoPaint
         {
             Color = borderColor,
             Style = PaintStyle.Stroke,
@@ -227,11 +227,11 @@ public class DrawnTextBox : DrawnComponent
         float innerH = b.Height;
 
         ctx.Save();
-        ctx.ClipRect(new GridRect(innerX, innerY, innerW, innerH));
+        ctx.ClipRect(new KumikoRect(innerX, innerY, innerW, innerH));
         ctx.Translate(-_scrollOffset, 0);
 
         // Compute properly centered text baseline using font metrics
-        var textPaint = new GridPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
+        var textPaint = new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
         var fontMetrics = ctx.GetFontMetrics(textPaint);
         float textHeight = fontMetrics.TextHeight;
         float textBaseline = b.Y + (b.Height - textHeight) / 2 - fontMetrics.Ascent;
@@ -249,7 +249,7 @@ public class DrawnTextBox : DrawnComponent
         }
         else if (!IsFocused && !string.IsNullOrEmpty(Placeholder))
         {
-            var phPaint = new GridPaint { Color = PlaceholderColor, Style = PaintStyle.Fill, Font = Font };
+            var phPaint = new KumikoPaint { Color = PlaceholderColor, Style = PaintStyle.Fill, Font = Font };
             ctx.DrawText(Placeholder, innerX, textBaseline, phPaint);
         }
 
@@ -270,11 +270,11 @@ public class DrawnTextBox : DrawnComponent
         float startX = textX + MeasureSubstring(0, start);
         float endX = textX + MeasureSubstring(0, end);
 
-        var paint = new GridPaint { Color = SelectionHighlightColor, Style = PaintStyle.Fill };
-        ctx.FillRect(new GridRect(startX, y + 2, endX - startX, height - 4), paint);
+        var paint = new KumikoPaint { Color = SelectionHighlightColor, Style = PaintStyle.Fill };
+        ctx.FillRect(new KumikoRect(startX, y + 2, endX - startX, height - 4), paint);
     }
 
-    private void DrawCursor(IDrawingContext ctx, float textX, float y, float height, GridFontMetrics fontMetrics)
+    private void DrawCursor(IDrawingContext ctx, float textX, float y, float height, KumikoFontMetrics fontMetrics)
     {
         // Blink every 530ms — but always visible for first 530ms after reset
         long elapsed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _cursorBlinkStart;
@@ -288,7 +288,7 @@ public class DrawnTextBox : DrawnComponent
         float cursorTop = textTop + 1f;
         float cursorBottom = textTop + textHeight - 1f;
 
-        var paint = new GridPaint { Color = CursorColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
+        var paint = new KumikoPaint { Color = CursorColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
         ctx.DrawLine(cursorX, cursorTop, cursorX, cursorBottom, paint);
     }
 
@@ -296,7 +296,7 @@ public class DrawnTextBox : DrawnComponent
     {
         if (_measureContext == null || start >= end || end > _text.Length) return 0;
         string sub = _text.Substring(start, end - start);
-        return _measureContext.MeasureText(sub, new GridPaint { Font = Font }).Width;
+        return _measureContext.MeasureText(sub, new KumikoPaint { Font = Font }).Width;
     }
 
     // ── Focus ───────────────────────────────────────────────────
@@ -329,7 +329,7 @@ public class DrawnTextBox : DrawnComponent
                 var old = _text;
                 _text = formatted;
                 _cursorPosition = Math.Min(_cursorPosition, _text.Length);
-                TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
+                TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
                 RaiseValueChanged(old, _text);
             }
         }
@@ -338,7 +338,7 @@ public class DrawnTextBox : DrawnComponent
     // ── Pointer input ───────────────────────────────────────────
 
     /// <inheritdoc />
-    public override bool OnPointerDown(GridPointerEventArgs e)
+    public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
         if (!IsFocused || IsReadOnly) return false;
 
@@ -361,7 +361,7 @@ public class DrawnTextBox : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnPointerMove(GridPointerEventArgs e)
+    public override bool OnPointerMove(KumikoPointerEventArgs e)
     {
         if (!IsFocused || _selectionStart < 0) return false;
 
@@ -396,7 +396,7 @@ public class DrawnTextBox : DrawnComponent
     // ── Keyboard input ──────────────────────────────────────────
 
     /// <inheritdoc />
-    public override bool OnKeyDown(GridKeyEventArgs e)
+    public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
         if (!IsFocused) return false;
 
@@ -405,54 +405,54 @@ public class DrawnTextBox : DrawnComponent
 
         switch (e.Key)
         {
-            case GridKey.Left:
+            case KumikoKey.Left:
                 MoveCursor(ctrl ? FindPreviousWordBoundary() : _cursorPosition - 1, shift);
                 return true;
 
-            case GridKey.Right:
+            case KumikoKey.Right:
                 MoveCursor(ctrl ? FindNextWordBoundary() : _cursorPosition + 1, shift);
                 return true;
 
-            case GridKey.Home:
+            case KumikoKey.Home:
                 MoveCursor(0, shift);
                 return true;
 
-            case GridKey.End:
+            case KumikoKey.End:
                 MoveCursor(_text.Length, shift);
                 return true;
 
-            case GridKey.Backspace:
+            case KumikoKey.Backspace:
                 if (!IsReadOnly) HandleBackspace(ctrl);
                 return true;
 
-            case GridKey.Delete:
+            case KumikoKey.Delete:
                 if (!IsReadOnly) HandleDelete(ctrl);
                 return true;
 
-            case GridKey.Enter:
+            case KumikoKey.Enter:
                 Committed?.Invoke();
                 return true;
 
-            case GridKey.Escape:
+            case KumikoKey.Escape:
                 Cancelled?.Invoke();
                 return true;
 
-            case GridKey.A:
+            case KumikoKey.A:
                 if (ctrl) { SelectAll(); return true; }
                 if (!IsReadOnly && e.Character.HasValue) InsertCharacter(e.Character.Value);
                 return true;
 
-            case GridKey.C:
+            case KumikoKey.C:
                 if (ctrl) { HandleCopy(); return true; }
                 if (!IsReadOnly && e.Character.HasValue) InsertCharacter(e.Character.Value);
                 return true;
 
-            case GridKey.V:
+            case KumikoKey.V:
                 if (ctrl) { HandlePaste(); return true; }
                 if (!IsReadOnly && e.Character.HasValue) InsertCharacter(e.Character.Value);
                 return true;
 
-            case GridKey.X:
+            case KumikoKey.X:
                 if (ctrl) { HandleCut(); return true; }
                 if (!IsReadOnly && e.Character.HasValue) InsertCharacter(e.Character.Value);
                 return true;
@@ -537,7 +537,7 @@ public class DrawnTextBox : DrawnComponent
 
         if (old != _text)
         {
-            TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
+            TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
             RaiseValueChanged(old, _text);
         }
 
@@ -593,7 +593,7 @@ public class DrawnTextBox : DrawnComponent
         _text = _text.Remove(deleteStart, deleteCount);
         _cursorPosition = deleteStart;
         EnsureCursorVisible();
-        TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
+        TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
         RaiseValueChanged(old, _text);
         InvalidateVisual();
     }
@@ -613,7 +613,7 @@ public class DrawnTextBox : DrawnComponent
 
         var old = _text;
         _text = _text.Remove(_cursorPosition, deleteCount);
-        TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
+        TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
         RaiseValueChanged(old, _text);
         InvalidateVisual();
     }
@@ -629,7 +629,7 @@ public class DrawnTextBox : DrawnComponent
         _cursorPosition = start;
         ClearSelection();
         EnsureCursorVisible();
-        TextChanged?.Invoke(this, new GridTextChangedEventArgs(old, _text));
+        TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
         RaiseValueChanged(old, _text);
         InvalidateVisual();
     }

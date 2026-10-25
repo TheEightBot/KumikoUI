@@ -29,7 +29,7 @@ dispatch, models, selection, filtering, scrolling, etc.
 The only non-trivial logic in the host is the input mapping. Factor it into **pure static methods** so
 it can be unit-tested without a live UI:
 
-- [x] Put `VirtualKey → GridKey` and `VirtualKeyModifiers → InputModifiers` in a small static class
+- [x] Put `VirtualKey → KumikoKey` and `VirtualKeyModifiers → InputModifiers` in a small static class
   (e.g. `KumikoUI.Uno.Input.InputMapping`) with no control state. *(Done in Phase 04:
   `src/KumikoUI.Uno/Input/InputMapping.cs` — `ToGridKey`, `ToInputModifiers` are pure enum→enum
   with zero `KumikoDataGrid`/element dependency.)*
@@ -40,7 +40,7 @@ it can be unit-tested without a live UI:
   > documented table: arrows · Home/End · PageUp/PageDown · Tab · Enter · Escape · Space · Delete ·
   > **Back→Backspace** · F2 · A/C/V/X/Z; modifiers Shift/Control/**Menu→Alt**/**Windows→Meta** plus
   > combinations. A whole-enum sweep also asserts every *other* `VirtualKey` collapses to
-  > `GridKey.None`, so an accidental added/dropped mapping fails the suite.
+  > `KumikoKey.None`, so an accidental added/dropped mapping fails the suite.
   > `GetLiveModifiers()` is **excluded** — it reads thread keyboard state via `InputKeyboardSource`
   > and needs a live Uno runtime, which is out of scope for a pure unit test.
 

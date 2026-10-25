@@ -19,15 +19,15 @@ public class DrawnCheckBox : DrawnComponent
     /// <summary>Stroke width used to draw the check mark inside the box.</summary>
     public float CheckStrokeWidth { get; set; } = 2f;
     /// <summary>Border color of the unchecked checkbox box.</summary>
-    public GridColor BoxBorderColor { get; set; } = new(120, 120, 120);
+    public KumikoColor BoxBorderColor { get; set; } = new(120, 120, 120);
     /// <summary>Fill color of the checkbox box when unchecked.</summary>
-    public GridColor BoxFillColor { get; set; } = GridColor.White;
+    public KumikoColor BoxFillColor { get; set; } = KumikoColor.White;
     /// <summary>Fill color of the checkbox box when checked.</summary>
-    public GridColor CheckedBoxFillColor { get; set; } = new(0, 120, 215);
+    public KumikoColor CheckedBoxFillColor { get; set; } = new(0, 120, 215);
     /// <summary>Color of the check mark glyph drawn inside the box.</summary>
-    public GridColor CheckMarkColor { get; set; } = GridColor.White;
+    public KumikoColor CheckMarkColor { get; set; } = KumikoColor.White;
     /// <summary>Color of the indeterminate-state dash drawn inside the box.</summary>
-    public GridColor IndeterminateColor { get; set; } = new(0, 120, 215);
+    public KumikoColor IndeterminateColor { get; set; } = new(0, 120, 215);
     /// <summary>Corner radius for the rounded checkbox box.</summary>
     public float CornerRadius { get; set; } = 3f;
 
@@ -71,16 +71,16 @@ public class DrawnCheckBox : DrawnComponent
         // Center the checkbox box within bounds
         float boxX = b.X + (b.Width - BoxSize) / 2;
         float boxY = b.Y + (b.Height - BoxSize) / 2;
-        var boxRect = new GridRect(boxX, boxY, BoxSize, BoxSize);
+        var boxRect = new KumikoRect(boxX, boxY, BoxSize, BoxSize);
 
         // Draw box background
         var fillColor = _state == DrawnCheckState.Checked ? CheckedBoxFillColor : BoxFillColor;
-        ctx.FillRoundRect(boxRect, CornerRadius, new GridPaint { Color = fillColor, Style = PaintStyle.Fill });
+        ctx.FillRoundRect(boxRect, CornerRadius, new KumikoPaint { Color = fillColor, Style = PaintStyle.Fill });
 
         // Draw box border
-        ctx.DrawRoundRect(boxRect, CornerRadius, new GridPaint
+        ctx.DrawRoundRect(boxRect, CornerRadius, new KumikoPaint
         {
-            Color = IsFocused ? new GridColor(0, 120, 215) : BoxBorderColor,
+            Color = IsFocused ? new KumikoColor(0, 120, 215) : BoxBorderColor,
             Style = PaintStyle.Stroke,
             StrokeWidth = StrokeWidth
         });
@@ -99,7 +99,7 @@ public class DrawnCheckBox : DrawnComponent
 
     private void DrawCheckMark(IDrawingContext ctx, float boxX, float boxY)
     {
-        var paint = new GridPaint
+        var paint = new KumikoPaint
         {
             Color = CheckMarkColor,
             Style = PaintStyle.Stroke,
@@ -120,7 +120,7 @@ public class DrawnCheckBox : DrawnComponent
 
     private void DrawIndeterminate(IDrawingContext ctx, float boxX, float boxY)
     {
-        var paint = new GridPaint
+        var paint = new KumikoPaint
         {
             Color = IndeterminateColor,
             Style = PaintStyle.Fill
@@ -130,13 +130,13 @@ public class DrawnCheckBox : DrawnComponent
         float dashH = 3f;
         float dashX = boxX + (BoxSize - dashW) / 2;
         float dashY = boxY + (BoxSize - dashH) / 2;
-        ctx.FillRect(new GridRect(dashX, dashY, dashW, dashH), paint);
+        ctx.FillRect(new KumikoRect(dashX, dashY, dashW, dashH), paint);
     }
 
     // ── Input ───────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public override bool OnPointerUp(GridPointerEventArgs e)
+    public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
         if (!IsEnabled) return false;
         Toggle();
@@ -144,9 +144,9 @@ public class DrawnCheckBox : DrawnComponent
     }
 
     /// <inheritdoc />
-    public override bool OnKeyDown(GridKeyEventArgs e)
+    public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
-        if (e.Key == GridKey.Space || e.Key == GridKey.Enter)
+        if (e.Key == KumikoKey.Space || e.Key == KumikoKey.Enter)
         {
             Toggle();
             return true;

@@ -11,12 +11,12 @@ namespace KumikoUI.Core.Models;
 public class SortColumnsChangedEventArgs : EventArgs
 {
     /// <summary>The column whose sort state was toggled.</summary>
-    public GridColumn Column { get; }
+    public KumikoColumn Column { get; }
 
     /// <summary>All columns that currently have an active sort, ordered by SortOrder.</summary>
-    public IReadOnlyList<GridColumn> ActiveSortColumns { get; }
+    public IReadOnlyList<KumikoColumn> ActiveSortColumns { get; }
 
-    public SortColumnsChangedEventArgs(GridColumn column, IReadOnlyList<GridColumn> activeSortColumns)
+    public SortColumnsChangedEventArgs(KumikoColumn column, IReadOnlyList<KumikoColumn> activeSortColumns)
     {
         Column = column;
         ActiveSortColumns = activeSortColumns;

@@ -3,10 +3,10 @@ mode: agent
 description: Set up sorting, filtering, grouping, and summaries on KumikoDataGrid
 ---
 
-# Configure DataGridSource Features
+# Configure KumikoSource Features
 
 Adds sorting, filtering, grouping, and/or summary rows to an existing `KumikoDataGrid`
-binding. All configuration targets `DataGridSource` in `KumikoUI.Core.Models`.
+binding. All configuration targets `KumikoSource` in `KumikoUI.Core.Models`.
 
 ## What to ask before generating
 
@@ -25,7 +25,7 @@ To enable/disable per-column:
 
 ```csharp
 // XAML:
-<core:GridColumn AllowSorting="True" ... />
+<core:KumikoColumn AllowSorting="True" ... />
 
 // Code (default is True):
 column.AllowSorting = false;  // disable for specific column
@@ -34,12 +34,12 @@ column.AllowSorting = false;  // disable for specific column
 **Programmatic sort:**
 ```csharp
 // Single column ascending:
-kumikoDataGrid.Source.ApplySort(column, GridSortDirection.Ascending);
+kumikoDataGrid.Source.ApplySort(column, KumikoSortDirection.Ascending);
 
 // Multi-column (set SortOrder to control priority):
-columnA.SortDirection = GridSortDirection.Ascending;
+columnA.SortDirection = KumikoSortDirection.Ascending;
 columnA.SortOrder     = 1;
-columnB.SortDirection = GridSortDirection.Descending;
+columnB.SortDirection = KumikoSortDirection.Descending;
 columnB.SortOrder     = 2;
 kumikoDataGrid.Source.ApplySorts();
 ```

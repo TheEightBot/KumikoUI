@@ -20,7 +20,7 @@ namespace KumikoUI.Uno;
 /// <see cref="SKXamlCanvas"/> child — there are no templated parts or visual
 /// states. Mirrors <c>KumikoUI.Maui.KumikoDataGrid</c> (which derives from
 /// <c>Grid</c> and hosts a single canvas) so the reused
-/// <see cref="DataGridRenderer"/> / <see cref="GridInputController"/> drive the
+/// <see cref="KumikoRenderer"/> / <see cref="KumikoInputController"/> drive the
 /// same way on both platforms.
 /// </summary>
 /// <remarks>
@@ -33,13 +33,13 @@ namespace KumikoUI.Uno;
 public partial class KumikoDataGrid : Grid
 {
     private readonly SKXamlCanvas _canvasView = new();
-    private readonly DataGridRenderer _renderer = new();
-    private readonly DataGridSource _dataSource = new();
+    private readonly KumikoRenderer _renderer = new();
+    private readonly KumikoSource _dataSource = new();
     private readonly ScrollState _scroll = new();
-    private readonly DataGridSelectionModel _selection = new();
-    private readonly GridInputController _inputController = new();
+    private readonly KumikoSelectionModel _selection = new();
+    private readonly KumikoInputController _inputController = new();
     private readonly EditSession _editSession = new();
-    private DataGridStyle _style = new();
+    private KumikoStyle _style = new();
 
     /// <summary>
     /// Creates a new <see cref="KumikoDataGrid"/>, adds the Skia canvas child, and
@@ -60,7 +60,7 @@ public partial class KumikoDataGrid : Grid
 
         // Auto-init the bindable collections so XAML can add items directly,
         // matching the MAUI control's ctor.
-        Columns = new ObservableCollection<GridColumn>();
+        Columns = new ObservableCollection<KumikoColumn>();
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
         // Core "invalidate" signals → request a single canvas repaint.
@@ -96,13 +96,13 @@ public partial class KumikoDataGrid : Grid
     // ── Public API (parity with MAUI) ─────────────────────────────
 
     /// <summary>Gets the underlying data source.</summary>
-    public DataGridSource DataSource => _dataSource;
+    public KumikoSource DataSource => _dataSource;
 
     /// <summary>Gets the selection model.</summary>
-    public DataGridSelectionModel Selection => _selection;
+    public KumikoSelectionModel Selection => _selection;
 
     /// <summary>Gets the input controller for advanced event wiring.</summary>
-    public GridInputController InputController => _inputController;
+    public KumikoInputController InputController => _inputController;
 
     /// <summary>Gets the edit session for inline cell editing.</summary>
     public EditSession EditSession => _editSession;
@@ -115,7 +115,7 @@ public partial class KumikoDataGrid : Grid
     }
 
     /// <summary>Gets or sets the grid style / theme.</summary>
-    public DataGridStyle GridStyle
+    public KumikoStyle GridStyle
     {
         get => _style;
         set
@@ -130,7 +130,7 @@ public partial class KumikoDataGrid : Grid
     public void SetItemsSource(IEnumerable items) => _dataSource.SetItems(items);
 
     /// <summary>Set the column definitions imperatively (alternative to <see cref="Columns"/>).</summary>
-    public void SetColumns(IEnumerable<GridColumn> columns)
+    public void SetColumns(IEnumerable<KumikoColumn> columns)
     {
         _dataSource.SetColumns(columns);
         InvalidateSurface();
@@ -187,7 +187,7 @@ public partial class KumikoDataGrid : Grid
 
     // ── Core structural event handlers (forwarded into the data source) ──
 
-    private void OnColumnReordered(object? sender, GridColumnReorderedEventArgs e)
+    private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
         => _dataSource.ReorderColumn(e.OldIndex, e.NewIndex);
 
     private void OnRowReordered(object? sender, RowReorderedEventArgs e)
@@ -199,7 +199,7 @@ public partial class KumikoDataGrid : Grid
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
         var measureCtx = new SkiaDrawingContext(canvas);
-        var layoutEngine = new GridLayoutEngine();
+        var layoutEngine = new KumikoLayoutEngine();
 
         float optimalWidth = layoutEngine.CalculateAutoFitWidth(
             e.Column, _dataSource, measureCtx, _style);

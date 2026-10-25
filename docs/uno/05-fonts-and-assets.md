@@ -21,7 +21,7 @@ particular, CJK and icon fonts garble without an explicitly registered typeface 
 | `TryGetTypeface(string family, out SKTypeface?)` | Used internally by `SkiaDrawingContext`. |
 | `Clear()` | Reset (tests). |
 
-A family registered here is then usable from `DataGridStyle` / `GridFont.Family` (e.g. header/cell
+A family registered here is then usable from `KumikoStyle` / `KumikoFont.Family` (e.g. header/cell
 fonts), identical to MAUI.
 
 ## 2. Loading assets on Uno (the platform-specific bit)

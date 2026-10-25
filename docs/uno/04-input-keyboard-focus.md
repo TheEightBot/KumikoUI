@@ -4,8 +4,8 @@ Goal: translate Uno/WinUI pointer, keyboard, and focus events into the **existin
 Core already owns all behavior; the host only adapts event shapes. No Core changes.
 
 Core entry points (unchanged):
-`GridInputController.HandlePointer(GridPointerEventArgs, scroll, selection, style, dataSource)`,
-`HandleKey(GridKeyEventArgs, …)`, `UpdateInertialScroll(scroll, 16f)`.
+`KumikoInputController.HandlePointer(KumikoPointerEventArgs, scroll, selection, style, dataSource)`,
+`HandleKey(KumikoKeyEventArgs, …)`, `UpdateInertialScroll(scroll, 16f)`.
 
 > **Status:** Implemented for all heads (desktop, iOS, Android, WASM). Wiring lives in
 > `src/KumikoUI.Uno/KumikoDataGrid.Input.cs` (pointer + keyboard + timer, a partial of `KumikoDataGrid`),
@@ -51,12 +51,12 @@ space the renderer was fed in [03 §4](03-kumikodatagrid-host.md#4-dpi--scaling)
           FocusKeyboardInput();
   }
   ```
-- [x] Build `GridPointerEventArgs` (mirrors MAUI's `OnCanvasTouch`, just a different source type):
+- [x] Build `KumikoPointerEventArgs` (mirrors MAUI's `OnCanvasTouch`, just a different source type):
   ```csharp
   private void DispatchPointer(PointerRoutedEventArgs e, PointerPoint point, InputAction action, int clickCount = 1)
   {
       var props = point.Properties;
-      var evt = new GridPointerEventArgs
+      var evt = new KumikoPointerEventArgs
       {
           X = (float)point.Position.X,
           Y = (float)point.Position.Y,
@@ -79,7 +79,7 @@ space the renderer was fed in [03 §4](03-kumikodatagrid-host.md#4-dpi--scaling)
   > field), so pointer-event modifiers are read directly off the args — unlike `KeyRoutedEventArgs`
   > (see §2). `ScrollDeltaX` is populated only when `IsHorizontalMouseWheel` is set.
 - [x] **Hover vs. drag (desktop fix):** WinUI/Uno raises `PointerMoved` on every mouse hover, even
-  with no button pressed. Core's `GridInputController.HandlePointerMove` has no concept of pointer
+  with no button pressed. Core's `KumikoInputController.HandlePointerMove` has no concept of pointer
   contact — it assumes `Moved` only arrives while a button or finger is down (the MAUI
   `SKCanvasView` contract). Without a guard, plain hover reaches Core and is mis-read as a pan/drag.
   Fix: `OnPointerMoved` checks `PointerPoint.IsInContact` and returns early when `false`. Real drags
@@ -271,12 +271,12 @@ first-responder). On desktop/WASM it routes subsequent `KeyDown`/`TextChanged` e
 
 **`OnProxyTextChanged`** (soft-keyboard / IME / typed-char path):
 1. Guard: `if (_suppressProxyTextChanged) return`.
-2. Empty new text → Backspace (`HandleEditKey(GridKey.Backspace)`) + `ResetProxy()`.
+2. Empty new text → Backspace (`HandleEditKey(KumikoKey.Backspace)`) + `ResetProxy()`.
 3. Otherwise, extract newly inserted characters via sentinel-diff:
    - Standard append (`sentinel + "a"`): take the suffix after `oldText`.
    - IME full-replacement: strip the sentinel if embedded; use remaining text.
-4. For each extracted char: `\n`/`\r` → `HandleEditKey(GridKey.Enter)`, `\t` → `HandleEditKey(GridKey.Tab)`,
-   otherwise → `HandleEditChar(ch)` which builds `GridKeyEventArgs { Key=None, Character=ch }`.
+4. For each extracted char: `\n`/`\r` → `HandleEditKey(KumikoKey.Enter)`, `\t` → `HandleEditKey(KumikoKey.Tab)`,
+   otherwise → `HandleEditChar(ch)` which builds `KumikoKeyEventArgs { Key=None, Character=ch }`.
 5. `ResetProxy()`.
 6. **No edit-state guard** — Core decides whether to start or continue an edit.
 
@@ -314,7 +314,7 @@ else
 | **Click a cell** | `OnPointerPressed` → `DispatchPointer` (Core selects cell) → `FocusKeyboardInput()` → proxy focused |
 | **Arrow / Tab / Home / End** | `OnProxyKeyDown` → `InputMapping.ToGridKey` → `HandleEditKey` → Core navigates; `e.Handled=true` blocks TextBox caret movement |
 | **Type a character (type-to-edit)** | Char appears in proxy → `OnProxyTextChanged` → `HandleEditChar(ch)` → Core Typing trigger → `CellBeginEdit` → `FocusKeyboardInput()` (proxy already focused) → edit continues via same path |
-| **F2 (explicit edit start)** | `OnProxyKeyDown` → `HandleEditKey(GridKey.F2)` → Core → `CellBeginEdit` → `FocusKeyboardInput()` |
+| **F2 (explicit edit start)** | `OnProxyKeyDown` → `HandleEditKey(KumikoKey.F2)` → Core → `CellBeginEdit` → `FocusKeyboardInput()` |
 | **Double-click (edit start)** | `DispatchPointer(ClickCount=2)` → Core → `CellBeginEdit` → `FocusKeyboardInput()` |
 | **Typing during edit** | Chars arrive at proxy `TextChanged` → `HandleEditChar(ch)` → Core editor appends |
 | **Backspace during edit** | `OnProxyKeyDown` → `HandleEditKey(Backspace)` → `e.Handled=true` (no sentinel deletion) |
@@ -330,7 +330,7 @@ else
 | **Long-press** | `OnHolding` → `LongPress` → Core context action |
 | **Typing during edit** | Soft keyboard injects into proxy `TextChanged` → `HandleEditChar` → Core editor appends |
 | **Backspace on soft keyboard** | Proxy text becomes empty → `OnProxyTextChanged` → `HandleEditKey(Backspace)` |
-| **Done / Return on soft keyboard** | `\n` in `OnProxyTextChanged` → `HandleEditKey(GridKey.Enter)` → Core commits → `CellEndEdit` → `ResetProxy()` + `Focus(grid)` → soft keyboard dismisses |
+| **Done / Return on soft keyboard** | `\n` in `OnProxyTextChanged` → `HandleEditKey(KumikoKey.Enter)` → Core commits → `CellEndEdit` → `ResetProxy()` + `Focus(grid)` → soft keyboard dismisses |
 
 ### No double-handling
 
@@ -400,8 +400,8 @@ else
 - [x] Pointer + keyboard + focus + inertial/cursor-blink timers are fully wired on `net9.0-desktop`
   and the project **compiles cleanly** (`dotnet build … -f net9.0-desktop` → 0 errors; the only
   warnings are pre-existing `CS1591` doc warnings from `KumikoUI.Core`/`KumikoUI.SkiaSharp`).
-  Every input path constructs `GridPointerEventArgs`/`GridKeyEventArgs` correctly and calls the right
-  Core method; `VirtualKey→GridKey` mapping is complete; handlers attach on `Loaded` and fully detach
+  Every input path constructs `KumikoPointerEventArgs`/`KumikoKeyEventArgs` correctly and calls the right
+  Core method; `VirtualKey→KumikoKey` mapping is complete; handlers attach on `Loaded` and fully detach
   on `Unloaded`; all timers stop on `Unloaded`.
 - [x] `CharacterReceived` removed from grid subscription — no double-fire risk on Windows; no dead
   stub on WASM/iOS. All character input flows through `OnProxyTextChanged` only.

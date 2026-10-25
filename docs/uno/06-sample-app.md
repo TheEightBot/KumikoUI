@@ -78,16 +78,16 @@ with the same data/columns. **All six pages were ported** (none deferred), reach
   (single `RebuildView`), with timing readout. (← `LargeDataPage`)
 - [x] **Grouping** — `GroupingPage`: group by Department/Level/both, expand/collapse all, toggle a group
   summary row, toggle filtering — all via `kumiko.DataSource.*`. (← `GroupingPage`)
-- [x] **Theming** — `ThemingPage`: built-in Light/Dark/HighContrast (via `DataGridTheme.Create(mode)`), three
+- [x] **Theming** — `ThemingPage`: built-in Light/Dark/HighContrast (via `KumikoTheme.Create(mode)`), three
   hand-built custom palettes (Ocean/Forest/Sunset), and live header-colour RGB sliders. **Note:** the Uno
   `KumikoDataGrid` exposes **no `Theme` DP** (unlike MAUI's `kumiko.Theme`); themes are applied by assigning the
-  produced `DataGridStyle` to `kumiko.GridStyle` — same end result. (← `ThemingPage`)
+  produced `KumikoStyle` to `kumiko.GridStyle` — same end result. (← `ThemingPage`)
 - [x] **MVVM actions** — `MvvmActionsPage`: per-column `EditTriggers` overrides + an Actions column
   (`ActionButtonsCellRenderer` w/ Details/Delete). **Note:** uses the framework-agnostic Core
   `ActionButtonDefinition.Command` (`ICommand`) built in code-behind with a small `RelayCommand<T>` — **not**
   MAUI's `MauiActionButtonDefinition` XAML binding (MAUI-specific). Confirmation/details use a WinUI
   `ContentDialog` instead of MAUI's `DisplayAlert`/modal page. (← `MvvmActionsPage`)
-- [x] **Custom fonts** — `CustomFontsPage`: Japanese (CJK) headers via `NotoSansJP` (`DataGridStyle`
+- [x] **Custom fonts** — `CustomFontsPage`: Japanese (CJK) headers via `NotoSansJP` (`KumikoStyle`
   header/cell fonts) + a Material-Icons status column via a small `IconFontCellRenderer : ICellRenderer`,
   proving [05](05-fonts-and-assets.md). (← `CustomFontsPage`)
 

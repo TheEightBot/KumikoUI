@@ -9,14 +9,14 @@ namespace KumikoUI.Core.Components;
 /// </summary>
 public abstract class DrawnComponent
 {
-    private GridRect _bounds;
+    private KumikoRect _bounds;
     private bool _isFocused;
     private bool _isEnabled = true;
     private bool _isVisible = true;
     private int _zOrder;
 
     /// <summary>Gets or sets the bounding rectangle of this component.</summary>
-    public GridRect Bounds
+    public KumikoRect Bounds
     {
         get => _bounds;
         set
@@ -104,19 +104,19 @@ public abstract class DrawnComponent
         IsVisible && IsEnabled && _bounds.Contains(x, y);
 
     /// <summary>Handle pointer down. Return true if handled.</summary>
-    public virtual bool OnPointerDown(GridPointerEventArgs e) => false;
+    public virtual bool OnPointerDown(KumikoPointerEventArgs e) => false;
 
     /// <summary>Handle pointer up. Return true if handled.</summary>
-    public virtual bool OnPointerUp(GridPointerEventArgs e) => false;
+    public virtual bool OnPointerUp(KumikoPointerEventArgs e) => false;
 
     /// <summary>Handle pointer move. Return true if handled.</summary>
-    public virtual bool OnPointerMove(GridPointerEventArgs e) => false;
+    public virtual bool OnPointerMove(KumikoPointerEventArgs e) => false;
 
     /// <summary>Handle key down. Return true if handled.</summary>
-    public virtual bool OnKeyDown(GridKeyEventArgs e) => false;
+    public virtual bool OnKeyDown(KumikoKeyEventArgs e) => false;
 
     /// <summary>Handle key up. Return true if handled.</summary>
-    public virtual bool OnKeyUp(GridKeyEventArgs e) => false;
+    public virtual bool OnKeyUp(KumikoKeyEventArgs e) => false;
 
     // ── Focus ────────────────────────────────────────────────────
 

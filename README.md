@@ -84,7 +84,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 | **Selection** | Single / Multiple / Extended modes; Row or Cell unit |
 | **Keyboard nav** | Arrows, Tab/Shift+Tab, Enter, Home/End, Page Up/Down |
 | **Row drag & drop** | Handle column or full-row drag reorder |
-| **Custom fonts** | Register any TTF/OTF typeface (CJK, icon fonts) via `SkiaFontRegistrar`; use by family name in `GridFont` |
+| **Custom fonts** | Register any TTF/OTF typeface (CJK, icon fonts) via `SkiaFontRegistrar`; use by family name in `KumikoFont` |
 | **Theming** | Built-in Light / Dark / HighContrast; fully customisable style object |
 | **Momentum scrolling** | Physics-based inertial scroll with configurable friction |
 | **Live data** | `INotifyPropertyChanged` and `ObservableCollection` O(1) updates |
@@ -137,10 +137,10 @@ builder
                  RowHeight="36"
                  HeaderHeight="40">
     <dg:KumikoDataGrid.Columns>
-        <core:GridColumn Header="Name"   PropertyName="Name"     Width="180" />
-        <core:GridColumn Header="Age"    PropertyName="Age"      Width="80"
+        <core:KumikoColumn Header="Name"   PropertyName="Name"     Width="180" />
+        <core:KumikoColumn Header="Age"    PropertyName="Age"      Width="80"
                              ColumnType="Numeric" TextAlignment="Right" />
-        <core:GridColumn Header="Active" PropertyName="IsActive" Width="80"
+        <core:KumikoColumn Header="Active" PropertyName="IsActive" Width="80"
                              ColumnType="Boolean" />
     </dg:KumikoDataGrid.Columns>
 </dg:KumikoDataGrid>
@@ -150,7 +150,7 @@ builder
 
 ## 📋 Column Types
 
-Each column is a `GridColumn` with a `ColumnType` that controls both the read-only cell renderer and the inline editor.
+Each column is a `KumikoColumn` with a `ColumnType` that controls both the read-only cell renderer and the inline editor.
 
 | `ColumnType` | Cell Renderer | Editor | Notes |
 |---|---|---|---|
@@ -167,20 +167,20 @@ Each column is a `GridColumn` with a `ColumnType` that controls both the read-on
 ### Column declaration example
 
 ```xml
-<core:GridColumn Header="Department"
+<core:KumikoColumn Header="Department"
                      PropertyName="Department"
                      Width="140"
                      ColumnType="ComboBox"
                      EditorItemsString="Engineering,Marketing,Sales,HR,Finance" />
 
-<core:GridColumn Header="Salary"
+<core:KumikoColumn Header="Salary"
                      PropertyName="Salary"
                      Width="120"
                      ColumnType="Numeric"
                      Format="C0"
                      TextAlignment="Right" />
 
-<core:GridColumn Header="Rating"
+<core:KumikoColumn Header="Rating"
                      PropertyName="Rating"
                      Width="120"
                      ColumnType="ProgressBar" />
@@ -189,7 +189,7 @@ Each column is a `GridColumn` with a `ColumnType` that controls both the read-on
 ### Read-only and tab behavior
 
 ```xml
-<core:GridColumn Header="Id" PropertyName="Id"
+<core:KumikoColumn Header="Id" PropertyName="Id"
                      IsReadOnly="True"
                      AllowTabStop="False" />
 ```
@@ -215,7 +215,7 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
 
 <dg:KumikoDataGrid x:Name="actionsGrid" ...>
     <dg:KumikoDataGrid.Columns>
-        <core:GridColumn Header="Actions"
+        <core:KumikoColumn Header="Actions"
                              PropertyName=""
                              ColumnType="Template"
                              Width="200"
@@ -223,7 +223,7 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
                              AllowFiltering="False"
                              AllowTabStop="False"
                              EditTriggers="SingleTap">
-            <core:GridColumn.CustomCellRenderer>
+            <core:KumikoColumn.CustomCellRenderer>
                 <render:ActionButtonsCellRenderer>
                     <render:ActionButtonsCellRenderer.Buttons>
                         <dg:MauiActionButtonDefinition
@@ -238,8 +238,8 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
                                               Source={x:Reference actionsGrid}}" />
                     </render:ActionButtonsCellRenderer.Buttons>
                 </render:ActionButtonsCellRenderer>
-            </core:GridColumn.CustomCellRenderer>
-        </core:GridColumn>
+            </core:KumikoColumn.CustomCellRenderer>
+        </core:KumikoColumn>
     </dg:KumikoDataGrid.Columns>
 </dg:KumikoDataGrid>
 ```
@@ -260,13 +260,13 @@ actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
         new ActionButtonDefinition
         {
             Label           = "Edit",
-            BackgroundColor = new GridColor(13, 110, 253),
+            BackgroundColor = new KumikoColor(13, 110, 253),
             Command         = vm.EditCommand   // row item is CommandParameter by default
         },
         new ActionButtonDefinition
         {
             Label           = "Delete",
-            BackgroundColor = new GridColor(220, 53, 69),
+            BackgroundColor = new KumikoColor(220, 53, 69),
             Action          = () => vm.DeleteEmployee((Employee)value!)
         }
     ]
@@ -278,8 +278,8 @@ actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
 | Property | Type | Description |
 |---|---|---|
 | `Label` | `string` | Text displayed on the button face |
-| `BackgroundColor` | `GridColor` | Pill background color (`R,G,B` string format in XAML) |
-| `TextColor` | `GridColor` | Label text color (default: white) |
+| `BackgroundColor` | `KumikoColor` | Pill background color (`R,G,B` string format in XAML) |
+| `TextColor` | `KumikoColor` | Label text color (default: white) |
 | `Command` | `ICommand?` | Executed on tap; row item is the default `CommandParameter` |
 | `CommandParameter` | `object?` | Explicit command parameter; overrides the row item default |
 | `Action` | `Action?` | Code-behind callback; executed in addition to `Command` if both are set |
@@ -316,11 +316,11 @@ Columns can be pinned to the left or right edge and will never scroll out of vie
 
 ```xml
 <!-- Pin to left (default freeze side) -->
-<core:GridColumn Header="Id"    PropertyName="Id"    IsFrozen="True" />
-<core:GridColumn Header="Name"  PropertyName="Name"  IsFrozen="True" />
+<core:KumikoColumn Header="Id"    PropertyName="Id"    IsFrozen="True" />
+<core:KumikoColumn Header="Name"  PropertyName="Name"  IsFrozen="True" />
 
 <!-- Pin to right -->
-<core:GridColumn Header="Total" PropertyName="Total" FreezeMode="Right" />
+<core:KumikoColumn Header="Total" PropertyName="Total" FreezeMode="Right" />
 ```
 
 The renderer uses 3-pass clip regions so frozen columns naturally overlay scrollable content with correct z-ordering.
@@ -343,7 +343,7 @@ Tap any column header to sort. The indicator cycles through **Ascending → Desc
 
 ```csharp
 // Set ascending sort on a column, then refresh:
-lastNameColumn.SortDirection = GridSortDirection.Ascending;
+lastNameColumn.SortDirection = KumikoSortDirection.Ascending;
 kumiko.DataSource.Refresh();
 ```
 
@@ -457,22 +457,22 @@ Each column can override the grid-level `EditTriggers` independently via its own
     <dg:KumikoDataGrid.Columns>
 
         <!-- Most accessible: single-tap, F2, or typing to edit -->
-        <core:GridColumn Header="Name" PropertyName="Name"
+        <core:KumikoColumn Header="Name" PropertyName="Name"
                              EditTriggers="SingleTap, F2Key, Typing" />
 
         <!-- ComboBox: double-tap or F2 only (no accidental typing edits) -->
-        <core:GridColumn Header="Department" PropertyName="Department"
+        <core:KumikoColumn Header="Department" PropertyName="Department"
                              ColumnType="ComboBox"
                              EditorItemsString="Engineering,Marketing,Finance,HR"
                              EditTriggers="DoubleTap, F2Key" />
 
         <!-- Salary: keyboard-only — protects financial data from pointer gestures -->
-        <core:GridColumn Header="Salary" PropertyName="Salary"
+        <core:KumikoColumn Header="Salary" PropertyName="Salary"
                              ColumnType="Numeric" Format="C0"
                              EditTriggers="F2Key" />
 
         <!-- Action buttons always activate on first tap -->
-        <core:GridColumn Header="Actions" PropertyName=""
+        <core:KumikoColumn Header="Actions" PropertyName=""
                              ColumnType="Template"
                              EditTriggers="SingleTap" />
 
@@ -503,11 +503,11 @@ Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column
 For `Template` columns supply an `EditorDescriptor`:
 
 ```csharp
-var column = new GridColumn
+var column = new KumikoColumn
 {
     Header = "Rating",
     PropertyName = "Rating",
-    ColumnType = GridColumnType.Template,
+    ColumnType = KumikoColumnType.Template,
     EditorDescriptor = new NumericUpDownEditorDescriptor { Min = 0, Max = 10, Step = 1 }
 };
 ```
@@ -522,7 +522,7 @@ var column = new GridColumn
 <dg:KumikoDataGrid GridSelectionMode="Multiple" />
 ```
 
-| `GridSelectionMode` | Behavior |
+| `KumikoSelectionMode` | Behavior |
 |---|---|
 | `Single` | One item at a time |
 | `Multiple` | Each tap toggles the item |
@@ -601,19 +601,19 @@ A visual overlay tracks the dragged row. The row list is updated on drop.
 
 ### Custom style
 
-Every color, font, size, and line width is configurable through the `DataGridStyle` object:
+Every color, font, size, and line width is configurable through the `KumikoStyle` object:
 
 ```csharp
 var style = kumiko.GridStyle;
 
 // Colors
-style.BackgroundColor        = new GridColor(0.95f, 0.95f, 0.97f);
-style.AlternateRowColor      = new GridColor(0.90f, 0.90f, 0.93f);
-style.HeaderBackgroundColor  = new GridColor(0.20f, 0.40f, 0.80f);
-style.HeaderTextColor        = GridColor.White;
-style.SelectedRowColor       = new GridColor(0.85f, 0.92f, 1.00f);
-style.GridLineColor          = new GridColor(0.80f, 0.80f, 0.80f);
-style.FrozenDividerColor     = new GridColor(0.40f, 0.40f, 0.40f);
+style.BackgroundColor        = new KumikoColor(0.95f, 0.95f, 0.97f);
+style.AlternateRowColor      = new KumikoColor(0.90f, 0.90f, 0.93f);
+style.HeaderBackgroundColor  = new KumikoColor(0.20f, 0.40f, 0.80f);
+style.HeaderTextColor        = KumikoColor.White;
+style.SelectedRowColor       = new KumikoColor(0.85f, 0.92f, 1.00f);
+style.GridLineColor          = new KumikoColor(0.80f, 0.80f, 0.80f);
+style.FrozenDividerColor     = new KumikoColor(0.40f, 0.40f, 0.40f);
 
 // Typography
 style.CellFontSize    = 14f;
@@ -630,26 +630,26 @@ kumiko.GridStyle = style;
 
 ### Per-cell dynamic style
 
-Apply a `CellStyleResolver` delegate to the `DataGridStyle` to override the style of individual cells at render time:
+Apply a `CellStyleResolver` delegate to the `KumikoStyle` to override the style of individual cells at render time:
 
 ```csharp
 var style = kumiko.GridStyle;
 style.CellStyleResolver = (item, column) =>
 {
     if (column.PropertyName == "Salary" && item is Employee e && e.Salary > 100_000)
-        return new DataGridCellStyle { TextColor = new GridColor(0.8f, 0.1f, 0.1f), Bold = true };
+        return new KumikoCellStyle { TextColor = new KumikoColor(0.8f, 0.1f, 0.1f), Bold = true };
     return null;
 };
 kumiko.GridStyle = style;
 ```
 
-Style resolution cascades: **per-cell resolver → column `DataGridCellStyle` → grid `DataGridStyle`**.
+Style resolution cascades: **per-cell resolver → column `KumikoCellStyle` → grid `KumikoStyle`**.
 
 ---
 
 ## 🔤 Custom Fonts
 
-`SkiaFontRegistrar` (in `KumikoUI.SkiaSharp`) is a static registry for custom `SKTypeface` instances. Register any TrueType or OpenType font by a family name string, and `SkiaDrawingContext` will resolve it by that name whenever a `GridFont` requests that family — bypassing the system font manager entirely.
+`SkiaFontRegistrar` (in `KumikoUI.SkiaSharp`) is a static registry for custom `SKTypeface` instances. Register any TrueType or OpenType font by a family name string, and `SkiaDrawingContext` will resolve it by that name whenever a `KumikoFont` requests that family — bypassing the system font manager entirely.
 
 This is the recommended fix for two common problems on Android:
 - **CJK text (Japanese, Chinese, Korean)** renders as empty boxes because the Android system font manager doesn't surface CJK typefaces to SkiaSharp.
@@ -684,13 +684,13 @@ public static MauiApp CreateMauiApp()
 
 ### Using registered fonts in the grid
 
-Reference the registered family name in `GridFont` on a `DataGridStyle` or directly in a custom renderer:
+Reference the registered family name in `KumikoFont` on a `KumikoStyle` or directly in a custom renderer:
 
 ```csharp
 // Apply a CJK font to all headers and cells
 var style = kumiko.GridStyle;
-style.HeaderFont = new GridFont("NotoSansJP", 14, bold: true);
-style.CellFont   = new GridFont("NotoSansJP", 13);
+style.HeaderFont = new KumikoFont("NotoSansJP", 14, bold: true);
+style.CellFont   = new KumikoFont("NotoSansJP", 13);
 kumiko.GridStyle = style;
 ```
 
@@ -702,18 +702,18 @@ Store the Unicode code-point string as the cell value and render it with a custo
 // Renderer that draws cell text using a named icon-font typeface
 public class IconFontCellRenderer(string fontFamily, float fontSize) : ICellRenderer
 {
-    public void Render(IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, GridColumn column,
-        DataGridStyle style, bool isSelected, DataGridCellStyle? cellStyle = null)
+    public void Render(IDrawingContext ctx, KumikoRect cellRect, object? value,
+        string displayText, KumikoColumn column,
+        KumikoStyle style, bool isSelected, KumikoCellStyle? cellStyle = null)
     {
         if (string.IsNullOrEmpty(displayText)) return;
 
-        ctx.DrawTextInRect(displayText, cellRect, new GridPaint
+        ctx.DrawTextInRect(displayText, cellRect, new KumikoPaint
         {
             Color       = isSelected ? style.SelectionTextColor : style.CellTextColor,
-            Font        = new GridFont(fontFamily, fontSize),
+            Font        = new KumikoFont(fontFamily, fontSize),
             IsAntiAlias = true
-        }, GridTextAlignment.Center, GridVerticalAlignment.Center);
+        }, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
     }
 }
 ```
@@ -722,13 +722,13 @@ Attach it to a column:
 
 ```csharp
 // "\uE876" = checkmark, "\uE5CD" = close, "\uE002" = warning in MaterialIcons
-new GridColumn
+new KumikoColumn
 {
     Header             = "Status",
     PropertyName       = nameof(Item.StatusIcon),   // returns e.g. "\uE876"
     Width              = 60,
     IsReadOnly         = true,
-    TextAlignment      = GridTextAlignment.Center,
+    TextAlignment      = KumikoTextAlignment.Center,
     CustomCellRenderer = new IconFontCellRenderer("MaterialIcons", 22f)
 }
 ```
@@ -755,7 +755,7 @@ firstRow = scrollOffsetY / rowHeight
 lastRow  = firstRow + viewportHeight / rowHeight + 1
 ```
 
-Column visibility is resolved by `GridLayoutEngine` walking cumulative widths from the scroll offset.
+Column visibility is resolved by `KumikoLayoutEngine` walking cumulative widths from the scroll offset.
 
 ### Momentum scrolling
 
@@ -763,7 +763,7 @@ Touch-based scrolling uses **physics-based inertia** — a velocity tracker samp
 
 ### PaintCache
 
-~60 `GridPaint` objects are pre-computed once per frame from `DataGridStyle` so there are zero per-cell paint allocations during rendering.
+~60 `KumikoPaint` objects are pre-computed once per frame from `KumikoStyle` so there are zero per-cell paint allocations during rendering.
 
 ### SkiaDrawingContext caching
 
@@ -812,7 +812,7 @@ public class Employee : INotifyPropertyChanged
 `PropertyName` supports dotted paths for nested objects:
 
 ```xml
-<core:GridColumn Header="City" PropertyName="Address.City" Width="120" />
+<core:KumikoColumn Header="City" PropertyName="Address.City" Width="120" />
 ```
 
 Accessors are compiled once via `Expression.Property` chains and cached.
@@ -835,13 +835,13 @@ KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 
 | Class | Responsibility |
 |---|---|
-| `DataGridRenderer` | Orchestrates the 18-step draw pipeline (layout → background → headers → rows → overlays → popups) |
-| `DataGridSource` | Data management: filtering, sorting, grouping, summaries, `INotifyCollectionChanged` observation |
-| `GridLayoutEngine` | Column width computation (Fixed / Auto / Star), visible row/column range |
-| `GridHitTester` | Resolves pointer coordinates to one of 14 `HitRegion` types across 3 column panes |
-| `PaintCache` | Pre-computes ~60 `GridPaint` objects per frame from `DataGridStyle` |
-| `GridInputController` | Routes pointer and keyboard events to selection, editing, resizing, drag handlers |
-| `DataGridSelectionModel` | Row/cell selection state, Single / Multiple / Extended modes |
+| `KumikoRenderer` | Orchestrates the 18-step draw pipeline (layout → background → headers → rows → overlays → popups) |
+| `KumikoSource` | Data management: filtering, sorting, grouping, summaries, `INotifyCollectionChanged` observation |
+| `KumikoLayoutEngine` | Column width computation (Fixed / Auto / Star), visible row/column range |
+| `KumikoHitTester` | Resolves pointer coordinates to one of 14 `HitRegion` types across 3 column panes |
+| `PaintCache` | Pre-computes ~60 `KumikoPaint` objects per frame from `KumikoStyle` |
+| `KumikoInputController` | Routes pointer and keyboard events to selection, editing, resizing, drag handlers |
+| `KumikoSelectionModel` | Row/cell selection state, Single / Multiple / Extended modes |
 | `EditSession` | Cell edit lifecycle — begin, commit, cancel, validation, write-back |
 | `CellEditorFactory` | Instantiates the correct `DrawnComponent` editor for each column type |
 | `InertialScroller` | Physics-based scroll deceleration with configurable friction |

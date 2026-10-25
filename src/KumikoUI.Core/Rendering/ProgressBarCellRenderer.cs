@@ -21,10 +21,10 @@ public class ProgressBarCellRenderer : ICellRenderer
     public float CornerRadius { get; set; } = 4f;
 
     /// <summary>Track background color.</summary>
-    public GridColor TrackColor { get; set; } = new(220, 220, 220);
+    public KumikoColor TrackColor { get; set; } = new(220, 220, 220);
 
     /// <summary>Fill color. When null, uses a color gradient based on value percentage.</summary>
-    public GridColor? FillColor { get; set; }
+    public KumikoColor? FillColor { get; set; }
 
     /// <summary>Whether to show the numeric value text overlaid on the bar.</summary>
     public bool ShowText { get; set; } = true;
@@ -36,13 +36,13 @@ public class ProgressBarCellRenderer : ICellRenderer
     /// Optional delegate to pick fill color based on value. Receives (value, min, max).
     /// When null, uses <see cref="FillColor"/> or a red → amber → green gradient.
     /// </summary>
-    public Func<double, double, double, GridColor>? ColorSelector { get; set; }
+    public Func<double, double, double, KumikoColor>? ColorSelector { get; set; }
 
     public void Render(
-        IDrawingContext ctx, GridRect cellRect, object? value,
-        string displayText, KumikoUI.Core.Models.GridColumn column,
-        DataGridStyle style, bool isSelected,
-        DataGridCellStyle? cellStyle = null)
+        IDrawingContext ctx, KumikoRect cellRect, object? value,
+        string displayText, KumikoUI.Core.Models.KumikoColumn column,
+        KumikoStyle style, bool isSelected,
+        KumikoCellStyle? cellStyle = null)
     {
         double numValue = 0;
         if (value is IConvertible conv)
@@ -58,10 +58,10 @@ public class ProgressBarCellRenderer : ICellRenderer
         float pad = 4f;
         float trackH = TrackHeight > 0 ? TrackHeight : cellRect.Height - pad * 2;
         float trackY = cellRect.Y + (cellRect.Height - trackH) / 2;
-        var trackRect = new GridRect(cellRect.X + pad, trackY, cellRect.Width - pad * 2, trackH);
+        var trackRect = new KumikoRect(cellRect.X + pad, trackY, cellRect.Width - pad * 2, trackH);
 
         // Track background
-        ctx.FillRoundRect(trackRect, CornerRadius, new GridPaint { Color = TrackColor });
+        ctx.FillRoundRect(trackRect, CornerRadius, new KumikoPaint { Color = TrackColor });
 
         // Fill
         float fillWidth = trackRect.Width * (float)pct;
@@ -73,8 +73,8 @@ public class ProgressBarCellRenderer : ICellRenderer
             // Clip to track bounds then draw a rounded rect that extends beyond right edge
             // so only the left portion with fill width is visible
             ctx.Save();
-            ctx.ClipRect(new GridRect(trackRect.X, trackRect.Y, fillWidth, trackRect.Height));
-            ctx.FillRoundRect(trackRect, CornerRadius, new GridPaint { Color = fillColor });
+            ctx.ClipRect(new KumikoRect(trackRect.X, trackRect.Y, fillWidth, trackRect.Height));
+            ctx.FillRoundRect(trackRect, CornerRadius, new KumikoPaint { Color = fillColor });
             ctx.Restore();
         }
 
@@ -82,24 +82,24 @@ public class ProgressBarCellRenderer : ICellRenderer
         if (ShowText)
         {
             string text = numValue.ToString(TextFormat);
-            var textPaint = new GridPaint
+            var textPaint = new KumikoPaint
             {
-                Color = pct > 0.45 ? GridColor.White : style.CellTextColor,
-                Font = new GridFont(style.CellFont.Family, Math.Max(9, style.CellFont.Size - 1)),
+                Color = pct > 0.45 ? KumikoColor.White : style.CellTextColor,
+                Font = new KumikoFont(style.CellFont.Family, Math.Max(9, style.CellFont.Size - 1)),
                 IsAntiAlias = true
             };
             ctx.DrawTextInRect(text, trackRect, textPaint,
-                GridTextAlignment.Center, GridVerticalAlignment.Center);
+                KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
         }
     }
 
-    private static GridColor DefaultGradientColor(double pct)
+    private static KumikoColor DefaultGradientColor(double pct)
     {
         return pct switch
         {
-            >= 0.8 => new GridColor(40, 167, 70),
-            >= 0.5 => new GridColor(255, 193, 7),
-            _ => new GridColor(220, 53, 69)
+            >= 0.8 => new KumikoColor(40, 167, 70),
+            >= 0.5 => new KumikoColor(255, 193, 7),
+            _ => new KumikoColor(220, 53, 69)
         };
     }
 }

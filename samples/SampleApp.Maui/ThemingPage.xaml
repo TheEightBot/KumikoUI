@@ -46,48 +46,48 @@
                          VerticalOptions="Fill">
 
             <dg:KumikoDataGrid.Columns>
-                <core:GridColumn Header="SKU"
+                <core:KumikoColumn Header="SKU"
                                      PropertyName="Sku"
                                      Width="100"
                                      IsReadOnly="True"
                                      IsFrozen="True" />
 
-                <core:GridColumn Header="Product"
+                <core:KumikoColumn Header="Product"
                                      PropertyName="ProductName"
                                      Width="200" />
 
-                <core:GridColumn Header="Category"
+                <core:KumikoColumn Header="Category"
                                      PropertyName="Category"
                                      Width="130"
                                      ColumnType="ComboBox"
                                      EditorItemsString="Electronics,Clothing,Home,Sports,Books,Food,Auto,Garden" />
 
-                <core:GridColumn Header="Price"
+                <core:KumikoColumn Header="Price"
                                      PropertyName="Price"
                                      Width="100"
                                      Format="C2"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:GridColumn Header="Stock"
+                <core:KumikoColumn Header="Stock"
                                      PropertyName="Stock"
                                      Width="80"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:GridColumn Header="In Stock"
+                <core:KumikoColumn Header="In Stock"
                                      PropertyName="InStock"
                                      Width="80"
                                      ColumnType="Boolean" />
 
-                <core:GridColumn Header="Rating"
+                <core:KumikoColumn Header="Rating"
                                      PropertyName="Rating"
                                      Width="80"
                                      Format="N1"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
 
-                <core:GridColumn Header="Supplier"
+                <core:KumikoColumn Header="Supplier"
                                      PropertyName="Supplier"
                                      Width="150" />
             </dg:KumikoDataGrid.Columns>

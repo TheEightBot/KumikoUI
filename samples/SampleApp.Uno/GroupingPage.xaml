@@ -45,17 +45,17 @@
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
             <kumiko:KumikoDataGrid.Columns>
-                <core:GridColumn Header="Id" PropertyName="Id" Width="60"
+                <core:KumikoColumn Header="Id" PropertyName="Id" Width="60"
                                      ColumnType="Numeric" TextAlignment="Right"
                                      IsReadOnly="True" AllowTabStop="False" />
-                <core:GridColumn Header="Name" PropertyName="Name" Width="170" />
-                <core:GridColumn Header="Department" PropertyName="Department" Width="140" />
-                <core:GridColumn Header="Level" PropertyName="Level" Width="120" />
-                <core:GridColumn Header="Salary" PropertyName="Salary" Width="120"
+                <core:KumikoColumn Header="Name" PropertyName="Name" Width="170" />
+                <core:KumikoColumn Header="Department" PropertyName="Department" Width="140" />
+                <core:KumikoColumn Header="Level" PropertyName="Level" Width="120" />
+                <core:KumikoColumn Header="Salary" PropertyName="Salary" Width="120"
                                      Format="C0" ColumnType="Numeric" TextAlignment="Right" />
-                <core:GridColumn Header="Active" PropertyName="IsActive" Width="80"
+                <core:KumikoColumn Header="Active" PropertyName="IsActive" Width="80"
                                      ColumnType="Boolean" AllowTabStop="False" />
-                <core:GridColumn Header="City" PropertyName="City" Width="140" />
+                <core:KumikoColumn Header="City" PropertyName="City" Width="140" />
             </kumiko:KumikoDataGrid.Columns>
         </kumiko:KumikoDataGrid>
     </Grid>

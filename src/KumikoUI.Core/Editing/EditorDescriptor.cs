@@ -13,5 +13,5 @@ public abstract class EditorDescriptor
     /// <summary>
     /// Create an editor component for the given value and cell bounds.
     /// </summary>
-    public abstract DrawnComponent? CreateEditor(object? currentValue, GridRect cellBounds);
+    public abstract DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds);
 }

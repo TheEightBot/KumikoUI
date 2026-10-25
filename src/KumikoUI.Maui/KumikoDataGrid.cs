@@ -35,13 +35,13 @@ public class KumikoDataGrid : Grid
 {
     private readonly SKCanvasView _canvasView = new();
     private readonly Entry _keyboardProxy;
-    private readonly DataGridRenderer _renderer = new();
-    private readonly DataGridSource _dataSource = new();
+    private readonly KumikoRenderer _renderer = new();
+    private readonly KumikoSource _dataSource = new();
     private readonly ScrollState _scroll = new();
-    private readonly DataGridSelectionModel _selection = new();
-    private readonly GridInputController _inputController = new();
+    private readonly KumikoSelectionModel _selection = new();
+    private readonly KumikoInputController _inputController = new();
     private readonly EditSession _editSession = new();
-    private DataGridStyle _style = new();
+    private KumikoStyle _style = new();
 
     // Inertial scroll timer
     private IDispatcherTimer? _scrollTimer;
@@ -111,7 +111,7 @@ public class KumikoDataGrid : Grid
         Children.Add(_keyboardProxy);
 
         // Auto-init the Columns collection so XAML can add items directly
-        Columns = new ObservableCollection<GridColumn>();
+        Columns = new ObservableCollection<KumikoColumn>();
 
         // Auto-init the TableSummaryRows collection so XAML can add items directly
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
@@ -198,19 +198,19 @@ public class KumikoDataGrid : Grid
     }
 
     /// <summary>Gets the underlying data source.</summary>
-    public DataGridSource DataSource => _dataSource;
+    public KumikoSource DataSource => _dataSource;
 
     /// <summary>Gets the selection model.</summary>
-    public DataGridSelectionModel Selection => _selection;
+    public KumikoSelectionModel Selection => _selection;
 
     /// <summary>Gets the input controller for advanced event wiring.</summary>
-    public GridInputController InputController => _inputController;
+    public KumikoInputController InputController => _inputController;
 
     /// <summary>Gets the edit session for inline cell editing.</summary>
     public EditSession EditSession => _editSession;
 
     /// <summary>Gets or sets the grid style / theme.</summary>
-    public DataGridStyle GridStyle
+    public KumikoStyle GridStyle
     {
         get => _style;
         set { _style = value; _editSession.Style = value; InvalidateSurface(); }
@@ -218,21 +218,21 @@ public class KumikoDataGrid : Grid
 
     /// <summary>
     /// Applies a built-in theme preset. Sets <see cref="GridStyle"/>
-    /// to a preconfigured <see cref="DataGridStyle"/> for the chosen theme.
+    /// to a preconfigured <see cref="KumikoStyle"/> for the chosen theme.
     /// </summary>
-    public DataGridThemeMode Theme
+    public KumikoThemeMode Theme
     {
         get => _themeMode;
         set
         {
             if (_themeMode == value) return;
             _themeMode = value;
-            _style = DataGridTheme.Create(value);
+            _style = KumikoTheme.Create(value);
             _editSession.Style = _style;
             InvalidateSurface();
         }
     }
-    private DataGridThemeMode _themeMode = DataGridThemeMode.Light;
+    private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
 
     /// <summary>Set the data items.</summary>
     public void SetItemsSource(System.Collections.IEnumerable items)
@@ -241,7 +241,7 @@ public class KumikoDataGrid : Grid
     }
 
     /// <summary>Set the column definitions.</summary>
-    public void SetColumns(IEnumerable<GridColumn> columns)
+    public void SetColumns(IEnumerable<KumikoColumn> columns)
     {
         _dataSource.SetColumns(columns);
         InvalidateSurface();
@@ -292,7 +292,7 @@ public class KumikoDataGrid : Grid
 
     private void OnBoundItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        // DataGridSource already handles the rebuild; we just ensure canvas invalidation
+        // KumikoSource already handles the rebuild; we just ensure canvas invalidation
         // happens on the UI thread
         if (Dispatcher.IsDispatchRequired)
             Dispatcher.Dispatch(InvalidateSurface);
@@ -322,19 +322,19 @@ public class KumikoDataGrid : Grid
 
     /// <summary>Identifies the <see cref="GridSelectionMode"/> bindable property.</summary>
     public static readonly BindableProperty GridSelectionModeProperty = BindableProperty.Create(
-        nameof(GridSelectionMode), typeof(KumikoUI.Core.Models.GridSelectionMode), typeof(KumikoDataGrid),
-        KumikoUI.Core.Models.GridSelectionMode.Extended,
+        nameof(GridSelectionMode), typeof(KumikoUI.Core.Models.KumikoSelectionMode), typeof(KumikoDataGrid),
+        KumikoUI.Core.Models.KumikoSelectionMode.Extended,
         propertyChanged: (b, _, n) =>
         {
             var view = (KumikoDataGrid)b;
-            view._selection.Mode = (KumikoUI.Core.Models.GridSelectionMode)n;
+            view._selection.Mode = (KumikoUI.Core.Models.KumikoSelectionMode)n;
             view.InvalidateSurface();
         });
 
     /// <summary>Selection mode: None, Single, Multiple, or Extended.</summary>
-    public KumikoUI.Core.Models.GridSelectionMode GridSelectionMode
+    public KumikoUI.Core.Models.KumikoSelectionMode GridSelectionMode
     {
-        get => (KumikoUI.Core.Models.GridSelectionMode)GetValue(GridSelectionModeProperty);
+        get => (KumikoUI.Core.Models.KumikoSelectionMode)GetValue(GridSelectionModeProperty);
         set => SetValue(GridSelectionModeProperty, value);
     }
 
@@ -492,26 +492,26 @@ public class KumikoDataGrid : Grid
     /// <summary>Identifies the <see cref="Columns"/> bindable property.</summary>
     public static readonly BindableProperty ColumnsProperty = BindableProperty.Create(
         nameof(Columns),
-        typeof(ObservableCollection<GridColumn>),
+        typeof(ObservableCollection<KumikoColumn>),
         typeof(KumikoDataGrid),
         defaultValue: null,
         propertyChanged: (b, o, n) => ((KumikoDataGrid)b).OnColumnsChanged(
-            o as ObservableCollection<GridColumn>,
-            n as ObservableCollection<GridColumn>));
+            o as ObservableCollection<KumikoColumn>,
+            n as ObservableCollection<KumikoColumn>));
 
     /// <summary>
     /// Bindable collection of column definitions. Supports ObservableCollection
     /// for dynamic add/remove of columns at runtime.
     /// </summary>
-    public ObservableCollection<GridColumn>? Columns
+    public ObservableCollection<KumikoColumn>? Columns
     {
-        get => (ObservableCollection<GridColumn>?)GetValue(ColumnsProperty);
+        get => (ObservableCollection<KumikoColumn>?)GetValue(ColumnsProperty);
         set => SetValue(ColumnsProperty, value);
     }
 
     private void OnColumnsChanged(
-        ObservableCollection<GridColumn>? oldCollection,
-        ObservableCollection<GridColumn>? newCollection)
+        ObservableCollection<KumikoColumn>? oldCollection,
+        ObservableCollection<KumikoColumn>? newCollection)
     {
         if (oldCollection != null)
             oldCollection.CollectionChanged -= OnColumnsCollectionChanged;
@@ -523,7 +523,7 @@ public class KumikoDataGrid : Grid
         }
         else
         {
-            _dataSource.SetColumns(Array.Empty<GridColumn>());
+            _dataSource.SetColumns(Array.Empty<KumikoColumn>());
         }
 
         InvalidateSurface();
@@ -711,7 +711,7 @@ public class KumikoDataGrid : Grid
             return;
         }
 
-        var gridEvent = new GridPointerEventArgs
+        var gridEvent = new KumikoPointerEventArgs
         {
             X = x,
             Y = y,
@@ -778,7 +778,7 @@ public class KumikoDataGrid : Grid
         float canvasWidth = _canvasView.Width > 0 ? (float)_canvasView.Width : 1;
         float scale = (float)(CanvasSize.Width / canvasWidth);
 
-        var gridEvent = new GridPointerEventArgs
+        var gridEvent = new KumikoPointerEventArgs
         {
             X = _longPressX,
             Y = _longPressY,
@@ -821,7 +821,7 @@ public class KumikoDataGrid : Grid
 
     // ── Column reorder event ──
 
-    private void OnColumnReordered(object? sender, GridColumnReorderedEventArgs e)
+    private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
     {
         _dataSource.ReorderColumn(e.OldIndex, e.NewIndex);
     }
@@ -841,7 +841,7 @@ public class KumikoDataGrid : Grid
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
         var measureCtx = new SkiaDrawingContext(canvas);
-        var layoutEngine = new GridLayoutEngine();
+        var layoutEngine = new KumikoLayoutEngine();
 
         float optimalWidth = layoutEngine.CalculateAutoFitWidth(
             e.Column, _dataSource, measureCtx, _style);
@@ -1063,7 +1063,7 @@ public class KumikoDataGrid : Grid
         // Detect backspace: text became empty (user deleted the sentinel)
         if (string.IsNullOrEmpty(newText))
         {
-            SendKeyEvent(GridKey.Backspace);
+            SendKeyEvent(KumikoKey.Backspace);
             ResetKeyboardProxy();
             return;
         }
@@ -1092,7 +1092,7 @@ public class KumikoDataGrid : Grid
         // Forward each new character
         foreach (char ch in newInput)
         {
-            SendKeyEvent(GridKey.Character, ch);
+            SendKeyEvent(KumikoKey.Character, ch);
         }
 
         ResetKeyboardProxy();
@@ -1103,7 +1103,7 @@ public class KumikoDataGrid : Grid
 #if MACCATALYST || IOS
         if (_useNativeKeyInput) return;
 #endif
-        SendKeyEvent(GridKey.Enter);
+        SendKeyEvent(KumikoKey.Enter);
         // Only re-focus if editing continues (e.g. DismissKeyboardOnEnter=false
         // auto-edits the next cell). When editing has ended, the keyboard should
         // stay dismissed — UnfocusKeyboardInput() was already called by CellEndEdit.
@@ -1181,9 +1181,9 @@ public class KumikoDataGrid : Grid
         }
     }
 
-    private void SendKeyEvent(GridKey key, char? character = null, InputModifiers modifiers = InputModifiers.None)
+    private void SendKeyEvent(KumikoKey key, char? character = null, InputModifiers modifiers = InputModifiers.None)
     {
-        var keyEvent = new GridKeyEventArgs
+        var keyEvent = new KumikoKeyEventArgs
         {
             Key = key,
             Character = character,
@@ -1274,16 +1274,16 @@ public class KumikoDataGrid : Grid
             {
                 // iOS software keyboard sends Return as InsertText("\n")
                 // rather than through PressesBegan, so map it to Enter.
-                SendKeyEvent(GridKey.Enter);
+                SendKeyEvent(KumikoKey.Enter);
             }
             else if (ch == '\t')
             {
-                // Tab character from software keyboard — map to GridKey.Tab
-                SendKeyEvent(GridKey.Tab);
+                // Tab character from software keyboard — map to KumikoKey.Tab
+                SendKeyEvent(KumikoKey.Tab);
             }
             else
             {
-                SendKeyEvent(GridKey.Character, ch);
+                SendKeyEvent(KumikoKey.Character, ch);
             }
         }
     }
@@ -1291,17 +1291,17 @@ public class KumikoDataGrid : Grid
     private void OnNativeTabKey(bool hasShift)
     {
         var modifiers = hasShift ? InputModifiers.Shift : InputModifiers.None;
-        SendKeyEvent(GridKey.Tab, null, modifiers);
+        SendKeyEvent(KumikoKey.Tab, null, modifiers);
     }
 
-    private void OnNativeNavigationKey(GridKey key, InputModifiers modifiers)
+    private void OnNativeNavigationKey(KumikoKey key, InputModifiers modifiers)
     {
         SendKeyEvent(key, null, modifiers);
     }
 
     private void OnNativeBackspace()
     {
-        SendKeyEvent(GridKey.Backspace);
+        SendKeyEvent(KumikoKey.Backspace);
     }
 
     private void OnNativeKeyPress(UIPress press)
@@ -1315,23 +1315,23 @@ public class KumikoDataGrid : Grid
         if (flags.HasFlag(UIKeyModifierFlags.Alternate)) modifiers |= InputModifiers.Alt;
 
         var keyCode = press.Key.KeyCode;
-        GridKey? gridKey = keyCode switch
+        KumikoKey? gridKey = keyCode switch
         {
-            UIKeyboardHidUsage.KeyboardLeftArrow => GridKey.Left,
-            UIKeyboardHidUsage.KeyboardRightArrow => GridKey.Right,
-            UIKeyboardHidUsage.KeyboardUpArrow => GridKey.Up,
-            UIKeyboardHidUsage.KeyboardDownArrow => GridKey.Down,
-            UIKeyboardHidUsage.KeyboardHome => GridKey.Home,
-            UIKeyboardHidUsage.KeyboardEnd => GridKey.End,
-            UIKeyboardHidUsage.KeyboardPageUp => GridKey.PageUp,
-            UIKeyboardHidUsage.KeyboardPageDown => GridKey.PageDown,
-            UIKeyboardHidUsage.KeyboardEscape => GridKey.Escape,
-            UIKeyboardHidUsage.KeyboardDeleteForward => GridKey.Delete,
-            UIKeyboardHidUsage.KeyboardDeleteOrBackspace => GridKey.Backspace,
-            UIKeyboardHidUsage.KeyboardReturnOrEnter => GridKey.Enter,
-            UIKeyboardHidUsage.KeyboardTab => GridKey.Tab,
-            UIKeyboardHidUsage.KeyboardSpacebar => GridKey.Space,
-            UIKeyboardHidUsage.KeyboardF2 => GridKey.F2,
+            UIKeyboardHidUsage.KeyboardLeftArrow => KumikoKey.Left,
+            UIKeyboardHidUsage.KeyboardRightArrow => KumikoKey.Right,
+            UIKeyboardHidUsage.KeyboardUpArrow => KumikoKey.Up,
+            UIKeyboardHidUsage.KeyboardDownArrow => KumikoKey.Down,
+            UIKeyboardHidUsage.KeyboardHome => KumikoKey.Home,
+            UIKeyboardHidUsage.KeyboardEnd => KumikoKey.End,
+            UIKeyboardHidUsage.KeyboardPageUp => KumikoKey.PageUp,
+            UIKeyboardHidUsage.KeyboardPageDown => KumikoKey.PageDown,
+            UIKeyboardHidUsage.KeyboardEscape => KumikoKey.Escape,
+            UIKeyboardHidUsage.KeyboardDeleteForward => KumikoKey.Delete,
+            UIKeyboardHidUsage.KeyboardDeleteOrBackspace => KumikoKey.Backspace,
+            UIKeyboardHidUsage.KeyboardReturnOrEnter => KumikoKey.Enter,
+            UIKeyboardHidUsage.KeyboardTab => KumikoKey.Tab,
+            UIKeyboardHidUsage.KeyboardSpacebar => KumikoKey.Space,
+            UIKeyboardHidUsage.KeyboardF2 => KumikoKey.F2,
             _ => null
         };
 

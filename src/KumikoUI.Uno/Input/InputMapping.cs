@@ -8,7 +8,7 @@ namespace KumikoUI.Uno.Input;
 /// <summary>
 /// Pure, side-effect-free translation between WinUI/Uno input enums
 /// (<see cref="VirtualKey"/>, <see cref="VirtualKeyModifiers"/>) and KumikoUI.Core's
-/// platform-independent input contract (<see cref="GridKey"/>, <see cref="InputModifiers"/>).
+/// platform-independent input contract (<see cref="KumikoKey"/>, <see cref="InputModifiers"/>).
 /// </summary>
 /// <remarks>
 /// Kept deliberately free of any <c>KumikoDataGrid</c> / framework-element dependency so it can be
@@ -18,39 +18,39 @@ namespace KumikoUI.Uno.Input;
 public static class InputMapping
 {
     /// <summary>
-    /// Maps a WinUI <see cref="VirtualKey"/> to KumikoUI.Core's <see cref="GridKey"/>.
-    /// Returns <see cref="GridKey.None"/> for keys the grid does not handle as commands
+    /// Maps a WinUI <see cref="VirtualKey"/> to KumikoUI.Core's <see cref="KumikoKey"/>.
+    /// Returns <see cref="KumikoKey.None"/> for keys the grid does not handle as commands
     /// (printable text arrives separately via the proxy's <c>TextChanged</c> event).
     /// </summary>
-    public static GridKey ToGridKey(VirtualKey key) => key switch
+    public static KumikoKey ToGridKey(VirtualKey key) => key switch
     {
         // ── Navigation ──
-        VirtualKey.Up => GridKey.Up,
-        VirtualKey.Down => GridKey.Down,
-        VirtualKey.Left => GridKey.Left,
-        VirtualKey.Right => GridKey.Right,
-        VirtualKey.Home => GridKey.Home,
-        VirtualKey.End => GridKey.End,
-        VirtualKey.PageUp => GridKey.PageUp,
-        VirtualKey.PageDown => GridKey.PageDown,
-        VirtualKey.Tab => GridKey.Tab,
+        VirtualKey.Up => KumikoKey.Up,
+        VirtualKey.Down => KumikoKey.Down,
+        VirtualKey.Left => KumikoKey.Left,
+        VirtualKey.Right => KumikoKey.Right,
+        VirtualKey.Home => KumikoKey.Home,
+        VirtualKey.End => KumikoKey.End,
+        VirtualKey.PageUp => KumikoKey.PageUp,
+        VirtualKey.PageDown => KumikoKey.PageDown,
+        VirtualKey.Tab => KumikoKey.Tab,
 
         // ── Actions ──
-        VirtualKey.Enter => GridKey.Enter,
-        VirtualKey.Escape => GridKey.Escape,
-        VirtualKey.Space => GridKey.Space,
-        VirtualKey.Delete => GridKey.Delete,
-        VirtualKey.Back => GridKey.Backspace, // WinUI "Back" == Backspace
-        VirtualKey.F2 => GridKey.F2,
+        VirtualKey.Enter => KumikoKey.Enter,
+        VirtualKey.Escape => KumikoKey.Escape,
+        VirtualKey.Space => KumikoKey.Space,
+        VirtualKey.Delete => KumikoKey.Delete,
+        VirtualKey.Back => KumikoKey.Backspace, // WinUI "Back" == Backspace
+        VirtualKey.F2 => KumikoKey.F2,
 
         // ── Letters with grid shortcuts (Ctrl+A/C/V/X/Z) ──
-        VirtualKey.A => GridKey.A,
-        VirtualKey.C => GridKey.C,
-        VirtualKey.V => GridKey.V,
-        VirtualKey.X => GridKey.X,
-        VirtualKey.Z => GridKey.Z,
+        VirtualKey.A => KumikoKey.A,
+        VirtualKey.C => KumikoKey.C,
+        VirtualKey.V => KumikoKey.V,
+        VirtualKey.X => KumikoKey.X,
+        VirtualKey.Z => KumikoKey.Z,
 
-        _ => GridKey.None
+        _ => KumikoKey.None
     };
 
     /// <summary>

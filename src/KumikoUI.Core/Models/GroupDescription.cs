@@ -28,7 +28,7 @@ public class GroupDescription
     /// <summary>
     /// Sort direction for groups. Default is ascending.
     /// </summary>
-    public GridSortDirection GroupSortDirection { get; set; } = GridSortDirection.Ascending;
+    public KumikoSortDirection GroupSortDirection { get; set; } = KumikoSortDirection.Ascending;
 
     public GroupDescription() { }
 

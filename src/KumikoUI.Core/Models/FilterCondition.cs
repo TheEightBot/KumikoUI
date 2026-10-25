@@ -20,15 +20,15 @@ public class FilterCondition
     /// <summary>
     /// Evaluate this condition against a cell value for a given column type.
     /// </summary>
-    public bool Evaluate(object? cellValue, GridColumnType columnType)
+    public bool Evaluate(object? cellValue, KumikoColumnType columnType)
     {
         return columnType switch
         {
-            GridColumnType.Text or GridColumnType.ComboBox or GridColumnType.Picker
+            KumikoColumnType.Text or KumikoColumnType.ComboBox or KumikoColumnType.Picker
                 => EvaluateText(cellValue),
-            GridColumnType.Numeric => EvaluateNumeric(cellValue),
-            GridColumnType.Date => EvaluateDate(cellValue),
-            GridColumnType.Boolean => EvaluateBoolean(cellValue),
+            KumikoColumnType.Numeric => EvaluateNumeric(cellValue),
+            KumikoColumnType.Date => EvaluateDate(cellValue),
+            KumikoColumnType.Boolean => EvaluateBoolean(cellValue),
             _ => true // Template/Image columns pass through
         };
     }

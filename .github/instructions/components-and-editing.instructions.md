@@ -17,7 +17,7 @@ public class MyEditor : DrawnComponent
     public override void OnDraw(IDrawingContext ctx)
     {
         // Draw inside this.Bounds using IDrawingContext only.
-        ctx.FillRect(Bounds, new GridPaint { Color = new GridColor(255, 255, 255) });
+        ctx.FillRect(Bounds, new KumikoPaint { Color = new KumikoColor(255, 255, 255) });
     }
 }
 ```
@@ -27,11 +27,11 @@ public class MyEditor : DrawnComponent
 | Method | When called |
 |---|---|
 | `OnDraw(IDrawingContext ctx)` | **Required.** Every repaint. |
-| `OnPointerDown(GridPointerEventArgs e)` | Touch / mouse press |
-| `OnPointerUp(GridPointerEventArgs e)` | Touch / mouse release |
-| `OnPointerMove(GridPointerEventArgs e)` | Touch / mouse drag |
-| `OnKeyDown(GridKeyEventArgs e)` | Key press (set `e.Handled = true` to consume) |
-| `OnKeyUp(GridKeyEventArgs e)` | Key release |
+| `OnPointerDown(KumikoPointerEventArgs e)` | Touch / mouse press |
+| `OnPointerUp(KumikoPointerEventArgs e)` | Touch / mouse release |
+| `OnPointerMove(KumikoPointerEventArgs e)` | Touch / mouse drag |
+| `OnKeyDown(KumikoKeyEventArgs e)` | Key press (set `e.Handled = true` to consume) |
+| `OnKeyUp(KumikoKeyEventArgs e)` | Key release |
 | `OnGotFocus()` | Component gained keyboard focus |
 | `OnLostFocus()` | Component lost focus |
 | `OnBoundsChanged()` | `Bounds` property changed |
@@ -46,11 +46,11 @@ RaiseEditCompleted();            // grid commits + closes editor — call on con
 
 ### Theming hook
 
-Add `public void ApplyTheme(DataGridStyle style)` — no interface required.
+Add `public void ApplyTheme(KumikoStyle style)` — no interface required.
 `CellEditorFactory.ApplyThemeToEditor()` dispatches to it via `switch`.
 
 ```csharp
-public void ApplyTheme(DataGridStyle style)
+public void ApplyTheme(KumikoStyle style)
 {
     _backgroundColor = style.EditorBackgroundColor;
     _foregroundColor  = style.EditorTextColor;
@@ -63,7 +63,7 @@ public void ApplyTheme(DataGridStyle style)
 
 ```csharp
 // 1. CreateEditor:
-case GridColumnType.{NewType}:
+case KumikoColumnType.{NewType}:
     return new MyEditor { Bounds = cellBounds, Value = ({T}?)currentValue ?? default };
 
 // 2. GetEditorValue:
@@ -88,18 +88,18 @@ public class MyEditorDescriptor : EditorDescriptor
     public double Minimum { get; set; } = 0;
     public double Maximum { get; set; } = 100;
 
-    public override DrawnComponent? CreateEditor(object? currentValue, GridRect cellBounds)
+    public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
         => new MyEditor { Bounds = cellBounds, Minimum = Minimum, Maximum = Maximum };
 }
 ```
 
 XAML usage:
 ```xml
-<core:GridColumn Header="Score" PropertyName="Score" ColumnType="Template" Width="120">
-    <core:GridColumn.EditorDescriptor>
+<core:KumikoColumn Header="Score" PropertyName="Score" ColumnType="Template" Width="120">
+    <core:KumikoColumn.EditorDescriptor>
         <editing:MyEditorDescriptor Minimum="0" Maximum="10" />
-    </core:GridColumn.EditorDescriptor>
-</core:GridColumn>
+    </core:KumikoColumn.EditorDescriptor>
+</core:KumikoColumn>
 ```
 
 Built-in descriptors: `NumericUpDownEditorDescriptor`, `TextEditorDescriptor`.
@@ -113,7 +113,7 @@ BeginEdit(row, col, column, dataSource, cellBounds, initialChar?)
   → CellEditorFactory.CreateEditor(...)
   → CellEditorFactory.ApplyThemeToEditor(...)
   → EditSession.DrawEditor(ctx)        ← called each frame after main render
-  → CommitEdit(dataSource)             ← writes value back via DataGridSource.SetCellValue
+  → CommitEdit(dataSource)             ← writes value back via KumikoSource.SetCellValue
     or CancelEdit()
 ```
 
@@ -155,9 +155,9 @@ if (scroller.IsActive)
 
 - [ ] Class in `src/KumikoUI.Core/Components/`, named `Drawn{Name}.cs`
 - [ ] Inherits `DrawnComponent`
-- [ ] `OnDraw` uses only `IDrawingContext` + `GridColor`/`GridPaint`/`GridFont`/`GridRect`
+- [ ] `OnDraw` uses only `IDrawingContext` + `KumikoColor`/`KumikoPaint`/`KumikoFont`/`KumikoRect`
 - [ ] `InvalidateVisual()` called on every state change
 - [ ] `RaiseValueChanged(old, new)` called when value changes
 - [ ] `RaiseEditCompleted()` called on confirm gesture
-- [ ] `ApplyTheme(DataGridStyle)` implemented
+- [ ] `ApplyTheme(KumikoStyle)` implemented
 - [ ] `CellEditorFactory` updated: `CreateEditor`, `GetEditorValue`, `ApplyThemeToEditor`
