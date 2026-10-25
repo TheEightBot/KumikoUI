@@ -328,7 +328,6 @@ public class DrawnDatePicker : DrawnComponent
     private void DrawDayHeaders(IDrawingContext ctx, float x, float y)
     {
         string[] dayNames = { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" };
-        var paint = new KumikoPaint { Color = new KumikoColor(100, 100, 100), Style = PaintStyle.Fill };
 
         for (int d = 0; d < DaysPerWeek; d++)
         {

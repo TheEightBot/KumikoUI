@@ -431,7 +431,6 @@ public class DrawnFilterPopup : DrawnComponent
     {
         float halfWidth = width / 2;
         var textPaint = new KumikoPaint { Color = AccentColor, Font = SmallFont, IsAntiAlias = true };
-        var iconPaint = new KumikoPaint { Color = AccentColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true };
 
         // Select All
         var selectAllRect = new KumikoRect(x, y, halfWidth, ButtonRowHeight);
