@@ -813,6 +813,8 @@ employees.Add(new Employee { Name = "Alice" });
 employees.RemoveAt(3);
 ```
 
+Items may be of mixed runtime types (for example `Dog` and `Cat` in a `List<Animal>`): each column's property is resolved per item, and an item without that property shows an empty cell. `null` entries are kept in the collection but never become rows: they are skipped like items a filter rejects, so they are not sorted, grouped, summarized or listed in filter values, and adding or removing one keeps the grid correct.
+
 ### INotifyPropertyChanged
 
 Individual cell values update in real time when the bound object implements `INotifyPropertyChanged`:

@@ -9,7 +9,8 @@ namespace KumikoUI.Core.Models;
 /// Manages the data that backs the grid: sorting, filtering, row access,
 /// and change notification. Works with any IList or IEnumerable.
 /// Automatically observes INotifyCollectionChanged and INotifyPropertyChanged
-/// for dynamic data updates.
+/// for dynamic data updates. Items may be of mixed runtime types; <c>null</c> items are skipped
+/// (see <see cref="SetItems"/>).
 /// </summary>
 public class KumikoSource
 {
@@ -261,6 +262,17 @@ public class KumikoSource
     /// If the collection implements INotifyCollectionChanged, the grid will automatically
     /// update when items are added, removed, or replaced.
     /// If items implement INotifyPropertyChanged, individual cell updates are tracked.
+    /// <para>
+    /// Items may be of different runtime types (for example a <c>List&lt;Animal&gt;</c> of <c>Dog</c> and
+    /// <c>Cat</c>): each column's property is resolved per item type, and an item that lacks the property
+    /// reads <c>null</c> for that column.
+    /// </para>
+    /// <para>
+    /// <c>null</c> entries are kept in the collection but never become rows. They are skipped exactly as if a
+    /// filter rejected them: they are not sorted, grouped, counted or aggregated, are not offered by
+    /// <see cref="GetUniqueColumnValues"/>, and are never tracked for property changes. <see cref="RowCount"/>,
+    /// <see cref="GetItem"/> and <see cref="GetCellValue"/> therefore never see a null item.
+    /// </para>
     /// </summary>
     public void SetItems(IEnumerable items)
     {
@@ -549,12 +561,12 @@ public class KumikoSource
             var entry = _flatView[visibleRow];
             if (entry.Kind == FlatRowKind.GroupHeader)
                 throw new InvalidOperationException("Cannot get a data item for a group header row.");
-            return _sourceItems[entry.SourceIndex]!;
+            return _sourceItems[entry.SourceIndex] ?? throw new InvalidOperationException("The view references a null item.");
         }
 
         if (visibleRow < 0 || visibleRow >= _viewIndices.Count)
             throw new ArgumentOutOfRangeException(nameof(visibleRow));
-        return _sourceItems[_viewIndices[visibleRow]]!;
+        return _sourceItems[_viewIndices[visibleRow]] ?? throw new InvalidOperationException("The view references a null item.");
     }
 
     /// <summary>
@@ -765,7 +777,8 @@ public class KumikoSource
         var values = new HashSet<string>();
         for (int i = 0; i < _sourceItems.Count; i++)
         {
-            var item = _sourceItems[i]!;
+            if (_sourceItems[i] is not { } item)
+                continue; // null items are skipped, like any item a filter rejects
 
             // Apply other column filters (exclude this column) so the value list
             // only shows values that are reachable with other filters applied
@@ -1138,6 +1151,12 @@ public class KumikoSource
             e.Action != NotifyCollectionChangedAction.Remove)
             return false;
 
+        // A null item is never a row, but it still shifts the source indices of the rows after it:
+        // take the full rebuild, which keeps the view correct.
+        if ((e.Action == NotifyCollectionChangedAction.Add ? e.NewItems : e.OldItems) is { } changed &&
+            changed.Cast<object?>().Any(x => x is null))
+            return false;
+
         // Cannot do incremental when sort, filter, group, or summaries are active
         bool hasSort = _columns.Any(c => c.SortDirection != KumikoSortDirection.None);
         bool hasFilter = _columns.Any(c => c.ActiveFilter is { IsActive: true });
@@ -1198,6 +1217,10 @@ public class KumikoSource
         return false;
     }
 
+    /// <summary>A sort value for a source index; the view holds no null items, so null here is only defensive.</summary>
+    private object? ReadSortValue(Func<object, object?> accessor, int sourceIndex) =>
+        _sourceItems[sourceIndex] is { } item ? accessor(item) : null;
+
     /// <summary>Rebuild the visible rows from the source items and the current state. Raises nothing.</summary>
     private void RebuildCore()
     {
@@ -1205,7 +1228,8 @@ public class KumikoSource
 
         for (int i = 0; i < _sourceItems.Count; i++)
         {
-            var item = _sourceItems[i]!;
+            if (_sourceItems[i] is not { } item)
+                continue; // null items never become rows
             if (!PassesAllFilters(item))
                 continue;
             _viewIndices.Add(i);
@@ -1242,8 +1266,8 @@ public class KumikoSource
             {
                 foreach (var spec in sortSpecs)
                 {
-                    var va = spec.Accessor(_sourceItems[a]!);
-                    var vb = spec.Accessor(_sourceItems[b]!);
+                    var va = ReadSortValue(spec.Accessor, a);
+                    var vb = ReadSortValue(spec.Accessor, b);
 
                     int result;
                     if (va == null && vb == null) result = 0;
@@ -1301,7 +1325,8 @@ public class KumikoSource
 
         foreach (var sourceIdx in sourceIndices)
         {
-            var item = _sourceItems[sourceIdx]!;
+            if (_sourceItems[sourceIdx] is not { } item)
+                continue; // the view holds no null items; stay safe regardless
             object? rawValue;
             if (column != null)
             {
@@ -1512,7 +1537,8 @@ public class KumikoSource
         var reader = CreateColumnReader(column);
         foreach (var idx in sourceIndices)
         {
-            result.Add(reader(_sourceItems[idx]!));
+            if (_sourceItems[idx] is { } item)
+                result.Add(reader(item));
         }
         return result;
     }
