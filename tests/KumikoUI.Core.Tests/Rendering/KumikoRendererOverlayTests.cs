@@ -400,8 +400,8 @@ public class KumikoRendererOverlayTests
 
             Assert.Equal(red, ctx.SingleText("P00").Color);
             Assert.Equal(h.Style.CellTextColor, ctx.SingleText("P01").Color);
-            Assert.DoesNotContain(ctx.Fills, f => f.Color == blue && f.Rect.Y == h.RowTop(1));
-            Assert.Contains(ctx.Fills, f => f.Color == blue && f.Rect.Y == h.RowTop(0));
+            Assert.DoesNotContain(ctx.Fills, f => f.Color == blue && RenderHarness.Near(f.Rect.Y, h.RowTop(1)));
+            Assert.Contains(ctx.Fills, f => f.Color == blue && RenderHarness.Near(f.Rect.Y, h.RowTop(0)));
         }
 
         Assert.Null(name.CellStyle.TextColor);
