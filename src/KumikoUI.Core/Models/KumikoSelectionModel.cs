@@ -216,18 +216,12 @@ public class KumikoSelectionModel
         var oldCells = new HashSet<CellPosition>(SelectedCells);
 
         SelectedRows.Clear();
-        foreach (int row in oldRows)
-        {
-            int mapped = e.MapRow(row);
-            if (mapped >= 0) SelectedRows.Add(mapped);
-        }
+        SelectedRows.UnionWith(oldRows.Select(e.MapRow).Where(row => row >= 0));
 
         SelectedCells.Clear();
-        foreach (var cell in oldCells)
-        {
-            int mapped = e.MapRow(cell.Row);
-            if (mapped >= 0) SelectedCells.Add(new CellPosition(mapped, cell.Column));
-        }
+        SelectedCells.UnionWith(oldCells
+            .Select(cell => new CellPosition(e.MapRow(cell.Row), cell.Column))
+            .Where(cell => cell.Row >= 0));
 
         if (CurrentCell.IsValid)
         {
