@@ -53,7 +53,7 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
       Columns          = new ObservableCollection<KumikoColumn>();
       TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
-      _dataSource.DataChanged += OnDataSourceDataChanged;
+      _dataSource.ViewChanged += OnDataSourceViewChanged;
 
       _canvasView.PaintSurface += OnPaintSurface;
 
@@ -73,7 +73,7 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
   }
   ```
   > Notes vs. the skeleton above (all to keep full MAUI parity):
-  > - Also subscribed `_dataSource.DataChanged`, set `_editSession.Style`, and subscribed
+  > - Also subscribed `_dataSource.ViewChanged` (formerly `DataChanged`), set `_editSession.Style`, and subscribed
   >   `_editSession.NeedsRedraw` — MAUI does all three in its ctor.
   > - The `KeyboardFocusRequested` / `FilterPopupOpened` / `FilterPopupClosed` handlers are
   >   subscribed now (the controller raises them), but their bodies are **Phase 04** stubs (soft
@@ -124,7 +124,12 @@ differs (see step 4).
   private void InvalidateSurface() => _canvasView.Invalidate();          // MAUI: _canvasView.InvalidateSurface()
   private void OnInputControllerNeedsRedraw() => _canvasView.Invalidate();
   private void OnEditSessionNeedsRedraw()      => _canvasView.Invalidate();
-  private void OnDataSourceDataChanged()       => _canvasView.Invalidate();
+  private void OnDataSourceViewChanged(object? s, KumikoViewChangedEventArgs e)
+  {
+      _editSession.ApplyViewChange(e);   // the edit and the selection follow their rows
+      _selection.ApplyViewChange(e);
+      _canvasView.Invalidate();
+  }
   ```
 
 ## 4. DPI / scaling

@@ -16,6 +16,7 @@ public class EditSession
     // Edit state
     private bool _isEditing;
     private CellPosition _editCell = CellPosition.Invalid;
+    private bool _isCommitting;
     private object? _originalValue;
     private DrawnComponent? _activeEditor;
     private KumikoColumn? _editColumn;
@@ -144,18 +145,28 @@ public class EditSession
             return false; // Keep editing, show error
         }
 
-        // Write value back
-        dataSource.SetCellValue(_editCell.Row, _editColumn, newValue);
+        // Write value back. The write raises ViewChanged, which may move the row (ApplyViewChange); the events
+        // below report the row the edit was made on.
+        var editedCell = _editCell;
+        _isCommitting = true;
+        try
+        {
+            dataSource.SetCellValue(editedCell.Row, _editColumn, newValue);
+        }
+        finally
+        {
+            _isCommitting = false;
+        }
 
         var endArgs = new CellEndEditEventArgs(
-            _editCell.Row, _editCell.Column, _editColumn,
+            editedCell.Row, editedCell.Column, _editColumn,
             _originalValue, newValue, committed: true);
 
         // Raise value changed if different
         if (!Equals(_originalValue, newValue))
         {
             CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(
-                _editCell.Row, _editCell.Column, _editColumn,
+                editedCell.Row, editedCell.Column, _editColumn,
                 _originalValue, newValue));
         }
 
@@ -203,6 +214,23 @@ public class EditSession
             row, col, column, currentValue, newValue, committed: true));
 
         NeedsRedraw?.Invoke();
+    }
+
+    /// <summary>
+    /// Keep an active edit on its row after the grid's view changes: the edited cell follows its row (sort,
+    /// insert, removal above it), and the edit is canceled when the row is no longer visible (filtered out,
+    /// collapsed, removed). Hosts call this from <see cref="KumikoSource.ViewChanged"/>.
+    /// </summary>
+    public void ApplyViewChange(KumikoViewChangedEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        if (!_isEditing || !e.IsStructural) return;
+
+        int row = e.MapRow(_editCell.Row);
+        if (row >= 0)
+            _editCell = new CellPosition(row, _editCell.Column);
+        else if (!_isCommitting)
+            CancelEdit();
     }
 
     /// <summary>

@@ -63,22 +63,26 @@ source.GetItem(rowIndex)                       // raw data item
 source.RowCount                                // visible row count (after filter/group)
 source.Columns                                 // column list
 
-// Bulk updates:
+// Batch changes: one rebuild and one ViewChanged at EndUpdate (batches nest):
 source.BeginUpdate();
-// ... many add/remove operations
+// ... sort, filter, grouping, summary changes
 source.EndUpdate();
+
+// Every change raises ViewChanged exactly once: Redraw, Rebuild, Insert or Remove.
+source.ViewChanged += (_, e) => { int newRow = e.MapRow(oldRow); };
 ```
 
 ### Sorting
 
-```csharp
-source.ApplySort(column);                         // cycles None → Asc → Desc → None
-source.ApplySort(column, KumikoSortDirection.Ascending);
+Sort state lives on the columns (`SortDirection`, `SortOrder`) but only the source writes it:
 
-// Multi-column:
-col1.SortDirection = KumikoSortDirection.Ascending; col1.SortOrder = 1;
-col2.SortDirection = KumikoSortDirection.Descending; col2.SortOrder = 2;
-source.ApplySorts();
+```csharp
+source.ToggleSort(column);                                  // user gesture: None → Asc → Desc → None
+source.SetSort(column, KumikoSortDirection.Ascending);      // the only sorted column
+source.SetSort(col1, KumikoSortDirection.Ascending, 1);     // multi-column: place 1 (primary)
+source.SetSort(col2, KumikoSortDirection.Descending, 2);    // place 2
+source.SetSort(col1, KumikoSortDirection.None);             // remove; the chain renumbers
+source.ClearSort();
 ```
 
 ### Filtering

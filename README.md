@@ -86,7 +86,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 | **Keyboard nav** | Arrows, Tab/Shift+Tab, Enter, Home/End, Page Up/Down |
 | **Row drag & drop** | Handle column or full-row drag reorder |
 | **Custom fonts** | Register any TTF/OTF typeface (CJK, icon fonts) via `SkiaFontRegistrar`; use by family name in `KumikoFont` |
-| **Theming** | Built-in Light / Dark / HighContrast; fully customisable style object |
+| **Theming** | Built-in Light / Dark / HighContrast; fully customizable style object |
 | **Momentum scrolling** | Physics-based inertial scroll with configurable friction |
 | **Live data** | `INotifyPropertyChanged` and `ObservableCollection` O(1) updates |
 | **Native AOT & trimming** | Warning-free under `PublishAot`; `[KumikoGridItem]` source-generated accessors or per-column delegates |
@@ -341,13 +341,32 @@ Pin the first N rows so they remain visible while the rest of the data scrolls:
 
 ### Sorting
 
-Tap any column header to sort. The indicator cycles through **Ascending → Descending → None**. Multi-column sort is supported — hold the sort state on multiple columns simultaneously via code:
+Tap any column header to sort. The indicator cycles through **Ascending → Descending → None**. Sort state is set through the data source (column `SortDirection` and `SortOrder` are read-only):
 
 ```csharp
-// Set ascending sort on a column, then refresh:
-lastNameColumn.SortDirection = KumikoSortDirection.Ascending;
-kumiko.DataSource.Refresh();
+// Sort by one column:
+kumiko.DataSource.SetSort(lastNameColumn, KumikoSortDirection.Ascending);
+
+// Multi-column sort: the order is the column's place in the chain (1 = primary).
+kumiko.DataSource.SetSort(departmentColumn, KumikoSortDirection.Ascending, 1);
+kumiko.DataSource.SetSort(lastNameColumn, KumikoSortDirection.Descending, 2);
+
+// Remove one column from the sort, or clear it entirely:
+kumiko.DataSource.SetSort(departmentColumn, KumikoSortDirection.None);
+kumiko.DataSource.ClearSort();
 ```
+
+Several changes can be batched so the view is rebuilt and repainted once:
+
+```csharp
+kumiko.DataSource.BeginUpdate();
+kumiko.DataSource.SetSort(lastNameColumn, KumikoSortDirection.Ascending);
+kumiko.DataSource.SetFilter(item => ((Employee)item).IsActive);
+kumiko.DataSource.AddGroupDescription(new GroupDescription("Department"));
+kumiko.DataSource.EndUpdate();
+```
+
+`KumikoSource.ViewChanged` reports every change once, with its kind (`Redraw`, `Rebuild`, `Insert`, `Remove`) and `MapRow` to follow a row from before the change to after it. `ScrollState.ScrollChanged` reports scrolling.
 
 ### Filtering
 

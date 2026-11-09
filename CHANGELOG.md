@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- View change notifications (#20):
+  - `KumikoSource.ViewChanged` (`KumikoViewChangedEventArgs`) is raised exactly once per change, with its kind: `Redraw`, `Rebuild`, `Insert` or `Remove`, and `ViewIndex`/`Count` for incremental changes. `MapRow(oldRow)` follows a row from before the change to after it (data rows by item, group rows by group), and `GetViewRow(item)` finds an item's row.
+  - `KumikoSource.BeginUpdate`/`EndUpdate` batch changes (they nest) into one rebuild and one notification.
+  - `KumikoSource.SetSort(column, direction, order)` sets single or multi-column sort; with `ToggleSort`, `ToggleMultiSort` and `ClearSort` it is the only writer of sort state.
+  - `ScrollState.ScrollChanged` (`KumikoScrollChangedEventArgs`) is raised once per actual scroll offset change.
+  - `KumikoSource.GroupExpandedChanged` (`GroupExpandedChangedEventArgs.IsExpanded`) is raised when a group header is expanded or collapsed.
+  - `KumikoSelectionModel.ApplyViewChange` and `EditSession.ApplyViewChange` keep the selection, the current cell and an active edit on their rows after a sort, filter, grouping change, insert or removal. Rows that disappear leave the selection, and an edit on such a row is canceled. Both hosts call them.
 - Native AOT and trimming support (#17). Item properties are read and written, in order, through:
   - `KumikoColumn.ValueAccessor` / `ValueSetter` delegates (and `EditorDisplaySelector` / `EditorValueSelector` for ComboBox items, `DrawnComboBox.DisplaySelector` / `ValueSelector`);
   - accessors generated for types marked `[KumikoGridItem]` (`KumikoUI.Core.Data`), by a source generator now included in the KumikoUI.Core package;
@@ -15,9 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
   Generated and delegate reads are 3–5× faster than the previous compiled expression trees, with 80% less allocation (`bench/KumikoUI.Benchmarks`). All four packages are marked `IsAotCompatible` and build with no trimming or AOT analyzer warnings; such warnings now fail the build.
 - **KumikoUI.Uno**: a new package hosting the grid on the Uno Platform (Windows App SDK, desktop on Windows/macOS/Linux, WebAssembly, Android, iOS) with the same engine, rendering and features as KumikoUI.Maui, plus `KumikoFonts` for registering custom fonts from app assets, and the `SampleApp.Uno` sample.
-- `KumikoStyle.PinBottomSummaryRows` (default `true`): `Position=Bottom` table summary rows are pinned to the bottom of the viewport as a fixed footer instead of scrolling after the last row. **Behaviour change** for existing users of bottom summaries; set it to `false` to restore the previous layout.
+- `KumikoStyle.PinBottomSummaryRows` (default `true`): `Position=Bottom` table summary rows are pinned to the bottom of the viewport as a fixed footer instead of scrolling after the last row. **Behavior change** for existing users of bottom summaries; set it to `false` to restore the previous layout.
 
 ### Changed
+- **Breaking:** `KumikoSource.DataChanged` (an argument-less `Action`) is replaced by `ViewChanged`. `GroupCollapsed`/`GroupCollapsedEventArgs`, which fired on expand as well, are replaced by `GroupExpandedChanged`. `KumikoColumn.SortDirection`, `SortOrder` and `ActiveFilter` are read-only outside KumikoUI.Core: use `KumikoSource.SetSort`, `ClearSort`, `SetColumnFilter` and `ClearAllFilters`. `SetColumns` now rebuilds the view, `ReorderRow` raises one notification instead of two, and a `SetCellValue` whose item raises `PropertyChanged` raises one notification instead of two. `IsMultiSortActive` is cached.
 - The reflection fallback for item properties is off for `PublishAot=true` and `TrimMode=full` publishes (KumikoUI.Core build targets set the `KumikoUI.Core.IsReflectionPropertyAccessSupported` switch). A property with no generated accessor, delegate or provider then reads as null and is traced once. Override with the `KumikoReflectionPropertyAccess` MSBuild property. Partial trimming, the .NET MAUI default, is unaffected.
 - A nested property path with a `null` value part-way (`Address.City` when `Address` is null) now reads as an empty cell instead of throwing, and an edit to it is ignored.
 - **Breaking:** naming pass: every grid type now uses the `Kumiko` prefix (drawn components keep `Drawn`), and no public name collides with types of MAUI, CommunityToolkit.Maui, WinUI/Uno, the Windows Community Toolkit DataGrid, WPF, Windows Forms or Avalonia (#16). Namespaces are unchanged (`KumikoUI.*`); member names are unchanged (for example `KumikoColumn.SortDirection`, `KumikoDataGrid.GridSelectionMode` and `KumikoDataGrid.GridStyle` keep their names, only their types change). Update XAML and code as follows:
@@ -57,7 +65,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `SkiaFontRegistrar`: register custom typefaces (for example CJK or icon fonts) and use them by family name in `GridFont`. Fixes Japanese text and icon fonts rendering garbled on Android (#5, #8).
 
 ### Fixed
-- Sample: corrected the selection text colour property name in `IconFontCellRenderer`.
+- Sample: corrected the selection text color property name in `IconFontCellRenderer`.
 
 ## [0.1.9] - 2026-05-04
 
@@ -68,7 +76,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 - Action button columns: pill buttons in a cell with `ICommand` or callback support, activating on the first tap (#3).
-- MIT licence and Contributor Covenant Code of Conduct.
+- MIT license and Contributor Covenant Code of Conduct.
 
 ## [0.1.7] - 2026-03-06
 

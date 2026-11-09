@@ -6,11 +6,28 @@ namespace KumikoUI.Core.Models;
 /// </summary>
 public class ScrollState
 {
+    private float _offsetX;
+    private float _offsetY;
+
+    /// <summary>
+    /// Raised when <see cref="OffsetX"/> or <see cref="OffsetY"/> changes, once per change: setting a property
+    /// to its current value, or a <see cref="ClampOffset"/> that moves nothing, raises nothing.
+    /// </summary>
+    public event EventHandler<KumikoScrollChangedEventArgs>? ScrollChanged;
+
     /// <summary>Horizontal scroll offset in pixels.</summary>
-    public float OffsetX { get; set; }
+    public float OffsetX
+    {
+        get => _offsetX;
+        set => SetOffsets(value, _offsetY);
+    }
 
     /// <summary>Vertical scroll offset in pixels.</summary>
-    public float OffsetY { get; set; }
+    public float OffsetY
+    {
+        get => _offsetY;
+        set => SetOffsets(_offsetX, value);
+    }
 
     /// <summary>Total content width (sum of column widths).</summary>
     public float ContentWidth { get; set; }
@@ -30,17 +47,19 @@ public class ScrollState
     public float MaxOffsetY => Math.Max(0, ContentHeight - ViewportHeight);
 
     /// <summary>Clamps the current scroll offset to valid bounds.</summary>
-    public void ClampOffset()
-    {
-        OffsetX = Math.Clamp(OffsetX, 0, MaxOffsetX);
-        OffsetY = Math.Clamp(OffsetY, 0, MaxOffsetY);
-    }
+    public void ClampOffset() =>
+        SetOffsets(Math.Clamp(_offsetX, 0, MaxOffsetX), Math.Clamp(_offsetY, 0, MaxOffsetY));
 
     /// <summary>Scrolls by the specified deltas and clamps the result.</summary>
-    public void ScrollBy(float dx, float dy)
+    public void ScrollBy(float dx, float dy) =>
+        SetOffsets(Math.Clamp(_offsetX + dx, 0, MaxOffsetX), Math.Clamp(_offsetY + dy, 0, MaxOffsetY));
+
+    private void SetOffsets(float x, float y)
     {
-        OffsetX += dx;
-        OffsetY += dy;
-        ClampOffset();
+        float oldX = _offsetX, oldY = _offsetY;
+        if (oldX.Equals(x) && oldY.Equals(y)) return;
+        _offsetX = x;
+        _offsetY = y;
+        ScrollChanged?.Invoke(this, new KumikoScrollChangedEventArgs(oldX, oldY, x, y));
     }
 }

@@ -91,8 +91,11 @@ public class KumikoColumn
     /// <summary>Can this column be filtered?</summary>
     public bool AllowFiltering { get; set; } = true;
 
-    /// <summary>Active filter for this column. Null means no filter.</summary>
-    public FilterDescription? ActiveFilter { get; set; }
+    /// <summary>
+    /// Active filter for this column. Null means no filter. Set it with
+    /// <see cref="KumikoSource.SetColumnFilter"/>.
+    /// </summary>
+    public FilterDescription? ActiveFilter { get; internal set; }
 
     /// <summary>
     /// When true, the column is frozen (pinned) to the left edge
@@ -120,14 +123,14 @@ public class KumikoColumn
     /// </summary>
     public ColumnFreezeMode FreezeMode { get; set; } = ColumnFreezeMode.None;
 
-    /// <summary>Current sort direction.</summary>
-    public KumikoSortDirection SortDirection { get; set; } = KumikoSortDirection.None;
+    /// <summary>Current sort direction. Set it with <see cref="KumikoSource.SetSort"/>.</summary>
+    public KumikoSortDirection SortDirection { get; internal set; } = KumikoSortDirection.None;
 
     /// <summary>
-    /// Sort priority in multi-sort mode. 0 = not part of multi-sort.
-    /// 1 = primary sort, 2 = secondary, etc.
+    /// Sort priority: 0 = not sorted, 1 = primary sort, 2 = secondary, etc. Set it with
+    /// <see cref="KumikoSource.SetSort"/>.
     /// </summary>
-    public int SortOrder { get; set; }
+    public int SortOrder { get; internal set; }
 
     /// <summary>
     /// Optional custom comparer for sorting this column.

@@ -34,14 +34,11 @@ column.AllowSorting = false;  // disable for specific column
 **Programmatic sort:**
 ```csharp
 // Single column ascending:
-kumikoDataGrid.Source.ApplySort(column, KumikoSortDirection.Ascending);
+kumikoDataGrid.DataSource.SetSort(column, KumikoSortDirection.Ascending);
 
-// Multi-column (set SortOrder to control priority):
-columnA.SortDirection = KumikoSortDirection.Ascending;
-columnA.SortOrder     = 1;
-columnB.SortDirection = KumikoSortDirection.Descending;
-columnB.SortOrder     = 2;
-kumikoDataGrid.Source.ApplySorts();
+// Multi-column (the order is the place in the chain, 1 = primary):
+kumikoDataGrid.DataSource.SetSort(columnA, KumikoSortDirection.Ascending, 1);
+kumikoDataGrid.DataSource.SetSort(columnB, KumikoSortDirection.Descending, 2);
 ```
 
 ---
@@ -197,8 +194,8 @@ kumikoDataGrid.ItemsSource = Employees;
 Employees.Add(new Employee { ... });
 Employees.RemoveAt(index);
 
-// For bulk changes, batch with BeginUpdate/EndUpdate:
-kumikoDataGrid.Source.BeginUpdate();
-for (var item in newItems) Employees.Add(item);
-kumikoDataGrid.Source.EndUpdate();
+// For bulk changes, batch with BeginUpdate/EndUpdate (one ViewChanged at the end):
+kumikoDataGrid.DataSource.BeginUpdate();
+foreach (var item in newItems) Employees.Add(item);
+kumikoDataGrid.DataSource.EndUpdate();
 ```

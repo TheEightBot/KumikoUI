@@ -473,7 +473,7 @@ public class KumikoInputController
                 group.GroupSortDirection = group.GroupSortDirection == KumikoSortDirection.Ascending
                     ? KumikoSortDirection.Descending
                     : KumikoSortDirection.Ascending;
-                dataSource.RebuildView();
+                dataSource.Refresh();
                 Redraw();
             }
             e.Handled = true;
@@ -1168,15 +1168,8 @@ public class KumikoInputController
         popup.FilterCleared += () => { CloseFilterPopup(); Redraw(); };
         popup.SortRequested += dir =>
         {
-            // Clear existing sorts and set this column
-            foreach (var c in dataSource.Columns)
-            {
-                c.SortDirection = KumikoSortDirection.None;
-                c.SortOrder = 0;
-            }
-            column.SortDirection = dir;
-            column.SortOrder = 1;
-            dataSource.RebuildView();
+            // This column becomes the only sorted one
+            dataSource.SetSort(column, dir);
             CloseFilterPopup();
             Redraw();
         };
