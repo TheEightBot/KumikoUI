@@ -42,25 +42,32 @@ public class FilterDescription
     }
 
     /// <summary>
-    /// Evaluate this filter against a cell value and its display text.
+    /// Evaluate this filter against a cell value and its display text, with the current culture and
+    /// case-insensitive text rules (<see cref="KumikoComparer.Default"/>).
     /// </summary>
-    public bool Evaluate(object? cellValue, string displayText)
+    public bool Evaluate(object? cellValue, string displayText) =>
+        Evaluate(cellValue, displayText, SelectedValues is { } selected
+            ? new HashSet<string>(selected, KumikoComparer.Default.TextComparer)
+            : null, KumikoComparer.Default);
+
+    /// <summary>
+    /// Evaluate with a source's text rules: <paramref name="values"/> is <see cref="SelectedValues"/> as a set
+    /// using <paramref name="comparer"/>'s text equality.
+    /// </summary>
+    internal bool Evaluate(object? cellValue, string displayText, ISet<string>? values, KumikoComparer comparer)
     {
         // Value list filter (Excel-style checkboxes)
-        if (SelectedValues != null)
-        {
-            if (!SelectedValues.Contains(displayText))
-                return false;
-        }
+        if (values != null && !values.Contains(displayText))
+            return false;
 
         // Condition filter
         if (Condition1 != null)
         {
-            bool result1 = Condition1.Evaluate(cellValue, Column.ColumnType);
+            bool result1 = Condition1.Evaluate(cellValue, Column.ColumnType, comparer);
 
             if (Condition2 != null)
             {
-                bool result2 = Condition2.Evaluate(cellValue, Column.ColumnType);
+                bool result2 = Condition2.Evaluate(cellValue, Column.ColumnType, comparer);
                 bool combined = Combination == FilterCombination.And
                     ? result1 && result2
                     : result1 || result2;

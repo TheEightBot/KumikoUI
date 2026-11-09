@@ -18,44 +18,49 @@ public class FilterCondition
     public object? Value { get; set; }
 
     /// <summary>
-    /// Evaluate this condition against a cell value for a given column type.
+    /// Evaluate this condition against a cell value for a given column type, with the current culture and
+    /// case-insensitive text rules (<see cref="KumikoComparer.Default"/>).
     /// </summary>
-    public bool Evaluate(object? cellValue, KumikoColumnType columnType)
+    public bool Evaluate(object? cellValue, KumikoColumnType columnType) =>
+        Evaluate(cellValue, columnType, KumikoComparer.Default);
+
+    /// <summary>Evaluate with a source's culture and text rules.</summary>
+    internal bool Evaluate(object? cellValue, KumikoColumnType columnType, KumikoComparer comparer)
     {
         return columnType switch
         {
             KumikoColumnType.Text or KumikoColumnType.ComboBox or KumikoColumnType.Picker
-                => EvaluateText(cellValue),
-            KumikoColumnType.Numeric => EvaluateNumeric(cellValue),
-            KumikoColumnType.Date => EvaluateDate(cellValue),
+                => EvaluateText(cellValue, comparer),
+            KumikoColumnType.Numeric => EvaluateNumeric(cellValue, comparer),
+            KumikoColumnType.Date => EvaluateDate(cellValue, comparer),
             KumikoColumnType.Boolean => EvaluateBoolean(cellValue),
             _ => true // Template/Image columns pass through
         };
     }
 
-    private bool EvaluateText(object? cellValue)
+    private bool EvaluateText(object? cellValue, KumikoComparer comparer)
     {
-        string cellText = cellValue?.ToString() ?? string.Empty;
-        string filterText = Value?.ToString() ?? string.Empty;
+        string cellText = comparer.Format(cellValue);
+        string filterText = comparer.Format(Value);
 
         return TextOperator switch
         {
-            TextFilterOperator.Equals => cellText.Equals(filterText, StringComparison.OrdinalIgnoreCase),
-            TextFilterOperator.NotEquals => !cellText.Equals(filterText, StringComparison.OrdinalIgnoreCase),
-            TextFilterOperator.Contains => cellText.Contains(filterText, StringComparison.OrdinalIgnoreCase),
-            TextFilterOperator.NotContains => !cellText.Contains(filterText, StringComparison.OrdinalIgnoreCase),
-            TextFilterOperator.StartsWith => cellText.StartsWith(filterText, StringComparison.OrdinalIgnoreCase),
-            TextFilterOperator.EndsWith => cellText.EndsWith(filterText, StringComparison.OrdinalIgnoreCase),
+            TextFilterOperator.Equals => comparer.TextEquals(cellText, filterText),
+            TextFilterOperator.NotEquals => !comparer.TextEquals(cellText, filterText),
+            TextFilterOperator.Contains => comparer.TextContains(cellText, filterText),
+            TextFilterOperator.NotContains => !comparer.TextContains(cellText, filterText),
+            TextFilterOperator.StartsWith => comparer.TextStartsWith(cellText, filterText),
+            TextFilterOperator.EndsWith => comparer.TextEndsWith(cellText, filterText),
             TextFilterOperator.Empty => string.IsNullOrEmpty(cellText),
             TextFilterOperator.NotEmpty => !string.IsNullOrEmpty(cellText),
             _ => true
         };
     }
 
-    private bool EvaluateNumeric(object? cellValue)
+    private bool EvaluateNumeric(object? cellValue, KumikoComparer comparer)
     {
-        if (!TryConvertToDouble(cellValue, out double cell)) return false;
-        if (!TryConvertToDouble(Value, out double filter)) return false;
+        if (!TryConvertToDouble(cellValue, comparer, out double cell)) return false;
+        if (!TryConvertToDouble(Value, comparer, out double filter)) return false;
 
         return NumericOperator switch
         {
@@ -69,10 +74,10 @@ public class FilterCondition
         };
     }
 
-    private bool EvaluateDate(object? cellValue)
+    private bool EvaluateDate(object? cellValue, KumikoComparer comparer)
     {
-        if (!TryConvertToDateTime(cellValue, out DateTime cell)) return false;
-        if (!TryConvertToDateTime(Value, out DateTime filter)) return false;
+        if (!TryConvertToDateTime(cellValue, comparer, out DateTime cell)) return false;
+        if (!TryConvertToDateTime(Value, comparer, out DateTime filter)) return false;
 
         cell = cell.Date;
         filter = filter.Date;
@@ -96,26 +101,21 @@ public class FilterCondition
         return true;
     }
 
-    private static bool TryConvertToDouble(object? value, out double result)
+    private static bool TryConvertToDouble(object? value, KumikoComparer comparer, out double result)
     {
         result = 0;
         if (value == null) return false;
-        if (value is double d) { result = d; return true; }
-        if (value is float f) { result = f; return true; }
-        if (value is int i) { result = i; return true; }
-        if (value is long l) { result = l; return true; }
-        if (value is decimal m) { result = (double)m; return true; }
-        if (value is short s) { result = s; return true; }
-        if (value is byte b) { result = b; return true; }
-        return double.TryParse(value.ToString(), out result);
+        if (KumikoComparer.TryGetNumber(value, out var number)) { result = number.AsDouble; return true; }
+        return double.TryParse(comparer.Format(value), System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands, comparer.Culture, out result);
     }
 
-    private static bool TryConvertToDateTime(object? value, out DateTime result)
+    private static bool TryConvertToDateTime(object? value, KumikoComparer comparer, out DateTime result)
     {
         result = default;
         if (value == null) return false;
         if (value is DateTime dt) { result = dt; return true; }
         if (value is DateTimeOffset dto) { result = dto.DateTime; return true; }
-        return DateTime.TryParse(value.ToString(), out result);
+        if (value is DateOnly d) { result = d.ToDateTime(TimeOnly.MinValue); return true; }
+        return DateTime.TryParse(comparer.Format(value), comparer.Culture, System.Globalization.DateTimeStyles.None, out result);
     }
 }

@@ -368,6 +368,15 @@ kumiko.DataSource.EndUpdate();
 
 `KumikoSource.ViewChanged` reports every change once, with its kind (`Redraw`, `Rebuild`, `Insert`, `Remove`) and `MapRow` to follow a row from before the change to after it. `ScrollState.ScrollChanged` reports scrolling.
 
+Sorting, grouping, filtering and Min/Max summaries share one comparer (`KumikoSource.Comparer`, a `KumikoComparer`) that never throws: nulls come first, numbers compare by value across numeric types, dates and times chronologically, other values of one type through `IComparable`, and anything else by its text. Sorting is stable, and groups are ordered by their key (1, 2, 10), not their header text. Text compares in the source's culture, ignoring case by default; both rules also apply to the filter popup's value list and search and to text filter conditions:
+
+```csharp
+kumiko.DataSource.Culture = CultureInfo.GetCultureInfo("de-DE"); // formatting, text order, filter parsing (default: current culture)
+kumiko.DataSource.StringCompareOptions = CompareOptions.Ordinal;  // case-sensitive ordinal text (default: IgnoreCase)
+```
+
+A column's `CustomComparer` replaces the comparer for that column's sort and grouping. Template and Image columns, and columns with neither a `PropertyName` nor a `ValueAccessor`, are not sortable unless `AllowSorting` is set.
+
 ### Filtering
 
 Every column header displays a filter icon. Tapping it opens an **Excel-style filter popup** that provides:

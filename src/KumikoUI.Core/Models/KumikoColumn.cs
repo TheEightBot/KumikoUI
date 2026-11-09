@@ -79,8 +79,19 @@ public class KumikoColumn
     /// </summary>
     public bool AllowTabStop { get; set; } = true;
 
-    /// <summary>Can this column be sorted?</summary>
-    public bool AllowSorting { get; set; } = true;
+    /// <summary>
+    /// Can the user sort this column (header taps)? By default, true unless the column has nothing meaningful
+    /// to order by: <see cref="KumikoColumnType.Template"/> and <see cref="KumikoColumnType.Image"/> columns,
+    /// and columns that show the whole row item (empty <see cref="PropertyName"/> without a
+    /// <see cref="ValueAccessor"/>). Setting it overrides the default.
+    /// </summary>
+    public bool AllowSorting
+    {
+        get => _allowSorting ?? (ColumnType is not (KumikoColumnType.Template or KumikoColumnType.Image)
+                                 && (!string.IsNullOrEmpty(PropertyName) || ValueAccessor != null));
+        set => _allowSorting = value;
+    }
+    private bool? _allowSorting;
 
     /// <summary>Can this column be resized?</summary>
     public bool AllowResize { get; set; } = true;

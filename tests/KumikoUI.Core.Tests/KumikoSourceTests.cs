@@ -871,27 +871,27 @@ public class KumikoSourceTests
         Assert.True(source.IsMultiSortActive);
     }
 
-    // ── FormatCellValue static ────────────────────────────────────
+    // ── FormatCellValue ───────────────────────────────────────────
 
     [Fact]
     public void FormatCellValue_NullValue_ReturnsEmpty()
     {
         var col = new KumikoColumn();
-        Assert.Equal("", KumikoSource.FormatCellValue(null, col));
+        Assert.Equal("", new KumikoSource().FormatCellValue(null, col));
     }
 
     [Fact]
     public void FormatCellValue_WithFormat_FormatsValue()
     {
         var col = new KumikoColumn { Format = "N2" };
-        Assert.Equal("3.14", KumikoSource.FormatCellValue(3.14159265, col));
+        Assert.Equal("3.14", new KumikoSource { Culture = System.Globalization.CultureInfo.InvariantCulture }.FormatCellValue(3.14159265, col));
     }
 
     [Fact]
     public void FormatCellValue_NoFormat_UsestoString()
     {
         var col = new KumikoColumn();
-        Assert.Equal("42", KumikoSource.FormatCellValue(42, col));
+        Assert.Equal("42", new KumikoSource().FormatCellValue(42, col));
     }
 
     // ── Refresh ───────────────────────────────────────────────────

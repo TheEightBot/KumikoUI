@@ -643,7 +643,7 @@ public class KumikoRenderer
 
                 var renderer = col.CustomCellRenderer ?? GetCellRenderer(col.ColumnType);
                 var value = dataSource.GetCellValue(row, col);
-                var displayText = KumikoSource.FormatCellValue(value, col);
+                var displayText = dataSource.FormatCellValue(value, col);
 
                 renderer.Render(ctx, cellRect, value, displayText, col, style, isSelected, colCellStyle);
             }
@@ -783,7 +783,7 @@ public class KumikoRenderer
 
                 var renderer = col.CustomCellRenderer ?? GetCellRenderer(col.ColumnType);
                 var value = dataSource.GetCellValue(row, col);
-                var displayText = KumikoSource.FormatCellValue(value, col);
+                var displayText = dataSource.FormatCellValue(value, col);
 
                 renderer.Render(ctx, cellRect, value, displayText, col, style, isSelected, colCellStyle);
             }

@@ -21,7 +21,8 @@ public class KumikoColumnTests
         Assert.True(col.IsVisible);
         Assert.False(col.IsReadOnly);
         Assert.True(col.AllowTabStop);
-        Assert.True(col.AllowSorting);
+        Assert.False(col.AllowSorting); // no property to sort by yet (#15)
+        Assert.True(new KumikoColumn { PropertyName = "Name" }.AllowSorting);
         Assert.True(col.AllowResize);
         Assert.True(col.AllowReorder);
         Assert.True(col.AllowFiltering);

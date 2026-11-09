@@ -144,7 +144,10 @@ public class DrawnFilterPopup : DrawnComponent
 
         // Determine which values are currently selected
         var currentFilter = _column.ActiveFilter;
-        HashSet<string>? selectedValues = currentFilter?.SelectedValues;
+        // Under the source's text rules, like the filter itself: "oslo" checks "Oslo" when case is ignored.
+        HashSet<string>? selectedValues = currentFilter?.SelectedValues is { } selected
+            ? new HashSet<string>(selected, _dataSource.Comparer.TextComparer)
+            : null;
 
         _allItems = uniqueValues.Select(v => new FilterItem
         {
@@ -165,7 +168,7 @@ public class DrawnFilterPopup : DrawnComponent
         else
         {
             _filteredItems = _allItems
-                .Where(i => i.DisplayText.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                .Where(i => _dataSource.Comparer.TextContains(i.DisplayText, _searchText))
                 .ToList();
         }
 
