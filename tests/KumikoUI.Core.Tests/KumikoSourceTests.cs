@@ -223,7 +223,7 @@ public class KumikoSourceTests
     }
 
     [Fact]
-    public void SortColumnsChanging_CanBeCancelled()
+    public void SortColumnsChanging_CanBeCanceled()
     {
         var source = MakeSource(SamplePeople());
         var col = source.Columns.First(c => c.PropertyName == "Name");
@@ -307,7 +307,7 @@ public class KumikoSourceTests
     }
 
     [Fact]
-    public void FilterChanging_CanBeCancelled()
+    public void FilterChanging_CanBeCanceled()
     {
         var source = MakeSource(SamplePeople());
         var nameCol = source.Columns.First(c => c.PropertyName == "Name");
@@ -523,7 +523,7 @@ public class KumikoSourceTests
     }
 
     [Fact]
-    public void GroupExpanding_CanBeCancelled()
+    public void GroupExpanding_CanBeCanceled()
     {
         var source = MakeSource(SamplePeople());
         source.AddGroupDescription(new GroupDescription("Department"));

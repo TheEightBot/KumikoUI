@@ -494,8 +494,8 @@ public class DrawnTextBoxTests
     {
         var f = new EditFixture();
         string? copied = null;
-        f.Edit.ClipboardCopyRequested += (_, e) => copied = e.Text;
-        f.Edit.ClipboardPasteRequested += (_, e) => e.Text = "Zoe";
+        f.Edit.ClipboardCopyRequested += (object? _, ClipboardTextEventArgs e) => copied = e.Text;
+        f.Edit.ClipboardPasteRequested += (object? _, ClipboardRequestEventArgs e) => e.Text = "Zoe";
 
         f.Edit.HandleKeyEvent(new KumikoKeyEventArgs { Key = KumikoKey.C, Modifiers = InputModifiers.Control });
         Assert.Equal("Alice", copied); // the editor opens with everything selected
