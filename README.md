@@ -850,6 +850,8 @@ public class Employee : INotifyPropertyChanged
 }
 ```
 
+A change to a property that a sort, column filter, grouping or summary uses re-sorts, re-filters, regroups or recomputes; any other change only repaints. With a `SetFilter` predicate set, every change re-filters, since the predicate may read any property. A `null` or empty property name means every property changed. Items added to or removed from an `ObservableCollection` honor the active filters at once.
+
 ### Nested property paths
 
 `PropertyName` supports dotted paths for nested objects:
@@ -858,7 +860,7 @@ public class Employee : INotifyPropertyChanged
 <core:KumikoColumn Header="City" PropertyName="Address.City" Width="120" />
 ```
 
-Each path segment is resolved once per item type and cached. A `null` value part-way along the path reads as an empty cell, and an edit to it is ignored. How the properties are read is covered in [Native AOT & Trimming](#-native-aot--trimming).
+Only the row item is observed: for a sorted, filtered, grouped or summarized `Address.City` to update when the address changes, the item must raise `PropertyChanged` for `Address` (or with an empty name). Each path segment is resolved once per item type and cached. A `null` value part-way along the path reads as an empty cell, and an edit to it is ignored. How the properties are read is covered in [Native AOT & Trimming](#-native-aot--trimming).
 
 ---
 

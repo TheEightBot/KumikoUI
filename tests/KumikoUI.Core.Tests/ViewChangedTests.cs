@@ -69,6 +69,8 @@ public class ViewChangedTests
         { "SetFilter", KumikoViewChangeKind.Rebuild },
         { "SetColumnFilter", KumikoViewChangeKind.Rebuild },
         { "ClearAllFilters", KumikoViewChangeKind.Rebuild },
+        { "ClearAllFilters with no filter", null },
+        { "SetFilter(null) with no filter", null },
         { "ToggleSort", KumikoViewChangeKind.Rebuild },
         { "ToggleMultiSort", KumikoViewChangeKind.Rebuild },
         { "SetSort", KumikoViewChangeKind.Rebuild },
@@ -99,6 +101,9 @@ public class ViewChangedTests
             case "ToggleGroupExpansion":
             case "CollapseAllGroups":
                 f.Source.AddGroupDescription(new GroupDescription("Department"));
+                break;
+            case "ClearAllFilters":
+                f.Source.SetFilter(o => ((Person)o).Age > 26);
                 break;
             case "ClearTableSummaryRows":
                 f.Source.AddTableSummaryRow(new TableSummaryRow("T") { Columns = { new SummaryColumnDescription("Age", SummaryType.Sum) } });
@@ -133,6 +138,8 @@ public class ViewChangedTests
                 f.Source.SetColumnFilter(f.Department, new FilterDescription(f.Department) { SelectedValues = new() { "Marketing" } });
                 break;
             case "ClearAllFilters": f.Source.ClearAllFilters(); break;
+            case "ClearAllFilters with no filter": f.Source.ClearAllFilters(); break;
+            case "SetFilter(null) with no filter": f.Source.SetFilter(null); break;
             case "ToggleSort": f.Source.ToggleSort(f.Name); break;
             case "ToggleMultiSort": f.Source.ToggleMultiSort(f.Name); break;
             case "SetSort": f.Source.SetSort(f.Name, KumikoSortDirection.Descending); break;

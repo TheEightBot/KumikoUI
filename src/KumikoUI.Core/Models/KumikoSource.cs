@@ -272,7 +272,14 @@ public class KumikoSource
     public bool DefaultGroupExpanded
     {
         get => _defaultGroupExpanded;
-        set => _defaultGroupExpanded = value;
+        set
+        {
+            if (_defaultGroupExpanded == value) return;
+            _defaultGroupExpanded = value;
+            // Only groups without their own expanded state follow the default, and only groups show it.
+            if (_groupDescriptions.Count > 0)
+                RequestRebuild();
+        }
     }
 
     /// <summary>
@@ -421,11 +428,13 @@ public class KumikoSource
         // The collection has already changed, so the old rows come from the record kept since the last
         // notification, not from the (now stale) view.
         var oldRowKeys = _rowKeys;
-        bool incremental = TryIncrementalUpdate(e, out int viewIndex);
+        bool incremental = TryIncrementalUpdate(e, out int viewIndex, out bool rowsChanged);
         if (!incremental)
             RebuildCore();
 
-        if (_updateDepth > 0)
+        if (incremental && !rowsChanged)
+            NotifyRedraw(); // the change is to an item no row shows (filtered out): the rows keep their keys
+        else if (_updateDepth > 0)
             _pendingStructural = true;
         else if (_viewChanged != null)
         {
@@ -472,64 +481,54 @@ public class KumikoSource
     }
 
     /// <summary>
-    /// Raised when an item property changes: a redraw, or a rebuild when the property drives sorting, grouping,
-    /// filtering or a summary.
-    /// For non-structural changes we just notify without a full rebuild unless the
-    /// changed property is used for sorting, grouping, or filtering.
+    /// Handles an item's <c>PropertyChanged</c>: a redraw, or a rebuild when the property drives sorting,
+    /// grouping, filtering or a summary. A <c>null</c> or empty property name means every property changed.
+    /// Names match a column, group or summary property ignoring case, as columns bind to properties that way;
+    /// a change of <c>Address</c> also counts for the path <c>Address.City</c>. With a filter predicate set, any
+    /// change may change its result, so any change rebuilds.
+    /// Only the item itself is observed: a nested object must raise <c>PropertyChanged</c> through the root item
+    /// (for example <c>Address</c>) for a change to <c>Address.City</c> to be seen.
     /// </summary>
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        string? propName = e.PropertyName;
-
-        // Check if the changed property is a sort, group, filter, or summary key — if so, full rebuild
-        bool needsRebuild = false;
-        if (propName != null)
-        {
-            foreach (var col in _columns)
-            {
-                if (col.PropertyName == propName)
-                {
-                    if (col.SortDirection != KumikoSortDirection.None ||
-                        col.ActiveFilter != null ||
-                        _groupDescriptions.Any(g => g.PropertyName == propName))
-                    {
-                        needsRebuild = true;
-                    }
-                    break;
-                }
-            }
-
-            // Also rebuild if the property is used in any summary aggregate
-            if (!needsRebuild)
-            {
-                foreach (var tsr in _tableSummaryRows)
-                    if (tsr.Columns.Any(c => c.PropertyName == propName))
-                    { needsRebuild = true; break; }
-            }
-            if (!needsRebuild)
-            {
-                foreach (var gsr in _groupSummaryRows)
-                    if (gsr.Columns.Any(c => c.PropertyName == propName))
-                    { needsRebuild = true; break; }
-            }
-            if (!needsRebuild && _captionSummary != null)
-            {
-                if (_captionSummary.Columns.Any(c => c.PropertyName == propName))
-                    needsRebuild = true;
-            }
-        }
-        else
-        {
-            // PropertyName is null — treat as full change
-            needsRebuild = true;
-        }
-
-        if (needsRebuild)
+        if (ItemPropertyAffectsView(e.PropertyName))
             RequestRebuild();
         else
             NotifyRedraw(); // just a display property change
-
     }
+
+    /// <summary>Whether a change of <paramref name="propName"/> (null or empty: all) can change the visible rows or summaries.</summary>
+    private bool ItemPropertyAffectsView(string? propName)
+    {
+        // All properties changed, or an opaque filter predicate that may read any of them
+        if (string.IsNullOrEmpty(propName) || _filterPredicate != null)
+            return true;
+
+        // A sorted or filtered column (several columns can share a property)
+        foreach (var col in _columns)
+        {
+            if (!PropertyPathAffected(col.PropertyName, propName)) continue;
+            if (col.SortDirection != KumikoSortDirection.None || col.ActiveFilter is { IsActive: true })
+                return true;
+        }
+
+        foreach (var group in _groupDescriptions)
+            if (PropertyPathAffected(group.PropertyName, propName)) return true;
+
+        // Also rebuild if the property is used in any summary aggregate
+        foreach (var tsr in _tableSummaryRows)
+            if (tsr.Columns.Any(c => PropertyPathAffected(c.PropertyName, propName))) return true;
+        foreach (var gsr in _groupSummaryRows)
+            if (gsr.Columns.Any(c => PropertyPathAffected(c.PropertyName, propName))) return true;
+        return _captionSummary != null &&
+               _captionSummary.Columns.Any(c => PropertyPathAffected(c.PropertyName, propName));
+    }
+
+    /// <summary>Whether a change of <paramref name="changed"/> affects the value at <paramref name="path"/>: the same property, or a parent of a dotted path.</summary>
+    private static bool PropertyPathAffected(string path, string changed) =>
+        path.Length >= changed.Length &&
+        path.StartsWith(changed, StringComparison.OrdinalIgnoreCase) &&
+        (path.Length == changed.Length || path[changed.Length] == '.');
 
     /// <summary>
     /// Replace the column definitions.
@@ -773,6 +772,7 @@ public class KumikoSource
     /// </summary>
     public void SetFilter(Func<object, bool>? predicate)
     {
+        if (_filterPredicate == null && predicate == null) return;
         _filterPredicate = predicate;
         RequestRebuild();
     }
@@ -784,6 +784,7 @@ public class KumikoSource
     public void SetColumnFilter(KumikoColumn column, FilterDescription? filter)
     {
         if (!column.AllowFiltering) return;
+        if (filter == null && column.ActiveFilter == null) return; // nothing to clear
 
         // Raise changing event (cancelable)
         var changingArgs = new FilterChangingEventArgs(column, filter);
@@ -802,6 +803,7 @@ public class KumikoSource
     /// </summary>
     public void ClearAllFilters()
     {
+        if (_filterPredicate == null && _columns.All(c => c.ActiveFilter == null)) return;
         foreach (var col in _columns)
             col.ActiveFilter = null;
         _filterPredicate = null;
@@ -1191,14 +1193,17 @@ public class KumikoSource
     public string FormatCellValue(object? value, KumikoColumn column) => _comparer.Format(value, column.Format);
 
     /// <summary>
-    /// Attempts an O(1) or O(log n) incremental update of <c>_viewIndices</c>
-    /// for simple Add/Remove INCC events when no sort, filter, grouping, or
-    /// summary is active. Returns false if a full rebuild is needed. <paramref name="viewIndex"/> is the
-    /// visible row that was inserted or removed.
+    /// Attempts an incremental update of <c>_viewIndices</c> for a single-item Add or Remove event when no
+    /// sort, grouping or summary is active. Column filters and the filter predicate do not prevent it: an added
+    /// item is tested against them and gets a row only if it passes, and a removed item that has no row only
+    /// shifts the source indices after it. Returns false if a full rebuild is needed.
+    /// <paramref name="viewIndex"/> is the visible row that was inserted or removed; <paramref name="rowsChanged"/>
+    /// is false when the view's rows are the same (the item was filtered out), though source indices moved.
     /// </summary>
-    private bool TryIncrementalUpdate(NotifyCollectionChangedEventArgs e, out int viewIndex)
+    private bool TryIncrementalUpdate(NotifyCollectionChangedEventArgs e, out int viewIndex, out bool rowsChanged)
     {
         viewIndex = -1;
+        rowsChanged = true;
         // Only handle single-item Add or Remove
         if (e.Action != NotifyCollectionChangedAction.Add &&
             e.Action != NotifyCollectionChangedAction.Remove)
@@ -1210,20 +1215,22 @@ public class KumikoSource
             changed.Cast<object?>().Any(x => x is null))
             return false;
 
-        // Cannot do incremental when sort, filter, group, or summaries are active
+        // Cannot do incremental when sort, group, or summaries are active
         bool hasSort = _columns.Any(c => c.SortDirection != KumikoSortDirection.None);
-        bool hasFilter = _columns.Any(c => c.ActiveFilter is { IsActive: true });
         bool hasGroup = _groupDescriptions.Count > 0;
         bool hasSummaries = _tableSummaryRows.Count > 0 || _groupSummaryRows.Count > 0 ||
                             _captionSummary?.Columns.Count > 0;
 
-        if (hasSort || hasFilter || hasGroup || hasSummaries)
+        if (hasSort || hasGroup || hasSummaries)
             return false;
 
         if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems is { Count: 1 })
         {
             int sourceIndex = e.NewStartingIndex;
             if (sourceIndex < 0) return false; // Index not provided — fall back
+
+            // The new item gets a row only if it passes the filter predicate and the column filters.
+            bool visible = e.NewItems[0] is { } added && PassesFilters(added, PrepareFilters());
 
             // Shift existing view indices that are >= the inserted position
             for (int i = 0; i < _viewIndices.Count; i++)
@@ -1232,8 +1239,14 @@ public class KumikoSource
                     _viewIndices[i]++;
             }
 
-            // Append the new item (no sort/filter, so it goes at the insertion position)
-            // Find where to insert in _viewIndices to maintain source-order
+            if (!visible)
+            {
+                rowsChanged = false;
+                return true;
+            }
+
+            // No sort, so the new row goes at the insertion position: find where to insert in
+            // _viewIndices to maintain source-order
             int insertAt = _viewIndices.Count;
             for (int i = 0; i < _viewIndices.Count; i++)
             {
@@ -1254,10 +1267,12 @@ public class KumikoSource
             int sourceIndex = e.OldStartingIndex;
             if (sourceIndex < 0) return false; // Index not provided — fall back
 
-            // Remove the entry and shift indices above the removed position
+            // Remove the entry (if the item had a row) and shift indices above the removed position
             viewIndex = _viewIndices.IndexOf(sourceIndex);
-            if (viewIndex < 0) return false;
-            _viewIndices.RemoveAt(viewIndex);
+            if (viewIndex >= 0)
+                _viewIndices.RemoveAt(viewIndex);
+            else
+                rowsChanged = false; // the item was filtered out
             for (int i = 0; i < _viewIndices.Count; i++)
             {
                 if (_viewIndices[i] > sourceIndex)
