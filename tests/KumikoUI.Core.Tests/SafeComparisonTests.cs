@@ -54,19 +54,22 @@ public class SafeComparisonTests
     public void Comparer_OrdersMixedValues_WithoutThrowing()
     {
         var c = new KumikoComparer(CultureInfo.InvariantCulture);
+        object intTwo = 2, doubleTwo = 2.0, textOne = "1", intOne = 1;
 
         Assert.True(c.Compare(null, 1) < 0);
         Assert.True(c.Compare(2, 10.5) < 0);              // int vs double, by value
         Assert.True(c.Compare(3.5m, 3L) > 0);             // decimal vs long
-        Assert.Equal(0, c.Compare(2, 2.0));
+        Assert.Equal(0, c.Compare(intTwo, doubleTwo));      // equal values of different types
         Assert.True(c.Compare(new DateTime(2026, 1, 1), new DateTimeOffset(2026, 6, 1, 0, 0, 0, TimeSpan.Zero)) < 0);
         Assert.True(c.Compare(new DateOnly(2025, 12, 31), new DateTime(2026, 1, 1)) < 0);
         Assert.True(c.Compare("apple", "Banana") < 0);    // case-insensitive
         Assert.True(c.Compare(DayOfWeek.Monday, DayOfWeek.Friday) < 0);
         Assert.True(c.Compare(new Opaque("a"), new Opaque("b")) < 0);   // not comparable: by text
-        Assert.NotEqual(0, c.Compare("1", 1));            // unrelated types: text, then type name — deterministic
-        Assert.Equal(-Math.Sign(c.Compare("1", 1)), Math.Sign(c.Compare(1, "1")));
-        Assert.True(c.Compare(true, "x") != 0);
+        int textFirst = c.Compare(textOne, intOne);         // unrelated types: text, then type name — deterministic
+        int numberFirst = c.Compare(intOne, textOne);
+        Assert.NotEqual(0, textFirst);
+        Assert.Equal(-Math.Sign(textFirst), Math.Sign(numberFirst));
+        Assert.NotEqual(0, c.Compare(true, "x"));
     }
 
     [Fact]
