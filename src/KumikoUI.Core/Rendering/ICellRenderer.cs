@@ -18,7 +18,8 @@ public interface ICellRenderer
     /// <param name="column">The column definition.</param>
     /// <param name="style">Grid style for colors/fonts.</param>
     /// <param name="isSelected">Whether the row is selected.</param>
-    /// <param name="cellStyle">Optional per-column style overrides.</param>
+    /// <param name="cellStyle">The cell's style overrides (the column's style merged with the resolvers'), or null.
+    /// The instance may be reused for the next cell: read it during the call, do not keep or modify it.</param>
     void Render(
         IDrawingContext ctx,
         KumikoRect cellRect,

@@ -362,7 +362,7 @@ public class KumikoRendererOverlayTests
 
     // ── Known defects (un-skip when the fix lands) ────────────────
 
-    [Fact(Skip = "CORE-03, fixed by #22: the row-style text override is written into the column's shared KumikoCellStyle.")]
+    [Fact]
     public void RowStyleTextOverride_DoesNotLeakIntoTheColumnStyleOrOtherRows()
     {
         var h = Create();
@@ -376,6 +376,41 @@ public class KumikoRendererOverlayTests
         Assert.Equal(red, ctx.SingleText("P00").Color);
         Assert.Equal(h.Style.CellTextColor, ctx.SingleText("P01").Color);
         Assert.Null(name.CellStyle.TextColor);
+    }
+
+    [Fact]
+    public void Resolvers_NeverModifyTheColumnStyleOrTheirOwnResults_AcrossFrames()
+    {
+        // #22: a resolver returning a (cached) style for row 0 leaves rows 1..n, col.CellStyle and the
+        // resolver's own instances unchanged across two frames.
+        var h = Create();
+        var name = h.Column("Name");
+        var city = h.Column("City");
+        name.CellStyle = new KumikoCellStyle { Padding = 4 };
+        var red = new KumikoColor(255, 0, 0);
+        var blue = new KumikoColor(0, 0, 255);
+        var cachedCellStyle = new KumikoCellStyle { BackgroundColor = blue };
+        var cachedRowStyle = new KumikoRowStyle { TextColor = red };
+        h.Style.CellStyleResolver = (item, col) => ((RenderHarness.Person)item).Name == "P00" ? cachedCellStyle : null;
+        h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Name == "P00" ? cachedRowStyle : null;
+
+        for (int frame = 0; frame < 2; frame++)
+        {
+            var ctx = h.Render();
+
+            Assert.Equal(red, ctx.SingleText("P00").Color);
+            Assert.Equal(h.Style.CellTextColor, ctx.SingleText("P01").Color);
+            Assert.DoesNotContain(ctx.Fills, f => f.Color == blue && RenderHarness.Near(f.Rect.Y, h.RowTop(1)));
+            Assert.Contains(ctx.Fills, f => f.Color == blue && RenderHarness.Near(f.Rect.Y, h.RowTop(0)));
+        }
+
+        Assert.Null(name.CellStyle.TextColor);
+        Assert.Equal(4, name.CellStyle.Padding);
+        Assert.Null(city.CellStyle);
+        Assert.Null(cachedCellStyle.TextColor);
+        Assert.Null(cachedCellStyle.Font);
+        Assert.Null(cachedCellStyle.Padding);
+        Assert.Equal(blue, cachedCellStyle.BackgroundColor);
     }
 
     [Fact(Skip = "CORE-25, fixed by #27: summary values of scrollable columns are drawn outside the scroll clip.")]
