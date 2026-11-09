@@ -112,6 +112,12 @@ public abstract class DrawnComponent
     /// <summary>Handle pointer move. Return true if handled.</summary>
     public virtual bool OnPointerMove(KumikoPointerEventArgs e) => false;
 
+    /// <summary>
+    /// Handle mouse-wheel or trackpad scrolling (<see cref="KumikoPointerEventArgs.ScrollDeltaX"/>/<see cref="KumikoPointerEventArgs.ScrollDeltaY"/>,
+    /// in wheel notches, positive up). Return true if handled.
+    /// </summary>
+    public virtual bool OnScroll(KumikoPointerEventArgs e) => false;
+
     /// <summary>Handle key down. Return true if handled.</summary>
     public virtual bool OnKeyDown(KumikoKeyEventArgs e) => false;
 
