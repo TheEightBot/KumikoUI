@@ -341,13 +341,13 @@ public class KumikoInputController
             case KumikoKey.A:
                 if (e.HasControl)
                 {
-                    selection.SelectAll(totalRows);
+                    selection.SelectAll();
                     Redraw();
                     e.Handled = true;
                 }
                 break;
             case KumikoKey.Escape:
-                selection.ClearSelection();
+                selection.Clear();
                 Redraw();
                 e.Handled = true;
                 break;
@@ -369,7 +369,7 @@ public class KumikoInputController
                 // Toggle selection on current row
                 if (selection.CurrentCell.IsValid)
                 {
-                    selection.HandleRowSelection(selection.CurrentCell.Row, false, true, totalRows);
+                    selection.HandleRowSelection(selection.CurrentCell.Row, false, true);
                     Redraw();
                     e.Handled = true;
                 }
@@ -776,7 +776,7 @@ public class KumikoInputController
                 selection.IsEditing = false;
             }
 
-            selection.HandleRowSelection(hit.RowIndex, shift, ctrl, totalRows);
+            selection.HandleRowSelection(hit.RowIndex, shift, ctrl);
             selection.CurrentCell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
 
             RowTapped?.Invoke(this, new RowTappedEventArgs(
@@ -1459,7 +1459,7 @@ public class KumikoInputController
 
             // Found a valid target cell
             selection.CurrentCell = new CellPosition(row, col);
-            selection.HandleRowSelection(row, false, false, totalRows);
+            selection.HandleRowSelection(row, false, false);
             EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
             return;
         }

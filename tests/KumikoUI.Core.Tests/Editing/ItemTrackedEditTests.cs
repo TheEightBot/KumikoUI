@@ -28,7 +28,7 @@ public class ItemTrackedEditTests
         public KumikoSource Source { get; } = new();
         public KumikoStyle Style { get; } = new();
         public ScrollState Scroll { get; } = new() { ViewportWidth = 400, ViewportHeight = 160 };
-        public KumikoSelectionModel Selection { get; } = new();
+        public KumikoSelectionModel Selection { get; }
         public EditSession Edit { get; } = new();
         public KumikoInputController Input { get; } = new();
         public KumikoRenderer Renderer { get; } = new();
@@ -39,13 +39,12 @@ public class ItemTrackedEditTests
 
         public Grid()
         {
+            Selection = new KumikoSelectionModel(Source); // follows the source's view changes by itself
             Source.SetColumns(new[] { Name, Age, Department });
             Source.SetItems(People);
             Edit.Style = Style;
             Edit.CellEndEdit += (_, e) => Ended.Add(e);
             Input.EditSession = Edit;
-            // What both hosts do: the selection follows its rows (the edit session follows on its own).
-            Source.ViewChanged += (_, e) => Selection.ApplyViewChange(e);
             Render();
         }
 

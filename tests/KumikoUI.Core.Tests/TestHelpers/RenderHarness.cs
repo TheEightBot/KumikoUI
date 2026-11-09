@@ -30,7 +30,7 @@ internal sealed class RenderHarness
     public KumikoSource Source { get; } = new();
     public KumikoStyle Style { get; } = WithDistinctColors(new KumikoStyle());
     public ScrollState Scroll { get; }
-    public KumikoSelectionModel Selection { get; } = new();
+    public KumikoSelectionModel Selection { get; }
     public KumikoRenderer Renderer { get; } = new();
     public List<Person> People { get; }
 
@@ -38,6 +38,7 @@ internal sealed class RenderHarness
     {
         Scroll = new ScrollState { ViewportWidth = width, ViewportHeight = height };
         People = people;
+        Selection = new KumikoSelectionModel(Source);
     }
 
     /// <summary>

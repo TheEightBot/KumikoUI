@@ -551,16 +551,25 @@ var column = new KumikoColumn
 | `Multiple` | Each tap toggles the item |
 | `Extended` | Click + Shift/Ctrl range/toggle (desktop-style) |
 
-| `SelectionUnit` | Behavior |
-|---|---|
-| `Row` | Whole row is selected |
-| `Cell` | Individual cell is selected |
+Selection is by row and tracks **items**, not row numbers: after a sort, filter, regroup or collection change the same items stay selected (items that are filtered out or removed leave the selection), and the current cell stays on its item and column. Group header and summary rows are never selected; Ctrl+A and Shift ranges skip them. Cell selection is planned for 1.x (#108).
 
-### Reading selections (code)
+### Reading and changing selections (code)
 
 ```csharp
-var selectedRows = kumiko.Selection.SelectedRows;   // HashSet<int> of row indices
-var selectedCells = kumiko.Selection.SelectedCells;  // HashSet<CellPosition>
+var selection = kumiko.Selection;
+IReadOnlySet<object> items = selection.SelectedItems;  // the selected data items
+IReadOnlySet<int> rows = selection.SelectedRows;       // their visible rows right now
+object? current = selection.CurrentItem;               // the current cell's item
+
+selection.Select(employee);          // or Deselect(employee)
+selection.SelectRange(0, 9);         // data rows 0–9
+selection.SelectAll();
+selection.Clear();
+
+selection.SelectionChanged += (_, e) =>
+{
+    // e.AddedItems, e.RemovedItems, e.SelectedRows, e.CurrentCell
+};
 ```
 
 ---

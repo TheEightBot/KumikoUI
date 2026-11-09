@@ -428,10 +428,9 @@ public class ViewChangedTests
     public void Selection_FollowsItemsThroughASort_AndDropsRowsFilteredOut()
     {
         var f = new Fixture();
-        var selection = new KumikoSelectionModel();
-        f.Source.ViewChanged += (_, e) => selection.ApplyViewChange(e);
-        selection.HandleRowSelection(0, false, false, 5);  // Alice
-        selection.HandleRowSelection(4, false, true, 5);   // + Eve (Ctrl)
+        var selection = new KumikoSelectionModel(f.Source);
+        selection.HandleRowSelection(0, false, false);  // Alice
+        selection.HandleRowSelection(4, false, true);   // + Eve (Ctrl)
         selection.CurrentCell = new CellPosition(4, 2);
         int changes = 0;
         selection.SelectionChanged += (_, _) => changes++;
@@ -443,10 +442,10 @@ public class ViewChangedTests
         f.Source.SetFilter(o => ((Person)o).Name != "Eve");
         Assert.Equal(new[] { 1 }, selection.SelectedRows); // Alice
         Assert.False(selection.CurrentCell.IsValid);
-        Assert.Equal(2, changes);
+        Assert.Equal(1, changes); // the sort kept the same items selected; only the filter removed one
 
         f.People[0].Name = "Alicia"; // redraw: nothing moves
-        Assert.Equal(2, changes);
+        Assert.Equal(1, changes);
     }
 
     [Fact]

@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - `KumikoSource.SetSort(column, direction, order)` sets single or multi-column sort; with `ToggleSort`, `ToggleMultiSort` and `ClearSort` it is the only writer of sort state.
   - `ScrollState.ScrollChanged` (`KumikoScrollChangedEventArgs`) is raised once per actual scroll offset change.
   - `KumikoSource.GroupExpandedChanged` (`GroupExpandedChangedEventArgs.IsExpanded`) is raised when a group header is expanded or collapsed.
-  - `KumikoSelectionModel.ApplyViewChange` keeps the selection, the current cell and the range anchor on their rows after a sort, filter, grouping change, insert or removal; rows that disappear leave the selection. Both hosts call it from `ViewChanged`.
+  - The selection model and the edit session follow `ViewChanged` by themselves (#30, #31).
 - Native AOT and trimming support (#17). Item properties are read and written, in order, through:
   - `KumikoColumn.ValueAccessor` / `ValueSetter` delegates (and `EditorDisplaySelector` / `EditorValueSelector` for ComboBox items, `DrawnComboBox.DisplaySelector` / `ValueSelector`);
   - accessors generated for types marked `[KumikoGridItem]` (`KumikoUI.Core.Data`), by a source generator now included in the KumikoUI.Core package;
@@ -25,6 +25,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `KumikoStyle.PinBottomSummaryRows` (default `true`): `Position=Bottom` table summary rows are pinned to the bottom of the viewport as a fixed footer instead of scrolling after the last row. **Behavior change** for existing users of bottom summaries; set it to `false` to restore the previous layout.
 
 ### Changed
+- **Breaking:** item-based selection (#30). `KumikoSelectionModel` is created for a source (`new KumikoSelectionModel(source)`; the hosts do this) and tracks the selected **items** and the current cell's item and column, so the same items stay selected through sorts, filters, regrouping and collection changes, and items that are no longer visible leave the selection.
+  - `SelectedItems` and `SelectedRows` are read-only sets.
+  - New: `Select(item)`, `Deselect(item)`, `SelectRange(from, to)`, `SetCurrentCell(row, column)`, `IsSelected(item)` and `CurrentItem`.
+  - `SelectionChanged` reports `AddedItems` and `RemovedItems`, and is raised only when the selected items change, not when they merely move.
+  - `SelectAll()` and Shift ranges select only data rows (group header and summary rows are never selected); `SelectAll(int)` and `HandleRowSelection(row, shift, ctrl, totalRows)` lose their row-count parameter, and `ClearSelection()` is now `Clear()`.
+  - `SelectionUnit`, `KumikoSelectionModel.Unit`, `SelectedCells` and `IsCellSelected` are removed: cell selection was never implemented and is planned for 1.x (#108).
 - **Breaking:** `KumikoSource.DataChanged` (an argument-less `Action`) is replaced by `ViewChanged`. `GroupCollapsed`/`GroupCollapsedEventArgs`, which fired on expand as well, are replaced by `GroupExpandedChanged`. `KumikoColumn.SortDirection`, `SortOrder` and `ActiveFilter` are read-only outside KumikoUI.Core: use `KumikoSource.SetSort`, `ClearSort`, `SetColumnFilter` and `ClearAllFilters`. `SetColumns` now rebuilds the view, `ReorderRow` raises one notification instead of two, and a `SetCellValue` whose item raises `PropertyChanged` raises one notification instead of two. `IsMultiSortActive` is cached.
 - The reflection fallback for item properties is off for `PublishAot=true` and `TrimMode=full` publishes (KumikoUI.Core build targets set the `KumikoUI.Core.IsReflectionPropertyAccessSupported` switch). A property with no generated accessor, delegate or provider then reads as null and is traced once. Override with the `KumikoReflectionPropertyAccess` MSBuild property. Partial trimming, the .NET MAUI default, is unaffected.
 - A nested property path with a `null` value part-way (`Address.City` when `Address` is null) now reads as an empty cell instead of throwing, and an edit to it is ignored.

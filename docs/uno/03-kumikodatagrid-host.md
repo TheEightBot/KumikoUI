@@ -124,11 +124,8 @@ differs (see step 4).
   private void InvalidateSurface() => _canvasView.Invalidate();          // MAUI: _canvasView.InvalidateSurface()
   private void OnInputControllerNeedsRedraw() => _canvasView.Invalidate();
   private void OnEditSessionNeedsRedraw()      => _canvasView.Invalidate();
-  private void OnDataSourceViewChanged(object? s, KumikoViewChangedEventArgs e)
-  {
-      _selection.ApplyViewChange(e);     // the selection follows its rows; the edit session follows on its own
-      _canvasView.Invalidate();
-  }
+  // The selection and the edit session follow the source's view changes by themselves.
+  private void OnDataSourceViewChanged(object? s, KumikoViewChangedEventArgs e) => _canvasView.Invalidate();
   ```
 
 ## 4. DPI / scaling

@@ -38,7 +38,7 @@ public class KumikoDataGrid : Grid
     private readonly KumikoRenderer _renderer = new();
     private readonly KumikoSource _dataSource = new();
     private readonly ScrollState _scroll = new();
-    private readonly KumikoSelectionModel _selection = new();
+    private readonly KumikoSelectionModel _selection;
     private readonly KumikoInputController _inputController = new();
     private readonly EditSession _editSession = new();
     private KumikoStyle _style = new();
@@ -83,6 +83,9 @@ public class KumikoDataGrid : Grid
 
     public KumikoDataGrid()
     {
+        // The selection follows the source's view changes by itself (item-based, #30).
+        _selection = new KumikoSelectionModel(_dataSource);
+
         // Accessibility: set semantic description for screen readers
         SemanticProperties.SetDescription(this, "Data grid");
         AutomationProperties.SetIsInAccessibleTree(this, true);
@@ -854,8 +857,6 @@ public class KumikoDataGrid : Grid
 
     private void OnDataSourceViewChanged(object? sender, KumikoViewChangedEventArgs e)
     {
-        // The selection follows its rows before anything repaints (the edit session follows on its own).
-        _selection.ApplyViewChange(e);
         _canvasView.InvalidateSurface();
         if (e.IsStructural)
             UpdateAccessibilityHint();

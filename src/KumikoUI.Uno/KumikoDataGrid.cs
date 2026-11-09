@@ -36,7 +36,7 @@ public partial class KumikoDataGrid : Grid
     private readonly KumikoRenderer _renderer = new();
     private readonly KumikoSource _dataSource = new();
     private readonly ScrollState _scroll = new();
-    private readonly KumikoSelectionModel _selection = new();
+    private readonly KumikoSelectionModel _selection;
     private readonly KumikoInputController _inputController = new();
     private readonly EditSession _editSession = new();
     private KumikoStyle _style = new();
@@ -48,6 +48,9 @@ public partial class KumikoDataGrid : Grid
     /// </summary>
     public KumikoDataGrid()
     {
+        // The selection follows the source's view changes by itself (item-based, #30).
+        _selection = new KumikoSelectionModel(_dataSource);
+
         // Layout: the canvas fills the grid (mirrors MAUI's LayoutOptions.Fill).
         _canvasView.HorizontalAlignment = HorizontalAlignment.Stretch;
         _canvasView.VerticalAlignment = VerticalAlignment.Stretch;
@@ -181,8 +184,6 @@ public partial class KumikoDataGrid : Grid
 
     private void OnDataSourceViewChanged(object? sender, KumikoViewChangedEventArgs e)
     {
-        // The selection follows its rows before anything repaints (the edit session follows on its own).
-        _selection.ApplyViewChange(e);
         _canvasView.Invalidate();
     }
 
