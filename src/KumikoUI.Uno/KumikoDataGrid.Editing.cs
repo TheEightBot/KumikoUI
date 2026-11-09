@@ -203,10 +203,10 @@ public partial class KumikoDataGrid
 
         // CRITICAL: a few mapped keys double as TEXT and must reach TextChanged when typed plainly,
         // otherwise the user literally cannot type them:
-        //   • A/C/V/X/Z map to KumikoKey only as Ctrl/Cmd clipboard & select-all shortcuts.
+        //   • A/C/V/X/Z/Y map to KumikoKey only as Ctrl/Cmd clipboard & select-all shortcuts.
         //   • Space is a literal space character while editing.
         // Only intercept these when they carry their command meaning; otherwise let the TextBox type them.
-        if (key is KumikoKey.A or KumikoKey.C or KumikoKey.V or KumikoKey.X or KumikoKey.Z)
+        if (key is KumikoKey.A or KumikoKey.C or KumikoKey.V or KumikoKey.X or KumikoKey.Z or KumikoKey.Y)
         {
             var mods = InputMapping.GetLiveModifiers();
             if ((mods & (InputModifiers.Control | InputModifiers.Meta)) == 0)

@@ -40,6 +40,12 @@ public class EditSession
     public DrawnComponent? ActiveEditor => _activeEditor;
 
     /// <summary>
+    /// The active editor's text-input surface for a host's native text-input adapter, or null when not
+    /// editing or the editor takes no text (a check box, a picker).
+    /// </summary>
+    public ITextInputSession? ActiveTextInput => _activeEditor as ITextInputSession;
+
+    /// <summary>
     /// Edit trigger configuration. Default: DoubleTap + F2 + Typing.
     /// </summary>
     public EditTrigger EditTriggers { get; set; } = EditTrigger.Default;
@@ -83,6 +89,18 @@ public class EditSession
 
     /// <summary>Raised when the editor component needs to be redrawn.</summary>
     public event Action? NeedsRedraw;
+
+    /// <summary>
+    /// Raised when the active editor copies or cuts text (Ctrl/Cmd+C, Ctrl/Cmd+X): the host puts
+    /// <see cref="ClipboardTextEventArgs.Text"/> on the system clipboard.
+    /// </summary>
+    public event EventHandler<ClipboardTextEventArgs>? ClipboardCopyRequested;
+
+    /// <summary>
+    /// Raised when the active editor pastes (Ctrl/Cmd+V): the host sets
+    /// <see cref="ClipboardRequestEventArgs.Text"/> to the system clipboard's text, synchronously.
+    /// </summary>
+    public event EventHandler<ClipboardRequestEventArgs>? ClipboardPasteRequested;
 
     // ── Edit lifecycle ──────────────────────────────────────────
 
@@ -132,6 +150,11 @@ public class EditSession
 
         _activeEditor.RedrawRequested += OnEditorRedrawRequested;
         _activeEditor.EditCompleted += OnEditorEditCompleted;
+        if (_activeEditor is DrawnTextBox textBox)
+        {
+            textBox.CopyRequested += OnEditorCopyRequested;
+            textBox.PasteRequested += OnEditorPasteRequested;
+        }
         _editDataSource = dataSource;
         dataSource.ViewChanged += OnViewChanged;
         _focusManager.Register(_activeEditor);
@@ -150,6 +173,8 @@ public class EditSession
     {
         if (!_isEditing || _activeEditor == null || _editColumn == null || _editItem == null) return false;
 
+        // Text still being composed by an input method is part of the value
+        (_activeEditor as DrawnTextBox)?.CommitComposition();
         var newValue = CellEditorFactory.GetEditorValue(_activeEditor, _editColumn);
 
         // Validate
@@ -451,6 +476,11 @@ public class EditSession
         {
             _activeEditor.RedrawRequested -= OnEditorRedrawRequested;
             _activeEditor.EditCompleted -= OnEditorEditCompleted;
+            if (_activeEditor is DrawnTextBox textBox)
+            {
+                textBox.CopyRequested -= OnEditorCopyRequested;
+                textBox.PasteRequested -= OnEditorPasteRequested;
+            }
             _focusManager.Unregister(_activeEditor);
             _focusManager.ClearFocus();
             _activeEditor = null;
@@ -472,6 +502,10 @@ public class EditSession
     private void OnEditorRedrawRequested() => NeedsRedraw?.Invoke();
 
     private void OnViewChanged(object? sender, KumikoViewChangedEventArgs e) => ApplyViewChange(e);
+
+    private void OnEditorCopyRequested(object? sender, ClipboardTextEventArgs e) => ClipboardCopyRequested?.Invoke(this, e);
+
+    private void OnEditorPasteRequested(object? sender, ClipboardRequestEventArgs e) => ClipboardPasteRequested?.Invoke(this, e);
 
     private void OnEditorEditCompleted()
     {

@@ -164,6 +164,16 @@ public class KumikoInputController
         // ── Editing-mode key handling ──
         if (_editSession != null && _editSession.IsEditing)
         {
+            // While an input method is composing, Enter and Escape finish or abandon the composition
+            // (in the editor) rather than commit or cancel the edit.
+            if (e.Key is KumikoKey.Enter or KumikoKey.Escape &&
+                _editSession.ActiveTextInput?.Composition != null &&
+                _editSession.HandleKeyEvent(e))
+            {
+                e.Handled = true;
+                return;
+            }
+
             switch (e.Key)
             {
                 case KumikoKey.Escape:

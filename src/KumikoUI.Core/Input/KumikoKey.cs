@@ -48,8 +48,10 @@ public enum KumikoKey
     V,
     /// <summary>X key (cut shortcut).</summary>
     X,
-    /// <summary>Z key (undo shortcut).</summary>
+    /// <summary>Z key (undo shortcut; with Shift, redo).</summary>
     Z,
+    /// <summary>Y key (redo shortcut).</summary>
+    Y,
     // Generic character input
     /// <summary>Generic character input for text entry.</summary>
     Character

@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Text-input contract and a rewritten `DrawnTextBox` (#39):
+  - `ITextInputSession` (`KumikoUI.Core.Input`) is what a host's native text-input adapter drives: committed text, input-method composition (`SetComposition`, `CommitComposition`, `CancelComposition`), grapheme-wise deletion and selection, with `KumikoTextRange` for ranges and `TextInputStateChanged` for changes made in Core. `EditSession.ActiveTextInput` exposes it for the open editor. The contract is described in [docs/TEXT-INPUT.md](docs/TEXT-INPUT.md); the host adapters follow in #40–#43.
+  - `DrawnTextBox` keeps the caret and selection on grapheme-cluster boundaries, so Backspace, Delete and the arrow keys treat an emoji sequence, a flag or a letter with combining marks as one character, and a surrogate pair is never split. It underlines composition text, and applies `NumericOnly`, `InputMask`, `InputValidator` and `MaxLength` (cut at a grapheme boundary) to typed, pasted and composed text alike. Pasted text is single-line.
+  - Undo and redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+Y, `Undo()`, `Redo()`): typing is undone a word at a time, a run of deletes as one step.
+  - Double click selects a word, triple click selects all, and dragging selects text and scrolls past the edges; Ctrl/Cmd+Left/Right and Ctrl/Cmd+Backspace/Delete work by word; Left/Right collapse a selection to its edge.
+  - `EditSession.ClipboardCopyRequested` and `ClipboardPasteRequested` carry the editor's copy, cut and paste to the host.
+  - `KumikoKeyEventArgs.Text` carries text input as a string (a surrogate pair or dead-key sequence arrives whole), `KumikoKeyEventArgs.HasCommand` is Control or Command, and `KumikoKey.Y` is mapped on Uno for redo.
+  - Caret hit-testing is a binary search over cached text widths instead of measuring every prefix on every click.
 - Safe, culture-aware comparison (#15): `KumikoComparer` orders any two cell values without throwing (nulls first; numbers by value across numeric types; `DateTime`, `DateTimeOffset` and `DateOnly` chronologically; same-type `IComparable`; otherwise by text, then type name). `KumikoSource.Comparer`, `KumikoSource.Culture` (default: current culture) and `KumikoSource.StringCompareOptions` (default: `IgnoreCase`) set one rule for sorting, grouping, the filter popup's value list and search, text and parsed filter conditions, Min/Max summaries and cell formatting.
 - View change notifications (#20):
   - `KumikoSource.ViewChanged` (`KumikoViewChangedEventArgs`) is raised exactly once per change, with its kind: `Redraw`, `Rebuild`, `Insert` or `Remove`, and `ViewIndex`/`Count` for incremental changes. `MapRow(oldRow)` follows a row from before the change to after it (data rows by item, group rows by group), and `GetViewRow(item)` finds an item's row.
