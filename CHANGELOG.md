@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Validation surface (#32): `EditSession.ValidationFailed` (`CellValidationEventArgs`) reports every error, warning or informational message with its severity and whether the value was committed, and the editor shows the message under the cell with an icon and a red (error) or orange (warning) outline. `KumikoValueConverter.TryConvert` is public. See "Validation" in the README.
 - Text-input contract and a rewritten `DrawnTextBox` (#39):
   - `ITextInputSession` (`KumikoUI.Core.Input`) is what a host's native text-input adapter drives: committed text, input-method composition (`SetComposition`, `CommitComposition`, `CancelComposition`), grapheme-wise deletion and selection, with `KumikoTextRange` for ranges and `TextInputStateChanged` for changes made in Core. `EditSession.ActiveTextInput` exposes it for the open editor. The contract is described in [docs/TEXT-INPUT.md](docs/TEXT-INPUT.md); the host adapters follow in #40–#43.
   - `DrawnTextBox` keeps the caret and selection on grapheme-cluster boundaries, so Backspace, Delete and the arrow keys treat an emoji sequence, a flag or a letter with combining marks as one character, and a surrogate pair is never split. It underlines composition text, and applies `NumericOnly`, `InputMask`, `InputValidator` and `MaxLength` (cut at a grapheme boundary) to typed, pasted and composed text alike. Pasted text is single-line.
@@ -34,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `KumikoStyle.PinBottomSummaryRows` (default `true`): `Position=Bottom` table summary rows are pinned to the bottom of the viewport as a fixed footer instead of scrolling after the last row. **Behavior change** for existing users of bottom summaries; set it to `false` to restore the previous layout.
 
 ### Changed
+- **Breaking:** `KumikoSource.SetCellValue` returns `bool` (whether the value was written) and raises a change only on success. `CellEditorFactory.GetEditorValue` returns the editor's own value (a text box's text) and no longer converts it: `EditSession.CommitEdit` converts. `CellEditorFactory.CreateEditor` takes an optional culture. A warning from validation now keeps the editor open on the first commit (#32).
 - **Breaking:** `KumikoColumn.AllowSorting` now defaults to `false` for Template and Image columns and for columns with neither a `PropertyName` nor a `ValueAccessor`; set it to `true` to sort them. `KumikoSource.FormatCellValue` is now an instance method, so it formats in the source's `Culture` (#15).
 - **Breaking:** item-based selection (#30). `KumikoSelectionModel` is created for a source (`new KumikoSelectionModel(source)`; the hosts do this) and tracks the selected **items** and the current cell's item and column, so the same items stay selected through sorts, filters, regrouping and collection changes, and items that are no longer visible leave the selection.
   - `SelectedItems` and `SelectedRows` are read-only sets.
@@ -69,6 +71,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno is built with Uno.Sdk 6.7.30 (was 6.5.31).
 
 ### Fixed
+- Typed value conversion and validation (#32):
+  - **Conversion to the property type.** Edited text converts to the property's type in `KumikoSource.Culture`: every numeric type, `decimal` at full precision (it went through `double`), enums by name, `Guid`, `DateOnly`, `TimeOnly`, `DateTimeOffset`, `TimeSpan`, `bool`, `char`, `string` and nullable forms. The date picker writes `DateOnly` properties.
+  - **No more silent failures.** Out-of-range numbers, fractions in integer properties (they were rounded), unparsable text, blank text for a non-nullable property, and setters that throw are now errors with a message. They used to be dropped silently while the commit reported success.
+  - **Item validation sees the new value.** `IDataErrorInfo`/`INotifyDataErrorInfo` are checked after the new value is written, and the original value is restored on an error. Before, they saw the old value.
+  - **Both validators run.** A passing `CellValidator` no longer skips the item's own validation.
+  - **Warnings are shown.** A first commit shows the warning; committing the same value again accepts it.
+  - **Editing text.** Editors show values in the grid's culture, without the display format, so they parse back.
+  - **No-value editors.** Editors that hold no value (action buttons), and columns with nothing to write to, end the edit without writing null into the item.
 - Filter popup (#49):
   - **Scrolling:** the value list scrolls. It can be dragged, scrolled with the mouse wheel, moved with a draggable scrollbar (a press on its track jumps), and stepped through with the keyboard: Up/Down, PageUp/PageDown, Space to toggle, Enter to apply, Escape to cancel. Previously only the first values were reachable.
   - **Press and release:** an item toggles on release, and only if the pointer didn't move past a small threshold, so dragging no longer flips checkboxes. Buttons act on release over the same button.

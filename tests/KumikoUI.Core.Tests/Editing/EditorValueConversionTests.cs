@@ -8,7 +8,8 @@ namespace KumikoUI.Core.Tests.Editing;
 /// <summary>
 /// The value an editor hands back, converted to the edited property's type through a full edit
 /// (begin, type, commit): numeric widths, nullable forms, dates, times, booleans, enums, strings and
-/// blank text. Conversions that fail today are skipped as known defects of the typed-conversion work (#32).
+/// blank text (#32). The source parses in the invariant culture here; culture-specific parsing is covered
+/// by <c>KumikoValueConverterTests</c>.
 /// </summary>
 public class EditorValueConversionTests
 {
@@ -43,7 +44,7 @@ public class EditorValueConversionTests
         var row = new TypedRow();
         var column = new KumikoColumn { Header = property, PropertyName = property, ColumnType = type };
         configure?.Invoke(column);
-        var source = new KumikoSource();
+        var source = new KumikoSource { Culture = System.Globalization.CultureInfo.InvariantCulture };
         source.SetColumns(new[] { column });
         source.SetItems(new[] { row });
         var session = new EditSession();
@@ -107,7 +108,7 @@ public class EditorValueConversionTests
         Assert.Equal(20m, row.DecimalValue);
     }
 
-    [Fact(Skip = "Known defect: numeric text is parsed through double, so a decimal with more than 15 significant digits loses precision (#32)")]
+    [Fact]
     public void Decimal_KeepsAllDigitsOfPreciseText()
     {
         var (_, row) = EditAndCommit(nameof(TypedRow.DecimalValue), KumikoColumnType.Numeric, Text("1234567.890123456789"));
@@ -159,52 +160,38 @@ public class EditorValueConversionTests
     }
 
     [Fact]
-    public void Int_ValueTooLargeForTheProperty_LeavesTheItemUnchanged()
+    public void Int_ValueTooLargeForTheProperty_IsReportedAsInvalid_AndLeavesTheItemUnchanged()
     {
         var (committed, row) = EditAndCommit(nameof(TypedRow.IntValue), KumikoColumnType.Numeric, Text("9999999999"));
 
-        Assert.True(committed); // the editor closes...
-        Assert.Equal(1, row.IntValue); // ...but the item keeps its value
-    }
-
-    [Fact(Skip = "Known defect: a value that does not fit the property is dropped silently and the edit still reports success instead of a validation error (#32)")]
-    public void Int_ValueTooLargeForTheProperty_IsReportedAsInvalid()
-    {
-        var (committed, _) = EditAndCommit(nameof(TypedRow.IntValue), KumikoColumnType.Numeric, Text("9999999999"));
-
         Assert.False(committed);
-    }
-
-    [Fact]
-    public void Int_FractionalTextIsRoundedByTheConversion()
-    {
-        var (_, row) = EditAndCommit(nameof(TypedRow.IntValue), KumikoColumnType.Numeric, Text("2.6"));
-
-        Assert.Equal(3, row.IntValue);
-    }
-
-    [Fact(Skip = "Known defect: fractional text typed into an integer property is rounded silently rather than rejected (#32)")]
-    public void Int_FractionalTextIsRejected()
-    {
-        var (_, row) = EditAndCommit(nameof(TypedRow.IntValue), KumikoColumnType.Numeric, Text("2.6"));
-
         Assert.Equal(1, row.IntValue);
     }
 
     [Fact]
-    public void Int_BlankTextWritesZeroIntoTheNonNullableProperty()
+    public void Int_FractionalTextIsRejected()
     {
-        var (committed, row) = EditAndCommit(nameof(TypedRow.IntValue), KumikoColumnType.Numeric, Text(""));
+        var (committed, row) = EditAndCommit(nameof(TypedRow.IntValue), KumikoColumnType.Numeric, Text("2.6"));
 
-        Assert.True(committed);
-        Assert.Equal(0, row.IntValue);
+        Assert.False(committed);
+        Assert.Equal(1, row.IntValue);
     }
 
     [Fact]
-    public void Int_TextThatIsNotANumberLeavesTheItemUnchanged()
+    public void Int_BlankTextIsRequired_ForTheNonNullableProperty()
     {
-        var (_, row) = EditAndCommit(nameof(TypedRow.IntValue), KumikoColumnType.Numeric, Text("abc"));
+        var (committed, row) = EditAndCommit(nameof(TypedRow.IntValue), KumikoColumnType.Numeric, Text(""));
 
+        Assert.False(committed);
+        Assert.Equal(1, row.IntValue);
+    }
+
+    [Fact]
+    public void Int_TextThatIsNotANumber_IsRejected_AndLeavesTheItemUnchanged()
+    {
+        var (committed, row) = EditAndCommit(nameof(TypedRow.IntValue), KumikoColumnType.Numeric, Text("abc"));
+
+        Assert.False(committed);
         Assert.Equal(1, row.IntValue);
     }
 
@@ -253,7 +240,7 @@ public class EditorValueConversionTests
         Assert.Equal(new DateTime(2031, 2, 3), row.When);
     }
 
-    [Fact(Skip = "Known defect: DateOnly properties cannot be written from the date picker; Convert.ChangeType has no DateTime to DateOnly conversion and the edit is dropped (#32)")]
+    [Fact]
     public void DateOnly_FromTheDatePicker()
     {
         var (_, row) = EditAndCommit(nameof(TypedRow.Day), KumikoColumnType.Date,
@@ -262,7 +249,7 @@ public class EditorValueConversionTests
         Assert.Equal(new DateOnly(2025, 6, 7), row.Day);
     }
 
-    [Fact(Skip = "Known defect: TimeOnly properties cannot be written from text; Convert.ChangeType has no string to TimeOnly conversion and the edit is dropped (#32)")]
+    [Fact]
     public void TimeOnly_FromText()
     {
         var (_, row) = EditAndCommit(nameof(TypedRow.Time), KumikoColumnType.Text, Text("13:45"));
@@ -270,7 +257,7 @@ public class EditorValueConversionTests
         Assert.Equal(new TimeOnly(13, 45), row.Time);
     }
 
-    [Fact(Skip = "Known defect: TimeSpan properties cannot be written from text; Convert.ChangeType has no string to TimeSpan conversion and the edit is dropped (#32)")]
+    [Fact]
     public void TimeSpan_FromText()
     {
         var (_, row) = EditAndCommit(nameof(TypedRow.Span), KumikoColumnType.Text, Text("02:30:00"));
@@ -322,7 +309,7 @@ public class EditorValueConversionTests
         Assert.Equal(Mode.Auto, row.Mode);
     }
 
-    [Fact(Skip = "Known defect: an enum property cannot be written from a combo box of names; Convert.ChangeType does not parse enum names and the edit is dropped (#32)")]
+    [Fact]
     public void Enum_FromAComboBoxOfNames()
     {
         var (_, row) = EditAndCommit(nameof(TypedRow.Mode), KumikoColumnType.ComboBox,
@@ -332,7 +319,7 @@ public class EditorValueConversionTests
         Assert.Equal(Mode.On, row.Mode);
     }
 
-    [Fact(Skip = "Known defect: an enum property cannot be written from text; Convert.ChangeType does not parse enum names and the edit is dropped (#32)")]
+    [Fact]
     public void Enum_FromText()
     {
         var (_, row) = EditAndCommit(nameof(TypedRow.Mode), KumikoColumnType.Text, Text("Auto"));

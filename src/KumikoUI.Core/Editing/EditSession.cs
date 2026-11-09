@@ -1,4 +1,5 @@
 using KumikoUI.Core.Components;
+using KumikoUI.Core.Data;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -23,6 +24,8 @@ public class EditSession
     private DrawnComponent? _activeEditor;
     private KumikoColumn? _editColumn;
     private KumikoSource? _editDataSource;
+    private bool _warningShown;     // a warning was shown for _warnedValue; committing it again accepts it
+    private object? _warnedValue;
 
     /// <summary>Whether a cell is currently being edited.</summary>
     public bool IsEditing => _isEditing;
@@ -64,10 +67,18 @@ public class EditSession
     /// </summary>
     public bool DismissKeyboardOnEnter { get; set; } = true;
 
-    /// <summary>Optional custom cell validator.</summary>
+    /// <summary>
+    /// Optional validator, called with the visible row, the column index and the value converted to the
+    /// property type, before the value is written. An error keeps the editor open; the item's own
+    /// validation (<see cref="System.ComponentModel.IDataErrorInfo"/>,
+    /// <see cref="System.ComponentModel.INotifyDataErrorInfo"/>) still runs after this one passes.
+    /// </summary>
     public Func<int, int, object?, CellValidationResult>? CellValidator { get; set; }
 
-    /// <summary>Current validation result for the active edit.</summary>
+    /// <summary>
+    /// The validation result the open editor shows (an error, or a warning awaiting confirmation), or
+    /// null.
+    /// </summary>
     public CellValidationResult? CurrentValidation { get; private set; }
 
     /// <summary>
@@ -89,6 +100,12 @@ public class EditSession
 
     /// <summary>Raised when the editor component needs to be redrawn.</summary>
     public event Action? NeedsRedraw;
+
+    /// <summary>
+    /// Raised when a commit produces an error, a warning or an informational message, with the message
+    /// for the user. See <see cref="CommitEdit"/> for the validation order.
+    /// </summary>
+    public event EventHandler<CellValidationEventArgs>? ValidationFailed;
 
     /// <summary>
     /// Raised when the active editor copies or cuts text (Ctrl/Cmd+C, Ctrl/Cmd+X): the host puts
@@ -134,7 +151,8 @@ public class EditSession
         CurrentValidation = null;
 
         // Create the editor
-        _activeEditor = CellEditorFactory.CreateEditor(column, cellValue, cellBounds, initialCharacter, TextSelectionMode);
+        _activeEditor = CellEditorFactory.CreateEditor(column, cellValue, cellBounds, initialCharacter, TextSelectionMode,
+            dataSource.Comparer.Culture);
         if (_activeEditor == null)
         {
             _isEditing = false;
@@ -150,6 +168,7 @@ public class EditSession
 
         _activeEditor.RedrawRequested += OnEditorRedrawRequested;
         _activeEditor.EditCompleted += OnEditorEditCompleted;
+        _activeEditor.ValueChanged += OnEditorValueChanged;
         if (_activeEditor is DrawnTextBox textBox)
         {
             textBox.CopyRequested += OnEditorCopyRequested;
@@ -166,32 +185,85 @@ public class EditSession
 
     /// <summary>
     /// Commit the current edit, writing the value to the edited item (wherever its row is now).
-    /// Returns true if the commit succeeded; false when nothing is being edited or the value is invalid
-    /// (the editor stays open and shows the error).
     /// </summary>
+    /// <remarks>
+    /// <para>In order:</para>
+    /// <list type="number">
+    /// <item>the editor's value is converted to the property type in the source's culture
+    /// (<see cref="KumikoValueConverter"/>); text that doesn't convert is an error;</item>
+    /// <item><see cref="CellValidator"/> checks the converted value;</item>
+    /// <item>the value is written; a setter that throws is an error, with its message;</item>
+    /// <item>the item validates itself with the new value in place
+    /// (<see cref="System.ComponentModel.IDataErrorInfo"/>, <see cref="System.ComponentModel.INotifyDataErrorInfo"/>);
+    /// on an error the original value is written back.</item>
+    /// </list>
+    /// <para>
+    /// An error keeps the editor open with the message (<see cref="CurrentValidation"/>,
+    /// <see cref="ValidationFailed"/>) and raises no <see cref="CellValueChanged"/>. A warning is shown
+    /// once the same way; committing the same value again accepts it. Informational messages never block.
+    /// </para>
+    /// </remarks>
+    /// <returns>True if the value was committed; false when nothing is being edited or the value was refused.</returns>
     public bool CommitEdit(KumikoSource dataSource)
     {
         if (!_isEditing || _activeEditor == null || _editColumn == null || _editItem == null) return false;
 
         // Text still being composed by an input method is part of the value
         (_activeEditor as DrawnTextBox)?.CommitComposition();
-        var newValue = CellEditorFactory.GetEditorValue(_activeEditor, _editColumn);
+        var item = _editItem;
+        var column = _editColumn;
+        var editedCell = _editCell;
 
-        // Validate
-        CurrentValidation = ValidateValue(_editCell.Row, _editCell.Column, _editItem, newValue);
-        if (CurrentValidation != null && !CurrentValidation.IsValid)
+        // An editor with no value (action buttons) or a column with nothing to write to: the edit just ends
+        if (!CellEditorFactory.HoldsValue(_activeEditor) ||
+            column.ValueSetter == null && string.IsNullOrEmpty(column.PropertyName))
         {
-            NeedsRedraw?.Invoke();
-            return false; // Keep editing, show error
+            var unchanged = _originalValue;
+            EndEdit();
+            CellEndEdit?.Invoke(this, new CellEndEditEventArgs(
+                editedCell.Row, editedCell.Column, column, unchanged, unchanged, committed: true));
+            return true;
         }
 
-        // Write value back. The write raises ViewChanged, which may move the row (ApplyViewChange); the events
-        // below report the row the edit was made on.
-        var editedCell = _editCell;
+        var editorValue = CellEditorFactory.GetEditorValue(_activeEditor, column);
+
+        // 1. Convert to the property type
+        object? newValue = editorValue;
+        if (TargetType(item, column, _originalValue) is { } targetType &&
+            !KumikoValueConverter.TryConvert(editorValue, targetType, dataSource.Comparer.Culture, out newValue, out var conversionError))
+        {
+            return Refuse(CellValidationResult.Error(conversionError ?? KumikoValueConverter.Messages.Invalid), editorValue);
+        }
+
+        // 2. The grid's validator
+        var result = CellValidator?.Invoke(editedCell.Row, editedCell.Column, newValue);
+        if (result is { IsValid: false })
+            return Refuse(result, newValue);
+
+        // 3. Write, then 4. let the item validate itself with the new value in place. The write raises
+        // ViewChanged, which may move the row (ApplyViewChange); the events report the row the edit was made on.
         _isCommitting = true;
         try
         {
-            dataSource.SetItemValue(_editItem, _editColumn, newValue);
+            if (!dataSource.TrySetItemValue(item, column, newValue, out var writeError))
+                return Refuse(CellValidationResult.Error(writeError ?? "The value could not be saved."), newValue);
+
+            var modelResult = ValidateItem(item, column);
+            if (modelResult is { IsValid: false })
+            {
+                dataSource.TrySetItemValue(item, column, _originalValue, out _);
+                return Refuse(modelResult, newValue);
+            }
+            result = MoreSevere(result, modelResult);
+
+            // A warning is shown once; committing the same value again accepts it
+            if (result is { Severity: ValidationSeverity.Warning } && !(_warningShown && Equals(_warnedValue, newValue)))
+            {
+                dataSource.TrySetItemValue(item, column, _originalValue, out _);
+                _warningShown = true;
+                _warnedValue = newValue;
+                return Refuse(result, newValue);
+            }
         }
         finally
         {
@@ -199,20 +271,64 @@ public class EditSession
         }
 
         var endArgs = new CellEndEditEventArgs(
-            editedCell.Row, editedCell.Column, _editColumn,
+            editedCell.Row, editedCell.Column, column,
             _originalValue, newValue, committed: true);
 
         // Raise value changed if different
         if (!Equals(_originalValue, newValue))
         {
             CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(
-                editedCell.Row, editedCell.Column, _editColumn,
+                editedCell.Row, editedCell.Column, column,
                 _originalValue, newValue));
         }
+
+        // A warning (accepted) or an informational message goes with the committed value
+        if (result is { ErrorMessage: { Length: > 0 } })
+            ValidationFailed?.Invoke(this, new CellValidationEventArgs(
+                editedCell.Row, editedCell.Column, column, item, newValue, result, committed: true));
 
         EndEdit();
         CellEndEdit?.Invoke(this, endArgs);
         return true;
+    }
+
+    /// <summary>Keep the editor open showing <paramref name="result"/>, and report it.</summary>
+    private bool Refuse(CellValidationResult result, object? value)
+    {
+        CurrentValidation = result;
+        ValidationFailed?.Invoke(this, new CellValidationEventArgs(
+            _editCell.Row, _editCell.Column, _editColumn!, _editItem!, value, result, committed: false));
+        NeedsRedraw?.Invoke();
+        return false;
+    }
+
+    /// <summary>
+    /// The type an edited value converts to: the property's declared type, else the type of the value
+    /// being replaced, else one implied by the column type; null to write the editor's value as it is.
+    /// </summary>
+    private static Type? TargetType(object item, KumikoColumn column, object? originalValue)
+    {
+        if (column.ValueSetter == null && !string.IsNullOrEmpty(column.PropertyName) &&
+            column.ResolvePath(item.GetType()).ValueType is { } declared && declared != typeof(object))
+            return declared;
+        if (originalValue != null)
+            return originalValue.GetType();
+        return column.ColumnType switch
+        {
+            KumikoColumnType.Numeric => typeof(decimal?),
+            KumikoColumnType.Date => typeof(DateTime?),
+            KumikoColumnType.Boolean => typeof(bool?),
+            _ => null,
+        };
+    }
+
+    private static CellValidationResult? MoreSevere(CellValidationResult? a, CellValidationResult? b)
+    {
+        static int Rank(CellValidationResult? r) => r == null || string.IsNullOrEmpty(r.ErrorMessage) && r.IsValid ? 0
+            : !r.IsValid ? 3
+            : r.Severity == ValidationSeverity.Warning ? 2
+            : 1;
+        return Rank(b) > Rank(a) ? b : a;
     }
 
     /// <summary>
@@ -247,7 +363,8 @@ public class EditSession
         CellBeginEdit?.Invoke(this, beginArgs);
         if (beginArgs.Cancel) return;
 
-        dataSource.SetCellValue(row, column, newValue);
+        if (!dataSource.SetCellValue(row, column, newValue))
+            return; // the value could not be written: nothing changed
 
         CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(
             row, col, column, currentValue, newValue));
@@ -344,21 +461,40 @@ public class EditSession
         ctx.FillRect(bounds, new KumikoPaint { Color = bgColor });
         _activeEditor.OnDraw(ctx);
 
-        // Draw validation error indicator (overrides normal border)
-        if (CurrentValidation != null && !CurrentValidation.IsValid)
-        {
-            var errorColor = CurrentValidation.Severity == ValidationSeverity.Warning
-                ? new KumikoColor(255, 165, 0)   // orange
-                : new KumikoColor(220, 50, 50);   // red
+        // Validation state: an outline, an icon, and the message under the editor
+        if (CurrentValidation is { } validation && (!validation.IsValid || !string.IsNullOrEmpty(validation.ErrorMessage)))
+            DrawValidation(ctx, bounds, validation);
+    }
 
-            ctx.DrawRect(bounds, new KumikoPaint
-            {
-                Color = errorColor,
-                Style = PaintStyle.Stroke,
-                StrokeWidth = 2f,
-                IsAntiAlias = true
-            });
-        }
+    /// <summary>The red (error) or orange (warning) outline, the "!" icon, and the message below the editor.</summary>
+    private void DrawValidation(IDrawingContext ctx, KumikoRect bounds, CellValidationResult validation)
+    {
+        var color = !validation.IsValid && validation.Severity != ValidationSeverity.Warning
+            ? new KumikoColor(220, 50, 50)    // red
+            : new KumikoColor(255, 165, 0);   // orange
+
+        ctx.DrawRect(bounds, new KumikoPaint
+        {
+            Color = color,
+            Style = PaintStyle.Stroke,
+            StrokeWidth = 2f,
+            IsAntiAlias = true
+        });
+
+        const float iconRadius = 6f;
+        var icon = new KumikoRect(bounds.Right - iconRadius * 2 - 4, bounds.Y + bounds.Height / 2 - iconRadius,
+            iconRadius * 2, iconRadius * 2);
+        ctx.FillRoundRect(icon, iconRadius, new KumikoPaint { Color = color, Style = PaintStyle.Fill, IsAntiAlias = true });
+        var onColor = new KumikoPaint { Color = KumikoColor.White, Font = new KumikoFont("Default", 10, bold: true), IsAntiAlias = true };
+        ctx.DrawTextInRect("!", icon, onColor, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
+
+        if (string.IsNullOrEmpty(validation.ErrorMessage)) return;
+        var messagePaint = new KumikoPaint { Color = KumikoColor.White, Font = new KumikoFont("Default", 12), IsAntiAlias = true };
+        float width = Math.Max(bounds.Width, ctx.MeasureText(validation.ErrorMessage, messagePaint).Width + 12);
+        var message = new KumikoRect(bounds.X, bounds.Bottom + 2, width, 22);
+        ctx.FillRoundRect(message, 3, new KumikoPaint { Color = color, Style = PaintStyle.Fill, IsAntiAlias = true });
+        ctx.DrawTextInRect(validation.ErrorMessage, new KumikoRect(message.X + 6, message.Y, message.Width - 12, message.Height),
+            messagePaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
     }
 
     // ── Input forwarding ────────────────────────────────────────
@@ -422,50 +558,31 @@ public class EditSession
 
     // ── Validation ──────────────────────────────────────────────
 
-    private CellValidationResult? ValidateValue(int row, int col, object item, object? value)
+    /// <summary>The item's own validation of the edited property (the new value is already in place).</summary>
+    private static CellValidationResult? ValidateItem(object item, KumikoColumn column)
     {
-        // Check custom validator first
-        if (CellValidator != null)
-            return CellValidator(row, col, value);
-
-        // Check IDataErrorInfo on the data item
+        string property = column.PropertyName;
         try
         {
-            if (item is System.ComponentModel.IDataErrorInfo errorInfo)
-            {
-                var colDef = _editColumn;
-                if (colDef != null)
-                {
-                    var error = errorInfo[colDef.PropertyName];
-                    if (!string.IsNullOrEmpty(error))
-                        return CellValidationResult.Error(error);
-                }
-            }
+            if (item is System.ComponentModel.IDataErrorInfo errorInfo &&
+                errorInfo[property] is { Length: > 0 } error)
+                return CellValidationResult.Error(error);
 
-            // Check INotifyDataErrorInfo
-            if (item is System.ComponentModel.INotifyDataErrorInfo notifyErrorInfo)
+            if (item is System.ComponentModel.INotifyDataErrorInfo notifyErrorInfo && notifyErrorInfo.HasErrors)
             {
-                var colDef = _editColumn;
-                if (colDef != null && notifyErrorInfo.HasErrors)
+                foreach (var err in notifyErrorInfo.GetErrors(property) ?? Array.Empty<object>())
                 {
-                    var errors = notifyErrorInfo.GetErrors(colDef.PropertyName);
-                    if (errors != null)
-                    {
-                        foreach (var err in errors)
-                        {
-                            if (err != null)
-                                return CellValidationResult.Error(err.ToString() ?? "Validation error");
-                        }
-                    }
+                    if (err?.ToString() is { Length: > 0 } message)
+                        return CellValidationResult.Error(message);
                 }
             }
         }
-        catch
+        catch (Exception ex) when (ex is not (OutOfMemoryException or InsufficientExecutionStackException))
         {
-            // Graceful fallback if data item access fails
+            // An item whose validation throws is not blocked by it
         }
 
-        return CellValidationResult.Valid;
+        return null;
     }
 
     private void EndEdit()
@@ -476,6 +593,7 @@ public class EditSession
         {
             _activeEditor.RedrawRequested -= OnEditorRedrawRequested;
             _activeEditor.EditCompleted -= OnEditorEditCompleted;
+            _activeEditor.ValueChanged -= OnEditorValueChanged;
             if (_activeEditor is DrawnTextBox textBox)
             {
                 textBox.CopyRequested -= OnEditorCopyRequested;
@@ -491,6 +609,8 @@ public class EditSession
         _editColumn = null;
         _editDataSource = null;
         _originalValue = null;
+        _warningShown = false;
+        _warnedValue = null;
         CurrentValidation = null;
         NeedsRedraw?.Invoke();
     }
@@ -502,6 +622,14 @@ public class EditSession
     private void OnEditorRedrawRequested() => NeedsRedraw?.Invoke();
 
     private void OnViewChanged(object? sender, KumikoViewChangedEventArgs e) => ApplyViewChange(e);
+
+    /// <summary>A changed value is a new attempt: the message shown for the previous one goes away.</summary>
+    private void OnEditorValueChanged(object? sender, ComponentValueChangedEventArgs e)
+    {
+        if (CurrentValidation == null) return;
+        CurrentValidation = null;
+        NeedsRedraw?.Invoke();
+    }
 
     private void OnEditorCopyRequested(object? sender, ClipboardTextEventArgs e) => ClipboardCopyRequested?.Invoke(this, e);
 

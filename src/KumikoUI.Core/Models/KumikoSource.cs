@@ -1101,27 +1101,52 @@ public class KumikoSource
     /// <summary>
     /// Set a cell value for a visible row and column, through <see cref="KumikoColumn.ValueSetter"/> when
     /// it is set and through the column's property path otherwise (converting the value to the property
-    /// type). A value that cannot be written (read-only or unknown property, null intermediate value,
-    /// failed conversion) is ignored, and so is a row that is out of range or not a data row.
+    /// type in <see cref="Culture"/>). Returns whether the value was written: a value that cannot be
+    /// written (read-only or unknown property, null intermediate value, failed conversion, a setter that
+    /// throws) leaves the item unchanged and raises no change, and so does a row that is out of range or not
+    /// a data row.
     /// </summary>
-    public void SetCellValue(int visibleRow, KumikoColumn column, object? value)
+    public bool SetCellValue(int visibleRow, KumikoColumn column, object? value)
     {
-        if (visibleRow < 0 || visibleRow >= RowCount || IsNonDataRow(visibleRow)) return;
-        SetItemValue(GetItem(visibleRow), column, value);
+        if (visibleRow < 0 || visibleRow >= RowCount || IsNonDataRow(visibleRow)) return false;
+        return TrySetItemValue(GetItem(visibleRow), column, value, out _);
     }
 
-    /// <summary>Write a column's value to <paramref name="item"/>, wherever (or whether) its row is shown.</summary>
-    internal void SetItemValue(object item, KumikoColumn column, object? value)
+    /// <summary>
+    /// Write a column's value to <paramref name="item"/>, wherever (or whether) its row is shown, converting
+    /// it to the property type in <see cref="Culture"/>. Returns false, with the reason in
+    /// <paramref name="error"/> when there is one, if the value does not convert, the setter throws, or the
+    /// property cannot be written; the item is then unchanged and no change is reported.
+    /// </summary>
+    internal bool TrySetItemValue(object item, KumikoColumn column, object? value, out string? error)
     {
+        error = null;
         // One notification for the edit, even when the item's PropertyChanged triggers its own.
         BeginUpdate();
         try
         {
+            bool written;
             if (column.ValueSetter != null)
-                column.ValueSetter(item, value);
+            {
+                try
+                {
+                    column.ValueSetter(item, value);
+                    written = true;
+                }
+                catch (Exception ex) when (ex is not (OutOfMemoryException or InsufficientExecutionStackException))
+                {
+                    error = ex.Message;
+                    written = false;
+                }
+            }
             else
-                column.ResolvePath(item.GetType()).TrySetValue(item, value);
-            NotifyRedraw();
+            {
+                written = column.ResolvePath(item.GetType()).TrySetValue(item, value, _comparer.Culture, out error);
+            }
+
+            if (written)
+                NotifyRedraw();
+            return written;
         }
         finally
         {

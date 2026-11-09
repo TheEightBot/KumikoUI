@@ -378,34 +378,15 @@ public class CellEditorFactoryTests
         Assert.Equal(text, ValueOfText(KumikoColumnType.Text, text));
     }
 
-    [Fact]
-    public void GetEditorValue_NumericColumn_ParsesToTheNarrowestIntegerOrFloatingType()
-    {
-        Assert.Equal(42, Assert.IsType<int>(ValueOfText(KumikoColumnType.Numeric, "42")));
-        Assert.Equal(-7, Assert.IsType<int>(ValueOfText(KumikoColumnType.Numeric, "-7")));
-        Assert.Equal(9_999_999_999L, Assert.IsType<long>(ValueOfText(KumikoColumnType.Numeric, "9999999999")));
-        Assert.Equal(1.5, Assert.IsType<double>(ValueOfText(KumikoColumnType.Numeric, "1.5")));
-    }
-
     [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void GetEditorValue_NumericColumn_BlankTextIsNull(string text)
+    [InlineData(KumikoColumnType.Numeric, "42")]
+    [InlineData(KumikoColumnType.Numeric, "")]
+    [InlineData(KumikoColumnType.Numeric, "abc")]
+    [InlineData(KumikoColumnType.Date, "2024-01-31")]
+    public void GetEditorValue_TextBox_ReturnsTheTextAsTyped_TheCommitConvertsIt(KumikoColumnType type, string text)
     {
-        Assert.Null(ValueOfText(KumikoColumnType.Numeric, text));
-    }
-
-    [Fact]
-    public void GetEditorValue_NumericColumn_TextThatIsNotANumberIsReturnedAsText()
-    {
-        Assert.Equal("abc", ValueOfText(KumikoColumnType.Numeric, "abc"));
-    }
-
-    [Fact]
-    public void GetEditorValue_DateColumnTextBox_ParsesDatesAndKeepsOtherTextAsText()
-    {
-        Assert.Equal(new DateTime(2024, 1, 31), ValueOfText(KumikoColumnType.Date, "2024-01-31"));
-        Assert.Equal("soon", ValueOfText(KumikoColumnType.Date, "soon"));
+        // Conversion to the property type happens in EditSession.CommitEdit (KumikoValueConverter, #32)
+        Assert.Equal(text, ValueOfText(type, text));
     }
 
     [Fact]
