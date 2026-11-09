@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using KumikoUI.Core.Data;
 
 namespace KumikoUI.Core.Models;
@@ -55,6 +56,11 @@ public class KumikoSource
     private EventHandler<KumikoViewChangedEventArgs>? _viewChanged;
     private bool _isMultiSortActive;
 
+    // ── Comparison ───────────────────────────────────────────────
+    private CultureInfo? _culture;
+    private CompareOptions _stringCompareOptions = CompareOptions.IgnoreCase;
+    private KumikoComparer _comparer = KumikoComparer.Default;
+
     /// <summary>
     /// Raised exactly once for every change to the data or the view: <see cref="KumikoViewChangeKind.Redraw"/>
     /// when rows only need repainting, <see cref="KumikoViewChangeKind.Insert"/> /
@@ -105,6 +111,44 @@ public class KumikoSource
 
     /// <summary>Whether grouping is currently active.</summary>
     public bool IsGroupingActive => _groupDescriptions.Count > 0;
+
+    /// <summary>
+    /// The culture for sorting, grouping, filtering and formatting cell values, or null (the default) for the
+    /// current culture at the time of use. Setting it rebuilds the view.
+    /// </summary>
+    public CultureInfo? Culture
+    {
+        get => _culture;
+        set
+        {
+            _culture = value;
+            _comparer = new KumikoComparer(_culture, _stringCompareOptions);
+            RequestRebuild();
+        }
+    }
+
+    /// <summary>
+    /// How text compares when sorting, grouping and filtering (including the filter popup's value list and
+    /// search). <see cref="CompareOptions.IgnoreCase"/> by default; use <see cref="CompareOptions.Ordinal"/>
+    /// for culture-independent ordering. Setting it rebuilds the view.
+    /// </summary>
+    public CompareOptions StringCompareOptions
+    {
+        get => _stringCompareOptions;
+        set
+        {
+            _stringCompareOptions = value;
+            _comparer = new KumikoComparer(_culture, _stringCompareOptions);
+            RequestRebuild();
+        }
+    }
+
+    /// <summary>
+    /// The comparer for cell values under <see cref="Culture"/> and <see cref="StringCompareOptions"/>: what
+    /// sorting, group ordering, filters and Min/Max summaries use (unless a column sets
+    /// <see cref="KumikoColumn.CustomComparer"/>).
+    /// </summary>
+    public KumikoComparer Comparer => _comparer;
 
     // ── Frozen rows ────────────────────────────────────────────
     private int _frozenRowCount;
@@ -721,11 +765,7 @@ public class KumikoSource
     public string GetCellDisplayText(int visibleRow, KumikoColumn column)
     {
         if (IsGroupHeaderRow(visibleRow)) return string.Empty;
-        var value = GetCellValue(visibleRow, column);
-        if (value is null) return string.Empty;
-        if (!string.IsNullOrEmpty(column.Format) && value is IFormattable fmt)
-            return fmt.ToString(column.Format, null);
-        return value.ToString() ?? string.Empty;
+        return FormatCellValue(GetCellValue(visibleRow, column), column);
     }
 
     /// <summary>
@@ -774,7 +814,9 @@ public class KumikoSource
     /// </summary>
     public List<string> GetUniqueColumnValues(KumikoColumn column)
     {
-        var values = new HashSet<string>();
+        // The same text rules as filtering: values that compare equal are one entry.
+        var values = new HashSet<string>(_comparer.TextComparer);
+        var filters = PrepareFilters(column);
         for (int i = 0; i < _sourceItems.Count; i++)
         {
             if (_sourceItems[i] is not { } item)
@@ -782,7 +824,7 @@ public class KumikoSource
 
             // Apply other column filters (exclude this column) so the value list
             // only shows values that are reachable with other filters applied
-            if (!PassesOtherFilters(item, column))
+            if (!PassesFilters(item, filters))
                 continue;
 
             var cellValue = GetCellValueDirect(item, column);
@@ -791,7 +833,7 @@ public class KumikoSource
         }
 
         var sorted = values.ToList();
-        sorted.Sort(StringComparer.OrdinalIgnoreCase);
+        sorted.Sort(_comparer.CompareText);
         return sorted;
     }
 
@@ -1087,50 +1129,37 @@ public class KumikoSource
 
     // ── Internal ─────────────────────────────────────────────────
 
-    /// <summary>
-    /// Check if an item passes the global filter predicate AND all per-column filters.
-    /// </summary>
-    private bool PassesAllFilters(object item)
-    {
-        // Global predicate filter
-        if (_filterPredicate != null && !_filterPredicate(item))
-            return false;
+    /// <summary>A column filter ready to evaluate: its value list as a set under the current text rules.</summary>
+    private readonly record struct PreparedFilter(KumikoColumn Column, FilterDescription Filter, ISet<string>? Values);
 
-        // Per-column filters
+    /// <summary>The active column filters (except <paramref name="exclude"/>), prepared for one pass over the items.</summary>
+    private List<PreparedFilter> PrepareFilters(KumikoColumn? exclude = null)
+    {
+        var prepared = new List<PreparedFilter>();
         foreach (var col in _columns)
         {
-            if (col.ActiveFilter == null || !col.ActiveFilter.IsActive)
-                continue;
-
-            var cellValue = GetCellValueDirect(item, col);
-            string displayText = FormatCellValue(cellValue, col);
-
-            if (!col.ActiveFilter.Evaluate(cellValue, displayText))
-                return false;
+            if (col == exclude || col.ActiveFilter is not { IsActive: true } filter) continue;
+            ISet<string>? values = filter.SelectedValues is { } selected
+                ? new HashSet<string>(selected, _comparer.TextComparer)
+                : null;
+            prepared.Add(new PreparedFilter(col, filter, values));
         }
-
-        return true;
+        return prepared;
     }
 
     /// <summary>
-    /// Check if an item passes all filters EXCEPT the specified column's filter.
-    /// Used for computing unique value lists.
+    /// Check if an item passes the global filter predicate and the prepared per-column filters.
     /// </summary>
-    private bool PassesOtherFilters(object item, KumikoColumn excludeColumn)
+    private bool PassesFilters(object item, List<PreparedFilter> filters)
     {
         if (_filterPredicate != null && !_filterPredicate(item))
             return false;
 
-        foreach (var col in _columns)
+        foreach (var (col, filter, values) in filters)
         {
-            if (col == excludeColumn) continue;
-            if (col.ActiveFilter == null || !col.ActiveFilter.IsActive)
-                continue;
-
             var cellValue = GetCellValueDirect(item, col);
             string displayText = FormatCellValue(cellValue, col);
-
-            if (!col.ActiveFilter.Evaluate(cellValue, displayText))
+            if (!filter.Evaluate(cellValue, displayText, values, _comparer))
                 return false;
         }
 
@@ -1156,15 +1185,10 @@ public class KumikoSource
         column.ValueAccessor ?? (item => column.ResolvePath(item.GetType()).GetValue(item));
 
     /// <summary>
-    /// Format a cell value as display text.
+    /// Format a cell value as display text: the column's <see cref="KumikoColumn.Format"/> in
+    /// <see cref="Culture"/> for formattable values, otherwise <see cref="object.ToString"/>; empty for null.
     /// </summary>
-    public static string FormatCellValue(object? value, KumikoColumn column)
-    {
-        if (value is null) return string.Empty;
-        if (!string.IsNullOrEmpty(column.Format) && value is IFormattable fmt)
-            return fmt.ToString(column.Format, null);
-        return value.ToString() ?? string.Empty;
-    }
+    public string FormatCellValue(object? value, KumikoColumn column) => _comparer.Format(value, column.Format);
 
     /// <summary>
     /// Attempts an O(1) or O(log n) incremental update of <c>_viewIndices</c>
@@ -1254,12 +1278,13 @@ public class KumikoSource
     private void RebuildCore()
     {
         _viewIndices.Clear();
+        var filters = PrepareFilters();
 
         for (int i = 0; i < _sourceItems.Count; i++)
         {
             if (_sourceItems[i] is not { } item)
                 continue; // null items never become rows
-            if (!PassesAllFilters(item))
+            if (!PassesFilters(item, filters))
                 continue;
             _viewIndices.Add(i);
         }
@@ -1287,7 +1312,7 @@ public class KumikoSource
             var sortSpecs = sortedColumns.Select(col => new
             {
                 Accessor = CreateColumnReader(col),
-                Comparer = col.CustomComparer ?? Comparer<object>.Default,
+                Comparer = col.CustomComparer ?? (IComparer)_comparer,
                 Direction = col.SortDirection == KumikoSortDirection.Ascending ? 1 : -1
             }).ToList();
 
@@ -1306,7 +1331,7 @@ public class KumikoSource
 
                     if (result != 0) return result;
                 }
-                return 0;
+                return a.CompareTo(b); // stable: equal values keep their source order
             });
         }
 
@@ -1350,7 +1375,8 @@ public class KumikoSource
 
         // Group the indices by key
         var groups = new List<(object? Key, string DisplayText, List<int> Indices)>();
-        var groupMap = new Dictionary<string, int>(); // displayKey → index in groups list
+        // displayKey → index in groups list; display texts that compare equal under the text rules are one group
+        var groupMap = new Dictionary<string, int>(_comparer.TextComparer);
 
         foreach (var sourceIdx in sourceIndices)
         {
@@ -1369,7 +1395,9 @@ public class KumikoSource
             object? groupKey = groupDesc.KeySelector != null ? groupDesc.KeySelector(rawValue) : rawValue;
             string displayText = groupDesc.DisplayTextSelector != null
                 ? groupDesc.DisplayTextSelector(groupKey)
-                : (groupKey?.ToString() ?? "(Blank)");
+                : groupKey is null
+                    ? "(Blank)"
+                    : _comparer.Format(groupKey, groupDesc.KeySelector == null ? column?.Format : null);
 
             // Use display text as dictionary key for grouping
             if (!groupMap.TryGetValue(displayText, out int groupIdx))
@@ -1381,11 +1409,21 @@ public class KumikoSource
             groups[groupIdx].Indices.Add(sourceIdx);
         }
 
-        // Sort groups
-        if (groupDesc.GroupSortDirection == KumikoSortDirection.Ascending)
-            groups.Sort((a, b) => string.Compare(a.DisplayText, b.DisplayText, StringComparison.OrdinalIgnoreCase));
-        else if (groupDesc.GroupSortDirection == KumikoSortDirection.Descending)
-            groups.Sort((a, b) => string.Compare(b.DisplayText, a.DisplayText, StringComparison.OrdinalIgnoreCase));
+        // Order groups by their key (numbers numerically, dates chronologically), through the column's
+        // comparer when it has one; equal keys fall back to display text, then first appearance.
+        if (groupDesc.GroupSortDirection != KumikoSortDirection.None)
+        {
+            IComparer keyComparer = (groupDesc.KeySelector == null ? column?.CustomComparer : null) ?? _comparer;
+            int direction = groupDesc.GroupSortDirection == KumikoSortDirection.Descending ? -1 : 1;
+            var order = groups.Select((g, i) => (Group: g, Index: i)).ToList();
+            order.Sort((a, b) =>
+            {
+                int result = keyComparer.Compare(a.Group.Key, b.Group.Key);
+                if (result == 0) result = _comparer.CompareText(a.Group.DisplayText, b.Group.DisplayText);
+                return result != 0 ? result * direction : a.Index.CompareTo(b.Index);
+            });
+            groups = order.Select(o => o.Group).ToList();
+        }
 
         // Emit group headers + children
         foreach (var (key, displayText, indices) in groups)
@@ -1575,7 +1613,7 @@ public class KumikoSource
     /// <summary>
     /// Compute an aggregate value from a list of raw values.
     /// </summary>
-    private static object? ComputeAggregate(
+    private object? ComputeAggregate(
         SummaryType summaryType,
         List<object?> values,
         Func<IReadOnlyList<object?>, object?>? customAggregate)
@@ -1614,28 +1652,22 @@ public class KumikoSource
 
             case SummaryType.Min:
             {
-                IComparable? min = null;
+                object? min = null;
                 foreach (var v in values)
                 {
-                    if (v is IComparable c)
-                    {
-                        if (min == null || c.CompareTo(min) < 0)
-                            min = c;
-                    }
+                    if (v != null && (min == null || _comparer.Compare(v, min) < 0))
+                        min = v;
                 }
                 return min;
             }
 
             case SummaryType.Max:
             {
-                IComparable? max = null;
+                object? max = null;
                 foreach (var v in values)
                 {
-                    if (v is IComparable c)
-                    {
-                        if (max == null || c.CompareTo(max) > 0)
-                            max = c;
-                    }
+                    if (v != null && (max == null || _comparer.Compare(v, max) > 0))
+                        max = v;
                 }
                 return max;
             }
