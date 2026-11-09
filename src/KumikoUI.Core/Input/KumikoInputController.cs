@@ -80,8 +80,18 @@ public class KumikoInputController
     /// <summary>Raised when a filter popup is opened (used to start cursor blink timer).</summary>
     public event Action? FilterPopupOpened;
 
-    /// <summary>Raised when a filter popup is closed (used to stop cursor blink timer).</summary>
+    /// <summary>
+    /// Raised when a filter popup closes, however it closes: OK, Cancel, Clear, a sort, Escape, or a press
+    /// outside it (used to stop the cursor blink timer).
+    /// </summary>
     public event Action? FilterPopupClosed;
+
+    /// <summary>
+    /// The text-input surface that has the keyboard, for a host's native text-input adapter: the open
+    /// filter popup's search box, else the active editor's, else null.
+    /// </summary>
+    public ITextInputSession? ActiveTextInput =>
+        _activeFilterPopup?.SearchTextInput ?? _editSession?.ActiveTextInput;
 
     /// <summary>Raised when a column edge is double-clicked, requesting auto-fit width.</summary>
     public event EventHandler<AutoFitColumnEventArgs>? AutoFitColumnRequested;
@@ -1110,7 +1120,16 @@ public class KumikoInputController
     {
         if (_popupRedrawWired) return;
         _popupManager.NeedsRedraw += Redraw;
+        _popupManager.PopupClosed += OnPopupClosed;
         _popupRedrawWired = true;
+    }
+
+    private void OnPopupClosed(DrawnComponent popup)
+    {
+        if (popup != _activeFilterPopup) return;
+        _activeFilterPopup = null;
+        popup.IsFocused = false;
+        FilterPopupClosed?.Invoke();
     }
 
     // ── Filter popup ──────────────────────────────────────────────
@@ -1121,64 +1140,22 @@ public class KumikoInputController
         KumikoSource dataSource)
     {
         // Close any existing popup
+        EnsurePopupRedrawWired();
         CloseFilterPopup();
 
         var popup = new DrawnFilterPopup(column, dataSource);
         popup.ApplyTheme(style);
 
-        // Position below the column header based on freeze mode
-        float screenX;
-        if (column.IsFrozen)
+        // Below the column header, following it as the grid scrolls, and kept inside the viewport
+        KumikoRect Anchor()
         {
-            float x = 0;
-            foreach (var c in dataSource.Columns)
-            {
-                if (c == column) break;
-                if (c.IsVisible && c.IsFrozen) x += c.Width;
-            }
-            screenX = x;
+            float x = HeaderScreenX(column, scroll, dataSource);
+            float popupWidth = popup.Bounds.Width;
+            if (x + popupWidth > scroll.ViewportWidth)
+                x = scroll.ViewportWidth - popupWidth - 4;
+            if (x < 0) x = 4;
+            return new KumikoRect(x, style.HeaderHeight, column.Width, 0);
         }
-        else if (column.IsFrozenRight)
-        {
-            float rightFrozenWidth = 0;
-            foreach (var c in dataSource.Columns)
-                if (c.IsVisible && c.IsFrozenRight) rightFrozenWidth += c.Width;
-
-            float rightFrozenLeft = scroll.ViewportWidth - rightFrozenWidth;
-            float x = rightFrozenLeft;
-            foreach (var c in dataSource.Columns)
-            {
-                if (!c.IsVisible || !c.IsFrozenRight) continue;
-                if (c == column) break;
-                x += c.Width;
-            }
-            screenX = x;
-        }
-        else
-        {
-            float frozenWidth = 0;
-            foreach (var c in dataSource.Columns)
-                if (c.IsVisible && c.IsFrozen) frozenWidth += c.Width;
-
-            float colX = frozenWidth;
-            foreach (var c in dataSource.Columns)
-            {
-                if (!c.IsVisible || c.IsFrozen || c.IsFrozenRight) continue;
-                if (c == column) break;
-                colX += c.Width;
-            }
-            screenX = colX - scroll.OffsetX;
-        }
-        float anchorY = style.HeaderHeight;
-
-        // Ensure popup stays within viewport
-        float popupWidth = 220;
-        if (screenX + popupWidth > scroll.ViewportWidth)
-            screenX = scroll.ViewportWidth - popupWidth - 4;
-        if (screenX < 0) screenX = 4;
-
-        var anchor = new KumikoRect(screenX, anchorY, column.Width, 0);
-        popup.Bounds = new KumikoRect(screenX, anchorY, popupWidth, 300);
 
         // Wire events
         popup.FilterApplied += () => { CloseFilterPopup(); Redraw(); };
@@ -1195,7 +1172,7 @@ public class KumikoInputController
         popup.RedrawRequested += Redraw;
         popup.KeyboardFocusRequested += () => KeyboardFocusRequested?.Invoke();
 
-        _popupManager.Show(popup, anchor, PopupPlacement.Below);
+        _popupManager.Show(popup, Anchor, PopupPlacement.Below);
         _activeFilterPopup = popup;
 
         // Set focus so the search box shows its focused visual (blue border)
@@ -1215,11 +1192,36 @@ public class KumikoInputController
     private void CloseFilterPopup()
     {
         if (_activeFilterPopup != null)
+            _popupManager.Close(_activeFilterPopup); // OnPopupClosed clears it and raises FilterPopupClosed
+    }
+
+    /// <summary>The viewport x of a column's header, by its freeze pane.</summary>
+    private static float HeaderScreenX(KumikoColumn column, ScrollState scroll, KumikoSource dataSource)
+    {
+        if (column.IsFrozen)
         {
-            _popupManager.Close(_activeFilterPopup);
-            _activeFilterPopup = null;
-            FilterPopupClosed?.Invoke();
+            float x = 0;
+            foreach (var c in dataSource.Columns)
+            {
+                if (c == column) break;
+                if (c.IsVisible && c.IsFrozen) x += c.Width;
+            }
+            return x;
         }
+
+        if (column.IsFrozenRight)
+        {
+            var rightFrozen = dataSource.Columns.Where(c => c.IsVisible && c.IsFrozenRight).ToList();
+            float x = scroll.ViewportWidth - rightFrozen.Sum(c => c.Width);
+            return x + rightFrozen.TakeWhile(c => c != column).Sum(c => c.Width);
+        }
+
+        float frozenWidth = dataSource.Columns.Where(c => c.IsVisible && c.IsFrozen).Sum(c => c.Width);
+        float scrollableBefore = dataSource.Columns
+            .Where(c => c.IsVisible && !c.IsFrozen && !c.IsFrozenRight)
+            .TakeWhile(c => c != column)
+            .Sum(c => c.Width);
+        return frozenWidth + scrollableBefore - scroll.OffsetX;
     }
 
     // ── Edit helpers ──────────────────────────────────────────────

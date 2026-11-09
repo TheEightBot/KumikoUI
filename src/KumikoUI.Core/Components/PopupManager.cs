@@ -12,9 +12,18 @@ namespace KumikoUI.Core.Components;
 /// <see cref="HandleKey"/> at the top of the input pipeline — if they
 /// return true the event was consumed and the grid should skip processing.
 /// </summary>
+/// <remarks>
+/// A press inside a popup captures the pointer: its moves and the release go to that popup even outside
+/// it. A press outside every popup closes them all and is swallowed with its moves and release, so it
+/// selects, edits or sorts nothing (<see cref="PopupClosed"/> reports each closed popup). Wheel input over
+/// a popup goes to <see cref="DrawnComponent.OnScroll"/>.
+/// </remarks>
 public class PopupManager
 {
     private readonly List<PopupEntry> _popups = new();
+    private int _nextZOrder = 1000;
+    private DrawnComponent? _captured;
+    private bool _swallowUntilRelease;
 
     /// <summary>Are there any active popups?</summary>
     public bool HasActivePopups => _popups.Count > 0;
@@ -25,16 +34,25 @@ public class PopupManager
     /// </summary>
     public event Action? NeedsRedraw;
 
-    /// <summary>Show a component as a popup at the given position.</summary>
-    public void Show(DrawnComponent component, KumikoRect anchor, PopupPlacement placement = PopupPlacement.Below)
-    {
-        // Calculate popup position based on anchor and placement
-        var bounds = CalculatePopupBounds(component, anchor, placement);
-        component.Bounds = bounds;
-        component.IsVisible = true;
-        component.ZOrder = 1000 + _popups.Count; // Above normal components
+    /// <summary>Raised for each popup that closes, whether by <see cref="Close"/>, <see cref="CloseAll"/> or a press outside.</summary>
+    public event Action<DrawnComponent>? PopupClosed;
 
-        _popups.Add(new PopupEntry(component, anchor, placement));
+    /// <summary>Show a component as a popup at the given position.</summary>
+    public void Show(DrawnComponent component, KumikoRect anchor, PopupPlacement placement = PopupPlacement.Below) =>
+        Show(component, () => anchor, placement);
+
+    /// <summary>
+    /// Show a component as a popup next to an anchor that can move (a column header that scrolls). The
+    /// anchor is read again before every frame, so the popup follows it.
+    /// </summary>
+    public void Show(DrawnComponent component, Func<KumikoRect> anchor, PopupPlacement placement = PopupPlacement.Below)
+    {
+        var entry = new PopupEntry(component, anchor, placement);
+        component.Bounds = CalculatePopupBounds(component, anchor(), placement);
+        component.IsVisible = true;
+        component.ZOrder = _nextZOrder++; // above normal components, and above every earlier popup
+
+        _popups.Add(entry);
         component.InvalidateVisual();
     }
 
@@ -42,32 +60,43 @@ public class PopupManager
     public void Close(DrawnComponent component)
     {
         var entry = _popups.Find(p => p.Component == component);
-        if (entry != null)
-        {
-            _popups.Remove(entry);
-            component.IsVisible = false;
-            component.InvalidateVisual();
-        }
+        if (entry == null) return;
+
+        _popups.Remove(entry);
+        if (_captured == component) _captured = null;
+        component.IsVisible = false;
+        component.InvalidateVisual();
+        PopupClosed?.Invoke(component);
     }
 
     /// <summary>Close all popups.</summary>
     public void CloseAll()
     {
-        foreach (var entry in _popups.ToList())
-        {
-            entry.Component.IsVisible = false;
-        }
+        var closed = _popups.ToList();
         _popups.Clear();
+        _captured = null;
+        foreach (var entry in closed)
+            entry.Component.IsVisible = false;
+        foreach (var entry in closed)
+            PopupClosed?.Invoke(entry.Component);
+    }
+
+    /// <summary>Move every popup to its anchor's current position (called before each frame is drawn).</summary>
+    public void UpdateAnchors()
+    {
+        foreach (var entry in _popups)
+            entry.Component.Bounds = CalculatePopupBounds(entry.Component, entry.Anchor(), entry.Placement);
     }
 
     /// <summary>Draw all active popups (call after main grid rendering).</summary>
     public void DrawPopups(IDrawingContext ctx)
     {
+        UpdateAnchors();
         foreach (var entry in _popups.OrderBy(p => p.Component.ZOrder))
         {
             if (entry.Component.IsVisible)
             {
-                // Draw shadow
+                // One shadow per popup, drawn here; popups don't draw their own
                 DrawPopupShadow(ctx, entry.Component.Bounds);
                 entry.Component.OnDraw(ctx);
             }
@@ -98,30 +127,67 @@ public class PopupManager
     /// 
     /// Returns true if the event was consumed (caller should skip grid input).
     /// 
-    /// Behaviour:
-    ///  • If the pointer hits an active popup → forward to that popup, consume event.
-    ///  • If Pressed lands outside all popups → dismiss all popups.
-    ///    The press is NOT consumed so the grid can still handle it (e.g. selecting a cell).
+    /// Behavior:
+    ///  • A press inside a popup goes to it and captures the pointer: the moves and the release that follow go
+    ///    to the same popup, even outside it.
+    ///  • A press outside all popups closes them and is consumed, with its moves and release, so the grid
+    ///    does nothing with it.
+    ///  • Wheel input over a popup goes to it; elsewhere it reaches the grid.
+    ///  • Hover moves outside every popup go to the topmost one (for hover-exit feedback) and reach the grid.
     /// </summary>
     public bool HandlePointer(KumikoPointerEventArgs e)
     {
+        // The rest of a press that closed the popups (or of a captured press whose popup closed)
+        if (_swallowUntilRelease)
+        {
+            if (e.Action is InputAction.Released or InputAction.Cancelled) _swallowUntilRelease = false;
+            if (e.Action is InputAction.Pressed or InputAction.Moved or InputAction.Released or InputAction.Cancelled
+                or InputAction.LongPress)
+            {
+                e.Handled = true;
+                return true;
+            }
+        }
+
         if (!HasActivePopups) return false;
+
+        // A captured press: everything up to the release goes to its popup
+        if (_captured != null && e.Action is InputAction.Moved or InputAction.Released or InputAction.Cancelled
+                or InputAction.LongPress)
+        {
+            var captured = _captured;
+            if (e.Action is InputAction.Released or InputAction.Cancelled) _captured = null;
+            if (e.Action == InputAction.Moved) captured.OnPointerMove(e);
+            else if (e.Action is InputAction.Released or InputAction.Cancelled) captured.OnPointerUp(e);
+            e.Handled = true;
+            NeedsRedraw?.Invoke();
+            return true;
+        }
 
         var hitPopup = HitTest(e.X, e.Y);
 
         if (hitPopup != null)
         {
-            // Pointer is inside a popup — route the event to it
             switch (e.Action)
             {
                 case InputAction.Pressed:
+                    _captured = hitPopup;
                     hitPopup.OnPointerDown(e);
+                    // The popup may have closed itself (a button): swallow the rest of the press
+                    if (!_popups.Exists(p => p.Component == hitPopup))
+                    {
+                        _captured = null;
+                        _swallowUntilRelease = true;
+                    }
                     break;
                 case InputAction.Moved:
                     hitPopup.OnPointerMove(e);
                     break;
                 case InputAction.Released:
                     hitPopup.OnPointerUp(e);
+                    break;
+                case InputAction.Scroll:
+                    hitPopup.OnScroll(e);
                     break;
             }
 
@@ -131,13 +197,14 @@ public class PopupManager
         }
 
         // Pointer is outside all popups
-        if (e.Action == InputAction.Pressed)
+        if (e.Action is InputAction.Pressed or InputAction.LongPress)
         {
-            // Dismiss all popups on press-outside
+            // A press outside closes the popups and does nothing else
             CloseAll();
+            _swallowUntilRelease = e.Action == InputAction.Pressed;
+            e.Handled = true;
             NeedsRedraw?.Invoke();
-            // Return false so the grid can still process the press
-            // (e.g. selecting a cell, starting a pan, etc.)
+            return true;
         }
 
         if (e.Action == InputAction.Moved)
@@ -216,10 +283,10 @@ public class PopupManager
     private class PopupEntry
     {
         public DrawnComponent Component { get; }
-        public KumikoRect Anchor { get; }
+        public Func<KumikoRect> Anchor { get; }
         public PopupPlacement Placement { get; }
 
-        public PopupEntry(DrawnComponent component, KumikoRect anchor, PopupPlacement placement)
+        public PopupEntry(DrawnComponent component, Func<KumikoRect> anchor, PopupPlacement placement)
         {
             Component = component;
             Anchor = anchor;
