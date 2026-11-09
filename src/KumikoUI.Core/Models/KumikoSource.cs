@@ -990,6 +990,35 @@ public class KumikoSource
     }
 
     /// <summary>
+    /// The key of one visible row (see <see cref="GetRowKeys"/>), or null when the row is out of range.
+    /// </summary>
+    internal object? GetRowKey(int visibleRow)
+    {
+        if (_flatView == null)
+            return visibleRow >= 0 && visibleRow < _viewIndices.Count ? _sourceItems[_viewIndices[visibleRow]] : null;
+        if (visibleRow < 0 || visibleRow >= _flatView.Count) return null;
+        var row = _flatView[visibleRow];
+        return row.Kind switch
+        {
+            FlatRowKind.Data => _sourceItems[row.SourceIndex],
+            FlatRowKind.GroupHeader => new GroupRowKey(row.GroupInfo!.GroupPath, -1),
+            _ => new GroupRowKey(row.GroupPath!, row.GroupSummaryIndex),
+        };
+    }
+
+    /// <summary>The visible row whose key matches <paramref name="key"/>, or -1. Scans the view.</summary>
+    internal int IndexOfRowKey(object key)
+    {
+        int count = RowCount;
+        for (int i = 0; i < count; i++)
+        {
+            if (GetRowKey(i) is { } candidate && RowKeyComparer.Instance.Equals(candidate, key))
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
     /// The key of every visible row: the item for data rows, a <see cref="GroupRowKey"/> for group header and
     /// group summary rows.
     /// </summary>

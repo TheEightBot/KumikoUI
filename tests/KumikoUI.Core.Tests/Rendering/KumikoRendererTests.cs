@@ -245,7 +245,7 @@ public class KumikoRendererTests
     public void Rows_SelectedRowBeatsFocusedRow_AndFocusedRowIsTinted()
     {
         var h = Create();
-        h.Selection.HandleRowSelection(2, shift: false, ctrl: false, totalRows: 20);
+        h.Selection.HandleRowSelection(2, shift: false, ctrl: false);
         h.Selection.CurrentCell = new CellPosition(4, 0);
 
         var ctx = h.Render();

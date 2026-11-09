@@ -24,7 +24,9 @@ public class PinnedBottomSummaryTests
         public KumikoSource Source { get; } = new();
         public KumikoStyle Style { get; } = new();
         public ScrollState Scroll { get; init; } = new() { ViewportWidth = ViewportWidth, ViewportHeight = DefaultViewportHeight };
-        public KumikoSelectionModel Selection { get; } = new();
+        public KumikoSelectionModel Selection { get; }
+
+        public Grid() => Selection = new KumikoSelectionModel(Source);
         public KumikoInputController Input { get; } = new();
         public KumikoRenderer Renderer { get; } = new();
 

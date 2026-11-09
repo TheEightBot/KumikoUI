@@ -270,7 +270,7 @@ public class HeterogeneousAndNullItemTests
         var scroll = new ScrollState { ViewportWidth = 800, ViewportHeight = 400 };
         var ctx = new RecordingDrawingContext();
 
-        new KumikoRenderer().Render(ctx, source, scroll, new KumikoSelectionModel(), new KumikoStyle());
+        new KumikoRenderer().Render(ctx, source, scroll, new KumikoSelectionModel(source), new KumikoStyle());
 
         Assert.Equal(3, source.RowCount);
     }
@@ -287,7 +287,7 @@ public class HeterogeneousAndNullItemTests
         });
         var scroll = new ScrollState { ViewportWidth = 800, ViewportHeight = 400 };
 
-        new KumikoRenderer().Render(new RecordingDrawingContext(), source, scroll, new KumikoSelectionModel(), new KumikoStyle());
+        new KumikoRenderer().Render(new RecordingDrawingContext(), source, scroll, new KumikoSelectionModel(source), new KumikoStyle());
 
         Assert.Equal(90.0, Convert.ToDouble(source.ComputedBottomSummaries[0].RawValues["Age"]));
     }

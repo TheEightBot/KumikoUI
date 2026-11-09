@@ -994,7 +994,6 @@ public class KumikoRenderer
         int frozenRowCount = 0)
     {
         if (!selection.CurrentCell.IsValid) return;
-        if (selection.Unit != SelectionUnit.Cell && selection.Unit != SelectionUnit.Row) return;
 
         int row = selection.CurrentCell.Row;
         int targetOrigIdx = selection.CurrentCell.Column;
