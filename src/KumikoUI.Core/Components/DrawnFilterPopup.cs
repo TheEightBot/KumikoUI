@@ -700,7 +700,7 @@ public class DrawnFilterPopup : DrawnComponent
     private void ScrollTo(float offset)
     {
         float clamped = Math.Clamp(offset, 0, MaxScrollOffset);
-        if (clamped == _scrollOffset) return;
+        if (Math.Abs(clamped - _scrollOffset) < 0.01f) return;
         _scrollOffset = clamped;
         InvalidateVisual();
     }

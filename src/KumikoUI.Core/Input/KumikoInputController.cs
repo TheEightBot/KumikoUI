@@ -1211,32 +1211,17 @@ public class KumikoInputController
 
         if (column.IsFrozenRight)
         {
-            float rightFrozenWidth = 0;
-            foreach (var c in dataSource.Columns)
-                if (c.IsVisible && c.IsFrozenRight) rightFrozenWidth += c.Width;
-
-            float x = scroll.ViewportWidth - rightFrozenWidth;
-            foreach (var c in dataSource.Columns)
-            {
-                if (!c.IsVisible || !c.IsFrozenRight) continue;
-                if (c == column) break;
-                x += c.Width;
-            }
-            return x;
+            var rightFrozen = dataSource.Columns.Where(c => c.IsVisible && c.IsFrozenRight).ToList();
+            float x = scroll.ViewportWidth - rightFrozen.Sum(c => c.Width);
+            return x + rightFrozen.TakeWhile(c => c != column).Sum(c => c.Width);
         }
 
-        float frozenWidth = 0;
-        foreach (var c in dataSource.Columns)
-            if (c.IsVisible && c.IsFrozen) frozenWidth += c.Width;
-
-        float colX = frozenWidth;
-        foreach (var c in dataSource.Columns)
-        {
-            if (!c.IsVisible || c.IsFrozen || c.IsFrozenRight) continue;
-            if (c == column) break;
-            colX += c.Width;
-        }
-        return colX - scroll.OffsetX;
+        float frozenWidth = dataSource.Columns.Where(c => c.IsVisible && c.IsFrozen).Sum(c => c.Width);
+        float scrollableBefore = dataSource.Columns
+            .Where(c => c.IsVisible && !c.IsFrozen && !c.IsFrozenRight)
+            .TakeWhile(c => c != column)
+            .Sum(c => c.Width);
+        return frozenWidth + scrollableBefore - scroll.OffsetX;
     }
 
     // ── Edit helpers ──────────────────────────────────────────────

@@ -174,7 +174,7 @@ public class PopupManager
                     _captured = hitPopup;
                     hitPopup.OnPointerDown(e);
                     // The popup may have closed itself (a button): swallow the rest of the press
-                    if (_captured == null || !_popups.Exists(p => p.Component == hitPopup))
+                    if (!_popups.Exists(p => p.Component == hitPopup))
                     {
                         _captured = null;
                         _swallowUntilRelease = true;
