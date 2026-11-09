@@ -519,6 +519,8 @@ Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column
 - **Tab / Shift+Tab** — commit and move to the next/previous editable cell
 - **Escape** — cancel and restore the original value
 
+An open edit belongs to its item and column, not to a row number. If the rows move underneath it (a background collection change, a programmatic sort or filter), the editor moves with the item and the commit writes to that item; if the item is filtered out, collapsed or removed, the edit is canceled. Tapping a header to sort, opening a filter, toggling a group or starting a drag commits the edit first; when the value is invalid the gesture is ignored and the editor stays open with the error. The editor follows its cell while the grid scrolls and is hidden while the cell is out of view.
+
 ### Custom editors
 
 For `Template` columns supply an `EditorDescriptor`:

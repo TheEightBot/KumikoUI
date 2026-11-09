@@ -181,8 +181,7 @@ public partial class KumikoDataGrid : Grid
 
     private void OnDataSourceViewChanged(object? sender, KumikoViewChangedEventArgs e)
     {
-        // The edit and the selection follow their rows before anything repaints.
-        _editSession.ApplyViewChange(e);
+        // The selection follows its rows before anything repaints (the edit session follows on its own).
         _selection.ApplyViewChange(e);
         _canvasView.Invalidate();
     }

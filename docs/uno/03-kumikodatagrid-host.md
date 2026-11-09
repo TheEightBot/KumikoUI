@@ -126,8 +126,7 @@ differs (see step 4).
   private void OnEditSessionNeedsRedraw()      => _canvasView.Invalidate();
   private void OnDataSourceViewChanged(object? s, KumikoViewChangedEventArgs e)
   {
-      _editSession.ApplyViewChange(e);   // the edit and the selection follow their rows
-      _selection.ApplyViewChange(e);
+      _selection.ApplyViewChange(e);     // the selection follows its rows; the edit session follows on its own
       _canvasView.Invalidate();
   }
   ```

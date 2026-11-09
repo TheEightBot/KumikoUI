@@ -234,7 +234,7 @@ public class KumikoInputController
                 {
                     case KumikoKey.Right:
                         // Expand group
-                        if (!groupInfo.IsExpanded)
+                        if (!groupInfo.IsExpanded && CommitEditBeforeViewChange(dataSource, selection))
                         {
                             dataSource.ToggleGroupExpansion(groupRow);
                             Redraw();
@@ -243,7 +243,7 @@ public class KumikoInputController
                         return;
                     case KumikoKey.Left:
                         // Collapse group
-                        if (groupInfo.IsExpanded)
+                        if (groupInfo.IsExpanded && CommitEditBeforeViewChange(dataSource, selection))
                         {
                             dataSource.ToggleGroupExpansion(groupRow);
                             Redraw();
@@ -253,7 +253,8 @@ public class KumikoInputController
                     case KumikoKey.Space:
                     case KumikoKey.Enter:
                         // Toggle expand/collapse
-                        dataSource.ToggleGroupExpansion(groupRow);
+                        if (CommitEditBeforeViewChange(dataSource, selection))
+                            dataSource.ToggleGroupExpansion(groupRow);
                         Redraw();
                         e.Handled = true;
                         return;
@@ -453,6 +454,7 @@ public class KumikoInputController
         // Group panel chip remove → remove grouping
         if (hit.Region == HitRegion.GroupPanelChipRemove && hit.GroupDescriptionIndex >= 0)
         {
+        if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
             var groups = dataSource.GroupDescriptions;
             if (hit.GroupDescriptionIndex < groups.Count)
             {
@@ -466,6 +468,7 @@ public class KumikoInputController
         // Group panel chip click — toggle sort direction for this group
         if (hit.Region == HitRegion.GroupPanelChip && hit.GroupDescriptionIndex >= 0)
         {
+        if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
             var groups = dataSource.GroupDescriptions;
             if (hit.GroupDescriptionIndex < groups.Count)
             {
@@ -483,6 +486,7 @@ public class KumikoInputController
         // Group chevron → toggle expand/collapse
         if (hit.Region == HitRegion.GroupChevron)
         {
+        if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
             dataSource.ToggleGroupExpansion(hit.RowIndex);
             Redraw();
             e.Handled = true;
@@ -492,6 +496,7 @@ public class KumikoInputController
         // Group header row click → toggle expand/collapse (whole row acts as toggle)
         if (hit.Region == HitRegion.GroupHeaderRow)
         {
+        if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
             dataSource.ToggleGroupExpansion(hit.RowIndex);
             Redraw();
             e.Handled = true;
@@ -576,7 +581,8 @@ public class KumikoInputController
                 // Check if this started on a header (potential column reorder)
                 var startHit = _hitTester.HitTest(_lastPanX, _lastPanY, scroll, style, columns, totalRows, dataSource);
                 if (startHit.Region == HitRegion.HeaderCell && startHit.Column?.AllowReorder == true &&
-                    Math.Abs(e.X - _lastPanX) > Math.Abs(e.Y - _lastPanY))
+                    Math.Abs(e.X - _lastPanX) > Math.Abs(e.Y - _lastPanY) &&
+                    CommitEditBeforeViewChange(dataSource, selection))
                 {
                     _isDraggingColumn = true;
                     _dragColumnIndex = startHit.ColumnIndex;
@@ -591,7 +597,8 @@ public class KumikoInputController
                 bool isCellDrag = startHit.Region == HitRegion.Cell && style.AllowRowDragDrop;
                 if ((isDragHandle || isCellDrag) &&
                     Math.Abs(e.Y - _lastPanY) > Math.Abs(e.X - _lastPanX) &&
-                    startHit.RowIndex >= 0)
+                    startHit.RowIndex >= 0 &&
+                    CommitEditBeforeViewChange(dataSource, selection))
                 {
                     _isDraggingRow = true;
                     _dragRowIndex = startHit.RowIndex;
@@ -733,7 +740,7 @@ public class KumikoInputController
 
         if (hit.Region == HitRegion.HeaderFilterIcon && hit.Column != null)
         {
-            if (hit.Column.AllowFiltering)
+            if (hit.Column.AllowFiltering && CommitEditBeforeViewChange(dataSource, selection))
             {
                 ShowFilterPopup(hit.Column, hit.ColumnIndex, scroll, style, dataSource);
             }
@@ -743,6 +750,7 @@ public class KumikoInputController
 
         if (hit.Region == HitRegion.HeaderCell && hit.Column != null)
         {
+        if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
             bool ctrl = (e.Modifiers & InputModifiers.Control) != 0;
             bool shift = (e.Modifiers & InputModifiers.Shift) != 0;
 
@@ -1207,6 +1215,21 @@ public class KumikoInputController
     // ── Edit helpers ──────────────────────────────────────────────
 
     /// <summary>
+    /// Commit an open edit before a gesture that changes the view (sort, filter, grouping, reorder), as
+    /// desktop grids do. Returns false when the value is invalid: the editor stays open showing the error and
+    /// the caller skips the gesture, so the input is not lost.
+    /// </summary>
+    private bool CommitEditBeforeViewChange(KumikoSource dataSource, KumikoSelectionModel selection)
+    {
+        if (_editSession == null || !_editSession.IsEditing) return true;
+
+        bool committed = _editSession.CommitEdit(dataSource);
+        selection.IsEditing = _editSession.IsEditing;
+        Redraw();
+        return committed;
+    }
+
+    /// <summary>
     /// Resolves the effective <see cref="EditTrigger"/> for <paramref name="column"/>.
     /// When the column has its own <see cref="KumikoColumn.EditTriggers"/> override it is
     /// returned directly; otherwise the grid-level <see cref="EditSession.EditTriggers"/> is
@@ -1228,6 +1251,7 @@ public class KumikoInputController
         int row = selection.CurrentCell.Row;
         int col = selection.CurrentCell.Column;
         if (col < 0 || col >= dataSource.Columns.Count) return;
+        if (row < 0 || row >= dataSource.RowCount) return;
 
         // Cannot edit group header or summary rows
         if (dataSource.IsNonDataRow(row)) return;

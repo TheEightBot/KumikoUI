@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - `KumikoSource.SetSort(column, direction, order)` sets single or multi-column sort; with `ToggleSort`, `ToggleMultiSort` and `ClearSort` it is the only writer of sort state.
   - `ScrollState.ScrollChanged` (`KumikoScrollChangedEventArgs`) is raised once per actual scroll offset change.
   - `KumikoSource.GroupExpandedChanged` (`GroupExpandedChangedEventArgs.IsExpanded`) is raised when a group header is expanded or collapsed.
-  - `KumikoSelectionModel.ApplyViewChange` and `EditSession.ApplyViewChange` keep the selection, the current cell and an active edit on their rows after a sort, filter, grouping change, insert or removal. Rows that disappear leave the selection, and an edit on such a row is canceled. Both hosts call them.
+  - `KumikoSelectionModel.ApplyViewChange` keeps the selection, the current cell and the range anchor on their rows after a sort, filter, grouping change, insert or removal; rows that disappear leave the selection. Both hosts call it from `ViewChanged`.
 - Native AOT and trimming support (#17). Item properties are read and written, in order, through:
   - `KumikoColumn.ValueAccessor` / `ValueSetter` delegates (and `EditorDisplaySelector` / `EditorValueSelector` for ComboBox items, `DrawnComboBox.DisplaySelector` / `ValueSelector`);
   - accessors generated for types marked `[KumikoGridItem]` (`KumikoUI.Core.Data`), by a source generator now included in the KumikoUI.Core package;
@@ -53,6 +53,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno is built with Uno.Sdk 6.7.30 (was 6.5.31).
 
 ### Fixed
+- Editing tracks the edited item and column instead of a visible row index (#31). An edit that outlives a sort, filter, grouping change, collection change or column reorder now commits to the item it was opened on, wherever its row is, instead of writing whatever item sits at the old row (or throwing). An edit whose item is filtered out, collapsed or removed is canceled. Sorting, filtering, group toggles and drag-reorders from the grid commit an open edit first, and are ignored while its value is invalid. The editor overlay moves with its cell when the grid scrolls and hides while the cell is out of view (`UpdateEditorBounds` was never called). `SetCellValue`, `ToggleBooleanCell` and starting an edit ignore rows that are out of range or not data rows. `EditSession` exposes `EditItem` and `EditColumn`, and follows the source's `ViewChanged` by itself while an edit is open.
 - ComboBox editors now apply the column's `EditorDisplayMemberPath` and `EditorValueMemberPath`; they were set after the items were built, so items showed `ToString()` and the current value was not selected.
 - An unknown font family now falls back to the default family in the requested weight and slant instead of producing a null typeface. Styled typefaces are resolved through `SKFontManager` with an explicit family, which SkiaSharp 4 needs to keep bold and italic.
 - Taps on the pinned summary footer no longer select or edit the data row behind it; unpinned bottom summary rows are also reported as `HitRegion.TableSummaryRow`.
