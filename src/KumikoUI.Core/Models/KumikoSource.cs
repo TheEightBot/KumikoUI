@@ -1016,11 +1016,17 @@ public class KumikoSource
     /// Set a cell value for a visible row and column, through <see cref="KumikoColumn.ValueSetter"/> when
     /// it is set and through the column's property path otherwise (converting the value to the property
     /// type). A value that cannot be written (read-only or unknown property, null intermediate value,
-    /// failed conversion) is ignored.
+    /// failed conversion) is ignored, and so is a row that is out of range or not a data row.
     /// </summary>
     public void SetCellValue(int visibleRow, KumikoColumn column, object? value)
     {
-        var item = GetItem(visibleRow);
+        if (visibleRow < 0 || visibleRow >= RowCount || IsNonDataRow(visibleRow)) return;
+        SetItemValue(GetItem(visibleRow), column, value);
+    }
+
+    /// <summary>Write a column's value to <paramref name="item"/>, wherever (or whether) its row is shown.</summary>
+    internal void SetItemValue(object item, KumikoColumn column, object? value)
+    {
         // One notification for the edit, even when the item's PropertyChanged triggers its own.
         BeginUpdate();
         try

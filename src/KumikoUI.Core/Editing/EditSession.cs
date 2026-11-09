@@ -13,9 +13,11 @@ public class EditSession
 {
     private readonly DrawnFocusManager _focusManager = new();
 
-    // Edit state
+    // Edit state. The edit belongs to an item and a column; _editCell is where they are shown now, kept
+    // current by ApplyViewChange (rows move with sort, filter, grouping; columns with reordering).
     private bool _isEditing;
     private CellPosition _editCell = CellPosition.Invalid;
+    private object? _editItem;
     private bool _isCommitting;
     private object? _originalValue;
     private DrawnComponent? _activeEditor;
@@ -25,8 +27,14 @@ public class EditSession
     /// <summary>Whether a cell is currently being edited.</summary>
     public bool IsEditing => _isEditing;
 
-    /// <summary>The cell currently being edited.</summary>
+    /// <summary>The visible cell currently being edited (it moves with its item and column).</summary>
     public CellPosition EditCell => _editCell;
+
+    /// <summary>The data item being edited, or null when not editing.</summary>
+    public object? EditItem => _editItem;
+
+    /// <summary>The column being edited, or null when not editing.</summary>
+    public KumikoColumn? EditColumn => _editColumn;
 
     /// <summary>The active editor component (null if not editing).</summary>
     public DrawnComponent? ActiveEditor => _activeEditor;
@@ -90,7 +98,9 @@ public class EditSession
             CommitEdit(dataSource);
 
         if (column.IsReadOnly) return false;
+        if (rowIndex < 0 || rowIndex >= dataSource.RowCount || dataSource.IsNonDataRow(rowIndex)) return false;
 
+        var item = dataSource.GetItem(rowIndex);
         var cellValue = dataSource.GetCellValue(rowIndex, column);
 
         // Raise begin-edit event (cancelable)
@@ -100,6 +110,7 @@ public class EditSession
 
         _isEditing = true;
         _editCell = new CellPosition(rowIndex, columnIndex);
+        _editItem = item;
         _editColumn = column;
         _originalValue = cellValue;
         CurrentValidation = null;
@@ -110,6 +121,8 @@ public class EditSession
         {
             _isEditing = false;
             _editCell = CellPosition.Invalid;
+            _editItem = null;
+            _editColumn = null;
             return false;
         }
 
@@ -120,6 +133,7 @@ public class EditSession
         _activeEditor.RedrawRequested += OnEditorRedrawRequested;
         _activeEditor.EditCompleted += OnEditorEditCompleted;
         _editDataSource = dataSource;
+        dataSource.ViewChanged += OnViewChanged;
         _focusManager.Register(_activeEditor);
         _focusManager.SetFocus(_activeEditor);
 
@@ -128,17 +142,18 @@ public class EditSession
     }
 
     /// <summary>
-    /// Commit the current edit, writing the value back.
-    /// Returns true if the commit succeeded.
+    /// Commit the current edit, writing the value to the edited item (wherever its row is now).
+    /// Returns true if the commit succeeded; false when nothing is being edited or the value is invalid
+    /// (the editor stays open and shows the error).
     /// </summary>
     public bool CommitEdit(KumikoSource dataSource)
     {
-        if (!_isEditing || _activeEditor == null || _editColumn == null) return false;
+        if (!_isEditing || _activeEditor == null || _editColumn == null || _editItem == null) return false;
 
         var newValue = CellEditorFactory.GetEditorValue(_activeEditor, _editColumn);
 
         // Validate
-        CurrentValidation = ValidateValue(_editCell.Row, _editCell.Column, newValue, dataSource);
+        CurrentValidation = ValidateValue(_editCell.Row, _editCell.Column, _editItem, newValue);
         if (CurrentValidation != null && !CurrentValidation.IsValid)
         {
             NeedsRedraw?.Invoke();
@@ -151,7 +166,7 @@ public class EditSession
         _isCommitting = true;
         try
         {
-            dataSource.SetCellValue(editedCell.Row, _editColumn, newValue);
+            dataSource.SetItemValue(_editItem, _editColumn, newValue);
         }
         finally
         {
@@ -196,6 +211,7 @@ public class EditSession
     public void ToggleBooleanCell(int row, int col, KumikoColumn column, KumikoSource dataSource)
     {
         if (column.IsReadOnly) return;
+        if (row < 0 || row >= dataSource.RowCount || dataSource.IsNonDataRow(row)) return;
 
         var currentValue = dataSource.GetCellValue(row, column);
         bool current = currentValue is true;
@@ -217,20 +233,33 @@ public class EditSession
     }
 
     /// <summary>
-    /// Keep an active edit on its row after the grid's view changes: the edited cell follows its row (sort,
-    /// insert, removal above it), and the edit is canceled when the row is no longer visible (filtered out,
-    /// collapsed, removed). Hosts call this from <see cref="KumikoSource.ViewChanged"/>.
+    /// Keep an active edit on its item after the grid's view changes: the edited cell follows the item's row
+    /// (sort, insert, removal above it) and the column's position (column reorder), and the edit is canceled
+    /// when the item is no longer visible (filtered out, collapsed, removed) or its column was removed. A
+    /// later commit writes to the item wherever it is. The session subscribes to the edited source's
+    /// <see cref="KumikoSource.ViewChanged"/> while an edit is open, so callers need not call this.
     /// </summary>
     public void ApplyViewChange(KumikoViewChangedEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
-        if (!_isEditing || !e.IsStructural) return;
+        if (!_isEditing || _editItem == null || _editColumn == null || _editDataSource == null) return;
 
-        int row = e.MapRow(_editCell.Row);
-        if (row >= 0)
-            _editCell = new CellPosition(row, _editCell.Column);
+        int row = e.IsStructural ? e.GetViewRow(_editItem) : _editCell.Row;
+        int column = IndexOfColumn(_editDataSource, _editColumn);
+        if (row >= 0 && column >= 0)
+            _editCell = new CellPosition(row, column);
         else if (!_isCommitting)
             CancelEdit();
+    }
+
+    private static int IndexOfColumn(KumikoSource dataSource, KumikoColumn column)
+    {
+        var columns = dataSource.Columns;
+        for (int i = 0; i < columns.Count; i++)
+        {
+            if (ReferenceEquals(columns[i], column)) return i;
+        }
+        return -1;
     }
 
     /// <summary>
@@ -240,6 +269,19 @@ public class EditSession
     {
         if (_activeEditor != null)
             _activeEditor.Bounds = cellBounds;
+    }
+
+    /// <summary>
+    /// Place the editor over its cell for this frame, or hide it while the cell is scrolled out of view
+    /// (<paramref name="cellBounds"/> null). A hidden editor keeps its value and focus and reappears when the
+    /// cell scrolls back. Called by the renderer every frame.
+    /// </summary>
+    internal void PlaceEditor(KumikoRect? cellBounds)
+    {
+        if (_activeEditor == null) return;
+        if (cellBounds is { } bounds)
+            _activeEditor.Bounds = bounds;
+        _activeEditor.IsVisible = cellBounds.HasValue;
     }
 
     /// <summary>
@@ -355,7 +397,7 @@ public class EditSession
 
     // ── Validation ──────────────────────────────────────────────
 
-    private CellValidationResult? ValidateValue(int row, int col, object? value, KumikoSource dataSource)
+    private CellValidationResult? ValidateValue(int row, int col, object item, object? value)
     {
         // Check custom validator first
         if (CellValidator != null)
@@ -364,10 +406,9 @@ public class EditSession
         // Check IDataErrorInfo on the data item
         try
         {
-            var item = dataSource.GetItem(row);
             if (item is System.ComponentModel.IDataErrorInfo errorInfo)
             {
-                var colDef = dataSource.Columns.ElementAtOrDefault(col);
+                var colDef = _editColumn;
                 if (colDef != null)
                 {
                     var error = errorInfo[colDef.PropertyName];
@@ -379,7 +420,7 @@ public class EditSession
             // Check INotifyDataErrorInfo
             if (item is System.ComponentModel.INotifyDataErrorInfo notifyErrorInfo)
             {
-                var colDef = dataSource.Columns.ElementAtOrDefault(col);
+                var colDef = _editColumn;
                 if (colDef != null && notifyErrorInfo.HasErrors)
                 {
                     var errors = notifyErrorInfo.GetErrors(colDef.PropertyName);
@@ -404,6 +445,8 @@ public class EditSession
 
     private void EndEdit()
     {
+        if (_editDataSource != null)
+            _editDataSource.ViewChanged -= OnViewChanged;
         if (_activeEditor != null)
         {
             _activeEditor.RedrawRequested -= OnEditorRedrawRequested;
@@ -414,6 +457,7 @@ public class EditSession
         }
         _isEditing = false;
         _editCell = CellPosition.Invalid;
+        _editItem = null;
         _editColumn = null;
         _editDataSource = null;
         _originalValue = null;
@@ -426,6 +470,8 @@ public class EditSession
     /// (e.g. date picked, combo item selected). Auto-commits the edit.
     /// </summary>
     private void OnEditorRedrawRequested() => NeedsRedraw?.Invoke();
+
+    private void OnViewChanged(object? sender, KumikoViewChangedEventArgs e) => ApplyViewChange(e);
 
     private void OnEditorEditCompleted()
     {

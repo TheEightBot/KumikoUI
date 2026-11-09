@@ -300,7 +300,15 @@ public class KumikoRenderer
         // Restore from grouping panel offset
         ctx.Restore();
 
-        // Draw active cell editor on top of everything (in absolute coordinates)
+        // Keep the editor on its cell (it moves when the grid scrolls, sorts or regroups), hidden while
+        // the cell is scrolled out of view, then draw it on top of everything (absolute coordinates).
+        if (editSession is { IsEditing: true })
+        {
+            float pinnedFooterHeight = style.PinBottomSummaryRows ? bottomSummaryHeight : 0;
+            editSession.PlaceEditor(GetEditorCellBounds(editSession.EditCell, scroll, style,
+                groupPanelOffset, dataAreaTop, frozenRowCount, frozenRowHeight,
+                scrollClipLeft, scrollClipLeft + scrollClipWidth, adjustedViewportHeight - pinnedFooterHeight));
+        }
         editSession?.DrawEditor(ctx);
 
         // Draw any popups (filter, etc.) on top of everything
@@ -311,6 +319,50 @@ public class KumikoRenderer
     /// Returns screen X for a column, handling left-frozen, right-frozen, and scrollable.
     /// For right-frozen columns, the X is already an absolute screen position from GetVisibleRightFrozenColumns.
     /// </summary>
+    /// <summary>
+    /// The edited cell's screen rectangle this frame (absolute coordinates), or null when the cell is
+    /// scrolled out of its pane or band, or its column is not laid out.
+    /// </summary>
+    private KumikoRect? GetEditorCellBounds(CellPosition cell, ScrollState scroll, KumikoStyle style,
+        float groupPanelOffset, float dataAreaTop, int frozenRowCount, float frozenRowHeight,
+        float scrollPaneLeft, float scrollPaneRight, float dataAreaBottom)
+    {
+        if (!cell.IsValid) return null;
+
+        // The column's layout this frame; absent when it is scrolled out horizontally or hidden.
+        var match = Find(_frozenCols, cell.Column) ?? Find(_scrollableCols, cell.Column) ?? Find(_rightFrozenCols, cell.Column);
+        if (match is not { } found) return null;
+
+        float x = ColumnScreenX(found.X, scroll, found.Column.FreezeMode);
+        float width = found.Column.Width;
+        if (found.Column.FreezeMode == ColumnFreezeMode.None && (x + width <= scrollPaneLeft || x >= scrollPaneRight))
+            return null;
+
+        float y;
+        if (cell.Row < frozenRowCount)
+        {
+            y = dataAreaTop + cell.Row * style.RowHeight;
+        }
+        else
+        {
+            y = dataAreaTop + frozenRowHeight + (cell.Row - frozenRowCount) * style.RowHeight - scroll.OffsetY;
+            if (y + style.RowHeight <= dataAreaTop + frozenRowHeight || y >= dataAreaBottom)
+                return null;
+        }
+
+        return new KumikoRect(x, y + groupPanelOffset, width, style.RowHeight);
+    }
+
+    private static (KumikoColumn Column, float X, int OriginalIndex)? Find(
+        List<(KumikoColumn Column, float X, int OriginalIndex)> columns, int originalIndex)
+    {
+        foreach (var entry in columns)
+        {
+            if (entry.OriginalIndex == originalIndex) return entry;
+        }
+        return null;
+    }
+
     private static float ColumnScreenX(float colContentX, ScrollState scroll, ColumnFreezeMode freezeMode)
     {
         return freezeMode switch
