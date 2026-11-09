@@ -14,6 +14,9 @@ public class KumikoRenderer
 {
     private readonly KumikoLayoutEngine _layout = new();
     private readonly PaintCache _paintCache = new();
+
+    // The effective style of the cell being drawn when resolvers override the column's style; reused per cell
+    private readonly KumikoCellStyle _effectiveCellStyle = new();
     private readonly Dictionary<KumikoColumnType, ICellRenderer> _cellRenderers = new();
 
     // Reusable per-frame column lists — avoids allocating new Lists every Render() call
@@ -363,6 +366,33 @@ public class KumikoRenderer
         return null;
     }
 
+
+    /// <summary>
+    /// The style of one cell: the cell resolver's values over the column's <see cref="KumikoColumn.CellStyle"/>,
+    /// with the row resolver's text color and font under both. With no resolver override this is the column's
+    /// own style; otherwise the values are composed into one instance reused for every cell, so the column's
+    /// style and the resolvers' results (which may be shared or cached) are never modified. It is valid only
+    /// while the cell is drawn.
+    /// </summary>
+    private KumikoCellStyle? ResolveCellStyle(KumikoStyle style, KumikoColumn col, object? dataItem, KumikoRowStyle? rowStyle)
+    {
+        var columnStyle = col.CellStyle;
+        var cellStyle = style.CellStyleResolver != null && dataItem != null ? style.CellStyleResolver(dataItem, col) : null;
+        bool rowOverrides = rowStyle != null && (rowStyle.TextColor != null || rowStyle.Font != null);
+        if (cellStyle == null && !rowOverrides)
+            return columnStyle;
+
+        var effective = _effectiveCellStyle;
+        effective.BackgroundColor = cellStyle?.BackgroundColor ?? columnStyle?.BackgroundColor;
+        effective.TextColor = cellStyle?.TextColor ?? columnStyle?.TextColor ?? rowStyle?.TextColor;
+        effective.Font = cellStyle?.Font ?? columnStyle?.Font ?? rowStyle?.Font;
+        effective.Padding = cellStyle?.Padding ?? columnStyle?.Padding;
+        effective.BorderColor = cellStyle?.BorderColor ?? columnStyle?.BorderColor;
+        effective.BorderWidth = cellStyle?.BorderWidth ?? columnStyle?.BorderWidth;
+        effective.TextAlignment = cellStyle?.TextAlignment ?? columnStyle?.TextAlignment;
+        return effective;
+    }
+
     private static float ColumnScreenX(float colContentX, ScrollState scroll, ColumnFreezeMode freezeMode)
     {
         return freezeMode switch
@@ -602,25 +632,8 @@ public class KumikoRenderer
             {
                 float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
 
-                // Merge static per-column style with dynamic resolver style
-                var colCellStyle = col.CellStyle;
-                if (style.CellStyleResolver != null)
-                {
-                    dataItem ??= dataSource.GetItem(row);
-                    var dynamicCellStyle = style.CellStyleResolver(dataItem, col);
-                    colCellStyle = KumikoCellStyle.Merge(dynamicCellStyle, colCellStyle);
-                }
-
-                // Apply row-level text/font overrides into the effective cell style
-                if (dynamicRowStyle != null &&
-                    (dynamicRowStyle.TextColor != null || dynamicRowStyle.Font != null))
-                {
-                    colCellStyle ??= new KumikoCellStyle();
-                    if (colCellStyle == col.CellStyle)
-                        colCellStyle = KumikoCellStyle.Merge(null, colCellStyle) ?? new KumikoCellStyle();
-                    colCellStyle.TextColor ??= dynamicRowStyle.TextColor;
-                    colCellStyle.Font ??= dynamicRowStyle.Font;
-                }
+                // The column's style with the resolvers' overrides, never written into either
+                var colCellStyle = ResolveCellStyle(style, col, dataItem, dynamicRowStyle);
 
                 float cellPadding = colCellStyle?.Padding ?? style.CellPadding;
 
@@ -743,25 +756,8 @@ public class KumikoRenderer
             {
                 float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
 
-                // Merge static per-column style with dynamic resolver style
-                var colCellStyle = col.CellStyle;
-                if (style.CellStyleResolver != null)
-                {
-                    dataItem ??= dataSource.GetItem(row);
-                    var dynamicCellStyle = style.CellStyleResolver(dataItem, col);
-                    colCellStyle = KumikoCellStyle.Merge(dynamicCellStyle, colCellStyle);
-                }
-
-                // Apply row-level text/font overrides into the effective cell style
-                if (dynamicRowStyle != null &&
-                    (dynamicRowStyle.TextColor != null || dynamicRowStyle.Font != null))
-                {
-                    colCellStyle ??= new KumikoCellStyle();
-                    if (colCellStyle == col.CellStyle)
-                        colCellStyle = KumikoCellStyle.Merge(null, colCellStyle) ?? new KumikoCellStyle();
-                    colCellStyle.TextColor ??= dynamicRowStyle.TextColor;
-                    colCellStyle.Font ??= dynamicRowStyle.Font;
-                }
+                // The column's style with the resolvers' overrides, never written into either
+                var colCellStyle = ResolveCellStyle(style, col, dataItem, dynamicRowStyle);
 
                 float cellPadding = colCellStyle?.Padding ?? style.CellPadding;
 

@@ -40,7 +40,7 @@ public class KumikoCellStyle
     /// <summary>
     /// Merge two KumikoCellStyle instances. Values from <paramref name="primary"/> take precedence;
     /// any null properties fall back to <paramref name="fallback"/>.
-    /// Returns null when both inputs are null.
+    /// Returns null when both inputs are null, and the other input itself (not a copy) when one is null.
     /// </summary>
     public static KumikoCellStyle? Merge(KumikoCellStyle? primary, KumikoCellStyle? fallback)
     {
