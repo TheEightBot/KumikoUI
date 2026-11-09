@@ -530,6 +530,49 @@ Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column
 
 An open edit belongs to its item and column, not to a row number. If the rows move underneath it (a background collection change, a programmatic sort or filter), the editor moves with the item and the commit writes to that item; if the item is filtered out, collapsed or removed, the edit is canceled. Tapping a header to sort, opening a filter, toggling a group or starting a drag commits the edit first; when the value is invalid the gesture is ignored and the editor stays open with the error. The editor follows its cell while the grid scrolls and is hidden while the cell is out of view.
 
+### Validation
+
+When an edit is committed (Enter, Tab, leaving the cell), the value goes through four steps:
+
+1. **Conversion.** The editor's value is converted to the property's type, in `KumikoSource.Culture`:
+   - every numeric type, with whole numbers only for integer types, and in range;
+   - `decimal` at full precision;
+   - `bool`, `char`, `Guid`, and enums (by name, or by a defined number);
+   - `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly` and `TimeSpan`;
+   - `string`, and the nullable form of each type.
+
+   Blank text clears a nullable property and is an error for a non-nullable one. Text that doesn't convert is an error ("Enter a number.", "Enter a whole number.", "Enter a valid date.", …). The conversion is `KumikoValueConverter.TryConvert`, which you can call yourself.
+2. **The grid's validator.** `EditSession.CellValidator` receives the converted value.
+3. **The write.** A setter that throws is an error, and its exception message is shown.
+4. **The item's own validation.** `IDataErrorInfo` and `INotifyDataErrorInfo` are checked with the new value in place. An error writes the original value back.
+
+```csharp
+grid.EditSession.CellValidator = (row, column, value) => value switch
+{
+    int quantity when quantity > 100 => CellValidationResult.Error("At most 100."),
+    int quantity when quantity > 50 => CellValidationResult.Warning("That's a large order."),
+    _ => CellValidationResult.Valid,
+};
+
+grid.EditSession.ValidationFailed += (_, e) =>
+    ShowStatus($"{e.Column.Header}: {e.Message} ({e.Severity})");
+```
+
+What each result does:
+
+| Result | Editor | Item | `ValidationFailed` |
+|---|---|---|---|
+| Error | stays open, with a red outline, an icon and the message under the cell | unchanged | raised, `Committed = false` |
+| Warning, first commit | stays open, with an orange outline and the message | unchanged | raised, `Committed = false` |
+| Warning, same value committed again | closes | written | raised, `Committed = true` |
+| Info | closes | written | raised, `Committed = true` |
+
+`CellValueChanged` is raised only for a value that was written. Changing the value in the editor clears the message. Gestures that commit first, such as sorting or filtering, are ignored while the value is refused.
+
+The editor shows numbers and dates in the grid's culture (`3,5` under `de-DE`), so the text parses back to the same value.
+
+`KumikoSource.SetCellValue` converts in the same way and returns whether the value was written. A value that can't be written changes nothing and raises no change.
+
 ### Custom editors
 
 For `Template` columns supply an `EditorDescriptor`:

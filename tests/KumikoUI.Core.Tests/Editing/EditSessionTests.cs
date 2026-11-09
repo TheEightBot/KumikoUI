@@ -365,17 +365,24 @@ public class EditSessionTests
     }
 
     [Fact]
-    public void CommitEdit_WarningResult_CommitsAndClearsTheValidation()
+    public void CommitEdit_WarningResult_IsShownOnce_ThenCommittingTheSameValueAcceptsIt()
     {
         var f = new Fixture();
         f.Session.CellValidator = (_, _, _) => CellValidationResult.Warning("unusual");
+        var reported = new List<CellValidationEventArgs>();
+        f.Session.ValidationFailed += (_, e) => reported.Add(e);
         f.Begin(0, 0);
         f.Box.Text = "Odd";
 
-        Assert.True(f.Session.CommitEdit(f.Source));
+        Assert.False(f.Session.CommitEdit(f.Source)); // shown, not yet written
+        Assert.Equal("unusual", f.Session.CurrentValidation!.ErrorMessage);
+        Assert.NotEqual("Odd", f.Rows[0].Name);
 
+        Assert.True(f.Session.CommitEdit(f.Source)); // the same value again: accepted
         Assert.Equal("Odd", f.Rows[0].Name);
         Assert.Null(f.Session.CurrentValidation);
+        Assert.Equal(new[] { false, true }, reported.Select(e => e.Committed));
+        Assert.All(reported, e => Assert.Equal(ValidationSeverity.Warning, e.Severity));
     }
 
     [Fact]
@@ -473,16 +480,16 @@ public class EditSessionTests
         session.BeginEdit(0, 0, column, source, Bounds);
         ((DrawnTextBox)session.ActiveEditor!).Text = "toolong";
 
-        // The item is validated after the write is attempted? No: before, so it sees the old value.
-        // The old value is valid, so the commit goes through and the new value is then in place.
-        Assert.True(session.CommitEdit(source));
-        Assert.Equal("toolong", row.Name);
-
-        // Editing the now-invalid item again reports the message and keeps the editor open.
-        session.BeginEdit(0, 0, column, source, Bounds);
+        // The item validates itself with the new value in place; the error rolls the write back
         Assert.False(session.CommitEdit(source));
         Assert.Equal("too long", session.CurrentValidation!.ErrorMessage);
         Assert.True(session.IsEditing);
+        Assert.Equal("ok", row.Name);
+
+        ((DrawnTextBox)session.ActiveEditor!).Text = "yes";
+        Assert.Null(session.CurrentValidation); // a changed value clears the message
+        Assert.True(session.CommitEdit(source));
+        Assert.Equal("yes", row.Name);
     }
 
     private sealed class NotifyErrorRow : INotifyDataErrorInfo
@@ -525,7 +532,7 @@ public class EditSessionTests
     }
 
     [Fact]
-    public void CellValidator_TakesPrecedenceOverTheItemsOwnErrors()
+    public void CellValidator_Passing_DoesNotSkipTheItemsOwnErrors()
     {
         var row = new NotifyErrorRow();
         var source = new KumikoSource();
@@ -535,7 +542,8 @@ public class EditSessionTests
         var session = new EditSession { CellValidator = (_, _, _) => CellValidationResult.Valid };
         session.BeginEdit(0, 0, column, source, Bounds);
 
-        Assert.True(session.CommitEdit(source));
+        Assert.False(session.CommitEdit(source));
+        Assert.Equal("bad name", session.CurrentValidation!.ErrorMessage);
     }
 
     // ── CancelEdit ────────────────────────────────────────────────

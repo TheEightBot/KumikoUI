@@ -68,8 +68,18 @@ internal sealed class KumikoValuePath
     /// Returns false when the path cannot be written (unknown or read-only property, null intermediate
     /// value, empty path, a value that does not convert, or a setter that throws).
     /// </summary>
-    public bool TrySetValue(object item, object? value)
+    public bool TrySetValue(object item, object? value) =>
+        TrySetValue(item, value, System.Globalization.CultureInfo.InvariantCulture, out _);
+
+    /// <summary>
+    /// Writes <paramref name="value"/> at the path, converting it to the property type with
+    /// <see cref="KumikoValueConverter"/> in <paramref name="culture"/>. On failure <paramref name="error"/>
+    /// says why: the conversion's message, the setter's exception message, or null when the path cannot be
+    /// written at all (unknown or read-only property, null intermediate value, empty path).
+    /// </summary>
+    public bool TrySetValue(object item, object? value, System.Globalization.CultureInfo culture, out string? error)
     {
+        error = null;
         if (_names.Length == 0) return false;
 
         object? parent = item;
@@ -85,17 +95,11 @@ internal sealed class KumikoValuePath
         var last = Accessor(_names.Length - 1, parent);
         if (last is null || !last.CanWrite) return false;
 
-        if (value != null && !last.PropertyType.IsInstanceOfType(value))
+        if (!(value is null ? !last.PropertyType.IsValueType || Nullable.GetUnderlyingType(last.PropertyType) != null
+                            : last.PropertyType.IsInstanceOfType(value)))
         {
-            var target = Nullable.GetUnderlyingType(last.PropertyType) ?? last.PropertyType;
-            try
-            {
-                value = Convert.ChangeType(value, target);
-            }
-            catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
-            {
+            if (!KumikoValueConverter.TryConvert(value, last.PropertyType, culture, out value, out error))
                 return false;
-            }
         }
 
         try
@@ -104,8 +108,9 @@ internal sealed class KumikoValuePath
         }
         catch (Exception ex) when (ex is not (OutOfMemoryException or InsufficientExecutionStackException))
         {
-            // A throwing setter (validation in the item, a wrong-typed value) leaves the item unchanged,
-            // as the reflection path always did. #32 surfaces such failures as validation errors.
+            // A throwing setter (validation in the item, a wrong-typed value) leaves the item unchanged;
+            // its message is the reason the edit is refused.
+            error = (ex as System.Reflection.TargetInvocationException)?.InnerException?.Message ?? ex.Message;
             return false;
         }
     }
