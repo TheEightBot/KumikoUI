@@ -36,7 +36,7 @@ public class KumikoSource
     private readonly List<GroupSummaryRow> _groupSummaryRows = new();
     private CaptionSummaryDescription? _captionSummary;
 
-    // Computed caches (rebuilt on RebuildView)
+    // Computed caches (rebuilt with the view)
     private List<ComputedSummaryRow> _computedTopSummaries = new();
     private List<ComputedSummaryRow> _computedBottomSummaries = new();
     // Group summaries: keyed by group path
@@ -44,7 +44,37 @@ public class KumikoSource
     // Caption summaries: keyed by group path
     private readonly Dictionary<string, string> _computedCaptionSummaries = new();
 
-    public event Action? DataChanged;
+    // ── View change notification ─────────────────────────────────
+    private int _updateDepth;
+    private bool _pendingRebuild;     // a state change inside BeginUpdate/EndUpdate deferred its rebuild
+    private bool _pendingStructural;  // the view changed structurally inside BeginUpdate/EndUpdate
+    private bool _pendingRedraw;
+    private object?[]? _batchOldRowKeys;
+    private object?[]? _rowKeys;      // the rows as last notified; maintained only while ViewChanged has listeners
+    private EventHandler<KumikoViewChangedEventArgs>? _viewChanged;
+    private bool _isMultiSortActive;
+
+    /// <summary>
+    /// Raised exactly once for every change to the data or the view: <see cref="KumikoViewChangeKind.Redraw"/>
+    /// when rows only need repainting, <see cref="KumikoViewChangeKind.Insert"/> /
+    /// <see cref="KumikoViewChangeKind.Remove"/> for incremental collection changes, and
+    /// <see cref="KumikoViewChangeKind.Rebuild"/> when the visible rows were rebuilt. Changes made between
+    /// <see cref="BeginUpdate"/> and <see cref="EndUpdate"/> raise one notification when the batch ends.
+    /// </summary>
+    public event EventHandler<KumikoViewChangedEventArgs>? ViewChanged
+    {
+        add
+        {
+            // The first listener starts the row-key record that maps old rows to new ones.
+            if (_viewChanged == null) _rowKeys = GetRowKeys();
+            _viewChanged += value;
+        }
+        remove
+        {
+            _viewChanged -= value;
+            if (_viewChanged == null) _rowKeys = null;
+        }
+    }
 
     /// <summary>Raised before sort columns change. Set Cancel=true to prevent.</summary>
     public event EventHandler<SortColumnsChangingEventArgs>? SortColumnsChanging;
@@ -61,8 +91,8 @@ public class KumikoSource
     /// <summary>Raised before a group is expanded or collapsed. Set Cancel=true to prevent.</summary>
     public event EventHandler<GroupExpandingEventArgs>? GroupExpanding;
 
-    /// <summary>Raised after a group is expanded or collapsed.</summary>
-    public event EventHandler<GroupCollapsedEventArgs>? GroupCollapsed;
+    /// <summary>Raised after a group header is expanded or collapsed by <see cref="ToggleGroupExpansion"/>.</summary>
+    public event EventHandler<GroupExpandedChangedEventArgs>? GroupExpandedChanged;
 
     // ── Public API ───────────────────────────────────────────────
 
@@ -86,7 +116,13 @@ public class KumikoSource
     public int FrozenRowCount
     {
         get => IsGroupingActive ? 0 : _frozenRowCount;
-        set { _frozenRowCount = Math.Max(0, value); DataChanged?.Invoke(); }
+        set
+        {
+            int count = Math.Max(0, value);
+            if (count == _frozenRowCount) return;
+            _frozenRowCount = count;
+            NotifyRedraw();
+        }
     }
 
     /// <summary>
@@ -106,7 +142,7 @@ public class KumikoSource
     public CaptionSummaryDescription? CaptionSummary
     {
         get => _captionSummary;
-        set { _captionSummary = value; RebuildView(); }
+        set { _captionSummary = value; RequestRebuild(); }
     }
 
     /// <summary>Computed top-positioned table summary rows.</summary>
@@ -128,42 +164,42 @@ public class KumikoSource
     public void AddTableSummaryRow(TableSummaryRow row)
     {
         _tableSummaryRows.Add(row);
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>Remove a table-level summary row by name.</summary>
     public void RemoveTableSummaryRow(string name)
     {
         _tableSummaryRows.RemoveAll(r => r.Name == name);
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>Clear all table-level summary rows.</summary>
     public void ClearTableSummaryRows()
     {
         _tableSummaryRows.Clear();
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>Add a group-level summary row.</summary>
     public void AddGroupSummaryRow(GroupSummaryRow row)
     {
         _groupSummaryRows.Add(row);
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>Remove a group-level summary row by name.</summary>
     public void RemoveGroupSummaryRow(string name)
     {
         _groupSummaryRows.RemoveAll(r => r.Name == name);
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>Clear all group-level summary rows.</summary>
     public void ClearGroupSummaryRows()
     {
         _groupSummaryRows.Clear();
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -218,8 +254,7 @@ public class KumikoSource
     /// <summary>
     /// Returns true if more than one column is currently sorted.
     /// </summary>
-    public bool IsMultiSortActive =>
-        _columns.Count(c => c.SortDirection != KumikoSortDirection.None) > 1;
+    public bool IsMultiSortActive => _isMultiSortActive;
 
     /// <summary>
     /// Set the backing data collection. Accepts IList, arrays, or List&lt;T&gt;.
@@ -248,7 +283,7 @@ public class KumikoSource
         // Subscribe to INotifyPropertyChanged on each item
         SubscribeToItemPropertyChanged();
 
-        RebuildView();
+        RequestRebuild();
     }
 
     // ── Observable collection support ────────────────────────────
@@ -265,7 +300,7 @@ public class KumikoSource
     private void OnSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         // During ReorderRow we do RemoveAt+Insert on the source list;
-        // suppress the intermediate RebuildView calls for efficiency.
+        // skip the intermediate rebuilds; ReorderRow rebuilds once afterwards.
         if (_isReordering)
         {
             // Still track/untrack item property changes
@@ -325,14 +360,25 @@ public class KumikoSource
         }
 
         // For simple Add/Remove with no active sort, filter, or grouping we can
-        // do an incremental update instead of a full O(n) rebuild.
-        if (TryIncrementalUpdate(e))
+        // do an incremental update instead of a full O(n) rebuild. Inside BeginUpdate/EndUpdate the view
+        // still follows the collection at once (rows are read while rendering); only the event waits.
+        // The collection has already changed, so the old rows come from the record kept since the last
+        // notification, not from the (now stale) view.
+        var oldRowKeys = _rowKeys;
+        bool incremental = TryIncrementalUpdate(e, out int viewIndex);
+        if (!incremental)
+            RebuildCore();
+
+        if (_updateDepth > 0)
+            _pendingStructural = true;
+        else if (_viewChanged != null)
         {
-            DataChanged?.Invoke();
-        }
-        else
-        {
-            RebuildView();
+            var newRowKeys = GetRowKeys();
+            RaiseStructural(newRowKeys, !incremental
+                ? KumikoViewChangedEventArgs.Rebuild(oldRowKeys!, newRowKeys)
+                : e.Action == NotifyCollectionChangedAction.Add
+                    ? KumikoViewChangedEventArgs.Insert(viewIndex, 1, newRowKeys)
+                    : KumikoViewChangedEventArgs.Remove(viewIndex, 1, newRowKeys));
         }
     }
 
@@ -370,7 +416,8 @@ public class KumikoSource
     }
 
     /// <summary>
-    /// Raised when an item property changes. Fires DataChanged so the grid redraws.
+    /// Raised when an item property changes: a redraw, or a rebuild when the property drives sorting, grouping,
+    /// filtering or a summary.
     /// For non-structural changes we just notify without a full rebuild unless the
     /// changed property is used for sorting, grouping, or filtering.
     /// </summary>
@@ -422,14 +469,10 @@ public class KumikoSource
         }
 
         if (needsRebuild)
-        {
-            RebuildView();
-        }
+            RequestRebuild();
         else
-        {
-            // Just a display property change — redraw without rebuilding
-            DataChanged?.Invoke();
-        }
+            NotifyRedraw(); // just a display property change
+
     }
 
     /// <summary>
@@ -438,6 +481,8 @@ public class KumikoSource
     public void SetColumns(IEnumerable<KumikoColumn> columns)
     {
         _columns = columns.ToList();
+        UpdateSortCache();
+        RequestRebuild(); // the columns carry sort and filter state and feed summaries
     }
 
     /// <summary>
@@ -452,7 +497,7 @@ public class KumikoSource
         var col = _columns[fromIndex];
         _columns.RemoveAt(fromIndex);
         _columns.Insert(toIndex, col);
-        DataChanged?.Invoke();
+        NotifyRedraw();
     }
 
     /// <summary>
@@ -488,8 +533,7 @@ public class KumikoSource
         }
 
         // Rebuild the view to reflect the new order
-        RebuildView();
-        DataChanged?.Invoke();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -583,10 +627,10 @@ public class KumikoSource
 
         // Toggle state
         _groupExpandedState[info.GroupPath] = isExpanding;
-        RebuildView();
+        RequestRebuild();
 
-        // Raise collapsed event
-        GroupCollapsed?.Invoke(this, new GroupCollapsedEventArgs(info, isExpanding));
+        var rebuilt = _flatView?.FirstOrDefault(r => r.Kind == FlatRowKind.GroupHeader && r.GroupInfo!.GroupPath == info.GroupPath)?.GroupInfo;
+        GroupExpandedChanged?.Invoke(this, new GroupExpandedChangedEventArgs(rebuilt ?? info, isExpanding));
     }
 
     /// <summary>
@@ -596,7 +640,7 @@ public class KumikoSource
     {
         _defaultGroupExpanded = true;
         _groupExpandedState.Clear();
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -606,7 +650,7 @@ public class KumikoSource
     {
         _defaultGroupExpanded = false;
         _groupExpandedState.Clear();
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -615,7 +659,7 @@ public class KumikoSource
     public void AddGroupDescription(GroupDescription group)
     {
         _groupDescriptions.Add(group);
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -624,7 +668,7 @@ public class KumikoSource
     public void InsertGroupDescription(int index, GroupDescription group)
     {
         _groupDescriptions.Insert(index, group);
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -634,7 +678,7 @@ public class KumikoSource
     {
         _groupDescriptions.RemoveAll(g => g.PropertyName == propertyName);
         _groupExpandedState.Clear();
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -645,7 +689,7 @@ public class KumikoSource
         _groupDescriptions.Clear();
         _groupExpandedState.Clear();
         _flatView = null;
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -678,7 +722,7 @@ public class KumikoSource
     public void SetFilter(Func<object, bool>? predicate)
     {
         _filterPredicate = predicate;
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -695,7 +739,7 @@ public class KumikoSource
         if (changingArgs.Cancel) return;
 
         column.ActiveFilter = filter;
-        RebuildView();
+        RequestRebuild();
 
         // Raise changed event
         FilterChanged?.Invoke(this, new FilterChangedEventArgs(column, ActiveFilters));
@@ -709,7 +753,7 @@ public class KumikoSource
         foreach (var col in _columns)
             col.ActiveFilter = null;
         _filterPredicate = null;
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -740,108 +784,224 @@ public class KumikoSource
 
     /// <summary>
     /// Sort by a single column (clears all other sort state). Toggle direction automatically.
+    /// Does nothing when the column does not allow sorting.
     /// </summary>
     public void ToggleSort(KumikoColumn column)
     {
         if (!column.AllowSorting) return;
-
-        var newDirection = column.SortDirection switch
-        {
-            KumikoSortDirection.None => KumikoSortDirection.Ascending,
-            KumikoSortDirection.Ascending => KumikoSortDirection.Descending,
-            KumikoSortDirection.Descending => KumikoSortDirection.None,
-            _ => KumikoSortDirection.None
-        };
-
-        // Raise changing event (cancelable)
-        var changingArgs = new SortColumnsChangingEventArgs(column, false, newDirection);
-        SortColumnsChanging?.Invoke(this, changingArgs);
-        if (changingArgs.Cancel) return;
-
-        // Reset all columns
-        foreach (var c in _columns)
-        {
-            c.SortDirection = KumikoSortDirection.None;
-            c.SortOrder = 0;
-        }
-
-        column.SortDirection = newDirection;
-        column.SortOrder = newDirection != KumikoSortDirection.None ? 1 : 0;
-
-        RebuildView();
-
-        // Raise changed event
-        SortColumnsChanged?.Invoke(this, new SortColumnsChangedEventArgs(column, ActiveSortColumns));
+        ApplySort(column, NextDirection(column.SortDirection), 0, isMultiSort: false);
     }
 
     /// <summary>
     /// Toggle sort on a column in multi-sort mode.
     /// Adds the column to the existing sort chain or removes it if toggled to None.
+    /// Does nothing when the column does not allow sorting.
     /// </summary>
     public void ToggleMultiSort(KumikoColumn column)
     {
         if (!column.AllowSorting) return;
 
-        var newDirection = column.SortDirection switch
-        {
-            KumikoSortDirection.None => KumikoSortDirection.Ascending,
-            KumikoSortDirection.Ascending => KumikoSortDirection.Descending,
-            KumikoSortDirection.Descending => KumikoSortDirection.None,
-            _ => KumikoSortDirection.None
-        };
-
-        // Raise changing event (cancelable)
-        var changingArgs = new SortColumnsChangingEventArgs(column, true, newDirection);
-        SortColumnsChanging?.Invoke(this, changingArgs);
-        if (changingArgs.Cancel) return;
-
-        if (newDirection == KumikoSortDirection.None)
-        {
-            // Remove from multi-sort and recompact orders
-            int removedOrder = column.SortOrder;
-            column.SortDirection = KumikoSortDirection.None;
-            column.SortOrder = 0;
-
-            // Recompact: shift down orders above the removed one
-            foreach (var c in _columns)
-            {
-                if (c.SortOrder > removedOrder)
-                    c.SortOrder--;
-            }
-        }
-        else if (column.SortDirection == KumikoSortDirection.None)
-        {
-            // Adding new column to multi-sort: assign next order
-            int maxOrder = 0;
-            foreach (var c in _columns)
-                if (c.SortOrder > maxOrder) maxOrder = c.SortOrder;
-
-            column.SortDirection = newDirection;
-            column.SortOrder = maxOrder + 1;
-        }
-        else
-        {
-            // Changing direction of an already-sorted column: keep its order
-            column.SortDirection = newDirection;
-        }
-
-        RebuildView();
-
-        // Raise changed event
-        SortColumnsChanged?.Invoke(this, new SortColumnsChangedEventArgs(column, ActiveSortColumns));
+        var direction = NextDirection(column.SortDirection);
+        int order = column.SortDirection == KumikoSortDirection.None
+            ? _columns.Count(c => c.SortDirection != KumikoSortDirection.None) + 1 // join at the end
+            : column.SortOrder;                                                    // keep its place
+        ApplySort(column, direction, order, isMultiSort: true);
     }
 
     /// <summary>
-    /// Clear all sort state on all columns.
+    /// Set a column's sort, the only way to change sort state. With <paramref name="order"/> 0 the column
+    /// becomes the only sorted column; with an order of 1 or more it takes that place in the multi-column sort
+    /// chain (1 = primary) and the other sorted columns keep their relative order. A direction of
+    /// <see cref="KumikoSortDirection.None"/> removes the column from the sort. Raises
+    /// <see cref="SortColumnsChanging"/> (cancelable) and <see cref="SortColumnsChanged"/>; unlike
+    /// <see cref="ToggleSort"/> it ignores <see cref="KumikoColumn.AllowSorting"/>, which governs the user.
+    /// </summary>
+    /// <exception cref="ArgumentException">The column is not one of <see cref="Columns"/>.</exception>
+    public void SetSort(KumikoColumn column, KumikoSortDirection direction, int order = 0)
+    {
+        ArgumentNullException.ThrowIfNull(column);
+        if (!_columns.Contains(column))
+            throw new ArgumentException("The column is not one of this source's columns.", nameof(column));
+        // Removing a column (None) keeps the rest of the chain, whatever the order.
+        ApplySort(column, direction, Math.Max(0, order), isMultiSort: order > 0 || direction == KumikoSortDirection.None);
+    }
+
+    /// <summary>
+    /// Clear all sort state on all columns. Does not raise <see cref="SortColumnsChanging"/> or
+    /// <see cref="SortColumnsChanged"/>.
     /// </summary>
     public void ClearSort()
     {
+        if (_columns.All(c => c.SortDirection == KumikoSortDirection.None && c.SortOrder == 0)) return;
         foreach (var c in _columns)
         {
             c.SortDirection = KumikoSortDirection.None;
             c.SortOrder = 0;
         }
-        RebuildView();
+        UpdateSortCache();
+        RequestRebuild();
+    }
+
+    private static KumikoSortDirection NextDirection(KumikoSortDirection direction) => direction switch
+    {
+        KumikoSortDirection.None => KumikoSortDirection.Ascending,
+        KumikoSortDirection.Ascending => KumikoSortDirection.Descending,
+        _ => KumikoSortDirection.None,
+    };
+
+    private void ApplySort(KumikoColumn column, KumikoSortDirection direction, int order, bool isMultiSort)
+    {
+        // The chain without this column, in priority order.
+        var chain = _columns
+            .Where(c => c != column && c.SortDirection != KumikoSortDirection.None)
+            .OrderBy(c => c.SortOrder)
+            .ToList();
+        if (!isMultiSort)
+            chain.Clear();
+        if (direction != KumikoSortDirection.None)
+            chain.Insert(Math.Clamp(order == 0 ? 0 : order - 1, 0, chain.Count), column);
+
+        bool unchanged = _columns.All(c =>
+        {
+            int index = chain.IndexOf(c);
+            var expectedDirection = index < 0 ? KumikoSortDirection.None : c == column ? direction : c.SortDirection;
+            return c.SortDirection == expectedDirection && c.SortOrder == index + 1;
+        });
+        if (unchanged) return;
+
+        var changingArgs = new SortColumnsChangingEventArgs(column, isMultiSort, direction);
+        SortColumnsChanging?.Invoke(this, changingArgs);
+        if (changingArgs.Cancel) return;
+
+        foreach (var c in _columns)
+        {
+            int index = chain.IndexOf(c);
+            if (index < 0)
+            {
+                c.SortDirection = KumikoSortDirection.None;
+                c.SortOrder = 0;
+            }
+            else
+            {
+                if (c == column) c.SortDirection = direction;
+                c.SortOrder = index + 1;
+            }
+        }
+        UpdateSortCache();
+        RequestRebuild();
+
+        SortColumnsChanged?.Invoke(this, new SortColumnsChangedEventArgs(column, ActiveSortColumns));
+    }
+
+    private void UpdateSortCache() =>
+        _isMultiSortActive = _columns.Count(c => c.SortDirection != KumikoSortDirection.None) > 1;
+
+    // ── Batching and view change notification ───────────────────
+
+    /// <summary>
+    /// Start a batch: changes until the matching <see cref="EndUpdate"/> raise a single
+    /// <see cref="ViewChanged"/>, and sort, filter, grouping and summary changes rebuild the view once.
+    /// Batches nest. Collection changes still update the view immediately, so rows stay readable.
+    /// </summary>
+    public void BeginUpdate()
+    {
+        if (_updateDepth++ > 0) return;
+        _pendingRebuild = _pendingStructural = _pendingRedraw = false;
+        _batchOldRowKeys = _rowKeys;
+    }
+
+    /// <summary>
+    /// End a batch started with <see cref="BeginUpdate"/>. The outermost call applies a deferred rebuild and
+    /// raises one <see cref="ViewChanged"/>: <see cref="KumikoViewChangeKind.Rebuild"/> if the rows changed,
+    /// otherwise <see cref="KumikoViewChangeKind.Redraw"/> if anything needs repainting.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No batch is open.</exception>
+    public void EndUpdate()
+    {
+        if (_updateDepth == 0)
+            throw new InvalidOperationException("EndUpdate was called without a matching BeginUpdate.");
+        if (--_updateDepth > 0) return;
+
+        var oldRowKeys = _batchOldRowKeys;
+        _batchOldRowKeys = null;
+        if (_pendingRebuild)
+            RebuildCore();
+
+        bool structural = _pendingRebuild || _pendingStructural;
+        bool redraw = _pendingRedraw;
+        _pendingRebuild = _pendingStructural = _pendingRedraw = false;
+
+        if (_viewChanged == null) return;
+        if (structural)
+        {
+            var newRowKeys = GetRowKeys();
+            RaiseStructural(newRowKeys, KumikoViewChangedEventArgs.Rebuild(oldRowKeys ?? _rowKeys!, newRowKeys));
+        }
+        else if (redraw)
+        {
+            NotifyRedraw();
+        }
+    }
+
+    /// <summary>Rebuild the view now and raise <see cref="KumikoViewChangeKind.Rebuild"/>, or defer both in a batch.</summary>
+    private void RequestRebuild()
+    {
+        if (_updateDepth > 0)
+        {
+            _pendingRebuild = true;
+            return;
+        }
+
+        RebuildCore();
+        if (_viewChanged != null)
+        {
+            var newRowKeys = GetRowKeys();
+            RaiseStructural(newRowKeys, KumikoViewChangedEventArgs.Rebuild(_rowKeys!, newRowKeys));
+        }
+    }
+
+    /// <summary>Raise <see cref="KumikoViewChangeKind.Redraw"/>, or note it for the end of a batch.</summary>
+    private void NotifyRedraw()
+    {
+        if (_updateDepth > 0)
+            _pendingRedraw = true;
+        else if (_viewChanged != null && _rowKeys != null)
+            _viewChanged.Invoke(this, KumikoViewChangedEventArgs.Redraw(_rowKeys));
+    }
+
+    /// <summary>Record the rows as now notified, then raise a structural change.</summary>
+    private void RaiseStructural(object?[] newRowKeys, KumikoViewChangedEventArgs args)
+    {
+        _rowKeys = newRowKeys;
+        _viewChanged?.Invoke(this, args);
+    }
+
+    /// <summary>
+    /// The key of every visible row: the item for data rows, a <see cref="GroupRowKey"/> for group header and
+    /// group summary rows.
+    /// </summary>
+    private object?[] GetRowKeys()
+    {
+        if (_flatView == null)
+        {
+            var keys = new object?[_viewIndices.Count];
+            for (int i = 0; i < keys.Length; i++)
+                keys[i] = _sourceItems[_viewIndices[i]];
+            return keys;
+        }
+
+        var flatKeys = new object?[_flatView.Count];
+        for (int i = 0; i < flatKeys.Length; i++)
+        {
+            var row = _flatView[i];
+            flatKeys[i] = row.Kind switch
+            {
+                FlatRowKind.Data => _sourceItems[row.SourceIndex],
+                FlatRowKind.GroupHeader => new GroupRowKey(row.GroupInfo!.GroupPath, -1),
+                _ => new GroupRowKey(row.GroupPath!, row.GroupSummaryIndex),
+            };
+        }
+        return flatKeys;
     }
 
     /// <summary>
@@ -849,7 +1009,7 @@ public class KumikoSource
     /// </summary>
     public void Refresh()
     {
-        RebuildView();
+        RequestRebuild();
     }
 
     /// <summary>
@@ -861,11 +1021,20 @@ public class KumikoSource
     public void SetCellValue(int visibleRow, KumikoColumn column, object? value)
     {
         var item = GetItem(visibleRow);
-        if (column.ValueSetter != null)
-            column.ValueSetter(item, value);
-        else
-            column.ResolvePath(item.GetType()).TrySetValue(item, value);
-        DataChanged?.Invoke();
+        // One notification for the edit, even when the item's PropertyChanged triggers its own.
+        BeginUpdate();
+        try
+        {
+            if (column.ValueSetter != null)
+                column.ValueSetter(item, value);
+            else
+                column.ResolvePath(item.GetType()).TrySetValue(item, value);
+            NotifyRedraw();
+        }
+        finally
+        {
+            EndUpdate();
+        }
     }
 
     // ── Internal ─────────────────────────────────────────────────
@@ -952,10 +1121,12 @@ public class KumikoSource
     /// <summary>
     /// Attempts an O(1) or O(log n) incremental update of <c>_viewIndices</c>
     /// for simple Add/Remove INCC events when no sort, filter, grouping, or
-    /// summary is active. Returns false if a full <see cref="RebuildView"/> is needed.
+    /// summary is active. Returns false if a full rebuild is needed. <paramref name="viewIndex"/> is the
+    /// visible row that was inserted or removed.
     /// </summary>
-    private bool TryIncrementalUpdate(NotifyCollectionChangedEventArgs e)
+    private bool TryIncrementalUpdate(NotifyCollectionChangedEventArgs e, out int viewIndex)
     {
+        viewIndex = -1;
         // Only handle single-item Add or Remove
         if (e.Action != NotifyCollectionChangedAction.Add &&
             e.Action != NotifyCollectionChangedAction.Remove)
@@ -995,6 +1166,7 @@ public class KumikoSource
                 }
             }
             _viewIndices.Insert(insertAt, sourceIndex);
+            viewIndex = insertAt;
 
             return true;
         }
@@ -1005,7 +1177,9 @@ public class KumikoSource
             if (sourceIndex < 0) return false; // Index not provided — fall back
 
             // Remove the entry and shift indices above the removed position
-            _viewIndices.Remove(sourceIndex);
+            viewIndex = _viewIndices.IndexOf(sourceIndex);
+            if (viewIndex < 0) return false;
+            _viewIndices.RemoveAt(viewIndex);
             for (int i = 0; i < _viewIndices.Count; i++)
             {
                 if (_viewIndices[i] > sourceIndex)
@@ -1018,7 +1192,8 @@ public class KumikoSource
         return false;
     }
 
-    internal void RebuildView()
+    /// <summary>Rebuild the visible rows from the source items and the current state. Raises nothing.</summary>
+    private void RebuildCore()
     {
         _viewIndices.Clear();
 
@@ -1093,8 +1268,6 @@ public class KumikoSource
 
         // Compute table-level summaries from all visible data rows
         ComputeTableSummaries();
-
-        DataChanged?.Invoke();
     }
 
     /// <summary>

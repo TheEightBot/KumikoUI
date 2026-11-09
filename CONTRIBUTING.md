@@ -137,12 +137,12 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 
 ### Code
 
-- Follow the conventions in [`.github/instructions/`](.github/instructions) and the surrounding code: nullable enabled, `float` coordinates, `KumikoColor` for colours, no LINQ or allocations in the render loop.
+- Follow the conventions in [`.github/instructions/`](.github/instructions) and the surrounding code: nullable enabled, `float` coordinates, `KumikoColor` for colors, no LINQ or allocations in the render loop.
 - Every public member gets an XML doc comment.
 - One public type per file, in a file named after the type (`KumikoStyle` lives in `KumikoStyle.cs`). Small enums and event-args types get their own file too.
 - Public type names follow the rules in [Public type names](#public-type-names).
 - KumikoUI.Core must stay free of UI-framework and SkiaSharp references; host-specific code belongs in KumikoUI.Maui or KumikoUI.Uno.
-- Add or update tests with every behaviour change (xUnit; see [`tests/`](tests)). Bug fixes start with a failing test.
+- Add or update tests with every behavior change (xUnit; see [`tests/`](tests)). Bug fixes start with a failing test.
 
 ### Public type names
 

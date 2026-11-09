@@ -199,6 +199,47 @@ public class KumikoSelectionModel
             HandleRowSelection(row, shift, false, totalRows);
     }
 
+    // ── View changes ──
+
+    /// <summary>
+    /// Keep the selection on the same rows after the grid's view changes (sort, filter, grouping, inserts,
+    /// removals): selected rows and cells, the current cell and the range anchor follow their rows, and rows
+    /// that are no longer visible drop out of the selection. Raises <see cref="SelectionChanged"/> when the
+    /// selected row or cell indices change. Hosts call this from <see cref="KumikoSource.ViewChanged"/>.
+    /// </summary>
+    public void ApplyViewChange(KumikoViewChangedEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        if (!e.IsStructural) return;
+
+        var oldRows = new HashSet<int>(SelectedRows);
+        var oldCells = new HashSet<CellPosition>(SelectedCells);
+
+        SelectedRows.Clear();
+        foreach (int row in oldRows)
+        {
+            int mapped = e.MapRow(row);
+            if (mapped >= 0) SelectedRows.Add(mapped);
+        }
+
+        SelectedCells.Clear();
+        foreach (var cell in oldCells)
+        {
+            int mapped = e.MapRow(cell.Row);
+            if (mapped >= 0) SelectedCells.Add(new CellPosition(mapped, cell.Column));
+        }
+
+        if (CurrentCell.IsValid)
+        {
+            int mapped = e.MapRow(CurrentCell.Row);
+            CurrentCell = mapped >= 0 ? new CellPosition(mapped, CurrentCell.Column) : CellPosition.Invalid;
+        }
+        _anchorRow = _anchorRow >= 0 ? e.MapRow(_anchorRow) : -1;
+
+        if (!SelectedRows.SetEquals(oldRows) || !SelectedCells.SetEquals(oldCells))
+            RaiseSelectionChanged();
+    }
+
     private void RaiseSelectionChanged()
     {
         SelectionChanged?.Invoke(this, new KumikoSelectionChangedEventArgs(

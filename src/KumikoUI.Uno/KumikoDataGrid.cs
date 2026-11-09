@@ -64,7 +64,7 @@ public partial class KumikoDataGrid : Grid
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
         // Core "invalidate" signals → request a single canvas repaint.
-        _dataSource.DataChanged += OnDataSourceDataChanged;
+        _dataSource.ViewChanged += OnDataSourceViewChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _inputController.ColumnReordered += OnColumnReordered;
@@ -179,7 +179,13 @@ public partial class KumikoDataGrid : Grid
     // ── Core redraw signal handlers ───────────────────────────────
     // Named handlers (not lambdas) so they unsubscribe cleanly in OnUnloaded.
 
-    private void OnDataSourceDataChanged() => _canvasView.Invalidate();
+    private void OnDataSourceViewChanged(object? sender, KumikoViewChangedEventArgs e)
+    {
+        // The edit and the selection follow their rows before anything repaints.
+        _editSession.ApplyViewChange(e);
+        _selection.ApplyViewChange(e);
+        _canvasView.Invalidate();
+    }
 
     private void OnInputControllerNeedsRedraw() => _canvasView.Invalidate();
 

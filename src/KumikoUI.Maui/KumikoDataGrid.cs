@@ -116,7 +116,7 @@ public class KumikoDataGrid : Grid
         // Auto-init the TableSummaryRows collection so XAML can add items directly
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
-        _dataSource.DataChanged += OnDataSourceDataChanged;
+        _dataSource.ViewChanged += OnDataSourceViewChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _inputController.ColumnReordered += OnColumnReordered;
@@ -852,10 +852,14 @@ public class KumikoDataGrid : Grid
 
     // ── Named event handlers (avoid anonymous lambdas for clean unsubscribe) ──
 
-    private void OnDataSourceDataChanged()
+    private void OnDataSourceViewChanged(object? sender, KumikoViewChangedEventArgs e)
     {
+        // The edit and the selection follow their rows before anything repaints.
+        _editSession.ApplyViewChange(e);
+        _selection.ApplyViewChange(e);
         _canvasView.InvalidateSurface();
-        UpdateAccessibilityHint();
+        if (e.IsStructural)
+            UpdateAccessibilityHint();
     }
 
     private void OnInputControllerNeedsRedraw() => _canvasView.InvalidateSurface();
@@ -912,7 +916,7 @@ public class KumikoDataGrid : Grid
         StopCursorBlinkTimer();
 
         // Unsubscribe from internal owned objects
-        _dataSource.DataChanged -= OnDataSourceDataChanged;
+        _dataSource.ViewChanged -= OnDataSourceViewChanged;
         _inputController.NeedsRedraw -= OnInputControllerNeedsRedraw;
         _inputController.ColumnReordered -= OnColumnReordered;
         _inputController.RowReordered -= OnRowReordered;
@@ -975,7 +979,7 @@ public class KumikoDataGrid : Grid
     /// </summary>
     private void Reconnect()
     {
-        _dataSource.DataChanged += OnDataSourceDataChanged;
+        _dataSource.ViewChanged += OnDataSourceViewChanged;
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _inputController.ColumnReordered += OnColumnReordered;
         _inputController.RowReordered += OnRowReordered;

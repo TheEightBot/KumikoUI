@@ -481,10 +481,8 @@ public class KumikoRendererTests
     public void SortIndicator_MultiSort_DrawsOrderBadges()
     {
         var h = Create();
-        h.Column("City").SortDirection = KumikoSortDirection.Ascending;
-        h.Column("City").SortOrder = 1;
-        h.Column("Age").SortDirection = KumikoSortDirection.Descending;
-        h.Column("Age").SortOrder = 2;
+        h.Source.SetSort(h.Column("City"), KumikoSortDirection.Ascending, 1);
+        h.Source.SetSort(h.Column("Age"), KumikoSortDirection.Descending, 2);
 
         var ctx = h.Render();
 

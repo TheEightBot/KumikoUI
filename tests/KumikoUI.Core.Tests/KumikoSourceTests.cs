@@ -534,14 +534,18 @@ public class KumikoSourceTests
     }
 
     [Fact]
-    public void GroupCollapsed_RaisedAfterToggle()
+    public void GroupExpandedChanged_ReportsTheNewState()
     {
         var source = MakeSource(SamplePeople());
         source.AddGroupDescription(new GroupDescription("Department"));
-        GroupCollapsedEventArgs? eventArgs = null;
-        source.GroupCollapsed += (_, e) => eventArgs = e;
+        var events = new List<GroupExpandedChangedEventArgs>();
+        source.GroupExpandedChanged += (_, e) => events.Add(e);
+
         source.ToggleGroupExpansion(0);
-        Assert.NotNull(eventArgs);
+        source.ToggleGroupExpansion(0);
+
+        Assert.Equal(new[] { false, true }, events.Select(e => e.IsExpanded));
+        Assert.All(events, e => Assert.Equal(e.IsExpanded, e.Group.IsExpanded));
     }
 
     [Fact]
@@ -728,10 +732,10 @@ public class KumikoSourceTests
             new KumikoColumn { PropertyName = "Department", ColumnType = KumikoColumnType.Text }
         });
         source.SetItems(people);
-        int dataChangedCount = 0;
-        source.DataChanged += () => dataChangedCount++;
+        var kinds = new List<KumikoViewChangeKind>();
+        source.ViewChanged += (_, e) => kinds.Add(e.Kind);
         people.Add(new Person { Name = "Frank", Age = 22, Department = "HR" });
-        Assert.True(dataChangedCount > 0);
+        Assert.Equal(new[] { KumikoViewChangeKind.Insert }, kinds);
         Assert.Equal(6, source.RowCount);
     }
 
@@ -752,14 +756,14 @@ public class KumikoSourceTests
     }
 
     [Fact]
-    public void SetItems_PropertyChanged_TriggersDataChanged()
+    public void SetItems_PropertyChanged_RaisesRedraw()
     {
         var people = SamplePeople();
         var source = MakeSource(people);
-        int dataChangedCount = 0;
-        source.DataChanged += () => dataChangedCount++;
+        var kinds = new List<KumikoViewChangeKind>();
+        source.ViewChanged += (_, e) => kinds.Add(e.Kind);
         people[0].Name = "AliceUpdated"; // fires PropertyChanged
-        Assert.True(dataChangedCount > 0);
+        Assert.Equal(new[] { KumikoViewChangeKind.Redraw }, kinds);
     }
 
     [Fact]
@@ -773,7 +777,7 @@ public class KumikoSourceTests
         };
         source.SetItems(newPeople);
         int eventCount = 0;
-        source.DataChanged += () => eventCount++;
+        source.ViewChanged += (_, _) => eventCount++;
         old.Add(new Person { Name = "Ghost", Age = 1, Department = "X" });
         Assert.Equal(0, eventCount); // old collection no longer wired
         Assert.Equal(1, source.RowCount); // new source only has 1 item
