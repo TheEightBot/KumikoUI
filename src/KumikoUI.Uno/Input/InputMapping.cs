@@ -43,12 +43,13 @@ public static class InputMapping
         VirtualKey.Back => KumikoKey.Backspace, // WinUI "Back" == Backspace
         VirtualKey.F2 => KumikoKey.F2,
 
-        // ── Letters with grid shortcuts (Ctrl+A/C/V/X/Z) ──
+        // ── Letters with grid shortcuts (Ctrl+A/C/V/X/Z/Y) ──
         VirtualKey.A => KumikoKey.A,
         VirtualKey.C => KumikoKey.C,
         VirtualKey.V => KumikoKey.V,
         VirtualKey.X => KumikoKey.X,
         VirtualKey.Z => KumikoKey.Z,
+        VirtualKey.Y => KumikoKey.Y,
 
         _ => KumikoKey.None
     };

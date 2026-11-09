@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
@@ -6,18 +8,50 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>
-/// Fully custom-drawn single-line text input field.
-/// Supports cursor, text selection, copy/paste, and scrolling.
+/// Fully custom-drawn single-line text input field: caret and selection on grapheme-cluster boundaries,
+/// input-method composition (<see cref="ITextInputSession"/>), undo/redo, word and line selection by
+/// double and triple click, drag selection, clipboard requests and horizontal scrolling.
 /// </summary>
-public class DrawnTextBox : DrawnComponent
+public class DrawnTextBox : DrawnComponent, ITextInputSession
 {
+    private const int MaxUndoDepth = 200;
+    private const long MultiClickTimeMs = 500;
+    private const float MultiClickSlop = 4f;
+
     private string _text = string.Empty;
-    private int _cursorPosition;
-    private int _selectionStart = -1; // -1 = no selection
-    private int _selectionEnd = -1;
+    private int _anchor; // selection anchor; equal to _caret when nothing is selected
+    private int _caret;
+    private int _compositionStart = -1; // -1: no composition
+    private int _compositionLength;
+    private TextState _beforeComposition;
     private float _scrollOffset; // Horizontal scroll for long text
     private long _cursorBlinkStart;
     private bool _numericOnly;
+
+    // Grapheme boundaries of _text and the measured width of the text before each one (NaN: not measured yet)
+    private int[]? _boundaries;
+    private float[]? _prefixWidths;
+    private (string Family, float Size, bool Bold, bool Italic, IDrawingContext? Context) _widthKey;
+
+    // Undo history: states before each edit; consecutive typing or deleting coalesce into one step
+    private readonly List<TextState> _undo = new();
+    private readonly List<TextState> _redo = new();
+    private EditKind _lastEditKind;
+
+    // Pointer gestures
+    private bool _isDragging;
+    private long _lastPressTime = long.MinValue;
+    private float _lastPressX, _lastPressY;
+    private int _pressCount;
+
+    // Calls made by a host adapter through ITextInputSession don't raise TextInputStateChanged
+    private int _adapterCallDepth;
+
+    private readonly record struct TextState(string Text, int Anchor, int Caret);
+
+    private readonly record struct Snapshot(string Text, int Anchor, int Caret, int CompositionStart, int CompositionLength);
+
+    private enum EditKind { None, Typing, DeletingBackward, DeletingForward, Other }
 
     // ── Style ───────────────────────────────────────────────────
 
@@ -83,32 +117,45 @@ public class DrawnTextBox : DrawnComponent
 
     // ── Properties ──────────────────────────────────────────────
 
-    /// <summary>Gets or sets the text content.</summary>
+    /// <summary>
+    /// Gets or sets the text content. Setting it ends any composition, clears the undo history and keeps
+    /// the caret where it was (moved into the new text).
+    /// </summary>
     public string Text
     {
         get => _text;
         set
         {
+            var snap = Capture();
             var old = _text;
-            _text = value ?? string.Empty;
-            _cursorPosition = Math.Min(_cursorPosition, _text.Length);
-            ClearSelection();
+            SetTextCore(value ?? string.Empty);
+            _compositionStart = -1;
+            _compositionLength = 0;
+            _caret = _anchor = TextElements.Floor(Boundaries, Math.Min(_caret, _text.Length));
+            _undo.Clear();
+            _redo.Clear();
+            _lastEditKind = EditKind.None;
             if (old != _text)
                 RaiseValueChanged(old, _text);
+            if (StateDiffers(snap))
+                RaiseStateChanged();
         }
     }
 
     /// <summary>Placeholder text shown when empty and unfocused.</summary>
     public string? Placeholder { get; set; }
 
-    /// <summary>Restrict input to numeric characters only.</summary>
+    /// <summary>
+    /// Restrict input to numeric characters: digits, '.', ',', '-' and the current culture's decimal and
+    /// group separators and negative sign. Typed and pasted text is filtered to these characters.
+    /// </summary>
     public bool NumericOnly
     {
         get => _numericOnly;
         set => _numericOnly = value;
     }
 
-    /// <summary>Maximum character length (0 = unlimited).</summary>
+    /// <summary>Maximum length in UTF-16 code units (0 = unlimited). Inserted text is cut at a grapheme boundary.</summary>
     public int MaxLength { get; set; }
 
     /// <summary>Is the text read-only?</summary>
@@ -116,7 +163,7 @@ public class DrawnTextBox : DrawnComponent
 
     /// <summary>
     /// Optional input validation function. Return true if the input is valid.
-    /// Called on each character insertion and paste. If it returns false, the input is rejected.
+    /// Called on each insertion, paste and committed composition. If it returns false, the input is rejected.
     /// </summary>
     public Func<string, bool>? InputValidator { get; set; }
 
@@ -146,23 +193,27 @@ public class DrawnTextBox : DrawnComponent
     /// <summary>Border color used when validation state is Warning.</summary>
     public KumikoColor WarningBorderColor { get; set; } = new(230, 170, 0);
 
-    /// <summary>Current cursor position (character index).</summary>
-    public int CursorPosition => _cursorPosition;
+    /// <summary>Current caret position (UTF-16 index, always on a grapheme boundary).</summary>
+    public int CursorPosition => _caret;
+
+    /// <summary>The selection; empty at the caret when nothing is selected.</summary>
+    public KumikoTextRange Selection => KumikoTextRange.FromBounds(_anchor, _caret);
+
+    /// <summary>The composition (marked text) range, or null when no composition is active.</summary>
+    public KumikoTextRange? Composition =>
+        _compositionStart >= 0 ? new KumikoTextRange(_compositionStart, _compositionLength) : null;
 
     /// <summary>Is there an active text selection?</summary>
-    public bool HasSelection => _selectionStart >= 0 && _selectionEnd >= 0 && _selectionStart != _selectionEnd;
+    public bool HasSelection => _anchor != _caret;
 
     /// <summary>Gets the selected text.</summary>
-    public string SelectedText
-    {
-        get
-        {
-            if (!HasSelection) return string.Empty;
-            int start = Math.Min(_selectionStart, _selectionEnd);
-            int end = Math.Max(_selectionStart, _selectionEnd);
-            return _text.Substring(start, end - start);
-        }
-    }
+    public string SelectedText => HasSelection ? _text.Substring(Selection.Start, Selection.Length) : string.Empty;
+
+    /// <summary>Whether <see cref="Undo"/> has a step to undo.</summary>
+    public bool CanUndo => _undo.Count > 0;
+
+    /// <summary>Whether <see cref="Redo"/> has a step to redo.</summary>
+    public bool CanRedo => _redo.Count > 0;
 
     // ── Events ──────────────────────────────────────────────────
 
@@ -181,12 +232,51 @@ public class DrawnTextBox : DrawnComponent
     /// <summary>Raised when clipboard copy is requested (host should copy the text).</summary>
     public event EventHandler<ClipboardTextEventArgs>? CopyRequested;
 
-    // ── Text measurement cache ──────────────────────────────────
+    /// <inheritdoc />
+    public event EventHandler? TextInputStateChanged;
+
+    // ── Text measurement ────────────────────────────────────────
 
     private IDrawingContext? _measureContext;
 
     /// <summary>Set a drawing context for text measurement. Call before drawing.</summary>
     public void SetMeasureContext(IDrawingContext ctx) => _measureContext = ctx;
+
+    private int[] Boundaries => _boundaries ??= TextElements.GetBoundaries(_text);
+
+    private void SetTextCore(string text)
+    {
+        if (ReferenceEquals(text, _text) || text == _text) { _text = text; return; }
+        _text = text;
+        _boundaries = null;
+        _prefixWidths = null;
+    }
+
+    /// <summary>The width of the text before boundary number <paramref name="k"/>, measured once per text.</summary>
+    private float PrefixWidth(int k)
+    {
+        var b = Boundaries;
+        if (_measureContext == null || k <= 0) return 0;
+        var key = (Font.Family, Font.Size, Font.IsBold, Font.IsItalic, _measureContext);
+        if (_prefixWidths == null || _prefixWidths.Length != b.Length || _widthKey != key)
+        {
+            _prefixWidths = new float[b.Length];
+            Array.Fill(_prefixWidths, float.NaN);
+            _widthKey = key;
+        }
+        if (float.IsNaN(_prefixWidths[k]))
+            _prefixWidths[k] = _measureContext.MeasureText(_text.Substring(0, b[k]), new KumikoPaint { Font = Font }).Width;
+        return _prefixWidths[k];
+    }
+
+    /// <summary>The x offset (from the text start) of an index.</summary>
+    private float XAt(int index)
+    {
+        if (_measureContext == null || index <= 0) return 0;
+        int k = Array.BinarySearch(Boundaries, Math.Min(index, _text.Length));
+        if (k >= 0) return PrefixWidth(k);
+        return _measureContext.MeasureText(_text.Substring(0, Math.Min(index, _text.Length)), new KumikoPaint { Font = Font }).Width;
+    }
 
     // ── Drawing ─────────────────────────────────────────────────
 
@@ -194,6 +284,7 @@ public class DrawnTextBox : DrawnComponent
     public override void OnDraw(IDrawingContext ctx)
     {
         _measureContext = ctx;
+        EnsureCursorVisible();
 
         var b = Bounds;
         var borderColor = Validation switch
@@ -239,7 +330,10 @@ public class DrawnTextBox : DrawnComponent
         // Selection highlight
         if (IsFocused && HasSelection)
         {
-            DrawSelectionHighlight(ctx, innerX, b.Y, b.Height);
+            float startX = innerX + XAt(Selection.Start);
+            float endX = innerX + XAt(Selection.End);
+            ctx.FillRect(new KumikoRect(startX, b.Y + 2, endX - startX, b.Height - 4),
+                new KumikoPaint { Color = SelectionHighlightColor, Style = PaintStyle.Fill });
         }
 
         // Text or placeholder
@@ -253,6 +347,16 @@ public class DrawnTextBox : DrawnComponent
             ctx.DrawText(Placeholder, innerX, textBaseline, phPaint);
         }
 
+        // Composition (marked text) underline
+        if (_compositionStart >= 0 && _compositionLength > 0)
+        {
+            float startX = innerX + XAt(_compositionStart);
+            float endX = innerX + XAt(_compositionStart + _compositionLength);
+            float underlineY = textBaseline + Math.Max(1f, fontMetrics.Descent / 2);
+            ctx.DrawLine(startX, underlineY, endX, underlineY,
+                new KumikoPaint { Color = TextColor, Style = PaintStyle.Stroke, StrokeWidth = 1f });
+        }
+
         // Cursor
         if (IsFocused && !IsReadOnly)
         {
@@ -262,25 +366,13 @@ public class DrawnTextBox : DrawnComponent
         ctx.Restore();
     }
 
-    private void DrawSelectionHighlight(IDrawingContext ctx, float textX, float y, float height)
-    {
-        int start = Math.Min(_selectionStart, _selectionEnd);
-        int end = Math.Max(_selectionStart, _selectionEnd);
-
-        float startX = textX + MeasureSubstring(0, start);
-        float endX = textX + MeasureSubstring(0, end);
-
-        var paint = new KumikoPaint { Color = SelectionHighlightColor, Style = PaintStyle.Fill };
-        ctx.FillRect(new KumikoRect(startX, y + 2, endX - startX, height - 4), paint);
-    }
-
     private void DrawCursor(IDrawingContext ctx, float textX, float y, float height, KumikoFontMetrics fontMetrics)
     {
         // Blink every 530ms — but always visible for first 530ms after reset
         long elapsed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _cursorBlinkStart;
         if ((elapsed / 530) % 2 != 0) return;
 
-        float cursorX = textX + MeasureSubstring(0, _cursorPosition);
+        float cursorX = textX + XAt(_caret);
 
         // Align cursor to the text area using font metrics
         float textHeight = fontMetrics.TextHeight;
@@ -292,32 +384,24 @@ public class DrawnTextBox : DrawnComponent
         ctx.DrawLine(cursorX, cursorTop, cursorX, cursorBottom, paint);
     }
 
-    private float MeasureSubstring(int start, int end)
-    {
-        if (_measureContext == null || start >= end || end > _text.Length) return 0;
-        string sub = _text.Substring(start, end - start);
-        return _measureContext.MeasureText(sub, new KumikoPaint { Font = Font }).Width;
-    }
-
     // ── Focus ───────────────────────────────────────────────────
 
+    /// <inheritdoc />
     protected override void OnGotFocus()
     {
         _cursorBlinkStart = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         if (InitialSelectionMode == EditTextSelectionMode.CursorAtEnd)
-        {
-            ClearSelection();
-            _cursorPosition = _text.Length;
-        }
+            SetSelectionCore(_text.Length, _text.Length);
         else
-        {
             SelectAll();
-        }
     }
 
+    /// <inheritdoc />
     protected override void OnLostFocus()
     {
+        CommitComposition();
+        _isDragging = false;
         ClearSelection();
 
         // Apply output formatting on focus loss
@@ -326,71 +410,113 @@ public class DrawnTextBox : DrawnComponent
             var formatted = OutputFormatter(_text);
             if (formatted != _text)
             {
-                var old = _text;
-                _text = formatted;
-                _cursorPosition = Math.Min(_cursorPosition, _text.Length);
-                TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
-                RaiseValueChanged(old, _text);
+                var snap = Capture();
+                RecordUndo(new TextState(_text, _anchor, _caret), EditKind.Other, forceNewStep: true);
+                SetTextCore(formatted);
+                _caret = _anchor = Math.Min(_caret, _text.Length);
+                _caret = _anchor = TextElements.Floor(Boundaries, _caret);
+                Finish(snap);
             }
         }
     }
 
     // ── Pointer input ───────────────────────────────────────────
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Press: place the caret (Shift extends the selection) and start a drag selection; a double click
+    /// selects the word, a triple click selects all.
+    /// </summary>
     public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
         if (!IsFocused || IsReadOnly) return false;
 
-        _cursorPosition = GetCharIndexAtX(e.X);
-        _cursorBlinkStart = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        CommitComposition();
+        int clicks = CountClicks(e);
+        int index = GetIndexAtX(e.X);
+        var snap = Capture();
+        _lastEditKind = EditKind.None;
 
-        if ((e.Modifiers & InputModifiers.Shift) != 0)
+        if (clicks >= 3)
         {
-            // Extend selection
-            _selectionEnd = _cursorPosition;
+            _anchor = 0;
+            _caret = _text.Length;
+            _isDragging = false;
+        }
+        else if (clicks == 2)
+        {
+            var (start, end) = WordAt(index);
+            _anchor = start;
+            _caret = end;
+            _isDragging = false;
         }
         else
         {
-            _selectionStart = _cursorPosition;
-            _selectionEnd = _cursorPosition;
+            if ((e.Modifiers & InputModifiers.Shift) == 0)
+                _anchor = index;
+            _caret = index;
+            _isDragging = true;
         }
 
-        InvalidateVisual();
+        Finish(snap);
+        return true;
+    }
+
+    /// <summary>Drag: extend the selection to the pointer, scrolling when it is past either edge.</summary>
+    public override bool OnPointerMove(KumikoPointerEventArgs e)
+    {
+        if (!IsFocused || !_isDragging) return false;
+
+        var snap = Capture();
+        _caret = GetIndexAtX(e.X);
+        Finish(snap);
         return true;
     }
 
     /// <inheritdoc />
-    public override bool OnPointerMove(KumikoPointerEventArgs e)
+    public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
-        if (!IsFocused || _selectionStart < 0) return false;
-
-        _cursorPosition = GetCharIndexAtX(e.X);
-        _selectionEnd = _cursorPosition;
-        InvalidateVisual();
+        if (!_isDragging) return false;
+        _isDragging = false;
         return true;
     }
 
-    private int GetCharIndexAtX(float screenX)
+    private int CountClicks(KumikoPointerEventArgs e)
     {
-        if (_measureContext == null) return 0;
+        long now = e.TimestampMs > 0 ? e.TimestampMs : Environment.TickCount64;
+        bool repeat = now - _lastPressTime <= MultiClickTimeMs &&
+                      Math.Abs(e.X - _lastPressX) <= MultiClickSlop &&
+                      Math.Abs(e.Y - _lastPressY) <= MultiClickSlop;
+        _pressCount = repeat ? Math.Min(_pressCount + 1, 3) : 1;
+        _lastPressTime = now;
+        _lastPressX = e.X;
+        _lastPressY = e.Y;
+        return Math.Max(_pressCount, Math.Min(e.ClickCount, 3));
+    }
+
+    /// <summary>The grapheme boundary nearest to a viewport x (binary search over measured prefixes).</summary>
+    private int GetIndexAtX(float screenX)
+    {
+        if (_measureContext == null || _text.Length == 0) return 0;
 
         float localX = screenX - Bounds.X - Padding + _scrollOffset;
         if (localX <= 0) return 0;
-        if (_text.Length == 0) return 0;
 
-        // Binary search for character at X
-        float totalWidth = MeasureSubstring(0, _text.Length);
-        if (localX >= totalWidth) return _text.Length;
+        var b = Boundaries;
+        int last = b.Length - 1;
+        if (localX >= PrefixWidth(last)) return _text.Length;
 
-        for (int i = 0; i < _text.Length; i++)
+        // Last boundary whose prefix ends at or before localX
+        int lo = 0, hi = last;
+        while (lo < hi)
         {
-            float charEnd = MeasureSubstring(0, i + 1);
-            float charMid = (i > 0 ? MeasureSubstring(0, i) : 0) + (charEnd - (i > 0 ? MeasureSubstring(0, i) : 0)) / 2;
-            if (localX < charMid)
-                return i;
+            int mid = (lo + hi + 1) / 2;
+            if (PrefixWidth(mid) <= localX) lo = mid;
+            else hi = mid - 1;
         }
-        return _text.Length;
+
+        float left = PrefixWidth(lo);
+        float right = PrefixWidth(lo + 1);
+        return localX - left < right - localX ? b[lo] : b[lo + 1];
     }
 
     // ── Keyboard input ──────────────────────────────────────────
@@ -400,17 +526,28 @@ public class DrawnTextBox : DrawnComponent
     {
         if (!IsFocused) return false;
 
-        bool ctrl = e.HasControl;
+        bool command = e.HasCommand;
         bool shift = e.HasShift;
+
+        // Enter and Escape finish or abandon a composition before they mean commit or cancel
+        if (_compositionStart >= 0)
+        {
+            if (e.Key == KumikoKey.Enter) { CommitComposition(); return true; }
+            if (e.Key == KumikoKey.Escape) { CancelComposition(); return true; }
+        }
 
         switch (e.Key)
         {
             case KumikoKey.Left:
-                MoveCursor(ctrl ? FindPreviousWordBoundary() : _cursorPosition - 1, shift);
+                MoveCursor(command ? PreviousWordBoundary(_caret)
+                    : HasSelection && !shift ? Selection.Start
+                    : TextElements.Previous(Boundaries, _caret), shift);
                 return true;
 
             case KumikoKey.Right:
-                MoveCursor(ctrl ? FindNextWordBoundary() : _cursorPosition + 1, shift);
+                MoveCursor(command ? NextWordBoundary(_caret)
+                    : HasSelection && !shift ? Selection.End
+                    : TextElements.Next(Boundaries, _caret), shift);
                 return true;
 
             case KumikoKey.Home:
@@ -422,11 +559,13 @@ public class DrawnTextBox : DrawnComponent
                 return true;
 
             case KumikoKey.Backspace:
-                if (!IsReadOnly) HandleBackspace(ctrl);
+                if (command) DeleteWordBackward();
+                else DeleteBackward();
                 return true;
 
             case KumikoKey.Delete:
-                if (!IsReadOnly) HandleDelete(ctrl);
+                if (command) DeleteWordForward();
+                else DeleteForward();
                 return true;
 
             case KumikoKey.Enter:
@@ -437,111 +576,319 @@ public class DrawnTextBox : DrawnComponent
                 Cancelled?.Invoke();
                 return true;
 
-            case KumikoKey.A:
-                if (ctrl) { SelectAll(); return true; }
-                if (!IsReadOnly && e.Character.HasValue) InsertCharacter(e.Character.Value);
+            case KumikoKey.A when command:
+                SelectAll();
                 return true;
 
-            case KumikoKey.C:
-                if (ctrl) { HandleCopy(); return true; }
-                if (!IsReadOnly && e.Character.HasValue) InsertCharacter(e.Character.Value);
+            case KumikoKey.C when command:
+                HandleCopy();
                 return true;
 
-            case KumikoKey.V:
-                if (ctrl) { HandlePaste(); return true; }
-                if (!IsReadOnly && e.Character.HasValue) InsertCharacter(e.Character.Value);
+            case KumikoKey.V when command:
+                HandlePaste();
                 return true;
 
-            case KumikoKey.X:
-                if (ctrl) { HandleCut(); return true; }
-                if (!IsReadOnly && e.Character.HasValue) InsertCharacter(e.Character.Value);
+            case KumikoKey.X when command:
+                HandleCut();
+                return true;
+
+            case KumikoKey.Z when command:
+                if (shift) Redo(); else Undo();
+                return true;
+
+            case KumikoKey.Y when command:
+                Redo();
+                return true;
+
+            case KumikoKey.A or KumikoKey.C or KumikoKey.V or KumikoKey.X or KumikoKey.Z or KumikoKey.Y:
+                TypeText(e);
                 return true;
 
             default:
-                if (!IsReadOnly && e.Character.HasValue && e.Character.Value != '\0')
-                {
-                    InsertCharacter(e.Character.Value);
-                    return true;
-                }
-                return false;
+                return TypeText(e);
         }
     }
 
-    // ── Text manipulation ───────────────────────────────────────
-
-    private void InsertCharacter(char c)
+    private bool TypeText(KumikoKeyEventArgs e)
     {
-        if (c == '\0') return;
-        if (_numericOnly && !char.IsDigit(c) && c != '.' && c != '-' && c != ',') return;
-        if (MaxLength > 0 && _text.Length >= MaxLength && !HasSelection) return;
-
-        string insertText = c.ToString();
-        InsertText(insertText);
+        var text = e.EnteredText;
+        if (text == null) return false;
+        if (!IsReadOnly) InsertText(text);
+        return true;
     }
 
-    /// <summary>Insert text at cursor, replacing any selection.</summary>
+    // ── Editing ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Insert text at the caret, replacing the composition if one is active, otherwise the selection.
+    /// Line breaks become spaces, control characters are dropped, and <see cref="NumericOnly"/>,
+    /// <see cref="InputMask"/>, <see cref="InputValidator"/> and <see cref="MaxLength"/> apply; rejected
+    /// input leaves the text unchanged.
+    /// </summary>
     public void InsertText(string text)
     {
+        if (IsReadOnly || text == null) return;
+        var snap = Capture();
+
+        if (_compositionStart >= 0)
+        {
+            RestoreBeforeComposition();
+            TryReplaceSelection(text, EditKind.Other, forceNewStep: true);
+            _lastEditKind = EditKind.None;
+        }
+        else
+        {
+            if (TryReplaceSelection(text, EditKind.Typing, forceNewStep: false) && text.Length > 0 && char.IsWhiteSpace(text[^1]))
+                _lastEditKind = EditKind.None; // a word ends: the next typing is a new undo step
+        }
+
+        Finish(snap);
+    }
+
+    /// <inheritdoc />
+    public void SetComposition(string text, int cursorInComposition)
+    {
         if (IsReadOnly) return;
-
-        var old = _text;
-        string tempText = _text;
-        int tempCursor = _cursorPosition;
-
-        if (HasSelection)
+        text = SanitizeLine(text ?? string.Empty);
+        if (text.Length == 0)
         {
-            int start = Math.Min(_selectionStart, _selectionEnd);
-            int end = Math.Max(_selectionStart, _selectionEnd);
-            tempText = tempText.Remove(start, end - start);
-            tempCursor = start;
-        }
-
-        if (MaxLength > 0)
-        {
-            int available = MaxLength - tempText.Length;
-            if (available <= 0) return;
-            text = text.Substring(0, Math.Min(text.Length, available));
-        }
-
-        string candidateText = tempText.Insert(tempCursor, text);
-
-        // Apply input mask validation
-        if (InputMask != null && !ValidateAgainstMask(candidateText))
-            return;
-
-        // Apply custom input validator
-        if (InputValidator != null && !InputValidator(candidateText))
-        {
-            Validation = ValidationState.Error;
-            InvalidateVisual();
+            CancelComposition();
             return;
         }
 
-        // Accept the change
-        if (HasSelection)
+        var snap = Capture();
+        int start, length;
+        if (_compositionStart >= 0)
         {
-            int start = Math.Min(_selectionStart, _selectionEnd);
-            int end = Math.Max(_selectionStart, _selectionEnd);
-            _text = _text.Remove(start, end - start);
-            _cursorPosition = start;
+            start = _compositionStart;
+            length = _compositionLength;
+        }
+        else
+        {
+            _beforeComposition = new TextState(_text, _anchor, _caret);
+            start = Selection.Start;
+            length = Selection.Length;
         }
 
-        _text = _text.Insert(_cursorPosition, text);
-        _cursorPosition += text.Length;
-        ClearSelection();
-        EnsureCursorVisible();
-        _cursorBlinkStart = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        SetTextCore(_text.Remove(start, length).Insert(start, text));
+        _compositionStart = start;
+        _compositionLength = text.Length;
+        _caret = _anchor = start + Math.Clamp(cursorInComposition, 0, text.Length);
+        Finish(snap);
+    }
+
+    /// <inheritdoc />
+    public void CommitComposition()
+    {
+        if (_compositionStart < 0) return;
+        var snap = Capture();
+        string composed = _text.Substring(_compositionStart, _compositionLength);
+        RestoreBeforeComposition();
+        if (!IsReadOnly)
+            TryReplaceSelection(composed, EditKind.Other, forceNewStep: true);
+        _lastEditKind = EditKind.None;
+        Finish(snap);
+    }
+
+    /// <inheritdoc />
+    public void CancelComposition()
+    {
+        if (_compositionStart < 0) return;
+        var snap = Capture();
+        RestoreBeforeComposition();
+        Finish(snap);
+    }
+
+    /// <inheritdoc />
+    public void DeleteBackward()
+    {
+        if (IsReadOnly) return;
+        if (_compositionStart >= 0) { DeleteInComposition(backward: true); return; }
+        var snap = Capture();
+        if (HasSelection) DeleteRange(Selection.Start, Selection.Length, EditKind.Other);
+        else if (_caret > 0)
+        {
+            int previous = TextElements.Previous(Boundaries, _caret);
+            DeleteRange(previous, _caret - previous, EditKind.DeletingBackward);
+        }
+        Finish(snap);
+    }
+
+    /// <inheritdoc />
+    public void DeleteForward()
+    {
+        if (IsReadOnly) return;
+        if (_compositionStart >= 0) { DeleteInComposition(backward: false); return; }
+        var snap = Capture();
+        if (HasSelection) DeleteRange(Selection.Start, Selection.Length, EditKind.Other);
+        else if (_caret < _text.Length)
+        {
+            int next = TextElements.Next(Boundaries, _caret);
+            DeleteRange(_caret, next - _caret, EditKind.DeletingForward);
+        }
+        Finish(snap);
+    }
+
+    private void DeleteWordBackward()
+    {
+        if (IsReadOnly) return;
+        CommitComposition();
+        var snap = Capture();
+        if (HasSelection) DeleteRange(Selection.Start, Selection.Length, EditKind.Other);
+        else if (_caret > 0)
+        {
+            int start = PreviousWordBoundary(_caret);
+            DeleteRange(start, _caret - start, EditKind.Other);
+        }
+        Finish(snap);
+    }
+
+    private void DeleteWordForward()
+    {
+        if (IsReadOnly) return;
+        CommitComposition();
+        var snap = Capture();
+        if (HasSelection) DeleteRange(Selection.Start, Selection.Length, EditKind.Other);
+        else if (_caret < _text.Length)
+        {
+            int end = NextWordBoundary(_caret);
+            DeleteRange(_caret, end - _caret, EditKind.Other);
+        }
+        Finish(snap);
+    }
+
+    /// <summary>Delete one grapheme of the composition next to the caret; an emptied composition is canceled.</summary>
+    private void DeleteInComposition(bool backward)
+    {
+        string composed = _text.Substring(_compositionStart, _compositionLength);
+        int caret = Math.Clamp(_caret - _compositionStart, 0, composed.Length);
+        var b = TextElements.GetBoundaries(composed);
+        int from = backward ? TextElements.Previous(b, caret) : caret;
+        int to = backward ? caret : TextElements.Next(b, caret);
+        if (from == to) return;
+        string remaining = composed.Remove(from, to - from);
+        if (remaining.Length == 0) CancelComposition();
+        else SetComposition(remaining, from);
+    }
+
+    /// <summary>Undo the last edit (a run of typing or deleting is one step).</summary>
+    public void Undo()
+    {
+        CancelComposition();
+        if (_undo.Count == 0) return;
+        var snap = Capture();
+        _redo.Add(new TextState(_text, _anchor, _caret));
+        var state = _undo[^1];
+        _undo.RemoveAt(_undo.Count - 1);
+        RestoreState(state);
+        Finish(snap);
+    }
+
+    /// <summary>Redo the last undone edit.</summary>
+    public void Redo()
+    {
+        CancelComposition();
+        if (_redo.Count == 0) return;
+        var snap = Capture();
+        _undo.Add(new TextState(_text, _anchor, _caret));
+        var state = _redo[^1];
+        _redo.RemoveAt(_redo.Count - 1);
+        RestoreState(state);
+        Finish(snap);
+    }
+
+    /// <summary>
+    /// Replace the selection with <paramref name="requested"/> as this box accepts it (single-line, numeric
+    /// filter, maximum length), if the input rules accept the result. Input that filters down to nothing
+    /// changes nothing (an explicitly empty string deletes the selection). No events.
+    /// </summary>
+    private bool TryReplaceSelection(string requested, EditKind kind, bool forceNewStep)
+    {
+        int start = Selection.Start, length = Selection.Length;
+        string remaining = _text.Remove(start, length);
+        string text = FitMaxLength(remaining.Length, Sanitize(requested));
+        if (text.Length == 0 && (length == 0 || requested.Length > 0)) return false;
+
+        string candidate = remaining.Insert(start, text);
+        if (!Accepts(candidate)) return false;
+
+        RecordUndo(new TextState(_text, _anchor, _caret), kind, forceNewStep || length > 0);
+        SetTextCore(candidate);
+        _caret = _anchor = start + text.Length;
+        return true;
+    }
+
+    private void DeleteRange(int start, int length, EditKind kind)
+    {
+        if (length <= 0) return;
+        RecordUndo(new TextState(_text, _anchor, _caret), kind, forceNewStep: false);
+        SetTextCore(_text.Remove(start, length));
+        _caret = _anchor = start;
+    }
+
+    private bool Accepts(string candidate)
+    {
+        if (InputMask != null && !ValidateAgainstMask(candidate))
+            return false;
 
         if (InputValidator != null)
-            Validation = ValidationState.Valid;
-
-        if (old != _text)
         {
-            TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
-            RaiseValueChanged(old, _text);
+            if (!InputValidator(candidate))
+            {
+                Validation = ValidationState.Error;
+                InvalidateVisual();
+                return false;
+            }
+            Validation = ValidationState.Valid;
         }
+        return true;
+    }
 
-        InvalidateVisual();
+    /// <summary>The part of <paramref name="text"/> that fits <see cref="MaxLength"/>, cut at a grapheme boundary.</summary>
+    private string FitMaxLength(int remainingLength, string text)
+    {
+        if (MaxLength <= 0) return text;
+        int available = MaxLength - remainingLength;
+        if (available <= 0) return string.Empty;
+        if (text.Length <= available) return text;
+        return text.Substring(0, TextElements.Floor(TextElements.GetBoundaries(text), available));
+    }
+
+    /// <summary>Single-line text: line breaks and tabs become spaces, other control characters are dropped.</summary>
+    private static string SanitizeLine(string text)
+    {
+        if (text.Length == 0) return text;
+        StringBuilder? sb = null;
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (!char.IsControl(c))
+            {
+                sb?.Append(c);
+                continue;
+            }
+
+            sb ??= new StringBuilder(text, 0, i, text.Length);
+            if (c == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++;
+            if (c is '\r' or '\n' or '\t') sb.Append(' ');
+        }
+        return sb?.ToString() ?? text;
+    }
+
+    /// <summary>Text as this box accepts it: single-line, and filtered to numeric characters when <see cref="NumericOnly"/>.</summary>
+    private string Sanitize(string text)
+    {
+        text = SanitizeLine(text);
+        if (!_numericOnly || text.Length == 0) return text;
+
+        var format = CultureInfo.CurrentCulture.NumberFormat;
+        bool IsNumeric(char c) =>
+            char.IsDigit(c) || c is '.' or '-' or ',' ||
+            format.NumberDecimalSeparator.Contains(c) ||
+            format.NumberGroupSeparator.Contains(c) ||
+            format.NegativeSign.Contains(c);
+
+        return string.Concat(text.Where(IsNumeric));
     }
 
     /// <summary>Validate text against the InputMask pattern.</summary>
@@ -576,62 +923,36 @@ public class DrawnTextBox : DrawnComponent
         return true;
     }
 
-    private void HandleBackspace(bool wholeWord)
+    private void RecordUndo(TextState state, EditKind kind, bool forceNewStep)
     {
-        if (HasSelection)
+        bool coalesce = !forceNewStep && _undo.Count > 0 && kind == _lastEditKind &&
+                        kind is EditKind.Typing or EditKind.DeletingBackward or EditKind.DeletingForward;
+        if (!coalesce)
         {
-            DeleteSelection();
-            return;
+            _undo.Add(state);
+            if (_undo.Count > MaxUndoDepth) _undo.RemoveAt(0);
         }
-
-        if (_cursorPosition <= 0) return;
-
-        int deleteStart = wholeWord ? FindPreviousWordBoundary() : _cursorPosition - 1;
-        int deleteCount = _cursorPosition - deleteStart;
-
-        var old = _text;
-        _text = _text.Remove(deleteStart, deleteCount);
-        _cursorPosition = deleteStart;
-        EnsureCursorVisible();
-        TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
-        RaiseValueChanged(old, _text);
-        InvalidateVisual();
+        _redo.Clear();
+        _lastEditKind = kind;
     }
 
-    private void HandleDelete(bool wholeWord)
+    private void RestoreState(TextState state)
     {
-        if (HasSelection)
-        {
-            DeleteSelection();
-            return;
-        }
-
-        if (_cursorPosition >= _text.Length) return;
-
-        int deleteEnd = wholeWord ? FindNextWordBoundary() : _cursorPosition + 1;
-        int deleteCount = deleteEnd - _cursorPosition;
-
-        var old = _text;
-        _text = _text.Remove(_cursorPosition, deleteCount);
-        TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
-        RaiseValueChanged(old, _text);
-        InvalidateVisual();
+        SetTextCore(state.Text);
+        _anchor = Math.Min(state.Anchor, _text.Length);
+        _caret = Math.Min(state.Caret, _text.Length);
+        _lastEditKind = EditKind.None;
     }
 
-    private void DeleteSelection()
+    /// <summary>Put back the text and selection from before the composition and end it. No events.</summary>
+    private void RestoreBeforeComposition()
     {
-        if (!HasSelection) return;
-        int start = Math.Min(_selectionStart, _selectionEnd);
-        int end = Math.Max(_selectionStart, _selectionEnd);
-
-        var old = _text;
-        _text = _text.Remove(start, end - start);
-        _cursorPosition = start;
-        ClearSelection();
-        EnsureCursorVisible();
-        TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(old, _text));
-        RaiseValueChanged(old, _text);
-        InvalidateVisual();
+        if (_compositionStart < 0) return;
+        _compositionStart = -1;
+        _compositionLength = 0;
+        SetTextCore(_beforeComposition.Text);
+        _anchor = Math.Min(_beforeComposition.Anchor, _text.Length);
+        _caret = Math.Min(_beforeComposition.Caret, _text.Length);
     }
 
     // ── Selection ───────────────────────────────────────────────
@@ -639,60 +960,112 @@ public class DrawnTextBox : DrawnComponent
     /// <summary>Select all text.</summary>
     public void SelectAll()
     {
-        _selectionStart = 0;
-        _selectionEnd = _text.Length;
-        _cursorPosition = _text.Length;
-        InvalidateVisual();
+        CommitComposition();
+        var snap = Capture();
+        _anchor = 0;
+        _caret = _text.Length;
+        _lastEditKind = EditKind.None;
+        Finish(snap);
     }
 
-    /// <summary>Clear the selection.</summary>
+    /// <summary>Clear the selection, leaving the caret where it is.</summary>
     public void ClearSelection()
     {
-        _selectionStart = -1;
-        _selectionEnd = -1;
+        var snap = Capture();
+        _anchor = _caret;
+        Finish(snap);
+    }
+
+    /// <inheritdoc />
+    public void SetSelection(int anchor, int active)
+    {
+        var range = KumikoTextRange.FromBounds(anchor, active);
+        if (_compositionStart >= 0 &&
+            (range.Start < _compositionStart || range.End > _compositionStart + _compositionLength))
+            CommitComposition(); // a selection outside the marked text ends the composition
+
+        SetSelectionCore(anchor, active);
+    }
+
+    private void SetSelectionCore(int anchor, int active)
+    {
+        var snap = Capture();
+        var b = Boundaries;
+        _anchor = TextElements.Floor(b, Math.Clamp(anchor, 0, _text.Length));
+        _caret = TextElements.Floor(b, Math.Clamp(active, 0, _text.Length));
+        _lastEditKind = EditKind.None;
+        Finish(snap);
     }
 
     private void MoveCursor(int newPosition, bool extendSelection)
     {
-        newPosition = Math.Clamp(newPosition, 0, _text.Length);
-
-        if (extendSelection)
-        {
-            if (_selectionStart < 0) _selectionStart = _cursorPosition;
-            _selectionEnd = newPosition;
-        }
-        else
-        {
-            ClearSelection();
-        }
-
-        _cursorPosition = newPosition;
-        _cursorBlinkStart = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        EnsureCursorVisible();
-        InvalidateVisual();
+        CommitComposition();
+        var snap = Capture();
+        newPosition = TextElements.Floor(Boundaries, Math.Clamp(newPosition, 0, _text.Length));
+        if (!extendSelection) _anchor = newPosition;
+        _caret = newPosition;
+        _lastEditKind = EditKind.None;
+        Finish(snap);
     }
 
-    // ── Word boundaries ─────────────────────────────────────────
+    // ── Words ───────────────────────────────────────────────────
 
-    private int FindPreviousWordBoundary()
+    private enum CharClass { Word, Space, Other }
+
+    private CharClass ClassAt(int index)
     {
-        if (_cursorPosition <= 0) return 0;
-        int pos = _cursorPosition - 1;
-        // Skip whitespace
-        while (pos > 0 && char.IsWhiteSpace(_text[pos])) pos--;
-        // Skip word chars
-        while (pos > 0 && !char.IsWhiteSpace(_text[pos - 1])) pos--;
+        char c = _text[index];
+        if (char.IsWhiteSpace(c)) return CharClass.Space;
+        if (char.IsLetterOrDigit(c) || c == '_' || char.IsSurrogate(c) ||
+            CharUnicodeInfo.GetUnicodeCategory(c) is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark)
+            return CharClass.Word;
+        return CharClass.Other;
+    }
+
+    /// <summary>The run of graphemes of one class (word, whitespace, punctuation) around an index.</summary>
+    private (int Start, int End) WordAt(int index)
+    {
+        if (_text.Length == 0) return (0, 0);
+        var b = Boundaries;
+        int start = index >= _text.Length ? TextElements.Previous(b, _text.Length) : TextElements.Floor(b, index);
+        var cls = ClassAt(start);
+        int end = TextElements.Next(b, start);
+        while (start > 0)
+        {
+            int previous = TextElements.Previous(b, start);
+            if (ClassAt(previous) != cls) break;
+            start = previous;
+        }
+        while (end < _text.Length && ClassAt(end) == cls)
+            end = TextElements.Next(b, end);
+        return (start, end);
+    }
+
+    private int PreviousWordBoundary(int index)
+    {
+        var b = Boundaries;
+        int pos = index;
+        while (pos > 0 && ClassAt(TextElements.Previous(b, pos)) == CharClass.Space)
+            pos = TextElements.Previous(b, pos);
+        if (pos == 0) return 0;
+        var cls = ClassAt(TextElements.Previous(b, pos));
+        while (pos > 0 && ClassAt(TextElements.Previous(b, pos)) == cls)
+            pos = TextElements.Previous(b, pos);
         return pos;
     }
 
-    private int FindNextWordBoundary()
+    private int NextWordBoundary(int index)
     {
-        if (_cursorPosition >= _text.Length) return _text.Length;
-        int pos = _cursorPosition;
-        // Skip word chars
-        while (pos < _text.Length && !char.IsWhiteSpace(_text[pos])) pos++;
-        // Skip whitespace
-        while (pos < _text.Length && char.IsWhiteSpace(_text[pos])) pos++;
+        var b = Boundaries;
+        int pos = index;
+        if (pos < _text.Length && ClassAt(pos) != CharClass.Space)
+        {
+            var cls = ClassAt(pos);
+            while (pos < _text.Length && ClassAt(pos) == cls)
+                pos = TextElements.Next(b, pos);
+        }
+        while (pos < _text.Length && ClassAt(pos) == CharClass.Space)
+            pos = TextElements.Next(b, pos);
         return pos;
     }
 
@@ -702,13 +1075,18 @@ public class DrawnTextBox : DrawnComponent
     {
         if (_measureContext == null) return;
 
-        float cursorX = MeasureSubstring(0, _cursorPosition);
-        float visibleWidth = Bounds.Width - Padding * 2;
+        float cursorX = XAt(_caret);
+        float visibleWidth = Math.Max(0, Bounds.Width - Padding * 2);
+        float textWidth = XAt(_text.Length);
 
-        if (cursorX - _scrollOffset > visibleWidth)
-            _scrollOffset = cursorX - visibleWidth + Padding;
+        if (cursorX - _scrollOffset > visibleWidth - 1)
+            _scrollOffset = cursorX - visibleWidth + 2; // room for the caret
         else if (cursorX - _scrollOffset < 0)
             _scrollOffset = cursorX;
+
+        // Don't leave empty space after the text once it is shorter
+        if (_scrollOffset > 0 && textWidth - _scrollOffset < visibleWidth - 2)
+            _scrollOffset = Math.Max(0, textWidth - visibleWidth + 2);
 
         if (_scrollOffset < 0) _scrollOffset = 0;
     }
@@ -725,14 +1103,74 @@ public class DrawnTextBox : DrawnComponent
     {
         if (!HasSelection) return;
         CopyRequested?.Invoke(this, new ClipboardTextEventArgs(SelectedText));
-        DeleteSelection();
+        if (IsReadOnly) return;
+        var snap = Capture();
+        DeleteRange(Selection.Start, Selection.Length, EditKind.Other);
+        Finish(snap);
     }
 
     private void HandlePaste()
     {
+        if (IsReadOnly) return;
         var args = new ClipboardRequestEventArgs();
         PasteRequested?.Invoke(this, args);
-        if (!string.IsNullOrEmpty(args.Text))
-            InsertText(args.Text);
+        if (string.IsNullOrEmpty(args.Text)) return;
+
+        CommitComposition();
+        var snap = Capture();
+        TryReplaceSelection(args.Text, EditKind.Other, forceNewStep: true);
+        Finish(snap);
     }
+
+    // ── Change notification ─────────────────────────────────────
+
+    private Snapshot Capture() => new(_text, _anchor, _caret, _compositionStart, _compositionLength);
+
+    private bool StateDiffers(Snapshot snap) =>
+        snap.Anchor != _anchor || snap.Caret != _caret || snap.CompositionStart != _compositionStart ||
+        snap.CompositionLength != _compositionLength || !ReferenceEquals(snap.Text, _text) && snap.Text != _text;
+
+    /// <summary>After a change: scroll the caret into view, restart its blink, raise the events, redraw.</summary>
+    private void Finish(Snapshot snap)
+    {
+        if (!StateDiffers(snap))
+        {
+            InvalidateVisual(); // validation state may have changed
+            return;
+        }
+
+        EnsureCursorVisible();
+        _cursorBlinkStart = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        if (snap.Text != _text)
+        {
+            TextChanged?.Invoke(this, new KumikoTextChangedEventArgs(snap.Text, _text));
+            RaiseValueChanged(snap.Text, _text);
+        }
+
+        RaiseStateChanged();
+        InvalidateVisual();
+    }
+
+    private void RaiseStateChanged()
+    {
+        if (_adapterCallDepth == 0)
+            TextInputStateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // ── ITextInputSession (adapter calls don't raise TextInputStateChanged) ──
+
+    void ITextInputSession.InsertText(string text) { _adapterCallDepth++; try { InsertText(text); } finally { _adapterCallDepth--; } }
+
+    void ITextInputSession.SetComposition(string text, int cursorInComposition) { _adapterCallDepth++; try { SetComposition(text, cursorInComposition); } finally { _adapterCallDepth--; } }
+
+    void ITextInputSession.CommitComposition() { _adapterCallDepth++; try { CommitComposition(); } finally { _adapterCallDepth--; } }
+
+    void ITextInputSession.CancelComposition() { _adapterCallDepth++; try { CancelComposition(); } finally { _adapterCallDepth--; } }
+
+    void ITextInputSession.DeleteBackward() { _adapterCallDepth++; try { DeleteBackward(); } finally { _adapterCallDepth--; } }
+
+    void ITextInputSession.DeleteForward() { _adapterCallDepth++; try { DeleteForward(); } finally { _adapterCallDepth--; } }
+
+    void ITextInputSession.SetSelection(int anchor, int active) { _adapterCallDepth++; try { SetSelection(anchor, active); } finally { _adapterCallDepth--; } }
 }
