@@ -32,7 +32,9 @@ public class DrawnDatePickerTests
     private static (float X, float Y) Cell(DateTime date)
     {
         int index = (int)new DateTime(date.Year, date.Month, 1).DayOfWeek + date.Day - 1;
-        return (4 + index % 7 * 32 + 16, 104 + index / 7 * 32 + 16);
+        int column = index % 7;
+        int week = index / 7; // whole weeks: the integer division is intended
+        return (4 + column * 32f + 16, 104 + week * 32f + 16);
     }
 
     private static void TapDay(DrawnDatePicker p, DateTime date)

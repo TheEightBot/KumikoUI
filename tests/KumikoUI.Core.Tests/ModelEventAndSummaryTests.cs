@@ -631,9 +631,10 @@ public class ModelEventAndSummaryTests
 
         Assert.Equal(2, summaryRows.Count);
         var info = f.Source.GetGroupSummaryRowInfo(summaryRows[0]);
-        Assert.NotNull(info);
-        Assert.Equal("Dept=Eng", info!.Value.GroupPath);
-        Assert.Equal(0, info.Value.SummaryIndex);
+        Assert.True(info.HasValue);
+        var row = info!.Value;
+        Assert.Equal("Dept=Eng", row.GroupPath);
+        Assert.Equal(0, row.SummaryIndex);
         Assert.Null(f.Source.GetGroupSummaryRowInfo(0)); // a header row
     }
 }

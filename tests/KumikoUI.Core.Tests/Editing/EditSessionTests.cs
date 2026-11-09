@@ -408,7 +408,7 @@ public class EditSessionTests
 
         f.Session.DrawEditor(ctx);
 
-        var outline = ctx.Ops.Last(o => o.Kind == DrawOpKind.DrawRect && o.StrokeWidth == 2f);
+        var outline = ctx.Ops.Last(o => o.Kind == DrawOpKind.DrawRect && Math.Abs(o.StrokeWidth - 2f) < 0.01f);
         Assert.Equal(new KumikoColor(r, g, b), outline.Color);
     }
 

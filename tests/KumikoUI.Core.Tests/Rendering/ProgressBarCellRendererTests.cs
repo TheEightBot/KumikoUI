@@ -51,7 +51,7 @@ public class ProgressBarCellRendererTests
     {
         var ctx = Render(new ProgressBarCellRenderer { FillColor = KumikoColor.White }, value);
 
-        if (expectedWidth == 0)
+        if (expectedWidth < 0.01f)
             Assert.Single(ctx.Fills);
         else
             Assert.Equal(expectedWidth, Fill(ctx).Clip!.Value.Width, 3);

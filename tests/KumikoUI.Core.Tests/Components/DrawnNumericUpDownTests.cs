@@ -229,8 +229,8 @@ public class DrawnNumericUpDownTests
 
         n.Down(MinusX, Y);
         var held = Draw(n).Fills.Where(o => o.Kind == DrawOpKind.FillRect).ToList();
-        Assert.Equal(n.ButtonPressedColor, held.Single(o => o.Rect.X == 0).Color);
-        Assert.Equal(n.ButtonBackgroundColor, held.Single(o => o.Rect.X == 160).Color);
+        Assert.Equal(n.ButtonPressedColor, held.Single(o => Math.Abs(o.Rect.X) < 0.01f).Color);
+        Assert.Equal(n.ButtonBackgroundColor, held.Single(o => Math.Abs(o.Rect.X - 160) < 0.01f).Color);
 
         n.Up(MinusX, Y);
         var released = Draw(n).Fills.Where(o => o.Kind == DrawOpKind.FillRect).Select(o => o.Color);

@@ -14,8 +14,8 @@ public class DrawnFocusManagerTests
 {
     private sealed class Probe : DrawnComponent
     {
-        public bool HandlesPress = true;
-        public bool HandlesRelease = true;
+        public bool HandlesPress { get; set; } = true;
+        public bool HandlesRelease { get; init; } = true;
         public List<string> Received { get; } = new();
         public override void OnDraw(IDrawingContext ctx) { }
         public override bool OnPointerDown(KumikoPointerEventArgs e) { Received.Add("down"); return HandlesPress; }
@@ -31,7 +31,7 @@ public class DrawnFocusManagerTests
     private static (DrawnFocusManager Manager, Probe[] Probes) Row(int n)
     {
         var manager = new DrawnFocusManager();
-        var probes = Enumerable.Range(0, n).Select(i => At(i * 60, 0)).ToArray();
+        var probes = Enumerable.Range(0, n).Select(i => At(i * 60f, 0)).ToArray();
         foreach (var p in probes) manager.Register(p);
         return (manager, probes);
     }
