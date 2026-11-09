@@ -882,18 +882,13 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession
         if (!_numericOnly || text.Length == 0) return text;
 
         var format = CultureInfo.CurrentCulture.NumberFormat;
-        var sb = new StringBuilder(text.Length);
-        foreach (char c in text)
-        {
-            if (char.IsDigit(c) || c is '.' or '-' or ',' ||
-                format.NumberDecimalSeparator.Contains(c) ||
-                format.NumberGroupSeparator.Contains(c) ||
-                format.NegativeSign.Contains(c))
-            {
-                sb.Append(c);
-            }
-        }
-        return sb.ToString();
+        bool IsNumeric(char c) =>
+            char.IsDigit(c) || c is '.' or '-' or ',' ||
+            format.NumberDecimalSeparator.Contains(c) ||
+            format.NumberGroupSeparator.Contains(c) ||
+            format.NegativeSign.Contains(c);
+
+        return string.Concat(text.Where(IsNumeric));
     }
 
     /// <summary>Validate text against the InputMask pattern.</summary>
