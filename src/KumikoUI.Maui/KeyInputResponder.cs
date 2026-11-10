@@ -64,6 +64,23 @@ internal class KeyInputResponder : UIView, IUIKeyInput
 
     public override UIKeyCommand[] KeyCommands => _keyCommands;
 
+    /// <summary>
+    /// Asked before Tab (argument <c>true</c> for Shift+Tab) is claimed. Returning false leaves the key to
+    /// UIKit — keyboard focus navigation — so the grid is not a keyboard trap at its last (first) tab stop.
+    /// Null claims every Tab.
+    /// </summary>
+    public Func<bool, bool>? CanHandleTab { get; set; }
+
+    private bool ClaimsTab(bool shift) => CanHandleTab?.Invoke(shift) ?? true;
+
+    // UIKit asks before dispatching a key command: declining Tab lets the press continue to the system.
+    public override bool CanPerform(Selector action, NSObject? withSender)
+    {
+        if (action.Name == "handleTabKey:") return ClaimsTab(false);
+        if (action.Name == "handleShiftTabKey:") return ClaimsTab(true);
+        return base.CanPerform(action, withSender);
+    }
+
     [Export("handleTabKey:")]
     private void HandleTabKey(UIKeyCommand cmd) => TabKeyReceived?.Invoke(false);
 
@@ -133,7 +150,7 @@ internal class KeyInputResponder : UIView, IUIKeyInput
                     UIKeyboardHidUsage.KeyboardEscape => true,
                     UIKeyboardHidUsage.KeyboardDeleteForward => true,
                     UIKeyboardHidUsage.KeyboardReturnOrEnter => true,
-                    UIKeyboardHidUsage.KeyboardTab => true,
+                    UIKeyboardHidUsage.KeyboardTab => ClaimsTab(press.Key.ModifierFlags.HasFlag(UIKeyModifierFlags.Shift)),
                     UIKeyboardHidUsage.KeyboardSpacebar => true,
                     UIKeyboardHidUsage.KeyboardF2 => true,
                     _ => false

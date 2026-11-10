@@ -27,19 +27,54 @@ xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
 
 ## `KumikoDataGrid` — All bindable properties
 
+Same names and defaults on `KumikoUI.Maui` (BindableProperty) and `KumikoUI.Uno` (DependencyProperty).
+Full reference with types and defaults: README section "Host Properties, Commands & Events".
+
 ```xml
 <dg:KumikoDataGrid
     ItemsSource="{Binding Employees}"
+    GridSelectionMode="Extended"
+    SelectedItem="{Binding SelectedEmployee, Mode=TwoWay}"
+    SelectedItems="{Binding SelectedEmployees}"
+    SelectedIndex="{Binding SelectedRow, Mode=TwoWay}"
+    CurrentCell="{Binding CurrentCell, Mode=TwoWay}"
+    SelectionChangedCommand="{Binding SelectionChangedCommand}"
+    RowTappedCommand="{Binding RowTappedCommand}"
+    CellValueChangedCommand="{Binding CellValueChangedCommand}"
+    SortChangedCommand="{Binding SortChangedCommand}"
+    CellValidator="{Binding Validator}"
     EditTriggers="DoubleTap,F2Key,Typing"
     EditTextSelectionMode="SelectAll"
     DismissKeyboardOnEnter="True"
+    IsReadOnly="False"
+    AllowSorting="True"
+    AllowFiltering="True"
     FrozenRowCount="2"
     RowHeight="36"
     HeaderHeight="40"
+    ShowHorizontalGridLines="True"
+    ShowVerticalGridLines="False"
+    AlternateRowBackground="#EEF4FF"
+    AllowRowDragDrop="True"
+    ShowRowDragHandle="True"
     GridDescription="Accessible description for screen readers"
     HorizontalOptions="Fill"
     VerticalOptions="Fill" />
 ```
+
+Collections (XAML content or property elements): `Columns` (content property), `TableSummaryRows`,
+`GroupDescriptions`, `GroupSummaryRows`.
+
+Plain (not bindable) properties: `Theme`, `GridStyle`, `ScrollSettings`. `ShowHorizontalGridLines`,
+`ShowVerticalGridLines`, `AlternateRowBackground`, `AllowRowDragDrop` and `ShowRowDragHandle` are nullable:
+null leaves the value to the style or theme, a value overrides it and is re-applied after `Theme` or
+`GridStyle` is assigned.
+
+Events: `RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`,
+`SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`,
+`GroupExpandedChanged`, `RowReordered`, `ColumnReordered`, `ColumnResized`, `SelectionChanged`.
+
+Methods: `Invalidate()` repaints without rebuilding the view (any thread).
 
 `EditTriggers` flags: `SingleTap`, `DoubleTap`, `LongPress`, `F2Key`, `Typing`
 

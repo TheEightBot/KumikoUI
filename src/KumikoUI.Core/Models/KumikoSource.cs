@@ -58,6 +58,7 @@ public class KumikoSource
 
     // ── Comparison ───────────────────────────────────────────────
     private CultureInfo? _culture;
+    private KumikoStrings _strings = KumikoStrings.Default;
     private CompareOptions _stringCompareOptions = CompareOptions.IgnoreCase;
     private KumikoComparer _comparer = KumikoComparer.Default;
 
@@ -124,6 +125,22 @@ public class KumikoSource
             _culture = value;
             _comparer = new KumikoComparer(_culture, _stringCompareOptions);
             InvalidateCellText();
+            RequestRebuild();
+        }
+    }
+
+    /// <summary>
+    /// The text the grid shows on its own: the group panel label, the blank group header, default summary
+    /// labels, the filter popup and edit validation messages. Defaults to <see cref="KumikoStrings.Default"/>
+    /// (English); assigning null restores it. Setting it rebuilds the view, so text computed while grouping and
+    /// summarizing follows.
+    /// </summary>
+    public KumikoStrings Strings
+    {
+        get => _strings;
+        set
+        {
+            _strings = value ?? KumikoStrings.Default;
             RequestRebuild();
         }
     }
@@ -349,8 +366,9 @@ public class KumikoSource
 
         // Drop the display text of the previous items (and the references to them)
         InvalidateCellText();
-        foreach (var col in _columns)
-            if (ReferenceEquals(col.TextCache?.Owner, this)) col.TextCache = null;
+        // Cold path (items replaced), so LINQ is fine here.
+        foreach (var col in _columns.Where(c => ReferenceEquals(c.TextCache?.Owner, this)))
+            col.TextCache = null;
 
         RequestRebuild();
     }
@@ -757,6 +775,40 @@ public class KumikoSource
     }
 
     /// <summary>
+    /// Replace all group descriptions with <paramref name="groups"/> (in order) as one change: a single
+    /// rebuild and one <see cref="ViewChanged"/> notification. Hosts use it to mirror a bindable collection.
+    /// </summary>
+    public void SetGroupDescriptions(IEnumerable<GroupDescription>? groups)
+    {
+        BeginUpdate();
+        try
+        {
+            ClearGroupDescriptions();
+            if (groups != null)
+                foreach (var group in groups)
+                    AddGroupDescription(group);
+        }
+        finally { EndUpdate(); }
+    }
+
+    /// <summary>
+    /// Replace all group summary rows with <paramref name="rows"/> as one change: a single rebuild and one
+    /// <see cref="ViewChanged"/> notification. Hosts use it to mirror a bindable collection.
+    /// </summary>
+    public void SetGroupSummaryRows(IEnumerable<GroupSummaryRow>? rows)
+    {
+        BeginUpdate();
+        try
+        {
+            ClearGroupSummaryRows();
+            if (rows != null)
+                foreach (var row in rows)
+                    AddGroupSummaryRow(row);
+        }
+        finally { EndUpdate(); }
+    }
+
+    /// <summary>
     /// Get a cell value for a visible row and column.
     /// Returns null for group header rows.
     /// </summary>
@@ -1153,7 +1205,7 @@ public class KumikoSource
             }
             else
             {
-                written = column.ResolvePath(item.GetType()).TrySetValue(item, value, _comparer.Culture, out error);
+                written = column.ResolvePath(item.GetType()).TrySetValue(item, value, _comparer.Culture, _strings, out error);
             }
 
             if (written)
@@ -1544,7 +1596,7 @@ public class KumikoSource
             string displayText = groupDesc.DisplayTextSelector != null
                 ? groupDesc.DisplayTextSelector(groupKey)
                 : groupKey is null
-                    ? "(Blank)"
+                    ? _strings.BlankGroupText
                     : _comparer.Format(groupKey, groupDesc.KeySelector == null ? column?.Format : null);
 
             // Use display text as dictionary key for grouping
@@ -1682,9 +1734,9 @@ public class KumikoSource
         {
             var values = CollectColumnValues(colDesc.PropertyName, sourceIndices);
             object? rawResult = ComputeAggregate(colDesc.SummaryType, values, colDesc.CustomAggregate);
-            string formatted = FormatSummaryValue(rawResult, colDesc);
+            string formatted = FormatSummaryValue(rawResult, colDesc, _comparer.Culture);
 
-            string label = colDesc.Label ?? GetDefaultLabel(colDesc.SummaryType);
+            string label = colDesc.Label ?? _strings.SummaryLabel(colDesc.SummaryType);
             summaryValues.Add($"{label}{formatted}");
             rawValues.Add(rawResult);
         }
@@ -1721,8 +1773,8 @@ public class KumikoSource
             var colValues = CollectColumnValues(colDesc.PropertyName, sourceIndices);
             object? rawResult = ComputeAggregate(colDesc.SummaryType, colValues, colDesc.CustomAggregate);
 
-            string label = colDesc.Label ?? GetDefaultLabel(colDesc.SummaryType);
-            string formatted = FormatSummaryValue(rawResult, colDesc);
+            string label = colDesc.Label ?? _strings.SummaryLabel(colDesc.SummaryType);
+            string formatted = FormatSummaryValue(rawResult, colDesc, _comparer.Culture);
 
             values[colDesc.PropertyName] = $"{label}{formatted}";
             rawValues[colDesc.PropertyName] = rawResult;
@@ -1848,40 +1900,23 @@ public class KumikoSource
     /// <summary>
     /// Format an aggregate result using the column description's format.
     /// </summary>
-    private static string FormatSummaryValue(object? value, SummaryColumnDescription colDesc)
+    private static string FormatSummaryValue(object? value, SummaryColumnDescription colDesc, CultureInfo culture)
     {
         if (value == null) return "";
 
         if (!string.IsNullOrEmpty(colDesc.Format))
         {
-            // If format contains {0}, use String.Format
-            if (colDesc.Format.Contains("{0}"))
+            // A composite format ("Max {0:N1}") goes through string.Format; anything else is a format string
+            if (colDesc.Format.Contains("{0"))
             {
-                try { return string.Format(colDesc.Format, value); }
+                try { return string.Format(culture, colDesc.Format, value); }
                 catch { /* fall through */ }
             }
             // Otherwise use IFormattable
             if (value is IFormattable fmt)
-                return fmt.ToString(colDesc.Format, null);
+                return fmt.ToString(colDesc.Format, culture);
         }
 
-        return value.ToString() ?? "";
-    }
-
-    /// <summary>
-    /// Get a default label for a summary type.
-    /// </summary>
-    private static string GetDefaultLabel(SummaryType type)
-    {
-        return type switch
-        {
-            SummaryType.Sum => "Sum: ",
-            SummaryType.Average => "Avg: ",
-            SummaryType.Count => "Count: ",
-            SummaryType.Min => "Min: ",
-            SummaryType.Max => "Max: ",
-            SummaryType.Custom => "",
-            _ => ""
-        };
+        return value is IFormattable plain ? plain.ToString(null, culture) : value.ToString() ?? "";
     }
 }

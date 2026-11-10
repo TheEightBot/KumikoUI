@@ -9,8 +9,11 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="GitHubActionsTestLogger" PrivateAssets="all" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
+    <!-- Native Skia for the SkiaSharp backend tests on a Linux CI host. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
@@ -20,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/KumikoUI.Core/KumikoUI.Core.csproj" />
+    <ProjectReference Include="../../src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" />
     <!-- Runs the [KumikoGridItem] generator over the test models, as the package does in apps. -->
     <ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
                       OutputItemType="Analyzer"

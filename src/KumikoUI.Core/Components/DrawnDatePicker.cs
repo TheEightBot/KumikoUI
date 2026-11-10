@@ -1,3 +1,4 @@
+using System.Globalization;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
@@ -75,6 +76,23 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     public float Padding { get; set; } = 6f;
     /// <summary>Date format string used to display the selected date.</summary>
     public string DateFormat { get; set; } = "yyyy-MM-dd";
+
+    /// <summary>
+    /// The culture for month and day names, the AM/PM designators and the displayed date, or null (the
+    /// default) for the current culture. The grid sets it to its <see cref="KumikoSource.Culture"/> when it
+    /// creates a date editor.
+    /// </summary>
+    public CultureInfo? Culture { get; set; }
+
+    private CultureInfo EffectiveCulture => Culture ?? CultureInfo.CurrentCulture;
+
+    /// <summary>The designator after a 12-hour time (with its leading space), or "" when the culture has none.</summary>
+    private string AmPmSuffix(int hour)
+    {
+        var info = EffectiveCulture.DateTimeFormat;
+        string designator = hour >= 12 ? info.PMDesignator : info.AMDesignator;
+        return designator.Length == 0 ? "" : " " + designator;
+    }
 
     // ── Theming ─────────────────────────────────────────────────
 
@@ -228,14 +246,14 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         });
 
         // Date text
-        string dateText = _hasSelection ? _selectedDate.ToString(DateFormat) : string.Empty;
+        string dateText = _hasSelection ? _selectedDate.ToString(DateFormat, EffectiveCulture) : string.Empty;
         if (ShowTimePicker)
         {
             int displayHour = SelectedHour;
             string amPm = "";
             if (!Use24HourFormat)
             {
-                amPm = displayHour >= 12 ? " PM" : " AM";
+                amPm = AmPmSuffix(displayHour);
                 displayHour = displayHour % 12;
                 if (displayHour == 0) displayHour = 12;
             }
@@ -243,7 +261,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         }
         if (IsRangeMode && _rangeEndDate.HasValue)
         {
-            dateText += $" — {_rangeEndDate.Value.ToString(DateFormat)}";
+            dateText += $" — {_rangeEndDate.Value.ToString(DateFormat, EffectiveCulture)}";
         }
         float textX = b.X + Padding;
         float textY = b.Y + b.Height / 2;
@@ -328,7 +346,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         ctx.DrawLine(rx, arrowY, rx - 3, arrowY + 4, arrowPaint);
 
         // Month text (clickable for dropdown)
-        string monthText = _displayMonth.ToString("MMMM");
+        string monthText = EffectiveCulture.DateTimeFormat.GetMonthName(_displayMonth.Month);
         string yearText = _displayMonth.Year.ToString();
         var textPaint = new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
         var underlinePaint = new KumikoPaint { Color = FocusedBorderColor, Style = PaintStyle.Fill, Font = Font };
@@ -349,7 +367,8 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
 
     private void DrawDayHeaders(IDrawingContext ctx, float x, float y)
     {
-        string[] dayNames = { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" };
+        // Sunday first, the layout of the day grid (the first day of the week is not configurable yet)
+        string[] dayNames = EffectiveCulture.DateTimeFormat.ShortestDayNames;
 
         for (int d = 0; d < DaysPerWeek; d++)
         {
@@ -743,7 +762,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
             if (m == _displayMonth.Month - 1)
                 ctx.FillRect(itemRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 20), Style = PaintStyle.Fill });
 
-            string monthName = new DateTime(2000, m + 1, 1).ToString("MMMM");
+            string monthName = EffectiveCulture.DateTimeFormat.GetMonthName(m + 1);
             ctx.DrawText(monthName, dropX + 8, itemY + DropdownItemHeight / 2,
                 new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = DayFont });
         }
@@ -854,7 +873,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         string amPm = "";
         if (!Use24HourFormat)
         {
-            amPm = displayHour >= 12 ? " PM" : " AM";
+            amPm = AmPmSuffix(displayHour);
             displayHour = displayHour % 12;
             if (displayHour == 0) displayHour = 12;
         }

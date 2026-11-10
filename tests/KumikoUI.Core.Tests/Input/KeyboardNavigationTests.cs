@@ -399,6 +399,198 @@ public class KeyboardNavigationTests
         Assert.True(g.Scroll.OffsetX <= g.Scroll.MaxOffsetX);
     }
 
+    // ── Ensure-visible with every combination of bands ──
+
+    public static TheoryData<bool, bool, bool, bool> BandCombinations()
+    {
+        var data = new TheoryData<bool, bool, bool, bool>();
+        for (int bits = 0; bits < 16; bits++)
+            data.Add((bits & 1) != 0, (bits & 2) != 0, (bits & 4) != 0, (bits & 8) != 0);
+        return data;
+    }
+
+    private static InputGrid Banded(bool groupPanel, bool topSummary, bool frozenRows, bool pinnedFooter, float viewportHeight = 420) =>
+        new(rows: 30, viewportHeight: viewportHeight, configure: x =>
+        {
+            if (groupPanel) x.Source.AddGroupDescription(new GroupDescription("City"));
+            if (topSummary) x.Source.AddTableSummaryRow(Summary(SummaryPosition.Top));
+            if (frozenRows) x.Source.FrozenRowCount = 2;
+            if (pinnedFooter) x.Source.AddTableSummaryRow(Summary(SummaryPosition.Bottom));
+        });
+
+    /// <summary>
+    /// The current row is entirely on screen: the hit tester (independent of the scroll math) finds that row
+    /// just inside its top and bottom edges, not a band drawn over it.
+    /// </summary>
+    private static void AssertCurrentRowFullyVisible(InputGrid g)
+    {
+        int row = g.Selection.CurrentCell.Row;
+        float groupPanel = g.Source.IsGroupingActive ? g.Style.GroupPanelHeight : 0;
+        float topSummary = g.Source.TopSummaryCount * g.Style.SummaryRowHeight;
+        var bounds = g.Input.GetCellScreenBounds(row, 0, g.Scroll, g.Style, g.Source.Columns, groupPanel, topSummary, g.Source);
+
+        foreach (float y in new[] { bounds.Y + 1, bounds.Y + bounds.Height / 2, bounds.Bottom - 1 })
+        {
+            var hit = g.Hit(10, y);
+            Assert.True(hit.RowIndex == row && hit.Region is HitRegion.Cell or HitRegion.GroupHeaderRow or HitRegion.GroupChevron,
+                $"row {row} at y {y} hit {hit.Region} row {hit.RowIndex} (offset {g.Scroll.OffsetY})");
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(BandCombinations))]
+    public void DownAndUp_KeepTheCurrentRowFullyVisible_WithEveryBandCombination(
+        bool groupPanel, bool topSummary, bool frozenRows, bool pinnedFooter)
+    {
+        var g = Banded(groupPanel, topSummary, frozenRows, pinnedFooter);
+        int rows = g.Source.RowCount;
+        g.Select(0, 0);
+
+        for (int i = 0; i < rows - 1; i++)
+        {
+            g.Key(KumikoKey.Down);
+            AssertCurrentRowFullyVisible(g);
+        }
+        Assert.Equal(rows - 1, g.Selection.CurrentCell.Row);
+        Assert.Equal(g.Scroll.MaxOffsetY, g.Scroll.OffsetY);
+
+        for (int i = 0; i < rows - 1; i++)
+        {
+            g.Key(KumikoKey.Up);
+            AssertCurrentRowFullyVisible(g);
+        }
+        Assert.Equal(0, g.Selection.CurrentCell.Row);
+    }
+
+    [Theory]
+    [MemberData(nameof(BandCombinations))]
+    public void PageDownAndPageUp_KeepTheCurrentRowFullyVisible_WithEveryBandCombination(
+        bool groupPanel, bool topSummary, bool frozenRows, bool pinnedFooter)
+    {
+        var g = Banded(groupPanel, topSummary, frozenRows, pinnedFooter);
+        g.Select(0, 0);
+
+        while (g.Selection.CurrentCell.Row < g.Source.RowCount - 1)
+        {
+            int before = g.Selection.CurrentCell.Row;
+            g.Key(KumikoKey.PageDown);
+            AssertCurrentRowFullyVisible(g);
+            Assert.True(g.Selection.CurrentCell.Row > before);
+        }
+
+        while (g.Selection.CurrentCell.Row > 0)
+        {
+            g.Key(KumikoKey.PageUp);
+            AssertCurrentRowFullyVisible(g);
+        }
+    }
+
+    [Fact]
+    public void Down_WithTopSummaryFrozenRowsAndPinnedFooter_ScrollsExactlyEnough()
+    {
+        // 420 - header 40 - top summary 36 - 2 frozen rows 72 - pinned footer 36 = 236 px for scrollable rows.
+        // Rows 0 and 1 are frozen, so row 2 is scrollable row 0.
+        var g = Banded(groupPanel: false, topSummary: true, frozenRows: true, pinnedFooter: true);
+        g.Select(2, 0);
+
+        for (int i = 0; i < 5; i++) g.Key(KumikoKey.Down); // row 7: scrollable bottom 216 fits
+        Assert.Equal(0, g.Scroll.OffsetY);
+
+        g.Key(KumikoKey.Down); // row 8: scrollable bottom 252 against 236
+        Assert.Equal(16, g.Scroll.OffsetY);
+
+        g.Key(KumikoKey.End, InputModifiers.Control); // row 29: scrollable bottom 28 * 36
+        Assert.Equal(28 * 36 - 236, g.Scroll.OffsetY);
+        Assert.Equal(g.Scroll.MaxOffsetY, g.Scroll.OffsetY);
+    }
+
+    [Fact]
+    public void Down_WithGroupPanelTopSummaryAndPinnedFooter_ScrollsExactlyEnough()
+    {
+        // 420 - group panel 40 - header 40 - top summary 36 - pinned footer 36 = 268 px. Frozen rows don't apply
+        // while grouped. Grouped by City: 32 rows, group headers at 0 and 16.
+        var g = Banded(groupPanel: true, topSummary: true, frozenRows: true, pinnedFooter: true);
+        Assert.Equal(0, g.Source.EffectiveFrozenRowCount);
+        g.Select(0, 0);
+
+        for (int i = 0; i < 6; i++) g.Key(KumikoKey.Down); // row 6: bottom 252 fits
+        Assert.Equal(0, g.Scroll.OffsetY);
+
+        g.Key(KumikoKey.Down); // row 7: bottom 288 against 268
+        Assert.Equal(20, g.Scroll.OffsetY);
+
+        g.Key(KumikoKey.End, InputModifiers.Control);
+        Assert.Equal(32 * 36 - 268, g.Scroll.OffsetY);
+        Assert.Equal(g.Scroll.MaxOffsetY, g.Scroll.OffsetY);
+    }
+
+    [Fact]
+    public void Up_ToTheFirstScrollableRow_UnderFrozenRowsAndATopSummary_ScrollsToTheTop()
+    {
+        var g = Banded(groupPanel: false, topSummary: true, frozenRows: true, pinnedFooter: true);
+        g.Select(3, 0);
+        g.Scroll.OffsetY = 300;
+
+        g.Key(KumikoKey.Up); // row 2: scrollable top 0, hidden under the frozen rows until scrolled back
+
+        Assert.Equal(0, g.Scroll.OffsetY);
+        AssertCurrentRowFullyVisible(g);
+    }
+
+    [Fact]
+    public void Up_UnderTheGroupPanelHeaderAndTopSummary_ScrollsTheRowToTheTop()
+    {
+        var g = Banded(groupPanel: true, topSummary: true, frozenRows: false, pinnedFooter: false);
+        g.Select(11, 0);
+        g.Scroll.OffsetY = 400;
+
+        g.Key(KumikoKey.Up); // row 10 starts at 360 < 400
+
+        Assert.Equal(360, g.Scroll.OffsetY);
+        AssertCurrentRowFullyVisible(g);
+    }
+
+    [Theory]
+    [InlineData(DragHandlePosition.Left)]
+    [InlineData(DragHandlePosition.Right)]
+    public void Scroll_Right_WithARowDragHandle_BringsTheWholeColumnIntoView(DragHandlePosition position)
+    {
+        var g = Grid(configure: x =>
+        {
+            x.Style.ShowRowDragHandle = true;
+            x.Style.RowDragHandlePosition = position;
+        });
+        g.Select(0, 3);
+
+        g.Key(KumikoKey.Right); // Score 400..500 against 300 - 32 px of columns
+
+        Assert.Equal(232, g.Scroll.OffsetX);
+        Assert.Equal(g.Scroll.MaxOffsetX, g.Scroll.OffsetX);
+        var bounds = g.Input.GetCellScreenBounds(0, 4, g.Scroll, g.Style, g.Source.Columns, dataSource: g.Source);
+        Assert.Equal(4, g.Hit(bounds.Right - 1, g.RowY(0)).ColumnIndex);
+        Assert.Equal(4, g.Hit(bounds.X + 1, g.RowY(0)).ColumnIndex);
+    }
+
+    [Fact]
+    public void Scroll_WithFrozenColumnsOnBothSidesAndADragHandle_KeepsTheColumnBetweenThem()
+    {
+        var g = new InputGrid(viewportWidth: 400, configure: x =>
+        {
+            x.Name.IsFrozen = true;
+            x.Score.IsFrozenRight = true;
+            x.Style.ShowRowDragHandle = true;
+        });
+        g.Select(0, 2);
+
+        // Dept at content 300..400; the columns get 400 - 32 (handle) - 100 (Score) = 268 px, Name's 120 included
+        g.Key(KumikoKey.Right);
+
+        Assert.Equal(400 - 268, g.Scroll.OffsetX);
+        var bounds = g.Input.GetCellScreenBounds(0, 3, g.Scroll, g.Style, g.Source.Columns, dataSource: g.Source);
+        Assert.Equal(3, g.Hit(bounds.Right - 1, g.RowY(0)).ColumnIndex);
+        Assert.Equal(3, g.Hit(bounds.X + 1, g.RowY(0)).ColumnIndex);
+    }
+
     // ── Space, Escape, Ctrl+A ──
 
     [Fact]
@@ -655,18 +847,18 @@ public class KeyboardNavigationTests
     }
 
     [Fact]
-    public void Tab_WithoutACurrentCell_IsHandledAndDoesNothing()
+    public void Tab_WithoutACurrentCell_IsLeftUnhandled()
     {
         var g = Grid();
 
         var e = g.Key(KumikoKey.Tab);
 
-        Assert.True(e.Handled);
+        Assert.False(e.Handled);
         Assert.False(g.Selection.CurrentCell.IsValid);
         Assert.False(g.Edit.IsEditing);
     }
 
-    [Fact(Skip = "Known defect (#45): Tab is a keyboard trap; at the last editable cell it should leave the grid unhandled")]
+    [Fact]
     public void Tab_AtTheLastEditableCell_IsLeftUnhandled()
     {
         var g = Grid(rows: 2);
@@ -675,20 +867,168 @@ public class KeyboardNavigationTests
         var e = g.Key(KumikoKey.Tab);
 
         Assert.False(e.Handled);
+        Assert.Equal(new CellPosition(1, 4), g.Selection.CurrentCell);
+        Assert.False(g.Edit.IsEditing);
     }
 
-    [Fact(Skip = "Known defect (#45): Tab ignores EditTriggers.None and starts an edit anyway")]
+    [Fact]
+    public void Tab_BeforeTrailingReadOnlyColumnsOfTheLastRow_IsLeftUnhandled()
+    {
+        var g = Grid(rows: 2, configure: x =>
+        {
+            x.Dept.IsReadOnly = true;
+            x.Score.AllowTabStop = false;
+        });
+        g.Select(1, 2);
+
+        Assert.False(g.Key(KumikoKey.Tab).Handled);
+        Assert.Equal(new CellPosition(1, 2), g.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void ShiftTab_AtTheFirstEditableCell_IsLeftUnhandled()
+    {
+        var g = Grid(configure: x => x.Name.IsReadOnly = true);
+        g.Select(0, 1);
+
+        var e = g.Key(KumikoKey.Tab, InputModifiers.Shift);
+
+        Assert.False(e.Handled);
+        Assert.Equal(new CellPosition(0, 1), g.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void Tab_WhenNoColumnIsATabStop_IsLeftUnhandled()
+    {
+        // A display-only grid with many rows: the search is bounded by rows, not rows x columns.
+        var g = new InputGrid(rows: 50_000, configure: x =>
+        {
+            foreach (var c in x.Source.Columns) c.IsReadOnly = true;
+        });
+        g.Select(0, 0);
+
+        Assert.False(g.Key(KumikoKey.Tab).Handled);
+        Assert.False(g.Key(KumikoKey.Tab, InputModifiers.Shift).Handled);
+        Assert.Equal(new CellPosition(0, 0), g.Selection.CurrentCell);
+    }
+
+    [Fact]
     public void Tab_WithEditingDisabled_DoesNotBeginAnEdit()
     {
         var g = Grid(configure: x => x.Edit.EditTriggers = EditTrigger.None);
         g.Select(0, 0);
 
-        g.Key(KumikoKey.Tab);
+        var e = g.Key(KumikoKey.Tab);
 
+        Assert.False(g.Edit.IsEditing);
+        Assert.True(e.Handled);
+        Assert.Equal(new CellPosition(0, 1), g.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void Tab_IntoAColumnWithEditingDisabled_OnlyMoves()
+    {
+        var g = Grid(configure: x => x.Age.EditTriggers = EditTrigger.None);
+        g.Select(0, 0);
+
+        g.Key(KumikoKey.Tab);
+        Assert.Equal(new CellPosition(0, 1), g.Selection.CurrentCell);
+        Assert.False(g.Edit.IsEditing);
+
+        g.Key(KumikoKey.Tab);
+        Assert.Equal(new CellPosition(0, 2), g.Selection.CurrentCell);
+        Assert.True(g.Edit.IsEditing);
+    }
+
+    [Fact]
+    public void Tab_WhileEditingTheLastEditableCell_CommitsAndIsLeftUnhandled()
+    {
+        var g = Grid(rows: 2);
+        g.Select(1, 0);
+        g.Key(KumikoKey.End);
+        g.Key(KumikoKey.F2);
+        Assert.True(g.Edit.IsEditing);
+
+        var e = g.Key(KumikoKey.Tab);
+
+        Assert.False(e.Handled);
+        Assert.False(g.Edit.IsEditing);
+        Assert.False(g.Selection.IsEditing);
+        Assert.Equal(new CellPosition(1, 4), g.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void Tab_WhileEditing_IntoAColumnWithEditingDisabled_CommitsAndOnlyMoves()
+    {
+        var g = Grid(configure: x => x.Age.EditTriggers = EditTrigger.None);
+        g.Select(0, 0);
+        g.Type('W');
+
+        Assert.True(g.Key(KumikoKey.Tab).Handled);
+
+        Assert.Equal("W", g.Items[0].Name);
+        Assert.Equal(new CellPosition(0, 1), g.Selection.CurrentCell);
         Assert.False(g.Edit.IsEditing);
     }
 
-    [Fact(Skip = "Known defect (#45): Enter does nothing in normal mode; it should begin an edit")]
+    [Fact]
+    public void ShiftTab_SkipsGroupHeaderRows()
+    {
+        var g = Grid(rows: 4, configure: x => x.Source.AddGroupDescription(new GroupDescription("City")));
+        // Rows: 0 header, 1 and 2 data, 3 header, 4 and 5 data.
+        g.Select(4, 0);
+
+        g.Key(KumikoKey.Tab, InputModifiers.Shift);
+
+        Assert.Equal(new CellPosition(2, 4), g.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void Tab_FromAGroupHeaderRow_GoesToTheFirstCellOfTheNextDataRow()
+    {
+        var g = Grid(rows: 4, configure: x => x.Source.AddGroupDescription(new GroupDescription("City")));
+        g.Select(3, 2);
+
+        Assert.True(g.Key(KumikoKey.Tab).Handled);
+
+        Assert.Equal(new CellPosition(4, 0), g.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void Tab_ScrollsTheNextCellIntoView()
+    {
+        var g = Grid();
+        g.Select(5, 4);
+
+        g.Key(KumikoKey.Tab); // row 6: bottom 252 against 216 visible; Name back at x 0
+
+        Assert.Equal(new CellPosition(6, 0), g.Selection.CurrentCell);
+        Assert.Equal(36, g.Scroll.OffsetY);
+        Assert.Equal(0, g.Scroll.OffsetX);
+    }
+
+    [Fact]
+    public void WouldHandleTab_MatchesHandleKey()
+    {
+        var g = Grid(rows: 2);
+
+        Assert.False(g.Input.WouldHandleTab(g.Selection, g.Source, backwards: false)); // no current cell
+
+        g.Select(0, 0);
+        Assert.True(g.Input.WouldHandleTab(g.Selection, g.Source, backwards: false));
+        Assert.False(g.Input.WouldHandleTab(g.Selection, g.Source, backwards: true));
+
+        g.Select(1, 4);
+        Assert.False(g.Input.WouldHandleTab(g.Selection, g.Source, backwards: false));
+        Assert.True(g.Input.WouldHandleTab(g.Selection, g.Source, backwards: true));
+
+        g.Key(KumikoKey.F2); // an open edit: Tab commits first, so it is always processed
+        Assert.True(g.Input.WouldHandleTab(g.Selection, g.Source, backwards: false));
+    }
+
+    // ── Enter ──
+
+    [Fact]
     public void Enter_BeginsAnEditOfTheCurrentCell()
     {
         var g = Grid();
@@ -698,18 +1038,113 @@ public class KeyboardNavigationTests
 
         Assert.True(e.Handled);
         Assert.True(g.Edit.IsEditing);
+        Assert.Equal(new CellPosition(2, 0), g.Edit.EditCell);
     }
 
     [Fact]
-    public void Enter_InNormalMode_IsNotHandledOnADataRow()
+    public void Enter_ScrollsTheCellIntoViewBeforeEditing()
     {
         var g = Grid();
-        g.Select(2, 0);
+        g.Select(10, 4);
+
+        g.Key(KumikoKey.Enter);
+
+        Assert.True(g.Edit.IsEditing);
+        Assert.Equal(10 * 36 + 36 - 216, g.Scroll.OffsetY);
+        Assert.Equal(200, g.Scroll.OffsetX);
+    }
+
+    [Fact]
+    public void Enter_WithoutTheF2Trigger_IsLeftUnhandled()
+    {
+        var g = Grid(configure: x => x.Age.EditTriggers = EditTrigger.DoubleTap | EditTrigger.Typing);
+        g.Select(2, 1);
 
         var e = g.Key(KumikoKey.Enter);
 
         Assert.False(e.Handled);
-        Assert.Equal(new CellPosition(2, 0), g.Selection.CurrentCell);
+        Assert.False(g.Edit.IsEditing);
+        Assert.Equal(new CellPosition(2, 1), g.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void Enter_WithEditingDisabled_OrOnAReadOnlyCell_OrWithoutACurrentCell_IsLeftUnhandled()
+    {
+        var none = Grid(configure: x => x.Edit.EditTriggers = EditTrigger.None);
+        none.Select(2, 0);
+        Assert.False(none.Key(KumikoKey.Enter).Handled);
+        Assert.False(none.Edit.IsEditing);
+
+        var readOnly = Grid(configure: x => x.Name.IsReadOnly = true);
+        readOnly.Select(2, 0);
+        Assert.False(readOnly.Key(KumikoKey.Enter).Handled);
+        Assert.False(readOnly.Edit.IsEditing);
+
+        var empty = Grid();
+        Assert.False(empty.Key(KumikoKey.Enter).Handled);
+    }
+
+    [Fact]
+    public void Enter_WhenBeginEditIsCanceled_IsLeftUnhandled()
+    {
+        var g = Grid(configure: x => x.Edit.CellBeginEdit += (_, a) => a.Cancel = true);
+        g.Select(2, 0);
+
+        Assert.False(g.Key(KumikoKey.Enter).Handled);
+        Assert.False(g.Edit.IsEditing);
+    }
+
+    // ── Escape ──
+
+    [Fact]
+    public void Escape_WithNothingSelected_IsLeftUnhandled()
+    {
+        var g = Grid();
+
+        Assert.False(g.Key(KumikoKey.Escape).Handled);
+    }
+
+    // ── Space on Boolean cells ──
+
+    [Fact]
+    public void Space_TogglesTheCurrentBooleanCell_EachPress()
+    {
+        var g = BooleanColumnGrid.Create();
+        g.Select(0, 0);
+
+        Assert.True(g.Key(KumikoKey.Space).Handled);
+        Assert.True(g.Items[0].On);
+        g.Key(KumikoKey.Space);
+        Assert.False(g.Items[0].On);
+        Assert.False(g.Selection.IsRowSelected(0)); // the row selection is left alone
+    }
+
+    [Fact]
+    public void Space_OnAReadOnlyOrDisabledBooleanCell_TogglesTheRowSelectionInstead()
+    {
+        var readOnly = BooleanColumnGrid.Create(configure: c => c.IsReadOnly = true);
+        readOnly.Select(0, 0);
+        Assert.True(readOnly.Key(KumikoKey.Space).Handled);
+        Assert.False(readOnly.Items[0].On);
+        Assert.True(readOnly.Selection.IsRowSelected(0));
+
+        var disabled = BooleanColumnGrid.Create(EditTrigger.None);
+        disabled.Select(0, 0);
+        disabled.Key(KumikoKey.Space);
+        Assert.False(disabled.Items[0].On);
+        Assert.True(disabled.Selection.IsRowSelected(0));
+    }
+
+    [Fact]
+    public void Space_OnABooleanCell_GoesThroughTheValidator()
+    {
+        var g = BooleanColumnGrid.Create();
+        g.Edit.CellValidator = (_, _, _) => CellValidationResult.Error("No.");
+        g.Select(0, 0);
+
+        g.Key(KumikoKey.Space);
+
+        Assert.False(g.Items[0].On);
     }
 
     // ── Group header keys ──

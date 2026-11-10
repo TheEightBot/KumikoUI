@@ -38,6 +38,10 @@ public class KumikoInputController
     // Tracks the original press position for more accurate first-move
     private float _pressOriginX, _pressOriginY;
 
+    // The Boolean cell that the first tap of a possible double-tap toggled, so the second tap doesn't
+    // toggle it back.
+    private CellPosition _lastTapToggledCell = CellPosition.Invalid;
+
     // When the editor consumes a pointer-down (e.g. selecting a dropdown item which
     // immediately ends the edit session), the subsequent pointer-up must also be
     // suppressed so it doesn't fall through to grid-level hit-testing.
@@ -65,10 +69,15 @@ public class KumikoInputController
     public event Action? NeedsRedraw;
     /// <summary>Raised when the mouse cursor style should change. <c>true</c> indicates a resize cursor; <c>false</c> restores the default cursor.</summary>
     public event Action<bool>? CursorChanged;  // true = resize cursor, false = default
+    /// <summary>Raised when the user finishes resizing a column by dragging its header edge.</summary>
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized;
+    /// <summary>Raised when the user drops a dragged column header at a new position.</summary>
     public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered;
+    /// <summary>Raised when the user drops a dragged row at a new position.</summary>
     public event EventHandler<RowReorderedEventArgs>? RowReordered;
+    /// <summary>Raised when a data cell is tapped (after the selection is updated).</summary>
     public event EventHandler<RowTappedEventArgs>? RowTapped;
+    /// <summary>Raised on the second tap of a double-tap on a data cell.</summary>
     public event EventHandler<RowTappedEventArgs>? RowDoubleTapped;
 
     /// <summary>Gets the popup manager for drawing overlays.</summary>
@@ -213,21 +222,22 @@ public class KumikoInputController
                     return;
 
                 case KumikoKey.Tab:
-                    if (_editSession.CommitEdit(dataSource))
+                    // A refused commit keeps the editor open and the focus in the grid.
+                    if (!_editSession.CommitEdit(dataSource))
                     {
-                        selection.IsEditing = false;
-                        // Tab: move right, Shift+Tab: move left
-                        if (e.HasShift)
-                            NavigateToNextEditableCell(selection, dataSource, scroll, style, -1);
-                        else
-                            NavigateToNextEditableCell(selection, dataSource, scroll, style, 1);
-
-                        // Automatically begin editing the next cell for seamless tabbing
-                        TryBeginEdit(selection, dataSource, scroll, style, null);
-
-                        Redraw();
+                        e.Handled = true;
+                        return;
                     }
-                    e.Handled = true;
+
+                    selection.IsEditing = false;
+                    // Tab: next tab stop, Shift+Tab: previous one. Past the last (or first) the edit is
+                    // committed and the key is left unhandled, so the host moves focus out of the grid.
+                    if (MoveToNextTabStop(selection, dataSource, scroll, style, e.HasShift ? -1 : 1))
+                    {
+                        BeginEditAfterTab(selection, dataSource, scroll, style);
+                        e.Handled = true;
+                    }
+                    Redraw();
                     return;
 
                 default:
@@ -306,8 +316,17 @@ public class KumikoInputController
 
         switch (e.Key)
         {
+            case KumikoKey.Enter:
+                // Enter opens the editor of the current cell, like F2 (column- or grid-level F2Key trigger).
+                // Otherwise it is left unhandled, so the page's default button still works.
+                if (_editSession != null && selection.CurrentCell.IsValid &&
+                    (GetEffectiveEditTriggers(ColumnAt(dataSource, selection.CurrentCell.Column)) & EditTrigger.F2Key) != 0)
+                {
+                    e.Handled = TryBeginEdit(selection, dataSource, scroll, style, null);
+                }
+                break;
             case KumikoKey.F2:
-                // F2 → begin editing the current cell (honours column- and grid-level F2Key flag)
+                // F2 → begin editing the current cell (honors column- and grid-level F2Key flag)
                 if (_editSession != null && selection.CurrentCell.IsValid)
                 {
                     int f2Col = selection.CurrentCell.Column;
@@ -377,27 +396,36 @@ public class KumikoInputController
                 }
                 break;
             case KumikoKey.Escape:
-                selection.Clear();
-                Redraw();
-                e.Handled = true;
+                // Clears the selection and the current cell; with nothing to clear the key is left to the host.
+                if (selection.CurrentCell.IsValid || selection.SelectedItems.Count > 0)
+                {
+                    selection.Clear();
+                    Redraw();
+                    e.Handled = true;
+                }
                 break;
             case KumikoKey.Tab:
-                // Tab in normal mode: navigate to next editable cell and begin editing
-                if (selection.CurrentCell.IsValid)
+                // Tab moves to the next tab stop (Shift+Tab the previous one) and edits it when the column's
+                // edit triggers allow. With no current cell, or past the last (first) tab stop, the key is
+                // left unhandled so the host moves focus out of the grid: Tab is never a keyboard trap.
+                if (selection.CurrentCell.IsValid &&
+                    MoveToNextTabStop(selection, dataSource, scroll, style, e.HasShift ? -1 : 1))
                 {
-                    if (e.HasShift)
-                        NavigateToNextEditableCell(selection, dataSource, scroll, style, -1);
-                    else
-                        NavigateToNextEditableCell(selection, dataSource, scroll, style, 1);
-
-                    TryBeginEdit(selection, dataSource, scroll, style, null);
+                    BeginEditAfterTab(selection, dataSource, scroll, style);
                     Redraw();
+                    e.Handled = true;
                 }
-                e.Handled = true;
                 break;
             case KumikoKey.Space:
-                // Toggle selection on current row
-                if (selection.CurrentCell.IsValid)
+                // Space toggles the current Boolean cell; on any other cell it toggles the row's selection.
+                if (!e.HasControl && !e.HasShift && CanToggleBooleanCell(selection.CurrentCell, dataSource))
+                {
+                    var current = selection.CurrentCell;
+                    _editSession!.ToggleBooleanCell(current.Row, current.Column, dataSource.Columns[current.Column], dataSource);
+                    Redraw();
+                    e.Handled = true;
+                }
+                else if (selection.CurrentCell.IsValid)
                 {
                     selection.HandleRowSelection(selection.CurrentCell.Row, false, true);
                     Redraw();
@@ -794,6 +822,22 @@ public class KumikoInputController
             return;
         }
 
+        if (hit.Region == HitRegion.EmptyArea && selection.ClearSelectionOnEmptyAreaTap &&
+            IsInRowsArea(e.Y, scroll, style, dataSource))
+        {
+            // A tap on the empty part of the rows area (below the last row, right of the last column)
+            // commits an open edit and clears the selection; a refused commit keeps both.
+            _lastTapToggledCell = CellPosition.Invalid;
+            if (CommitEditBeforeViewChange(dataSource, selection) &&
+                (selection.CurrentCell.IsValid || selection.SelectedItems.Count > 0))
+            {
+                selection.Clear();
+                Redraw();
+            }
+            e.Handled = true;
+            return;
+        }
+
         if (hit.Region == HitRegion.Cell && hit.RowIndex >= 0)
         {
             bool shift = (e.Modifiers & InputModifiers.Shift) != 0;
@@ -813,20 +857,27 @@ public class KumikoInputController
             RowTapped?.Invoke(this, new RowTappedEventArgs(
                 hit.RowIndex, hit.ColumnIndex, dataSource.GetItem(hit.RowIndex)));
 
+            var tappedCell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
+            bool isBooleanCell = hit.Column?.ColumnType == KumikoColumnType.Boolean;
+
             if (e.ClickCount == 2)
             {
                 RowDoubleTapped?.Invoke(this, new RowTappedEventArgs(
                     hit.RowIndex, hit.ColumnIndex, dataSource.GetItem(hit.RowIndex)));
 
+                // The second tap of a double-tap toggles a Boolean cell (DoubleTap trigger) unless the first
+                // tap already did: a double-tap never toggles twice.
+                bool toggledByFirstTap = _lastTapToggledCell == tappedCell;
+                _lastTapToggledCell = CellPosition.Invalid;
+
                 // Double-tap edit trigger
                 if (_editSession != null && hit.Column != null &&
                     (GetEffectiveEditTriggers(hit.Column) & EditTrigger.DoubleTap) != 0)
                 {
-                    // Boolean toggle on double-tap
-                    if (hit.Column.ColumnType == KumikoColumnType.Boolean)
+                    if (isBooleanCell)
                     {
-                        _editSession.ToggleBooleanCell(
-                            hit.RowIndex, hit.ColumnIndex, hit.Column, dataSource);
+                        if (!toggledByFirstTap)
+                            _editSession.ToggleBooleanCell(hit.RowIndex, hit.ColumnIndex, hit.Column, dataSource);
                     }
                     else
                     {
@@ -836,11 +887,19 @@ public class KumikoInputController
             }
             else if (e.ClickCount == 1 && hit.Column != null)
             {
-                // Single-tap toggle for boolean cells (more natural than double-tap)
-                if (hit.Column.ColumnType == KumikoColumnType.Boolean && _editSession != null)
+                _lastTapToggledCell = CellPosition.Invalid;
+
+                if (isBooleanCell)
                 {
-                    _editSession.ToggleBooleanCell(
-                        hit.RowIndex, hit.ColumnIndex, hit.Column, dataSource);
+                    // A single tap toggles a Boolean cell when it lands on the check box, or anywhere in the
+                    // cell with the SingleTap trigger; elsewhere it only selects. EditTriggers=None never toggles.
+                    if (CanToggleBooleanCell(tappedCell, dataSource) &&
+                        ((GetEffectiveEditTriggers(hit.Column) & EditTrigger.SingleTap) != 0 ||
+                         IsOnCheckBox(e.X, e.Y, tappedCell, scroll, style, dataSource)))
+                    {
+                        _editSession!.ToggleBooleanCell(hit.RowIndex, hit.ColumnIndex, hit.Column, dataSource);
+                        _lastTapToggledCell = tappedCell;
+                    }
                 }
                 // Single-tap edit trigger for non-boolean cells
                 else if (_editSession != null &&
@@ -1063,6 +1122,12 @@ public class KumikoInputController
             - frozenRowHeight - pinnedFooterHeight;
     }
 
+    /// <summary>
+    /// Scroll so the current cell is fully visible. Vertically a scrollable row is kept between the fixed bands
+    /// (grouping panel, header, top summaries, frozen rows) and the pinned bottom summary footer; a frozen row
+    /// needs no scroll. Horizontally a scrollable column is kept between the left-frozen columns and the
+    /// right-frozen columns, net of the row drag handle; a frozen column needs no scroll.
+    /// </summary>
     private void EnsureCurrentCellVisible(
         ScrollState scroll, KumikoSelectionModel selection,
         KumikoStyle style, IReadOnlyList<KumikoColumn> columns,
@@ -1120,14 +1185,18 @@ public class KumikoInputController
         if (col >= 0 && col < columns.Count)
             colRight += columns[col].Width;
 
-        // Scrollable area: starts at frozenWidth, ends at viewportWidth - rightFrozenWidth
+        // The row drag handle (left or right) takes viewport width from the columns as well
+        float handleWidth = style.ShowRowDragHandle ? style.RowDragHandleWidth : 0;
+
+        // Scrollable area: starts at frozenWidth, ends at viewportWidth - drag handle - rightFrozenWidth
+        float scrollableWidth = scroll.ViewportWidth - handleWidth - rightFrozenWidth;
         float scrollableLeft = scroll.OffsetX + frozenWidth;
-        float scrollableRight = scroll.OffsetX + scroll.ViewportWidth - rightFrozenWidth;
+        float scrollableRight = scroll.OffsetX + scrollableWidth;
 
         if (colLeft < scrollableLeft)
             scroll.OffsetX = colLeft - frozenWidth;
         else if (colRight > scrollableRight)
-            scroll.OffsetX = colRight - (scroll.ViewportWidth - rightFrozenWidth);
+            scroll.OffsetX = colRight - scrollableWidth;
 
         scroll.ClampOffset();
     }
@@ -1269,25 +1338,25 @@ public class KumikoInputController
         => column?.EditTriggers ?? _editSession?.EditTriggers ?? EditTrigger.Default;
 
     /// <summary>
-    /// Try to begin editing the current cell.
+    /// Try to begin editing the current cell, after scrolling it into view. Returns whether an edit started.
     /// </summary>
-    private void TryBeginEdit(
+    private bool TryBeginEdit(
         KumikoSelectionModel selection, KumikoSource dataSource,
         ScrollState scroll, KumikoStyle style, char? initialCharacter,
         KumikoPointerEventArgs? triggeringTap = null)
     {
-        if (_editSession == null || !selection.CurrentCell.IsValid) return;
+        if (_editSession == null || !selection.CurrentCell.IsValid) return false;
 
         int row = selection.CurrentCell.Row;
         int col = selection.CurrentCell.Column;
-        if (col < 0 || col >= dataSource.Columns.Count) return;
-        if (row < 0 || row >= dataSource.RowCount) return;
+        if (col < 0 || col >= dataSource.Columns.Count) return false;
+        if (row < 0 || row >= dataSource.RowCount) return false;
 
         // Cannot edit group header or summary rows
-        if (dataSource.IsNonDataRow(row)) return;
+        if (dataSource.IsNonDataRow(row)) return false;
 
         var column = dataSource.Columns[col];
-        if (column.IsReadOnly) return;
+        if (column.IsReadOnly) return false;
 
         // Bring the cell fully into view first, so the editor never opens partly hidden under the
         // header/frozen rows or straddling the pinned bottom summary footer (which is drawn below the
@@ -1314,23 +1383,24 @@ public class KumikoInputController
         float groupPanelOffset = dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
         float topSummaryHeight = dataSource.TopSummaryCount * style.SummaryRowHeight;
         var cellBounds = GetCellScreenBounds(row, col, scroll, style, dataSource.Columns, groupPanelOffset, topSummaryHeight, dataSource);
-        if (cellBounds.Width <= 0 || cellBounds.Height <= 0) return;
+        if (cellBounds.Width <= 0 || cellBounds.Height <= 0) return false;
 
-        if (_editSession.BeginEdit(row, col, column, dataSource, cellBounds, initialCharacter))
+        if (!_editSession.BeginEdit(row, col, column, dataSource, cellBounds, initialCharacter))
+            return false;
+
+        selection.IsEditing = true;
+
+        // For editors that activate immediately (e.g. DrawnActionButtons), forward
+        // the triggering tap so the button fires on the very first touch.
+        if (triggeringTap != null)
         {
-            selection.IsEditing = true;
-
-            // For editors that activate immediately (e.g. DrawnActionButtons), forward
-            // the triggering tap so the button fires on the very first touch.
-            if (triggeringTap != null)
-            {
-                _editSession.TryForwardInitialTap(triggeringTap);
-                // Sync selection state in case the editor committed itself (e.g. button fired)
-                selection.IsEditing = _editSession.IsEditing;
-            }
-
-            Redraw();
+            _editSession.TryForwardInitialTap(triggeringTap);
+            // Sync selection state in case the editor committed itself (e.g. button fired)
+            selection.IsEditing = _editSession.IsEditing;
         }
+
+        Redraw();
+        return true;
     }
 
     /// <summary>
@@ -1429,69 +1499,134 @@ public class KumikoInputController
         return new KumikoRect(0, rowY, 0, style.RowHeight);
     }
 
+
+    // ── Tab stops ──────────────────────────────────────────────────
+
     /// <summary>
-    /// Navigate to the next editable cell in the given direction.
-    /// direction: +1 = right, -1 = left.
+    /// Whether <see cref="HandleKey"/> would handle Tab (Shift+Tab when <paramref name="backwards"/>) in the
+    /// current state. False means the key would be left unhandled — there is no current cell, or no further
+    /// tab stop in that direction — so a host that must claim Tab before it is processed (for example a
+    /// UIKit key command) can let focus leave the grid instead. While an edit is open Tab is always processed:
+    /// it commits first.
     /// </summary>
-    private void NavigateToNextEditableCell(
+    public bool WouldHandleTab(KumikoSelectionModel selection, KumikoSource dataSource, bool backwards)
+    {
+        ArgumentNullException.ThrowIfNull(selection);
+        ArgumentNullException.ThrowIfNull(dataSource);
+        if (_editSession != null && _editSession.IsEditing) return true;
+        return FindNextTabStop(selection.CurrentCell, dataSource, backwards ? -1 : 1).IsValid;
+    }
+
+    /// <summary>A Tab stop: a visible, editable column that allows tab stops.</summary>
+    private static bool IsTabStop(KumikoColumn column) =>
+        column.IsVisible && column.AllowTabStop && !column.IsReadOnly;
+
+    /// <summary>
+    /// The next tab stop after <paramref name="from"/> in reading order (direction +1) or before it (-1),
+    /// skipping group header and summary rows; <see cref="CellPosition.Invalid"/> when there is none. Tab stop
+    /// columns are the same in every row, so they are found once and the search walks rows, never
+    /// rows × columns cells.
+    /// </summary>
+    private static CellPosition FindNextTabStop(CellPosition from, KumikoSource dataSource, int direction)
+    {
+        if (!from.IsValid) return CellPosition.Invalid;
+
+        var columns = dataSource.Columns;
+        int firstStop = -1, lastStop = -1, nextInRow = -1;
+        for (int c = 0; c < columns.Count; c++)
+        {
+            if (!IsTabStop(columns[c])) continue;
+            if (firstStop < 0) firstStop = c;
+            lastStop = c;
+            if (direction > 0 ? c > from.Column && nextInRow < 0 : c < from.Column)
+                nextInRow = c;
+        }
+        if (firstStop < 0) return CellPosition.Invalid;
+
+        int totalRows = dataSource.RowCount;
+        int row = from.Row;
+        if (row >= 0 && row < totalRows && !dataSource.IsNonDataRow(row) && nextInRow >= 0)
+            return new CellPosition(row, nextInRow);
+
+        // Wrap to the first (last) tab stop of the next (previous) data row
+        row += direction;
+        while (row >= 0 && row < totalRows && dataSource.IsNonDataRow(row))
+            row += direction;
+        if (row < 0 || row >= totalRows) return CellPosition.Invalid;
+
+        return new CellPosition(row, direction > 0 ? firstStop : lastStop);
+    }
+
+    /// <summary>
+    /// Move the current cell to the next tab stop in <paramref name="direction"/> (+1 forward, -1 back), select
+    /// its row and scroll it into view. Returns false, changing nothing, when there is no further tab stop.
+    /// </summary>
+    private bool MoveToNextTabStop(
         KumikoSelectionModel selection, KumikoSource dataSource,
         ScrollState scroll, KumikoStyle style, int direction)
     {
-        if (!selection.CurrentCell.IsValid) return;
+        var target = FindNextTabStop(selection.CurrentCell, dataSource, direction);
+        if (!target.IsValid) return false;
 
-        int totalCols = dataSource.Columns.Count;
-        int totalRows = dataSource.RowCount;
-        int row = selection.CurrentCell.Row;
-        int col = selection.CurrentCell.Column;
-        int startRow = row;
-        int startCol = col;
+        selection.CurrentCell = target;
+        selection.HandleRowSelection(target.Row, false, false);
+        EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
+        return true;
+    }
 
-        // Search for the next cell that allows tab stop and is not read-only
-        int maxIterations = totalCols * totalRows; // prevent infinite loop
-        int iterations = 0;
-
-        while (iterations++ < maxIterations)
-        {
-            // Move to next/previous cell
-            col += direction;
-
-            // Wrap to next/previous row if needed
-            if (col >= totalCols)
-            {
-                col = 0;
-                row++;
-            }
-            else if (col < 0)
-            {
-                col = totalCols - 1;
-                row--;
-            }
-
-            // Skip group header and summary rows
-            while (row >= 0 && row < totalRows && dataSource.IsNonDataRow(row))
-                row += direction > 0 ? 1 : -1;
-
-            // Bounds check
-            if (row < 0 || row >= totalRows) return;
-
-            // Check if we wrapped all the way around
-            if (row == startRow && col == startCol) return;
-
-            var column = dataSource.Columns[col];
-
-            // Skip columns that don't allow tab stop or are not visible
-            if (!column.AllowTabStop || !column.IsVisible)
-                continue;
-
-            // Skip read-only columns (can't edit them)
-            if (column.IsReadOnly)
-                continue;
-
-            // Found a valid target cell
-            selection.CurrentCell = new CellPosition(row, col);
-            selection.HandleRowSelection(row, false, false);
-            EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
+    /// <summary>
+    /// After Tab moves to a cell, open its editor unless the column's edit triggers are
+    /// <see cref="EditTrigger.None"/> (editing disabled): Tab then only navigates.
+    /// </summary>
+    private void BeginEditAfterTab(
+        KumikoSelectionModel selection, KumikoSource dataSource,
+        ScrollState scroll, KumikoStyle style)
+    {
+        if (GetEffectiveEditTriggers(ColumnAt(dataSource, selection.CurrentCell.Column)) == EditTrigger.None)
             return;
-        }
+        TryBeginEdit(selection, dataSource, scroll, style, null);
+    }
+
+    // ── Boolean cells ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Whether <paramref name="cell"/> is an editable Boolean data cell that a tap or Space may toggle: there is
+    /// an edit session, the column is a Boolean column that is not read-only and whose edit triggers are not
+    /// <see cref="EditTrigger.None"/>.
+    /// </summary>
+    private bool CanToggleBooleanCell(CellPosition cell, KumikoSource dataSource)
+    {
+        if (_editSession == null || !cell.IsValid) return false;
+        if (cell.Row >= dataSource.RowCount || dataSource.IsNonDataRow(cell.Row)) return false;
+        var column = ColumnAt(dataSource, cell.Column);
+        return column is { ColumnType: KumikoColumnType.Boolean, IsReadOnly: false } &&
+               GetEffectiveEditTriggers(column) != EditTrigger.None;
+    }
+
+    /// <summary>Whether viewport point (<paramref name="x"/>, <paramref name="y"/>) is on the check box of a Boolean cell.</summary>
+    private bool IsOnCheckBox(float x, float y, CellPosition cell, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    {
+        float groupPanelOffset = dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
+        float topSummaryHeight = dataSource.TopSummaryCount * style.SummaryRowHeight;
+        var cellBounds = GetCellScreenBounds(cell.Row, cell.Column, scroll, style, dataSource.Columns,
+            groupPanelOffset, topSummaryHeight, dataSource);
+        return BooleanCellRenderer.GetCheckBoxHitBounds(cellBounds).Contains(x, y);
+    }
+
+    // ── Misc helpers ──────────────────────────────────────────────
+
+    private static KumikoColumn? ColumnAt(KumikoSource dataSource, int column) =>
+        column >= 0 && column < dataSource.Columns.Count ? dataSource.Columns[column] : null;
+
+    /// <summary>
+    /// Whether viewport y <paramref name="y"/> is in the rows area: below the grouping panel, header and top
+    /// summaries, and above the pinned bottom summary footer.
+    /// </summary>
+    private static bool IsInRowsArea(float y, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    {
+        float top = (dataSource.IsGroupingActive ? style.GroupPanelHeight : 0) + style.HeaderHeight
+            + dataSource.TopSummaryCount * style.SummaryRowHeight;
+        float bottom = scroll.ViewportHeight - style.GetPinnedBottomSummaryHeight(dataSource.BottomSummaryCount);
+        return y >= top && y < bottom;
     }
 }

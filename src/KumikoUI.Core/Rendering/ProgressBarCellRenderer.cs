@@ -142,7 +142,7 @@ public class ProgressBarCellRenderer : ICellRenderer
     /// <summary>The label font: one point smaller than <paramref name="cellFont"/>, but not below 9.</summary>
     private KumikoFont TextFont(KumikoFont cellFont)
     {
-        if (_textFont == null || !ReferenceEquals(cellFont.Family, _textFontFamily) || cellFont.Size != _textFontSourceSize)
+        if (_textFont == null || !ReferenceEquals(cellFont.Family, _textFontFamily) || !cellFont.Size.Equals(_textFontSourceSize)) // exact: cache change detection
         {
             _textFont = new KumikoFont(cellFont.Family, Math.Max(9, cellFont.Size - 1));
             _textFontFamily = cellFont.Family;

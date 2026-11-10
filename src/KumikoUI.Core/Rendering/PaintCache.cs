@@ -411,7 +411,7 @@ public class PaintCache
     {
         if (ReferenceEquals(headerFont, _badgeSourceFont)
             && ReferenceEquals(headerFont.Family, _badgeSourceFamily)
-            && headerFont.Size == _badgeSourceSize)
+            && headerFont.Size.Equals(_badgeSourceSize)) // exact: cache change detection, not a numeric tolerance
             return;
 
         _badgeSourceFont = headerFont;
