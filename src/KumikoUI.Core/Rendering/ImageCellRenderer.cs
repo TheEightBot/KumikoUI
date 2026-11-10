@@ -15,13 +15,11 @@ public class ImageCellRenderer : ICellRenderer
     /// </summary>
     public Func<object?, object?>? ImageResolver { get; set; }
 
-    public void Render(
-        IDrawingContext ctx, KumikoRect cellRect, object? value,
-        string displayText, KumikoColumn column,
-        KumikoStyle style, bool isSelected,
-        KumikoCellStyle? cellStyle = null)
+    /// <inheritdoc />
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
     {
-        var image = ImageResolver != null ? ImageResolver(value) : value;
+        var cellRect = cell.Bounds;
+        var image = ImageResolver != null ? ImageResolver(cell.Value) : cell.Value;
         if (image == null) return;
 
         // Fit the image within the cell, maintaining aspect ratio,

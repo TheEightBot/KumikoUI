@@ -58,4 +58,20 @@ public static class ActionButtonLayout
         }
         return -1;
     }
+
+    /// <summary>
+    /// The rect of button <paramref name="index"/> of the layout <see cref="ComputeButtonRects"/> computes, without
+    /// allocating a list (for drawing every frame). The caller ensures <paramref name="count"/> is positive and
+    /// <paramref name="bounds"/> is not empty.
+    /// </summary>
+    internal static KumikoRect ComputeButtonRect(KumikoRect bounds, int count, int index, float padding, float spacing)
+    {
+        float totalSpacing = spacing * (count - 1);
+        float btnW = (bounds.Width - padding * 2 - totalSpacing) / count;
+        float btnH = bounds.Height - padding * 2;
+        float x = bounds.X + padding;
+        for (int i = 0; i < index; i++)
+            x += btnW + spacing; // accumulated as ComputeButtonRects does, so both give the same rects
+        return new KumikoRect(x, bounds.Y + padding, MathF.Max(0, btnW), MathF.Max(0, btnH));
+    }
 }

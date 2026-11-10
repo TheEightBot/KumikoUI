@@ -15,6 +15,7 @@ jobs:
   analyze:
     name: Analyze (C#)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       security-events: write   # upload results to code scanning

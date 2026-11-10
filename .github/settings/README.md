@@ -14,7 +14,7 @@ The script is idempotent: rulesets are updated in place by name, and the environ
 
 | Setting | File | Effect |
 |---|---|---|
-| `main` ruleset | `ruleset-main.json` | Changes reach `main` only through pull requests. The three CI jobs must pass (`Build & Test (Core + SkiaSharp)`, `Build (KumikoUI.Maui — all TFMs)`, `Build & Test (KumikoUI.Uno — all heads)`). Review threads must be resolved. History stays linear, so pull requests merge by squash or rebase. No force pushes or deletion. Admins may bypass only through a pull request. |
+| `main` ruleset | `ruleset-main.json` | Changes reach `main` only through pull requests. The three CI jobs must pass (`Build & Test (Core + SkiaSharp)`, `Build (KumikoUI.Maui — all TFMs)`, `Build & Test (KumikoUI.Uno — all heads)`). Review threads must be resolved. History stays linear, so pull requests merge by squash or rebase. No force pushes or deletion. Admins may bypass only through a pull request. Documentation-only pull requests skip the build jobs through the `changes` job in `ci.yml` (a skipped job counts as passed), so the required check names stay stable. |
 | `release-tags` ruleset | `ruleset-release-tags.json` | Only admins can create, move or delete `v*` tags, the tags that publish packages. |
 | `nuget-publish` environment | `eng/apply-github-settings.sh` | The publish job waits for approval by the configured reviewer and can only deploy from `v*` tags. |
 | Security features | `eng/apply-github-settings.sh` | Secret scanning with push protection, Dependabot alerts and Dependabot security updates. |

@@ -470,8 +470,9 @@ public class KumikoHitTester
             return new KumikoHitInfo { Region = HitRegion.EmptyArea };
 
         // Replicate the layout from DrawGroupingPanel
-        // "Grouped by:" label takes space first
-        float labelApproxWidth = 11 * style.GroupPanelLabelFont.Size * 0.6f; // "Grouped by:" ~ 11 chars
+        // The group panel label takes space first; there is no drawing context to measure it here, so
+        // approximate each character as 0.6 of the font size.
+        float labelApproxWidth = dataSource.Strings.GroupPanelLabel.Length * style.GroupPanelLabelFont.Size * 0.6f;
         float chipX = style.CellPadding + 2 + labelApproxWidth + 10;
         float chipHeight = 26;
         float chipY = (style.GroupPanelHeight - chipHeight) / 2;

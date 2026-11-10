@@ -99,12 +99,12 @@ Mirror `pack-maui` in [`publish.yml`](../../.github/workflows/publish.yml).
 - [x] **SkiaSharp native bits:** `SkiaSharp*` is pinned to `3.119.2` across all packages (via
   `<SkiaSharpVersion>` in the Uno csproj + explicit `SkiaSharp.Views.WinUI` 3.119.2) so a consuming app
   that references both `KumikoUI.Maui` and `KumikoUI.Uno` doesn't hit native version conflicts.
-- [x] **Transitive AndroidX `content/` in the nupkg (observed in [Phase 05](05-fonts-and-assets.md)):**
-  the multi-head pack pulls transitive AndroidX/AppCompat `content/` + `contentFiles/` resources (the
-  `abc_*` drawables/layouts) into the package from the `net9.0-android` head — ~1,200 entries in the
-  local `0.0.0-ci` dry-run. This is **acceptable** (cosmetic bloat from the Android head's resource
-  pipeline; the `net9.0-android` `lib/` assembly is still correct) and is left as-is. If trimming is
-  ever wanted it can be scoped with a `<None Remove>` / pack-exclude later.
+- [x] **Transitive AndroidX `content/` in the nupkg ([#66](https://github.com/TheEightBot/KumikoUI/issues/66)):**
+  the library no longer sets `GenerateLibraryLayout` (it ships no assets), and the package holds only `lib/`,
+  the README and the icon. The Uno SDK's implicit `Uno.WinUI.Lottie` and `Uno.WinUI.Graphics2DSK` are
+  `PrivateAssets="all"`, so the dependency groups carry only Core, SkiaSharp, SkiaSharp.*, `Uno.WinUI` and
+  `Microsoft.Extensions.Hosting.Abstractions`. [`eng/check-uno-package.sh`](../../eng/check-uno-package.sh)
+  asserts this in CI after the pack.
 - [x] **`Uno0001` not-implemented analyzer warnings:** the non-desktop heads emit `Uno0001` warnings for
   APIs not implemented on that head (e.g. `UIElement.IsHoldingEnabled`, `UIElement.CharacterReceived` on
   wasm/ios/android). These are **non-fatal** — `dotnet build`/`dotnet pack` exit 0; the input host
