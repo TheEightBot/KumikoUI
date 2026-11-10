@@ -1,143 +1,151 @@
 using KumikoUI.Core.Editing;
+using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
+using KumikoUI.Core.Tests.Input;
 
 namespace KumikoUI.Core.Tests;
 
 /// <summary>
-/// Tests that verify the column-level EditTrigger resolution semantics:
-///   - null column.EditTriggers → falls back to grid-level value
-///   - non-null column.EditTriggers → fully overrides grid-level value
-///   - EditTrigger.None on a column blocks all trigger-based editing for that column
-/// The resolution logic (GetEffectiveEditTriggers) lives in KumikoInputController but the
-/// semantics are fully expressed through the KumikoColumn model and are validated here
-/// using a simple inline resolution helper that mirrors the production code exactly.
+/// Which edit triggers start an edit, driven through the real input controller: a column's own
+/// <see cref="KumikoColumn.EditTriggers"/> fully replaces the grid-level triggers, a null column value
+/// inherits them, and <see cref="EditTrigger.None"/> on a column blocks every trigger for that column.
 /// </summary>
 public class EditTriggerResolutionTests
 {
-    // ── Mirrors the production resolution rule ──────────────────────────────
-    private static EditTrigger Resolve(KumikoColumn? column, EditTrigger gridLevel)
-        => column?.EditTriggers ?? gridLevel;
+    private const EditTrigger Every = EditTrigger.SingleTap | EditTrigger.DoubleTap | EditTrigger.F2Key |
+                                      EditTrigger.Typing | EditTrigger.LongPress;
 
-    // ── Null column (no column in scope) ────────────────────────────────────
-
-    [Fact]
-    public void Resolve_NullColumn_ReturnsGridLevel()
+    private static readonly EditTrigger[] Triggers =
     {
-        var result = Resolve(null, EditTrigger.Default);
-        Assert.Equal(EditTrigger.Default, result);
-    }
+        EditTrigger.SingleTap, EditTrigger.DoubleTap, EditTrigger.F2Key, EditTrigger.Typing, EditTrigger.LongPress,
+    };
 
-    [Fact]
-    public void Resolve_NullColumn_NoneGridLevel_ReturnsNone()
+    public static IEnumerable<object[]> EachTrigger() => Triggers.Select(t => new object[] { t });
+
+    /// <summary>Performs the gesture for one trigger on the Name cell of row 2.</summary>
+    private static void Perform(InputGrid g, EditTrigger trigger)
     {
-        var result = Resolve(null, EditTrigger.None);
-        Assert.Equal(EditTrigger.None, result);
-    }
-
-    // ── Column with null EditTriggers (inherit) ──────────────────────────────
-
-    [Fact]
-    public void Resolve_ColumnWithNullEditTriggers_ReturnsGridLevel()
-    {
-        var col = new KumikoColumn { EditTriggers = null };
-        var result = Resolve(col, EditTrigger.Default);
-        Assert.Equal(EditTrigger.Default, result);
-    }
-
-    [Theory]
-    [InlineData(EditTrigger.None)]
-    [InlineData(EditTrigger.SingleTap)]
-    [InlineData(EditTrigger.DoubleTap)]
-    [InlineData(EditTrigger.F2Key)]
-    [InlineData(EditTrigger.Typing)]
-    [InlineData(EditTrigger.LongPress)]
-    [InlineData(EditTrigger.Default)]
-    public void Resolve_ColumnWithNullEditTriggers_InheritsAnyGridLevel(EditTrigger gridLevel)
-    {
-        var col = new KumikoColumn { EditTriggers = null };
-        Assert.Equal(gridLevel, Resolve(col, gridLevel));
-    }
-
-    // ── Column with explicit EditTriggers (override) ─────────────────────────
-
-    [Fact]
-    public void Resolve_ColumnOverrideNone_BlocksEvenWhenGridAllowsAll()
-    {
-        var col = new KumikoColumn { EditTriggers = EditTrigger.None };
-        var result = Resolve(col, EditTrigger.Default);
-        Assert.Equal(EditTrigger.None, result);
-        Assert.Equal(0, (int)result);   // no flags set
-    }
-
-    [Fact]
-    public void Resolve_ColumnOverrideSingleTap_IgnoresGridDoubleTap()
-    {
-        var col = new KumikoColumn { EditTriggers = EditTrigger.SingleTap };
-        var result = Resolve(col, EditTrigger.DoubleTap | EditTrigger.F2Key | EditTrigger.Typing);
-        Assert.Equal(EditTrigger.SingleTap, result);
-        Assert.Equal(0, (int)(result & EditTrigger.DoubleTap));
-    }
-
-    [Fact]
-    public void Resolve_ColumnOverrideF2Only_DoesNotHaveTypingFlag()
-    {
-        var col = new KumikoColumn { EditTriggers = EditTrigger.F2Key };
-        var result = Resolve(col, EditTrigger.Default);
-        Assert.True((result & EditTrigger.F2Key) != 0);
-        Assert.Equal(0, (int)(result & EditTrigger.Typing));
-        Assert.Equal(0, (int)(result & EditTrigger.DoubleTap));
-    }
-
-    [Fact]
-    public void Resolve_ColumnOverrideCombined_ReturnsCombined()
-    {
-        var col = new KumikoColumn
+        switch (trigger)
         {
-            EditTriggers = EditTrigger.SingleTap | EditTrigger.F2Key
-        };
-        var result = Resolve(col, EditTrigger.DoubleTap);   // grid has DoubleTap only
-        Assert.Equal(EditTrigger.SingleTap | EditTrigger.F2Key, result);
-        Assert.Equal(0, (int)(result & EditTrigger.DoubleTap));
+            case EditTrigger.SingleTap: g.Tap(60, g.RowY(2)); break;
+            case EditTrigger.DoubleTap: g.Tap(60, g.RowY(2), clicks: 2); break;
+            case EditTrigger.F2Key: g.Select(2, 0); g.Key(KumikoKey.F2); break;
+            case EditTrigger.Typing: g.Select(2, 0); g.Type('x'); break;
+            case EditTrigger.LongPress: g.Pointer(InputAction.LongPress, 60, g.RowY(2)); break;
+            default: throw new ArgumentOutOfRangeException(nameof(trigger));
+        }
     }
-
-    // ── Different columns can carry independent trigger sets ─────────────────
-
-    [Fact]
-    public void Resolve_TwoColumns_ReturnIndependentValues()
-    {
-        var salary = new KumikoColumn { EditTriggers = EditTrigger.DoubleTap };
-        var name   = new KumikoColumn { EditTriggers = EditTrigger.SingleTap | EditTrigger.F2Key };
-        var id     = new KumikoColumn { EditTriggers = EditTrigger.None };
-        var notes  = new KumikoColumn { EditTriggers = null };  // inherit
-
-        EditTrigger gridLevel = EditTrigger.Default;
-
-        Assert.Equal(EditTrigger.DoubleTap,                      Resolve(salary, gridLevel));
-        Assert.Equal(EditTrigger.SingleTap | EditTrigger.F2Key,  Resolve(name,   gridLevel));
-        Assert.Equal(EditTrigger.None,                            Resolve(id,     gridLevel));
-        Assert.Equal(EditTrigger.Default,                         Resolve(notes,  gridLevel));
-    }
-
-    // ── Flag membership helpers ──────────────────────────────────────────────
 
     [Theory]
-    [InlineData(EditTrigger.None,      EditTrigger.SingleTap,  false)]
-    [InlineData(EditTrigger.None,      EditTrigger.DoubleTap,  false)]
-    [InlineData(EditTrigger.None,      EditTrigger.F2Key,      false)]
-    [InlineData(EditTrigger.None,      EditTrigger.Typing,     false)]
-    [InlineData(EditTrigger.None,      EditTrigger.LongPress,  false)]
-    [InlineData(EditTrigger.SingleTap, EditTrigger.SingleTap,  true)]
-    [InlineData(EditTrigger.SingleTap, EditTrigger.DoubleTap,  false)]
-    [InlineData(EditTrigger.Default,   EditTrigger.DoubleTap,  true)]
-    [InlineData(EditTrigger.Default,   EditTrigger.F2Key,      true)]
-    [InlineData(EditTrigger.Default,   EditTrigger.Typing,     true)]
-    [InlineData(EditTrigger.Default,   EditTrigger.SingleTap,  false)]
-    [InlineData(EditTrigger.Default,   EditTrigger.LongPress,  false)]
-    public void FlagCheck_ReportsCorrectMembership(
-        EditTrigger columnTrigger, EditTrigger flag, bool expected)
+    [MemberData(nameof(EachTrigger))]
+    public void GridLevelTrigger_StartsAnEditOnItsGesture(EditTrigger trigger)
     {
-        var col = new KumikoColumn { EditTriggers = columnTrigger };
-        var effective = Resolve(col, EditTrigger.Default);
-        Assert.Equal(expected, (effective & flag) != 0);
+        var g = new InputGrid(configure: x => x.Edit.EditTriggers = trigger);
+
+        Perform(g, trigger);
+
+        Assert.True(g.Edit.IsEditing);
+        Assert.Equal(new CellPosition(2, 0), g.Edit.EditCell);
+    }
+
+    [Theory]
+    [MemberData(nameof(EachTrigger))]
+    public void GridLevelNone_StartsNoEdit_ForAnyGesture(EditTrigger trigger)
+    {
+        var g = new InputGrid(configure: x => x.Edit.EditTriggers = EditTrigger.None);
+
+        Perform(g, trigger);
+
+        Assert.False(g.Edit.IsEditing);
+    }
+
+    [Theory]
+    [MemberData(nameof(EachTrigger))]
+    public void ColumnNone_BlocksEveryTrigger_EvenWhenTheGridAllowsAll(EditTrigger trigger)
+    {
+        var g = new InputGrid(configure: x =>
+        {
+            x.Edit.EditTriggers = Every;
+            x.Name.EditTriggers = EditTrigger.None;
+        });
+
+        Perform(g, trigger);
+
+        Assert.False(g.Edit.IsEditing);
+    }
+
+    [Theory]
+    [MemberData(nameof(EachTrigger))]
+    public void ColumnOverride_ReplacesTheGridTriggers_NotAddsToThem(EditTrigger trigger)
+    {
+        // The grid allows only this trigger; the column allows only a different one.
+        var other = Triggers.First(t => t != trigger);
+        var g = new InputGrid(configure: x =>
+        {
+            x.Edit.EditTriggers = trigger;
+            x.Name.EditTriggers = other;
+        });
+
+        Perform(g, trigger);
+        Assert.False(g.Edit.IsEditing);
+
+        var h = new InputGrid(configure: x =>
+        {
+            x.Edit.EditTriggers = trigger;
+            x.Name.EditTriggers = other;
+        });
+        Perform(h, other);
+        Assert.True(h.Edit.IsEditing);
+    }
+
+    [Theory]
+    [MemberData(nameof(EachTrigger))]
+    public void ColumnWithNoOverride_InheritsTheGridTrigger(EditTrigger trigger)
+    {
+        var g = new InputGrid(configure: x =>
+        {
+            x.Edit.EditTriggers = trigger;
+            x.Name.EditTriggers = null;
+        });
+
+        Perform(g, trigger);
+
+        Assert.True(g.Edit.IsEditing);
+    }
+
+    [Fact]
+    public void DefaultTriggers_AreDoubleTapF2AndTyping_AndNotSingleTapOrLongPress()
+    {
+        foreach (var trigger in new[] { EditTrigger.DoubleTap, EditTrigger.F2Key, EditTrigger.Typing })
+        {
+            var g = new InputGrid();
+            Perform(g, trigger);
+            Assert.True(g.Edit.IsEditing, trigger.ToString());
+        }
+
+        foreach (var trigger in new[] { EditTrigger.SingleTap, EditTrigger.LongPress })
+        {
+            var g = new InputGrid();
+            Perform(g, trigger);
+            Assert.False(g.Edit.IsEditing, trigger.ToString());
+        }
+    }
+
+    [Fact]
+    public void ColumnsResolveTheirTriggersIndependently()
+    {
+        var g = new InputGrid(configure: x =>
+        {
+            x.Edit.EditTriggers = EditTrigger.DoubleTap;
+            x.Name.EditTriggers = EditTrigger.None;
+            x.Age.EditTriggers = EditTrigger.SingleTap;
+        });
+
+        g.Tap(60, g.RowY(2), clicks: 2); // Name: blocked
+        Assert.False(g.Edit.IsEditing);
+
+        g.Tap(150, g.RowY(2)); // Age: single tap edits
+        Assert.True(g.Edit.IsEditing);
+        Assert.Equal(new CellPosition(2, 1), g.Edit.EditCell);
     }
 }
