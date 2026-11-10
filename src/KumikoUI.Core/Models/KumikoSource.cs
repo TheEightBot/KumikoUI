@@ -901,13 +901,14 @@ public class KumikoSource
     }
 
     /// <summary>
-    /// Sort by a single column (clears all other sort state). Toggle direction automatically.
+    /// Sort by a single column (clears all other sort state). Steps through the column's first direction, the opposite
+    /// direction and no sort (see <see cref="KumikoColumn.FirstSortDirection"/>).
     /// Does nothing when the column does not allow sorting.
     /// </summary>
     public void ToggleSort(KumikoColumn column)
     {
         if (!column.AllowSorting) return;
-        ApplySort(column, NextDirection(column.SortDirection), 0, isMultiSort: false);
+        ApplySort(column, NextDirection(column), 0, isMultiSort: false);
     }
 
     /// <summary>
@@ -919,7 +920,7 @@ public class KumikoSource
     {
         if (!column.AllowSorting) return;
 
-        var direction = NextDirection(column.SortDirection);
+        var direction = NextDirection(column);
         int order = column.SortDirection == KumikoSortDirection.None
             ? _columns.Count(c => c.SortDirection != KumikoSortDirection.None) + 1 // join at the end
             : column.SortOrder;                                                    // keep its place
@@ -960,12 +961,17 @@ public class KumikoSource
         RequestRebuild();
     }
 
-    private static KumikoSortDirection NextDirection(KumikoSortDirection direction) => direction switch
+    /// <summary>
+    /// The next step of a header tap: none, then the column's first direction, then the opposite one, then none
+    /// again (see <see cref="KumikoColumn.FirstSortDirection"/>).
+    /// </summary>
+    private static KumikoSortDirection NextDirection(KumikoColumn column)
     {
-        KumikoSortDirection.None => KumikoSortDirection.Ascending,
-        KumikoSortDirection.Ascending => KumikoSortDirection.Descending,
-        _ => KumikoSortDirection.None,
-    };
+        var first = column.FirstSortDirection;
+        var current = column.SortDirection;
+        if (current == KumikoSortDirection.None) return first;
+        return current == first ? KumikoColumn.Opposite(first) : KumikoSortDirection.None;
+    }
 
     private void ApplySort(KumikoColumn column, KumikoSortDirection direction, int order, bool isMultiSort)
     {
