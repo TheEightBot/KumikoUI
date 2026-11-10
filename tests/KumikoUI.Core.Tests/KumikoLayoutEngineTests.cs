@@ -227,7 +227,7 @@ public class KumikoLayoutEngineTests
         var engine = new KumikoLayoutEngine();
         var cols = MakeColumns((100f, ColumnSizeMode.Fixed, 1f), (200f, ColumnSizeMode.Fixed, 1f));
         var (col, idx) = engine.HitTestColumn(cols, 50f);
-        Assert.NotNull(col);
+        Assert.Same(cols[0], col);
         Assert.Equal(0, idx);
     }
 
@@ -237,7 +237,7 @@ public class KumikoLayoutEngineTests
         var engine = new KumikoLayoutEngine();
         var cols = MakeColumns((100f, ColumnSizeMode.Fixed, 1f), (200f, ColumnSizeMode.Fixed, 1f));
         var (col, idx) = engine.HitTestColumn(cols, 150f);
-        Assert.NotNull(col);
+        Assert.Same(cols[1], col);
         Assert.Equal(1, idx);
     }
 
