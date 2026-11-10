@@ -153,7 +153,8 @@ public static class CellEditorFactory
         var picker = new DrawnDatePicker
         {
             Bounds = cellBounds,
-            IsVisible = true
+            IsVisible = true,
+            Culture = culture
         };
 
         DateTime? initial = value switch

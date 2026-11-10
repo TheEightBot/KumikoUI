@@ -228,9 +228,9 @@ public class EditSession
         // 1. Convert to the property type
         object? newValue = editorValue;
         if (TargetType(item, column, _originalValue) is { } targetType &&
-            !KumikoValueConverter.TryConvert(editorValue, targetType, dataSource.Comparer.Culture, out newValue, out var conversionError))
+            !KumikoValueConverter.TryConvert(editorValue, targetType, dataSource.Comparer.Culture, dataSource.Strings, out newValue, out var conversionError))
         {
-            return Refuse(CellValidationResult.Error(conversionError ?? KumikoValueConverter.Messages.Invalid), editorValue);
+            return Refuse(CellValidationResult.Error(conversionError ?? dataSource.Strings.EnterValidValue), editorValue);
         }
 
         // The user changed the value back: nothing to write
@@ -248,7 +248,7 @@ public class EditSession
         try
         {
             if (!dataSource.TrySetItemValue(item, column, newValue, out var writeError))
-                return Refuse(CellValidationResult.Error(writeError ?? "The value could not be saved."), newValue);
+                return Refuse(CellValidationResult.Error(writeError ?? dataSource.Strings.ValueCouldNotBeSaved), newValue);
 
             var modelResult = ValidateItem(item, column);
             if (modelResult is { IsValid: false })

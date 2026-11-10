@@ -1185,7 +1185,7 @@ public class KumikoRenderer
         var groups = dataSource.GroupDescriptions;
         if (groups.Count == 0) return;
 
-        // Draw "Grouped by:" label
+        // Draw the group panel label
         float labelX = style.CellPadding + 2;
         var labelPaint = new KumikoPaint
         {
@@ -1193,9 +1193,9 @@ public class KumikoRenderer
             Font = style.GroupPanelLabelFont,
             IsAntiAlias = true
         };
-        var labelSize = ctx.MeasureText("Grouped by:", labelPaint);
+        var labelSize = ctx.MeasureText(dataSource.Strings.GroupPanelLabel, labelPaint);
         var labelRect = new KumikoRect(labelX, 0, labelSize.Width, panelHeight);
-        ctx.DrawTextInRect("Grouped by:", labelRect, labelPaint,
+        ctx.DrawTextInRect(dataSource.Strings.GroupPanelLabel, labelRect, labelPaint,
             KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
 
         float chipX = labelX + labelSize.Width + 10;
