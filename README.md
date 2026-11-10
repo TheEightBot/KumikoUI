@@ -44,6 +44,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 - [Grouping](#-grouping)
 - [Summaries](#-summaries)
 - [Editing](#-editing)
+- [Localization](#-localization)
 - [Selection](#-selection)
 - [Keyboard Navigation](#-keyboard-navigation)
 - [Row Drag & Drop](#-row-drag--drop)
@@ -608,6 +609,36 @@ var column = new KumikoColumn
 To create the editor yourself, set `EditorFactory`. Its `CellEditorContext` carries the value, the cell bounds, the grid's culture and the character typed to open the edit (`InitialCharacter`, null for a double-tap or F2). `EditorDescriptor.CreateEditor(CellEditorContext)` and `ICellEditorProvider.CreateEditor(CellEditorContext)` receive the same context; the older `(value, bounds)` forms keep working but never see the character.
 
 ---
+
+## 🌍 Localization
+
+Two settings on the data source localize the grid: `Culture` and `Strings`.
+
+```csharp
+using System.Globalization;
+using KumikoUI.Core.Models;
+
+var source = kumiko.DataSource;
+
+// Numbers, dates, text order and the date picker's month names, day names and AM/PM
+source.Culture = CultureInfo.GetCultureInfo("de-DE");
+
+// Every other piece of text the grid draws or reports
+source.Strings = KumikoStrings.Default with
+{
+    GroupPanelLabel = "Gruppiert nach:",
+    BlankGroupText = "(Leer)",
+    SummarySum = "Summe: ",
+    FilterSelectAll = "Alle auswählen",
+    FilterOk = "Übernehmen",
+    FilterCancel = "Abbrechen",
+    SortTextAscending = "A bis Z sortieren",
+    SortNumericAscending = "Aufsteigend sortieren",
+    EnterNumber = "Geben Sie eine Zahl ein.",
+};
+```
+
+`KumikoStrings` is a record: start from `KumikoStrings.Default` (English) and replace what you need. It covers the group panel label and the group for empty values, the default summary labels, the filter popup (including type-aware sort labels: A to Z for text, smallest to largest for numbers, oldest to newest for dates) and the validation messages for edits that do not convert. A message with `{0}` is a format string; keep the placeholder. Setting `Strings` (or `Culture`) rebuilds the view, so group headers and summaries follow. Summary values are formatted in `Culture`, and `DrawnDatePicker.Culture` does the same for a standalone date picker.
 
 ## ☑️ Selection
 
