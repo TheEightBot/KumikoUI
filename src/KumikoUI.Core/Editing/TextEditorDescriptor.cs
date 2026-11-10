@@ -22,4 +22,18 @@ public class TextEditorDescriptor : EditorDescriptor
             Padding = 4f
         };
     }
+
+    /// <summary>Creates the text box; a character typed to open the edit replaces the text.</summary>
+    public override DrawnComponent? CreateEditor(CellEditorContext context)
+    {
+        var editor = CreateEditor(context.Value, context.Bounds);
+        if (editor is DrawnTextBox textBox && context.InitialCharacter is { } typed)
+        {
+            // The typed character replaces the value: a change by the user
+            textBox.InitialSelectionMode = EditTextSelectionMode.CursorAtEnd;
+            textBox.StartTrackingChanges();
+            textBox.Text = typed.ToString();
+        }
+        return editor;
+    }
 }

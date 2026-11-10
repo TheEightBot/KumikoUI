@@ -269,7 +269,7 @@ public class EditSessionTests
     }
 
     [Fact]
-    public void CommitEdit_ValueChangedIsRaisedBeforeEndEdit()
+    public void CommitEdit_EndEditIsRaisedBeforeValueChanged()
     {
         var f = new Fixture();
         var order = new List<string>();
@@ -280,7 +280,7 @@ public class EditSessionTests
 
         f.Session.CommitEdit(f.Source);
 
-        Assert.Equal(new[] { "changed", "end" }, order);
+        Assert.Equal(new[] { "end", "changed" }, order);
     }
 
     [Fact]
