@@ -95,18 +95,19 @@ public class KumikoRendererTests
     }
 
     [Fact]
-    public void Header_DrawsEachTitleInItsColumn_ReservingSortAndFilterSpace()
+    public void Header_DrawsEachTitleInItsColumn_ReservingFilterSpace()
     {
         var h = Create();
 
         var ctx = h.Render();
 
-        // Sorting (12 px) and filtering (14 px) are allowed by default: 26 px reserved on the right.
+        // Filtering is allowed by default, so the filter icon's 14 px are reserved on the right; no column is
+        // sorted, so no room is kept for a sort arrow (#68).
         var expected = new[] { ("Name", 0f, 150f), ("Age", 150f, 100f), ("City", 250f, 150f), ("Salary", 400f, 150f) };
         foreach (var (title, x, width) in expected)
         {
             var op = ctx.SingleText(title);
-            Assert.Equal(new KumikoRect(x + 8, 0, width - 16 - 26, 40), op.Rect);
+            Assert.Equal(new KumikoRect(x + 8, 0, width - 16 - 14, 40), op.Rect);
             Assert.Equal(h.Style.HeaderTextColor, op.Color);
             Assert.Same(h.Style.HeaderFont, op.Font);
         }
@@ -117,16 +118,29 @@ public class KumikoRendererTests
     [InlineData(true, false, 12f)]
     [InlineData(false, true, 14f)]
     [InlineData(true, true, 26f)]
-    public void Header_TitleWidth_ReservesRoomOnlyForEnabledIcons(bool sorting, bool filtering, float reserved)
+    public void Header_TitleWidth_ReservesRoomOnlyForTheIconsDrawn(bool sorted, bool filtering, float reserved)
     {
         var h = Create();
         var age = h.Column("Age");
-        age.AllowSorting = sorting;
         age.AllowFiltering = filtering;
+        if (sorted) h.Source.ToggleSort(age);
 
         var op = h.Render().SingleText("Age");
 
         Assert.Equal(100 - 16 - reserved, op.Rect.Width);
+    }
+
+    [Fact]
+    public void Header_SortableButUnsortedColumn_ReservesNoSortArrowSpace()
+    {
+        var h = Create();
+        var age = h.Column("Age");
+        age.AllowSorting = true;
+        age.AllowFiltering = false;
+
+        var op = h.Render().SingleText("Age");
+
+        Assert.Equal(100 - 16, op.Rect.Width);
     }
 
     [Fact]
@@ -504,8 +518,20 @@ public class KumikoRendererTests
         // Six strokes per funnel, three filterable columns; none inside Age (150–250).
         Assert.Equal(18, funnel.Count);
         Assert.DoesNotContain(funnel, l => l.Rect.Left >= 150 && l.Rect.Right <= 250);
-        // Name's funnel sits left of the sort-arrow slot: 150 − 8 − 12 − 10 = 120.
-        Assert.Equal(120, funnel.Where(l => l.Rect.Right <= 150).Min(l => l.Rect.Left));
+        // Name is not sorted, so its funnel sits at the right edge: 150 − 8 − 10 = 132.
+        Assert.Equal(132, funnel.Where(l => l.Rect.Right <= 150).Min(l => l.Rect.Left));
+    }
+
+    [Fact]
+    public void FilterIcon_SortedColumn_SitsLeftOfTheSortArrow()
+    {
+        var h = Create();
+        h.Source.ToggleSort(h.Column("Name"));
+
+        var funnel = h.Render().Lines.Where(l => l.Color == h.Style.FilterIconColor && l.Rect.Right <= 150).ToList();
+
+        // The sort arrow takes the right 12 px: 150 − 8 − 12 − 10 = 120.
+        Assert.Equal(120, funnel.Min(l => l.Rect.Left));
     }
 
     [Fact]
@@ -527,9 +553,8 @@ public class KumikoRendererTests
     {
         public List<(KumikoRect Rect, object? Value, string Text)> Calls { get; } = new();
 
-        public void Render(IDrawingContext ctx, KumikoRect cellRect, object? value, string displayText,
-            KumikoColumn column, KumikoStyle style, bool isSelected, KumikoCellStyle? cellStyle = null) =>
-            Calls.Add((cellRect, value, displayText));
+        public void Render(IDrawingContext ctx, in CellRenderContext cell) =>
+            Calls.Add((cell.Bounds, cell.Value, cell.DisplayText));
     }
 }
 

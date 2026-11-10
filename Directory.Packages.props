@@ -99,5 +99,7 @@
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+    <!-- Writes failures as workflow annotations and a step summary (dotnet test with the GitHubActions logger); needs no extra token permissions. -->
+    <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.5" />
   </ItemGroup>
 </Project>

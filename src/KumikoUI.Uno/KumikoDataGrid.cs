@@ -75,6 +75,9 @@ public partial class KumikoDataGrid : UserControl
         Columns = new ObservableCollection<KumikoColumn>();
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
+        // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
+        InitializeOptions();
+
         // Core "invalidate" signals → request a single canvas repaint.
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
@@ -127,17 +130,38 @@ public partial class KumikoDataGrid : UserControl
         set => _inputController.ScrollSettings = value;
     }
 
-    /// <summary>Gets or sets the grid style / theme.</summary>
+    /// <summary>
+    /// Gets or sets the grid style / theme. Style-backed properties you set explicitly
+    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied to the style you assign.
+    /// </summary>
     public KumikoStyle GridStyle
     {
         get => _style;
         set
         {
             _style = value;
+            ApplyStyleOptions();
             _editSession.Style = value;
             InvalidateSurface();
         }
     }
+
+    /// <summary>
+    /// Applies a built-in theme preset. Sets <see cref="GridStyle"/> to a preconfigured
+    /// <see cref="KumikoStyle"/> for the chosen theme; style-backed properties you set explicitly
+    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied on top of it.
+    /// </summary>
+    public KumikoThemeMode Theme
+    {
+        get => _themeMode;
+        set
+        {
+            if (_themeMode == value) return;
+            _themeMode = value;
+            GridStyle = KumikoTheme.Create(value);
+        }
+    }
+    private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
 
     private void OnContentReplaced(DependencyObject sender, DependencyProperty property)
     {
