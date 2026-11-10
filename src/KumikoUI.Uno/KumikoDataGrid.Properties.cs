@@ -292,6 +292,31 @@ public partial class KumikoDataGrid
         view._editSession.TextSelectionMode = (EditTextSelectionMode)e.NewValue;
     }
 
+    // ── ShowFrameStats ────────────────────────────────────────────
+
+    /// <summary>Identifies the <see cref="ShowFrameStats"/> dependency property.</summary>
+    public static readonly DependencyProperty ShowFrameStatsProperty =
+        DependencyProperty.Register(
+            nameof(ShowFrameStats), typeof(bool), typeof(KumikoDataGrid),
+            new PropertyMetadata(false, OnShowFrameStatsChanged));
+
+    /// <summary>
+    /// Draws a frame-time overlay (render time, frames per second, bytes allocated per frame) in the grid's
+    /// top-right corner. A debugging aid, off by default; when off it costs nothing per frame.
+    /// </summary>
+    public bool ShowFrameStats
+    {
+        get => (bool)GetValue(ShowFrameStatsProperty);
+        set => SetValue(ShowFrameStatsProperty, value);
+    }
+
+    private static void OnShowFrameStatsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var view = (KumikoDataGrid)d;
+        view._renderer.ShowFrameStats = (bool)e.NewValue;
+        view.Invalidate();
+    }
+
     // ── IsReadOnly ────────────────────────────────────────────────
 
     /// <summary>Identifies the <see cref="IsReadOnly"/> dependency property.</summary>

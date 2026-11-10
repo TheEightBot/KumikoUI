@@ -49,6 +49,18 @@ public class KumikoRenderer
     private static string SortOrderLabel(int order) =>
         order >= 0 && order < s_sortOrderLabels.Length ? s_sortOrderLabels[order] : order.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
+    private KumikoFrameStats? _frameStats;
+
+    /// <summary>
+    /// Draws a frame-time readout (render time, frames per second, bytes allocated per frame) in the top-right
+    /// corner of the grid (#70). Off by default, and then costs one boolean check per frame. The readout is
+    /// averaged over short windows, so it adds no per-frame allocation.
+    /// </summary>
+    public bool ShowFrameStats { get; set; }
+
+    /// <summary>The overlay's counters, readable for logging; they update only while <see cref="ShowFrameStats"/> is true.</summary>
+    public KumikoFrameStats FrameStats => _frameStats ??= new KumikoFrameStats();
+
     /// <summary>Create a renderer with the built-in cell renderers registered for every column type.</summary>
     public KumikoRenderer()
     {
@@ -91,6 +103,9 @@ public class KumikoRenderer
         EditSession? editSession = null,
         PopupManager? popupManager = null)
     {
+        var stats = ShowFrameStats ? FrameStats : null;
+        stats?.BeginFrame();
+
         var columns = dataSource.Columns;
 
         // Compute grouping panel offset (shifts everything below it)
@@ -357,6 +372,12 @@ public class KumikoRenderer
 
         // Draw any popups (filter, etc.) on top of everything
         popupManager?.DrawPopups(ctx);
+
+        if (stats != null)
+        {
+            stats.EndFrame();
+            stats.Draw(ctx, scroll.ViewportWidth);
+        }
     }
 
     /// <summary>
