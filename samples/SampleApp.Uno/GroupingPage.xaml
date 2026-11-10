@@ -44,7 +44,6 @@
                              GridDescription="Grouped employee data grid"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
-            <kumiko:KumikoDataGrid.Columns>
                 <core:KumikoColumn Header="Id" PropertyName="Id" Width="60"
                                      ColumnType="Numeric" TextAlignment="Right"
                                      IsReadOnly="True" AllowTabStop="False" />
@@ -56,7 +55,6 @@
                 <core:KumikoColumn Header="Active" PropertyName="IsActive" Width="80"
                                      ColumnType="Boolean" />
                 <core:KumikoColumn Header="City" PropertyName="City" Width="140" />
-            </kumiko:KumikoDataGrid.Columns>
         </kumiko:KumikoDataGrid>
     </Grid>
 

@@ -12,7 +12,7 @@ namespace KumikoUI.Uno;
 ///
 /// <para>
 /// <strong>Why this exists:</strong> on iOS and Android, focusing a non-text element (such as this
-/// Grid-derived control) does NOT summon the on-screen keyboard, and
+/// grid control) does NOT summon the on-screen keyboard, and
 /// <c>CharacterReceived</c>/<c>KeyDown</c> do not fire from on-screen keys. The desktop-only approach
 /// of calling <c>Focus(FocusState.Programmatic)</c> on the grid therefore silently breaks typing on
 /// mobile. MAUI solves this with a hidden <c>Entry</c> that becomes first-responder; we do the same
@@ -93,7 +93,7 @@ public partial class KumikoDataGrid
     // ── Proxy setup / teardown ───────────────────────────────────
 
     /// <summary>
-    /// Adds the proxy TextBox to the Children collection.
+    /// Adds the proxy TextBox to the grid's private content panel.
     /// Called once from the KumikoDataGrid constructor (after <c>_canvasView</c> is added).
     /// Event handlers are subscribed idempotently in <see cref="AttachInputHandlers"/>
     /// (KumikoDataGrid.Input.cs) and unsubscribed in <see cref="TeardownInputProxy"/> so that
@@ -101,7 +101,7 @@ public partial class KumikoDataGrid
     /// </summary>
     private void SetupInputProxy()
     {
-        Children.Add(_inputProxy);
+        _root.Children.Add(_inputProxy);
         // Note: handlers are NOT subscribed here; AttachInputHandlers owns subscription
         // so idempotent re-attach on Loaded works correctly.
     }
