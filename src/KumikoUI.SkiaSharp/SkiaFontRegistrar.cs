@@ -133,13 +133,10 @@ public static class SkiaFontRegistrar
             caches = LiveCaches();
         }
 
-        try
+        // Disposed after the caches dropped it, even if an invalidation throws
+        using (retired)
         {
             Invalidate(caches, family);
-        }
-        finally
-        {
-            retired?.Dispose();
         }
         return true;
     }
@@ -258,13 +255,10 @@ public static class SkiaFontRegistrar
 
         // Caches drop what they resolved for this family (the replaced typeface, or a system fallback
         // cached before the family was registered) before the replaced typeface is disposed.
-        try
+        // Disposed after the caches dropped it, even if an invalidation throws
+        using (retired)
         {
             Invalidate(caches, family);
-        }
-        finally
-        {
-            retired?.Dispose();
         }
     }
 
