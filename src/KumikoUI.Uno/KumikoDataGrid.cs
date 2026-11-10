@@ -88,6 +88,7 @@ public partial class KumikoDataGrid : UserControl
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
         _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
@@ -228,6 +229,15 @@ public partial class KumikoDataGrid : UserControl
 
     private void OnEditSessionNeedsRedraw() => _canvasView.Invalidate();
 
+    // An action button's command raised CanExecuteChanged: that can happen on any thread.
+    private void OnRendererRedrawRequested()
+    {
+        if (DispatcherQueue is { } queue && !queue.HasThreadAccess)
+            queue.TryEnqueue(() => _canvasView.Invalidate());
+        else
+            _canvasView.Invalidate();
+    }
+
     // ── Core structural event handlers (forwarded into the data source) ──
 
     private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
@@ -357,6 +367,8 @@ public partial class KumikoDataGrid : UserControl
         // navigation. Idempotent: detach first to avoid a double subscription.
         _canvasView.PaintSurface -= OnPaintSurface;
         _canvasView.PaintSurface += OnPaintSurface;
+        _renderer.RedrawRequested -= OnRendererRedrawRequested;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
 
         // Re-render with the current DPI now that we are in the visual tree.
         InvalidateSurface();
@@ -373,6 +385,11 @@ public partial class KumikoDataGrid : UserControl
         // _editSession), so they don't leak the page — but the canvas's
         // PaintSurface delegate roots `this`, so it must be released.
         _canvasView.PaintSurface -= OnPaintSurface;
+
+        // Stop listening to action-button commands (a cell renderer can outlive this grid). The renderer
+        // re-attaches to them on the next paint after a reload.
+        _renderer.RedrawRequested -= OnRendererRedrawRequested;
+        _renderer.Dispose();
 
         // Release the cached native Skia objects; the first frame after OnLoaded creates a new cache.
         _resourceCache?.Dispose();

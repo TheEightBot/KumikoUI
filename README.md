@@ -72,10 +72,10 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 
 | Category | Highlights |
 |---|---|
-| **Rendering** | 100% SkiaSharp canvas, zero native controls, 60 fps |
-| **Virtual scrolling** | Only visible rows/columns rendered — tested with 100K+ rows |
+| **Rendering** | 100% SkiaSharp canvas, zero native controls, allocation-free steady-state frames ([measured](#measured-performance)) |
+| **Virtual scrolling** | Only visible rows/columns rendered — benchmarked with 100K rows |
 | **Column types** | Text, Numeric, Boolean, Date, ComboBox, Picker, ProgressBar, Image, Template |
-| **Action buttons** | Pill-button columns with `ICommand` / callback support; activate on first tap |
+| **Action buttons** | Pill-button columns with `ICommand` / callback support; run on a tap without an editor, honor `CanExecute` (drawn disabled) |
 | **Column sizing** | Fixed, Star (proportional), Auto (content-sized) |
 | **Frozen columns** | Pin columns to left or right edge |
 | **Frozen rows** | Pin top N rows to viewport |
@@ -240,9 +240,12 @@ Keep `Render` free of allocations, as the built-in renderers are: draw with `cel
 
 Action button columns render a row of clickable pill-buttons directly inside every cell. Any number of buttons can be declared; they are distributed with equal widths across the cell area. Buttons support both `ICommand` (for MVVM data-binding) and an `Action` callback (for code-behind).
 
-Action buttons use the **Template** column type with `ActionButtonsCellRenderer` as the `CustomCellRenderer`. The renderer also implements `ICellEditorProvider`, so no separate `CustomEditorFactory` is required — the same button definitions handle both display and interaction.
+Action buttons use the **Template** column type with `ActionButtonsCellRenderer` as the `CustomCellRenderer`. The renderer is an *interactive cell* (`IInteractiveCellRenderer`): a tap runs the button under the finger directly, **without opening an editor**. A tap raises no `CellBeginEdit`, `CellEndEdit` or `CellValueChanged`, and no view change, and it works in a read-only column. No `EditTriggers` setting is needed, and no editor opens from F2, typing or a double-tap on the cell.
 
-> **Tip:** Set the column's `EditTriggers="SingleTap"` so buttons respond on the first touch, even when the grid's default trigger is `DoubleTap`. See [Per-column edit trigger override](#per-column-edit-trigger-override).
+- **`CanExecute`.** A button whose `Command.CanExecute(parameter)` is false is drawn disabled (the style's `ActionButtonDisabledBackgroundColor` and `ActionButtonDisabledTextColor`, set for every theme) and does nothing when tapped. The parameter is `CommandParameter`, or the row item when that is not set. The renderer listens to `CanExecuteChanged` and the grid redraws; the listener holds the renderer weakly, and `ActionButtonsCellRenderer.Dispose()` removes it. A button with only an `Action` is always enabled.
+- **Keyboard.** Enter on the current action cell runs its **first** button when that button is enabled (a disabled first button does nothing, so a stray Enter never runs a different command). Space keeps toggling the row's selection. Give the column `AllowTabStop="False"` to keep Tab out of it.
+- **Safe commands.** A command may remove the row it was run for, even the last one; the grid reads nothing about the row after the command returns.
+- A column with its own `EditorFactory`, `CustomEditorFactory` or `EditorDescriptor` is not interactive: the editor wins (see "Code-behind factory").
 
 ### XAML declaration (MVVM)
 
@@ -261,8 +264,7 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
                              Width="200"
                              AllowSorting="False"
                              AllowFiltering="False"
-                             AllowTabStop="False"
-                             EditTriggers="SingleTap">
+                             AllowTabStop="False">
             <core:KumikoColumn.CustomCellRenderer>
                 <render:ActionButtonsCellRenderer>
                     <render:ActionButtonsCellRenderer.Buttons>
@@ -286,17 +288,15 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
 
 > **Note:** `MauiActionButtonDefinition` is not in the visual tree, so it does **not** inherit `BindingContext` automatically. Use `Source={x:Reference …}` or `Source={RelativeSource …}` to point bindings at the correct source object.
 
-### Code-behind factory
+### Code-behind
 
-Use `ActionButtonDefinition` (in `KumikoUI.Core`) when you want a code-behind closure per row:
+Use `ActionButtonDefinition` (in `KumikoUI.Core`) when you want a code-behind callback. The row item is the cell value (`PropertyName=""`), passed to `Command` by default:
 
 ```csharp
-actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
+actionsColumn.CustomCellRenderer = new ActionButtonsCellRenderer
 {
-    Bounds  = bounds,
-    RowItem = value,
     Buttons =
-    [
+    {
         new ActionButtonDefinition
         {
             Label           = "Edit",
@@ -307,11 +307,13 @@ actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
         {
             Label           = "Delete",
             BackgroundColor = new KumikoColor(220, 53, 69),
-            Action          = () => vm.DeleteEmployee((Employee)value!)
+            Command         = vm.DeleteCommand // CanExecute false draws it disabled
         }
-    ]
+    }
 };
 ```
+
+To open the buttons as an editor instead (the pre-0.2 behavior), set `CustomEditorFactory` to create a `DrawnActionButtons` with the same `Buttons`; the editor also honors `CanExecute`, but raises the edit events.
 
 ### Button properties
 
@@ -488,11 +490,15 @@ Summaries appear as pinned rows at the top or bottom of the grid (table summarie
 </dg:KumikoDataGrid.TableSummaryRows>
 ```
 
+Several aggregates of one property appear together in that property's cell, in declaration order (`Sum: $1,300  |  Avg: $163`); the summary row keeps its one-line height, so make the column wide enough for them. A property that has no column, or a hidden one, can still be aggregated, and property names match case-insensitively.
+
 ### Group summaries (code)
 
 ```csharp
-kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
+kumiko.DataSource.AddGroupSummaryRow(new GroupSummaryRow("Totals")
 {
+    Title = "Total",
+    Levels = GroupSummaryLevels.All, // after every group level; Innermost (the default) only after the innermost
     Columns =
     {
         new SummaryColumnDescription { PropertyName = "Salary", SummaryType = SummaryType.Sum,   Format = "C0" },
@@ -501,9 +507,13 @@ kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
 });
 ```
 
+With `Levels = All` each group, outer or inner, gets a summary of all the rows beneath it. Read computed values with `GetGroupSummaries(groupPath)` or `ComputedBottomSummaries`: `Values` (display text) and `RawValues` are keyed by property, and `Aggregates` / `GetRawValue(property, type)` give each aggregate when a property has several.
+
 ### Available summary types
 
-`Sum` · `Average` · `Count` · `Min` · `Max`
+`Sum` · `Average` · `Count` · `Min` · `Max` · `Custom`
+
+`Sum` and `Average` of `decimal` values are exact (a `decimal` result); integers and floating-point numbers give a `double`. Values that are not numbers (text, dates, booleans, nulls) are skipped. `Min` and `Max` use the grid's comparer, so mixed types never throw.
 
 ---
 
@@ -1047,7 +1057,21 @@ Once the visible data has been drawn, redrawing it allocates nothing in the mana
 - **Display text cache** — each drawn cell's value and formatted text is cached per row and column, and read again only when the row shows another item, the item raises `PropertyChanged`, the view is rebuilt, or the culture or the column's format changes. Items that don't implement `INotifyPropertyChanged` need `KumikoSource.Refresh()` after a change (see [Live Data](#-live-data)).
 - **Cell renderers** draw with shared paints passed in `CellRenderContext` (see [Custom cell renderers](#custom-cell-renderers)).
 
-`bench/KumikoUI.Benchmarks` (`RenderBenchmarks`) measures a 30 × 10 visible grid at 0 bytes allocated per frame.
+### Measured performance
+
+Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14 (Release, 2026-11-10). The frame figures are the managed render loop into a no-op drawing context, so they exclude SkiaSharp's own drawing time; the 100K-row figures are one view rebuild.
+
+| Operation | Time | Allocated |
+|---|---:|---:|
+| Render a 30 × 10 visible grid (steady state) | 2.9 µs | 0 B |
+| Same, with sort, filter, grouping, summaries, frozen column and drag handle | 6.3 µs | 0 B |
+| Render while scrolling (one new row per frame) | 3.7 µs | 501 B |
+| Sort 100K rows (int / string / date column) | 54 / 72 / 211 ms | 86 MB / 1 KB / 94 MB |
+| Filter 100K rows (text contains / numeric) | 2.4 / 2.2 ms | 0.5 KB / 5.3 MB |
+| Group 100K rows by 1 / 2 levels, with summaries | 28 / 46 ms | 17.5 / 18.8 MB |
+| Add or remove one item of an `ObservableCollection` of 100K rows | 128 µs | 432 B |
+
+Frame rate on a particular device depends on the device and the Skia backend, so this table makes no fps claim: turn on **`ShowFrameStats`** (a bindable property on both `KumikoDataGrid`s, off by default) to overlay the render time, frames per second and bytes allocated per frame, and read it on your hardware. The budgets each operation is held to, how the allocation budgets are checked in CI, and how to rerun everything are in [bench/README.md](bench/README.md).
 
 ### SkiaDrawingContext caching
 

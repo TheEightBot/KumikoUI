@@ -140,6 +140,7 @@ public partial class KumikoDataGrid : ContentView
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
         _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
@@ -405,6 +406,28 @@ public partial class KumikoDataGrid : ContentView
     {
         get => (bool)GetValue(IsReadOnlyProperty);
         set => SetValue(IsReadOnlyProperty, value);
+    }
+
+    // ── ShowFrameStats ──
+
+    /// <summary>Identifies the <see cref="ShowFrameStats"/> bindable property.</summary>
+    public static readonly BindableProperty ShowFrameStatsProperty = BindableProperty.Create(
+        nameof(ShowFrameStats), typeof(bool), typeof(KumikoDataGrid), false,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._renderer.ShowFrameStats = (bool)n;
+            grid.InvalidateSurface();
+        });
+
+    /// <summary>
+    /// Draws a frame-time overlay (render time, frames per second, bytes allocated per frame) in the grid's
+    /// top-right corner. A debugging aid, off by default; when off it costs nothing per frame.
+    /// </summary>
+    public bool ShowFrameStats
+    {
+        get => (bool)GetValue(ShowFrameStatsProperty);
+        set => SetValue(ShowFrameStatsProperty, value);
     }
 
     // ── DismissKeyboardOnEnter ──
@@ -919,6 +942,15 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnEditSessionNeedsRedraw() => _canvasView.InvalidateSurface();
 
+    // An action button's command raised CanExecuteChanged: that can happen on any thread.
+    private void OnRendererRedrawRequested()
+    {
+        if (Dispatcher.IsDispatchRequired)
+            Dispatcher.Dispatch(() => _canvasView.InvalidateSurface());
+        else
+            _canvasView.InvalidateSurface();
+    }
+
     private void OnEditSessionCellBeginEdit(object? sender, CellBeginEditEventArgs e)
     {
         if (!e.Cancel)
@@ -971,6 +1003,8 @@ public partial class KumikoDataGrid : ContentView
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
         _inputController.NeedsRedraw -= OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested -= OnRendererRedrawRequested;
+        _renderer.Dispose();
         _inputController.ColumnReordered -= OnColumnReordered;
         _inputController.RowReordered -= OnRowReordered;
         _inputController.AutoFitColumnRequested -= OnAutoFitColumnRequested;
@@ -1038,6 +1072,7 @@ public partial class KumikoDataGrid : ContentView
     {
         _dataSource.ViewChanged += OnDataSourceViewChanged;
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
         _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;

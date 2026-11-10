@@ -14,7 +14,7 @@ namespace SampleApp.Uno;
 /// MVVM + per-column EditTriggers + action-button column demo (← SampleApp.Maui MvvmActionsPage).
 /// The Actions column hosts <see cref="ActionButtonsCellRenderer"/> buttons whose Core
 /// <see cref="ActionButtonDefinition.Command"/> is bound to the ViewModel's ICommands. The
-/// interactive <c>DrawnActionButtons</c> editor (single-tap) executes the command with the row item.
+/// renderer is an interactive cell: a tap executes the command with the row item, without an editor.
 /// Confirmation / details use a WinUI <see cref="ContentDialog"/> (the Uno analogue of MAUI's
 /// DisplayAlert / modal page).
 /// </summary>
@@ -104,22 +104,20 @@ public sealed partial class MvvmActionsPage : Page
         });
 
         // Actions column — Template with inline action buttons.
-        // Column-level EditTriggers=SingleTap ensures buttons activate on a single tap even though
-        // the grid default is DoubleTap. PropertyName="" passes the full Employee as the cell value,
-        // so DrawnActionButtons.RowItem (→ Command parameter) is the row's Employee.
+        // ActionButtonsCellRenderer is an interactive cell: a tap runs the button without opening an editor,
+        // so no EditTriggers / IsReadOnly setting is needed. PropertyName="" passes the full Employee as
+        // the cell value, so the Command parameter is the row's Employee.
         actionsGrid.Columns.Add(new KumikoColumn
         {
             Header = "Actions",
             PropertyName = "",
             ColumnType = KumikoColumnType.Template,
             Width = 200,
-            IsReadOnly = false,
             AllowSorting = false,
             AllowFiltering = false,
             AllowTabStop = false,
             SizeMode = ColumnSizeMode.Star,
             StarWeight = 1,
-            EditTriggers = EditTrigger.SingleTap,
             CustomCellRenderer = new ActionButtonsCellRenderer
             {
                 Buttons =

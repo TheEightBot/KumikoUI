@@ -31,6 +31,7 @@
                 <Button x:Name="btn100K" Content="Load 100K" Click="OnLoad100KClicked" />
                 <Button x:Name="btnClear" Content="Clear" Click="OnClearClicked" />
                 <Button x:Name="btnUpdateRandom" Content="Update 100 Random" Click="OnUpdateRandomClicked" />
+                <ToggleSwitch x:Name="frameStatsSwitch" OnContent="Frame stats" OffContent="Frame stats" />
             </StackPanel>
         </ScrollViewer>
 
@@ -44,6 +45,7 @@
         <kumiko:KumikoDataGrid x:Name="kumiko"
                              Grid.Row="3"
                              ItemsSource="{Binding Items}"
+                             ShowFrameStats="{Binding IsOn, ElementName=frameStatsSwitch}"
                              RowHeight="32"
                              HeaderHeight="40"
                              GridDescription="Large dataset stress-test grid"
