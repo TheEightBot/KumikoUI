@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- MVVM selection surface on both hosts (#55): `SelectedItem`, `SelectedItems` (an owned `ObservableCollection` kept in sync, or your own bound list), `SelectedIndex` and `CurrentCell` as two-way properties, plus `SelectionChanged` (added and removed items), `SelectionChangedCommand` and `SelectionChangedCommandParameter`. They follow items through sort and filter. Core gains `KumikoSelectionBinder` (the shared sync logic), `KumikoSelectionModel.SetSelectedItems` (replace the selection in one change) and `KumikoSelectionModel.CurrentCellChanged`.
 - `IValueEditor` (`Value`, `HasValue`, `IsDirty`), implemented by every built-in editor; a custom editor implements it to have its value committed (#33). `DrawnScrollPicker` takes display/value pairs (`SetItems(displayTexts, values)`, `ItemValues`, `SelectedItemValue`, `SelectValue`, `ClearSelection`), and `DrawnDatePicker.TimeOfDay` keeps an edited cell's time of day.
 - Validation surface (#32): `EditSession.ValidationFailed` (`CellValidationEventArgs`) reports every error, warning or informational message with its severity and whether the value was committed, and the editor shows the message under the cell with an icon and a red (error) or orange (warning) outline. `KumikoValueConverter.TryConvert` is public. See "Validation" in the README.
 - Text-input contract and a rewritten `DrawnTextBox` (#39):
