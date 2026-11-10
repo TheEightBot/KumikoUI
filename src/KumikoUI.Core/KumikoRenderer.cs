@@ -1132,6 +1132,7 @@ public class KumikoRenderer
         ColumnFreezeMode freezeMode,
         float frozenWidth)
     {
+        Span<KumikoPoint> outline = stackalloc KumikoPoint[7];
         foreach (var (col, colX, _) in visibleCols)
         {
             if (!col.AllowFiltering) continue;
@@ -1154,7 +1155,6 @@ public class KumikoRenderer
 
             // One closed outline (top edge, right slope, right stem, bottom, left stem, left slope), joined at
             // every corner: the last point repeats the first.
-            Span<KumikoPoint> outline = stackalloc KumikoPoint[7];
             outline[0] = new KumikoPoint(iconX, top);
             outline[1] = new KumikoPoint(iconX + iconSize, top);
             outline[2] = new KumikoPoint(iconX + iconSize * 0.65f, mid);
