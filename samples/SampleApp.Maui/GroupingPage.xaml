@@ -38,7 +38,7 @@
             <dg:KumikoDataGrid.Columns>
                 <core:KumikoColumn Header="Id"
                                      PropertyName="Id"
-                                     Width="60"
+                                     Width="72"
                                      ColumnType="Numeric"
                                      TextAlignment="Right"
                                      IsReadOnly="True" />
@@ -68,7 +68,6 @@
 
                 <core:KumikoColumn Header="Active"
                                      PropertyName="IsActive"
-                                     Width="80"
                                      ColumnType="Boolean" />
 
                 <core:KumikoColumn Header="City"

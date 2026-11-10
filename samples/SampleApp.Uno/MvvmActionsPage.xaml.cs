@@ -43,7 +43,7 @@ public sealed partial class MvvmActionsPage : Page
             Header = "Id",
             PropertyName = "Id",
             ColumnType = KumikoColumnType.Numeric,
-            Width = 52,
+            Width = 72,
             IsReadOnly = true,
             AllowTabStop = false,
         });
@@ -97,7 +97,6 @@ public sealed partial class MvvmActionsPage : Page
             Header = "Active",
             PropertyName = "IsActive",
             ColumnType = KumikoColumnType.Boolean,
-            Width = 60,
             AllowTabStop = false,
         });
 

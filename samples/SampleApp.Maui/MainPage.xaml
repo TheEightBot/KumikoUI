@@ -47,7 +47,7 @@
                 <!-- NUMERIC column (frozen left) -->
                 <core:KumikoColumn Header="Id"
                                      PropertyName="Id"
-                                     Width="60"
+                                     Width="72"
                                      ColumnType="Numeric"
                                      TextAlignment="Right"
                                      IsReadOnly="True"
@@ -85,7 +85,6 @@
                 <!-- BOOLEAN column — checkbox toggle (skipped during tab navigation) -->
                 <core:KumikoColumn Header="Active"
                                      PropertyName="IsActive"
-                                     Width="80"
                                      ColumnType="Boolean"
                                      AllowTabStop="False" />
 

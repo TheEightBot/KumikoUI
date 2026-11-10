@@ -128,7 +128,6 @@ public sealed partial class CustomFontsPage : Page
         {
             Header = "Priority",
             PropertyName = nameof(TaskItem.PriorityIcon),
-            Width = 80,
             IsReadOnly = true,
             TextAlignment = KumikoTextAlignment.Center,
             // Override the font for this column's cells so glyphs are drawn
@@ -139,7 +138,6 @@ public sealed partial class CustomFontsPage : Page
         {
             Header = "Done",
             PropertyName = nameof(TaskItem.DoneIcon),
-            Width = 60,
             IsReadOnly = true,
             TextAlignment = KumikoTextAlignment.Center,
             CustomCellRenderer = new IconFontCellRenderer("MaterialIcons", 22f),
