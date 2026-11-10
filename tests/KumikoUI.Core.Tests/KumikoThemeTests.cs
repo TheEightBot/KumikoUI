@@ -8,24 +8,33 @@ public class KumikoThemeTests
     // ── Create factory ────────────────────────────────────────────
 
     [Fact]
-    public void Create_Light_ReturnsNonNullStyle()
+    public void Create_Light_ReturnsTheSameThemeAsCreateLight()
     {
         var style = KumikoTheme.Create(KumikoThemeMode.Light);
-        Assert.NotNull(style);
+        var expected = KumikoTheme.CreateLight();
+        Assert.Equal(expected.BackgroundColor, style.BackgroundColor);
+        Assert.Equal(expected.HeaderBackgroundColor, style.HeaderBackgroundColor);
+        Assert.Equal(expected.CellTextColor, style.CellTextColor);
     }
 
     [Fact]
-    public void Create_Dark_ReturnsNonNullStyle()
+    public void Create_Dark_ReturnsTheSameThemeAsCreateDark()
     {
         var style = KumikoTheme.Create(KumikoThemeMode.Dark);
-        Assert.NotNull(style);
+        var expected = KumikoTheme.CreateDark();
+        Assert.Equal(expected.BackgroundColor, style.BackgroundColor);
+        Assert.Equal(expected.HeaderBackgroundColor, style.HeaderBackgroundColor);
+        Assert.Equal(expected.CellTextColor, style.CellTextColor);
     }
 
     [Fact]
-    public void Create_HighContrast_ReturnsNonNullStyle()
+    public void Create_HighContrast_ReturnsTheSameThemeAsCreateHighContrast()
     {
         var style = KumikoTheme.Create(KumikoThemeMode.HighContrast);
-        Assert.NotNull(style);
+        var expected = KumikoTheme.CreateHighContrast();
+        Assert.Equal(expected.BackgroundColor, style.BackgroundColor);
+        Assert.Equal(expected.HeaderBackgroundColor, style.HeaderBackgroundColor);
+        Assert.Equal(expected.CellTextColor, style.CellTextColor);
     }
 
     [Fact]
@@ -33,7 +42,6 @@ public class KumikoThemeTests
     {
         // Out-of-range enum value falls back to light
         var style = KumikoTheme.Create((KumikoThemeMode)999);
-        Assert.NotNull(style);
         Assert.Equal(KumikoTheme.CreateLight().BackgroundColor, style.BackgroundColor);
     }
 
