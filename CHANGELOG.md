@@ -86,6 +86,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno is built with Uno.Sdk 6.7.30 (was 6.5.31).
 
 ### Fixed
+- Tab stops at every editable cell of every column type (text, numeric, date, Boolean, ComboBox, picker, template, action buttons) unless the column sets `AllowTabStop = false`; only read-only, hidden and opted-out columns are skipped. The core already behaved this way; the samples had opted every Boolean (and action) column out, so Tab skipped the checkboxes, and they no longer do. The `KumikoColumn.AllowTabStop` documentation said Tab stopped "during editing" only; it applies in normal mode too (#172).
 - Action buttons (#35):
   - `ICommand.CanExecute` is checked before `Execute`, for the button's `CommandParameter` or the row item. A button that cannot execute is drawn disabled and does nothing when tapped, in the cell and in the `DrawnActionButtons` editor; `CanExecuteChanged` redraws the grid.
   - A command that removes its own row, even the last one, no longer throws from the tap handler: the tap reads nothing about the row after the command runs.

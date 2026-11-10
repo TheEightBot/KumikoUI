@@ -120,8 +120,7 @@
                 <core:KumikoColumn Header="Active"
                                      PropertyName="IsActive"
                                      ColumnType="Boolean"
-                                     Width="60"
-                                     AllowTabStop="False" />
+                                     Width="60" />
 
                 <!--
                     Actions column \u2014 Template with inline action buttons.
@@ -143,7 +142,6 @@
                                      Width="200"
                                      AllowSorting="False"
                                      AllowFiltering="False"
-                                     AllowTabStop="False"
                                      SizeMode="Star"
                                      StarWeight="1">
                     <core:KumikoColumn.CustomCellRenderer>

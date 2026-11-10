@@ -1567,7 +1567,7 @@ public class KumikoInputController
         return FindNextTabStop(selection.CurrentCell, dataSource, backwards ? -1 : 1).IsValid;
     }
 
-    /// <summary>A Tab stop: a visible, editable column that allows tab stops.</summary>
+    /// <summary>A Tab stop: a visible, editable column that allows tab stops, of any column type.</summary>
     private static bool IsTabStop(KumikoColumn column) =>
         column.IsVisible && column.AllowTabStop && !column.IsReadOnly;
 

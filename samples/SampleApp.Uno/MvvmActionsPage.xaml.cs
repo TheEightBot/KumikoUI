@@ -98,7 +98,6 @@ public sealed partial class MvvmActionsPage : Page
             PropertyName = "IsActive",
             ColumnType = KumikoColumnType.Boolean,
             Width = 60,
-            AllowTabStop = false,
         });
 
         // Actions column — Template with inline action buttons.
@@ -113,7 +112,6 @@ public sealed partial class MvvmActionsPage : Page
             Width = 200,
             AllowSorting = false,
             AllowFiltering = false,
-            AllowTabStop = false,
             SizeMode = ColumnSizeMode.Star,
             StarWeight = 1,
             CustomCellRenderer = new ActionButtonsCellRenderer

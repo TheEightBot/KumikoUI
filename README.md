@@ -205,7 +205,7 @@ Action button columns render a row of clickable pill-buttons directly inside eve
 Action buttons use the **Template** column type with `ActionButtonsCellRenderer` as the `CustomCellRenderer`. The renderer is an *interactive cell* (`IInteractiveCellRenderer`): a tap runs the button under the finger directly, **without opening an editor**. A tap raises no `CellBeginEdit`, `CellEndEdit` or `CellValueChanged`, and no view change, and it works in a read-only column. No `EditTriggers` setting is needed, and no editor opens from F2, typing or a double-tap on the cell.
 
 - **`CanExecute`.** A button whose `Command.CanExecute(parameter)` is false is drawn disabled (the style's `ActionButtonDisabledBackgroundColor` and `ActionButtonDisabledTextColor`, set for every theme) and does nothing when tapped. The parameter is `CommandParameter`, or the row item when that is not set. The renderer listens to `CanExecuteChanged` and the grid redraws; the listener holds the renderer weakly, and `ActionButtonsCellRenderer.Dispose()` removes it. A button with only an `Action` is always enabled.
-- **Keyboard.** Enter on the current action cell runs its **first** button when that button is enabled (a disabled first button does nothing, so a stray Enter never runs a different command). Space keeps toggling the row's selection. Give the column `AllowTabStop="False"` to keep Tab out of it.
+- **Keyboard.** Enter on the current action cell runs its **first** button when that button is enabled (a disabled first button does nothing, so a stray Enter never runs a different command). Space keeps toggling the row's selection. Tab stops at the column like any other editable cell (it moves there without opening an editor); give the column `AllowTabStop="False"` to keep Tab out of it.
 - **Safe commands.** A command may remove the row it was run for, even the last one; the grid reads nothing about the row after the command returns.
 - A column with its own `EditorFactory`, `CustomEditorFactory` or `EditorDescriptor` is not interactive: the editor wins (see "Code-behind factory").
 
@@ -225,8 +225,7 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
                              ColumnType="Template"
                              Width="200"
                              AllowSorting="False"
-                             AllowFiltering="False"
-                             AllowTabStop="False">
+                             AllowFiltering="False">
             <core:KumikoColumn.CustomCellRenderer>
                 <render:ActionButtonsCellRenderer>
                     <render:ActionButtonsCellRenderer.Buttons>
@@ -667,7 +666,7 @@ Full keyboard navigation is supported on all platforms (iOS/macOS via `UIKeyComm
 | `Ctrl+A` | Select all rows |
 | Typing a character | Open the editor with that character (if `Typing` trigger enabled) |
 
-The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, and the pinned bottom summary footer. Tab stops are visible columns that are not read-only and allow tab stops (`AllowTabStop`); Tab moves to a column whose `EditTriggers` is `None` without opening its editor. When Tab or Shift+Tab has no further cell to go to, or nothing is current, the grid leaves the key unhandled and the host moves focus to the next control, so the grid is never a keyboard trap. Enter and Escape are also left to the page when the grid has nothing to do with them.
+The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, and the pinned bottom summary footer. Tab stops at every visible column that is not read-only, whatever its type (text, numeric, date, Boolean, ComboBox, picker, template, action buttons), unless the column sets `AllowTabStop = false`; Tab moves to a column whose `EditTriggers` is `None` without opening its editor. When Tab or Shift+Tab has no further cell to go to, or nothing is current, the grid leaves the key unhandled and the host moves focus to the next control, so the grid is never a keyboard trap. Enter and Escape are also left to the page when the grid has nothing to do with them.
 
 ---
 
