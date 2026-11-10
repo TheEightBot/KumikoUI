@@ -27,10 +27,12 @@ public class PaneClipTests
         return h.Render();
     }
 
-    private static bool IsRowPaint(DrawOp op, KumikoStyle style) =>
-        (op.Kind == DrawOpKind.FillRect &&
-            (op.Color == style.AlternateRowColor || op.Color == style.GroupHeaderBackgroundColor))
-        || (op.IsText && RowText.IsMatch(op.Text ?? ""));
+    private static bool IsRowPaint(DrawOp op, KumikoStyle style) => IsRowFill(op, style) || IsRowText(op);
+
+    private static bool IsRowFill(DrawOp op, KumikoStyle style) =>
+        op.Kind == DrawOpKind.FillRect && (op.Color == style.AlternateRowColor || op.Color == style.GroupHeaderBackgroundColor);
+
+    private static bool IsRowText(DrawOp op) => op.IsText && RowText.IsMatch(op.Text ?? "");
 
     [Theory]
     [InlineData(false, 0f)]
@@ -52,12 +54,9 @@ public class PaneClipTests
 
         var rowPaint = ctx.Ops.Where(o => IsRowPaint(o, h.Style)).ToList();
         Assert.NotEmpty(rowPaint);
-        foreach (var op in rowPaint)
-        {
-            // Visible is the op's rectangle intersected with the active clip; null when clipped away.
-            if (op.Visible is { } vis)
-                Assert.True(vis.Top >= dataTop - 0.01f, $"Row paint above the data area: {op}");
-        }
+        // Visible is the op's rectangle intersected with the active clip; null when clipped away.
+        foreach (var op in rowPaint.Where(o => o.Visible.HasValue))
+            Assert.True(op.Visible!.Value.Top >= dataTop - 0.01f, $"Row paint above the data area: {op}");
     }
 
     [Theory]
