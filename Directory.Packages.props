@@ -14,7 +14,7 @@
       one app. SkiaSharp 4's runtime assembly keeps the v3 members (they are only removed from the
       reference assembly), so Uno's own runtime, compiled against 3.x, binds unchanged.
     -->
-    <SkiaSharpVersion>4.153.1</SkiaSharpVersion>
+    <SkiaSharpVersion>4.155.0</SkiaSharpVersion>
 
     <!--
       Minimum .NET MAUI version KumikoUI.Maui supports. It becomes the package's dependency floor, so it
