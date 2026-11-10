@@ -100,7 +100,7 @@ public class DrawnFocusManagerTests
         Assert.Same(p[1], m.FocusedComponent);
     }
 
-    [Fact(Skip = "Known defect: Unregister of the focused component leaves its IsFocused true and never calls OnLostFocus or raises FocusChanged")]
+    [Fact]
     public void Unregister_OfTheFocusedComponent_RemovesItsFocusState()
     {
         var (m, p) = Row(1);

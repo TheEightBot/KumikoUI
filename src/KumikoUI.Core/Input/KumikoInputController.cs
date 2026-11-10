@@ -237,6 +237,16 @@ public class KumikoInputController
                         e.Handled = true;
                         return;
                     }
+
+                    // A navigation key the editor leaves alone moves the selection, which ends the edit: a
+                    // refused commit keeps the editor open and the selection where it is.
+                    if (e.Key is KumikoKey.Up or KumikoKey.Down or KumikoKey.Left or KumikoKey.Right or
+                        KumikoKey.Home or KumikoKey.End or KumikoKey.PageUp or KumikoKey.PageDown &&
+                        !CommitEditBeforeViewChange(dataSource, selection))
+                    {
+                        e.Handled = true;
+                        return;
+                    }
                     break;
             }
         }
@@ -789,11 +799,12 @@ public class KumikoInputController
             bool shift = (e.Modifiers & InputModifiers.Shift) != 0;
             bool ctrl = (e.Modifiers & InputModifiers.Control) != 0;
 
-            // If editing, click outside editor → commit and continue to select
-            if (_editSession != null && _editSession.IsEditing)
+            // If editing, click outside editor → commit and continue to select. A refused commit keeps the
+            // editor open with its message, and the selection where it is.
+            if (!CommitEditBeforeViewChange(dataSource, selection))
             {
-                _editSession.CommitEdit(dataSource);
-                selection.IsEditing = false;
+                e.Handled = true;
+                return;
             }
 
             selection.HandleRowSelection(hit.RowIndex, shift, ctrl);
@@ -910,6 +921,13 @@ public class KumikoInputController
     {
         var hit = _hitTester.HitTest(e.X, e.Y, scroll, style, columns, totalRows, dataSource);
         if (hit.Region != HitRegion.Cell || hit.RowIndex < 0) return;
+
+        // An open edit is committed first; a refused commit keeps the editor and the selection
+        if (!CommitEditBeforeViewChange(dataSource, selection))
+        {
+            e.Handled = true;
+            return;
+        }
 
         // Select the cell under the long press
         selection.CurrentCell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
