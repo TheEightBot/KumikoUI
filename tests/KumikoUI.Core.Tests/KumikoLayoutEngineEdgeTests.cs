@@ -41,7 +41,7 @@ public class KumikoLayoutEngineEdgeTests
     [InlineData(0f, 0f, 0, 0, 10)]     // header 40: the row starting at 400px is the last one touched
     [InlineData(0f, 30f, 0, 0, 9)]     // a 30px top summary pushes the data area down
     [InlineData(0f, 30f, 2, 2, 9)]     // two frozen rows are drawn separately: the range starts after them
-    [InlineData(360f, 0f, 0, 8, 20)]   // scrolled 10 rows
+    [InlineData(360f, 0f, 0, 10, 20)]  // scrolled 10 rows: row 10 is the first one below the header (#117)
     [InlineData(-50f, 0f, 0, 0, 8)]    // overscroll above the top never yields a negative first row
     public void VisibleRowRange_AccountsForTheTopOffsetAndFrozenRows(float scrollY, float topOffset, int frozen, int first, int last)
     {

@@ -214,4 +214,103 @@ public class PaintCacheTests
         Assert.Equal(PaintStyle.Fill, a.Style);
         Assert.NotSame(a, b);
     }
+
+    // ── Rebuilding only on style changes (#68) ──────────────────────
+
+    [Fact]
+    public void Update_SameStyleUnchanged_KeepsThePaints()
+    {
+        var s = DistinctStyle();
+        var cache = Built(s);
+        var cellText = cache.CellText;
+        var gridLine = cache.GridLine;
+
+        cache.Update(s);
+
+        Assert.Same(cellText, cache.CellText);
+        Assert.Same(gridLine, cache.GridLine);
+    }
+
+    [Fact]
+    public void Update_AfterAStyleProperty_Changes_RebuildsThePaints()
+    {
+        var s = DistinctStyle();
+        var cache = Built(s);
+        var gridLine = cache.GridLine;
+
+        s.GridLineWidth = 3f;
+        cache.Update(s);
+
+        Assert.NotSame(gridLine, cache.GridLine);
+        Assert.Equal(3f, cache.GridLine.StrokeWidth);
+    }
+
+    [Fact]
+    public void Update_WithAnotherStyleInstance_RebuildsThePaints()
+    {
+        var cache = Built(DistinctStyle());
+        var other = new KumikoStyle { CellTextColor = new KumikoColor(9, 8, 7) };
+
+        cache.Update(other);
+
+        Assert.Equal(new KumikoColor(9, 8, 7), cache.CellText.Color);
+    }
+
+    [Fact]
+    public void StyleVersion_ChangesOnlyWhenAPropertyGetsADifferentValue()
+    {
+        var s = new KumikoStyle();
+        int v0 = s.Version;
+
+        s.RowHeight = s.RowHeight;
+        s.CellTextColor = s.CellTextColor;
+        Assert.Equal(v0, s.Version);
+
+        s.RowHeight = 50;
+        Assert.Equal(v0 + 1, s.Version);
+        s.CellFont = new KumikoFont("Other", 10);
+        s.CellStyleResolver = (_, _) => null;
+        Assert.Equal(v0 + 3, s.Version);
+    }
+
+    [Fact]
+    public void HeaderFontResizedInPlace_ResizesTheMultiSortBadges()
+    {
+        var h = RenderHarness.Create();
+        h.Source.SetSort(h.Column("City"), KumikoSortDirection.Ascending, 1);
+        h.Source.SetSort(h.Column("Age"), KumikoSortDirection.Descending, 2);
+        static float BadgeSize(RenderHarness h, RecordingDrawingContext ctx) =>
+            ctx.Ops.First(o => o.Kind == DrawOpKind.Text && o.Color == h.Style.SortIndicatorColor).Font!.Size;
+        Assert.Equal(h.Style.HeaderFont.Size * 0.65f, BadgeSize(h, h.Render()), 3);
+
+        h.Style.HeaderFont.Size = 20; // a font is mutable, and changing it does not change the style's version
+
+        Assert.Equal(13f, BadgeSize(h, h.Render()), 3);
+    }
+
+    [Fact]
+    public void Update_TakesTheCellContentPaintsFromTheStyle()
+    {
+        var s = DistinctStyle();
+        var c = Built(s);
+
+        Assert.Equal(s.GridLineColor, c.CheckBoxBorder.Color);
+        Assert.Equal(PaintStyle.Stroke, c.CheckBoxBorder.Style);
+        Assert.Equal(1.5f, c.CheckBoxBorder.StrokeWidth);
+        Assert.Equal(s.AccentColor, c.CheckMark.Color);
+        Assert.Equal(2f, c.CheckMark.StrokeWidth);
+    }
+
+    [Fact]
+    public void CellTextPaint_Overrides_ReuseOnePaint()
+    {
+        var s = DistinctStyle();
+        var cache = Built(s);
+
+        var first = cache.CellTextPaint(new KumikoCellStyle { TextColor = new KumikoColor(1, 1, 1) }, s);
+        var second = cache.CellTextPaint(new KumikoCellStyle { TextColor = new KumikoColor(2, 2, 2) }, s);
+
+        Assert.Same(first, second);
+        Assert.Equal(new KumikoColor(2, 2, 2), second.Color);
+    }
 }

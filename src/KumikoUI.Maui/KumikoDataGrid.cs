@@ -35,7 +35,7 @@ namespace KumikoUI.Maui;
 /// private: it has no layout API, and its XAML content is <see cref="Columns"/>.
 /// </remarks>
 [ContentProperty(nameof(Columns))]
-public class KumikoDataGrid : ContentView
+public partial class KumikoDataGrid : ContentView
 {
     private readonly Grid _root = new();
     private readonly SKCanvasView _canvasView = new();
@@ -91,6 +91,7 @@ public class KumikoDataGrid : ContentView
     {
         // The selection follows the source's view changes by itself (item-based, #30).
         _selection = new KumikoSelectionModel(_dataSource);
+        InitializeSelectionBinding();
 
         // Accessibility: set semantic description for screen readers
         SemanticProperties.SetDescription(this, "Data grid");
@@ -126,6 +127,9 @@ public class KumikoDataGrid : ContentView
 
         // Auto-init the TableSummaryRows collection so XAML can add items directly
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
+
+        // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
+        InitializeOptions();
 
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
@@ -237,16 +241,26 @@ public class KumikoDataGrid : ContentView
     /// <summary>Gets the edit session for inline cell editing.</summary>
     public EditSession EditSession => _editSession;
 
-    /// <summary>Gets or sets the grid style / theme.</summary>
+    /// <summary>
+    /// Gets or sets the grid style / theme. Style-backed properties you set explicitly
+    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied to the style you assign.
+    /// </summary>
     public KumikoStyle GridStyle
     {
         get => _style;
-        set { _style = value; _editSession.Style = value; InvalidateSurface(); }
+        set
+        {
+            _style = value;
+            ApplyStyleOptions();
+            _editSession.Style = _style;
+            InvalidateSurface();
+        }
     }
 
     /// <summary>
     /// Applies a built-in theme preset. Sets <see cref="GridStyle"/>
-    /// to a preconfigured <see cref="KumikoStyle"/> for the chosen theme.
+    /// to a preconfigured <see cref="KumikoStyle"/> for the chosen theme; style-backed properties you set
+    /// explicitly (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied on top of it.
     /// </summary>
     public KumikoThemeMode Theme
     {
@@ -256,6 +270,7 @@ public class KumikoDataGrid : ContentView
             if (_themeMode == value) return;
             _themeMode = value;
             _style = KumikoTheme.Create(value);
+            ApplyStyleOptions();
             _editSession.Style = _style;
             InvalidateSurface();
         }

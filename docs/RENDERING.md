@@ -18,7 +18,7 @@ KumikoRenderer.Render(IDrawingContext, width, height)
 │ 2. Compute row drag offsets (if dragging)            │
 │ 3. ComputeColumnWidths (Auto/Star/Fixed)             │
 │ 4. ClampOffset (scroll bounds)                       │
-│ 5. PaintCache.Update (style → ~60 KumikoPaint objects) │
+│ 5. PaintCache.Update (rebuilt only on a style change) │
 │ 6. Fill background                                   │
 │ 7. Draw grouping panel (if grouped)                  │
 │ 8. SCROLLABLE COLUMNS                                │
@@ -100,7 +100,8 @@ for each visible FlatViewRow:
                 → Resolve KumikoCellStyle (cascade: cell → column → grid)
                 → PaintCache.CellBackgroundPaint(style, isAlternate, isSelected)
                 → context.FillRect(cellRect, backgroundPaint)
-                → cellRenderer.Draw(context, cellRect, value, paint)
+                → source.GetCachedCellText(row, item, column, out value)  // display text cache
+                → cellRenderer.Render(context, in CellRenderContext)    // bounds, value, text, shared paints
                 → context.DrawLine(gridLinePaint)  // if grid lines enabled
 
         case GroupHeader:
@@ -124,12 +125,12 @@ Each column type selects an `ICellRenderer`:
 
 ## PaintCache Optimization
 
-`PaintCache` eliminates per-frame allocation of paint objects:
+`PaintCache` eliminates per-frame allocation of paint objects. `PaintCache.Update(style)` runs every frame but rebuilds the paints only when it is given another style instance or `KumikoStyle.Version` (incremented by every property change) changed, so a steady-state frame allocates none (#68):
 
 ```
-KumikoStyle (immutable input)
+KumikoStyle (+ Version)
        ↓
-PaintCache.Update()
+PaintCache.Update()  — rebuilds only on a new style instance or version
        ↓
 ~60 pre-computed KumikoPaint objects:
   ├─ BackgroundPaint
@@ -144,7 +145,11 @@ PaintCache.Update()
   └─ ... (filter icons, drag handles, etc.)
 ```
 
-Factory methods like `CellBackgroundPaint(style, isAlternate, isSelected)` and `CellTextPaint(style)` handle dynamic per-cell overrides by constructing a `KumikoPaint` from cached base values with minimal property mutation.
+Per-row and per-cell overrides (resolver backgrounds, cell style text color or font, per-column header styles) are drawn with a few paints the renderer reuses, setting their color before each draw; `PaintCache.CellTextPaint(cellStyle, style)` returns the shared cell text paint, or its one reused override paint. Cell renderers receive the cache as `CellRenderContext.Paints`.
+
+## Display Text Cache
+
+`KumikoSource` caches the value and formatted text of each drawn cell, per column and visible row (frozen rows have their own slots; scrolling rows share a ring twice the visible row count). An entry is reused while its row shows the same item and its stamp is current, so redrawing unchanged data reads, boxes and formats nothing. It is invalidated per item by `PropertyChanged` and `SetCellValue`, and entirely by a view rebuild, `Refresh()`, a collection reset or a culture change; a change to a column's `Format`, `PropertyName` or `ValueAccessor` replaces that column's cache. Value types are still boxed once when a cell is first read: the accessors return `object?`.
 
 ## SkiaDrawingContext Caching
 
