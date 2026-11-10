@@ -510,12 +510,15 @@ public class DrawnComboBoxTests
         foreach (var text in new[] { "A", "B", "C", "D" })
             Assert.Equal(ItemY(text[0] - 'A'), open.SingleText(text).Rect.Bottom, 2);
 
-        var closedArrow = closed.Lines.ToList();
-        var openArrow = open.Lines.ToList();
-        Assert.Equal(2, closedArrow.Count);
-        Assert.Equal(2, openArrow.Count);
-        Assert.True(closedArrow[0].Y1 < closedArrow[0].Y2); // pointing down
-        Assert.True(openArrow[0].Y1 > openArrow[0].Y2);     // pointing up
+        // One filled triangle each; its apex is the vertex alone on its side of the base.
+        var closedArrow = Assert.Single(closed.Polygons).Points!;
+        var openArrow = Assert.Single(open.Polygons).Points!;
+        Assert.Empty(closed.Lines);
+        Assert.Empty(open.Lines);
+        Assert.Equal(closedArrow[0].Y, closedArrow[1].Y);   // pointing down: base on top, apex below
+        Assert.True(closedArrow[2].Y > closedArrow[0].Y);
+        Assert.Equal(openArrow[0].Y, openArrow[2].Y);       // pointing up: base at the bottom, apex above
+        Assert.True(openArrow[1].Y < openArrow[0].Y);
     }
 
     [Fact]

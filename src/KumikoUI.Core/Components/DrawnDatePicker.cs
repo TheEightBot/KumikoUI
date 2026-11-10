@@ -315,17 +315,13 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private void DrawNavRow(IDrawingContext ctx, float x, float y, float width)
     {
         // Left arrow
-        var arrowPaint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
+        var arrowPaint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true };
         float arrowY = y + NavRowHeight / 2;
-        ctx.DrawLine(x + 10, arrowY, x + 5, arrowY, arrowPaint);
-        ctx.DrawLine(x + 5, arrowY, x + 8, arrowY - 4, arrowPaint);
-        ctx.DrawLine(x + 5, arrowY, x + 8, arrowY + 4, arrowPaint);
+        GlyphDrawing.Chevron(ctx, x + 8, arrowY - 4, x + 5, arrowY, x + 8, arrowY + 4, arrowPaint);
 
         // Right arrow
         float rx = x + width - 10;
-        ctx.DrawLine(rx - 5, arrowY, rx, arrowY, arrowPaint);
-        ctx.DrawLine(rx, arrowY, rx - 3, arrowY - 4, arrowPaint);
-        ctx.DrawLine(rx, arrowY, rx - 3, arrowY + 4, arrowPaint);
+        GlyphDrawing.Chevron(ctx, rx - 3, arrowY - 4, rx, arrowY, rx - 3, arrowY + 4, arrowPaint);
 
         // Month text (clickable for dropdown)
         string monthText = _displayMonth.ToString("MMMM");
@@ -867,23 +863,19 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
 
         // Draw up/down arrows for hour
         float hourX = centerX - textWidth / 2;
-        var arrowPaint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.2f };
+        var arrowPaint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.2f, IsAntiAlias = true };
 
         // Hour up
-        ctx.DrawLine(hourX + 8, y + 2, hourX + 4, y + 6, arrowPaint);
-        ctx.DrawLine(hourX + 4, y + 6, hourX, y + 2, arrowPaint);
+        GlyphDrawing.Chevron(ctx, hourX + 8, y + 2, hourX + 4, y + 6, hourX, y + 2, arrowPaint);
         // Hour down
-        ctx.DrawLine(hourX, y + NavRowHeight - 2, hourX + 4, y + NavRowHeight - 6, arrowPaint);
-        ctx.DrawLine(hourX + 4, y + NavRowHeight - 6, hourX + 8, y + NavRowHeight - 2, arrowPaint);
+        GlyphDrawing.Chevron(ctx, hourX, y + NavRowHeight - 2, hourX + 4, y + NavRowHeight - 6, hourX + 8, y + NavRowHeight - 2, arrowPaint);
 
         // Minute arrows
         float minX = centerX + 4;
         // Minute up
-        ctx.DrawLine(minX + 8, y + 2, minX + 4, y + 6, arrowPaint);
-        ctx.DrawLine(minX + 4, y + 6, minX, y + 2, arrowPaint);
+        GlyphDrawing.Chevron(ctx, minX + 8, y + 2, minX + 4, y + 6, minX, y + 2, arrowPaint);
         // Minute down
-        ctx.DrawLine(minX, y + NavRowHeight - 2, minX + 4, y + NavRowHeight - 6, arrowPaint);
-        ctx.DrawLine(minX + 4, y + NavRowHeight - 6, minX + 8, y + NavRowHeight - 2, arrowPaint);
+        GlyphDrawing.Chevron(ctx, minX, y + NavRowHeight - 2, minX + 4, y + NavRowHeight - 6, minX + 8, y + NavRowHeight - 2, arrowPaint);
     }
 
     private void HandleTimePickerClick(float clickX, float clickY, float x, float y, float width)

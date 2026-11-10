@@ -162,6 +162,10 @@ Per-row and per-cell overrides (resolver backgrounds, cell style text color or f
 
 Each `IDrawingContext` method (e.g., `FillRect`, `DrawText`) resolves its `KumikoPaint` to an `SKPaint` via the cache, avoiding per-call native allocations.
 
+## Glyphs: Polygons and Polylines
+
+Small icons (group expand/collapse triangles, sort arrows, dropdown and picker arrows) are not built from separate `DrawLine` strokes, whose butt caps leave notches at the corners. `IDrawingContext.FillPolygon(ReadOnlySpan<KumikoPoint>, KumikoPaint)` fills a closed, anti-aliased polygon, and `DrawPolyline` strokes an open path with round joins and caps. Disclosure triangles and sort arrows use `FillPolygon`; open chevrons use `DrawPolyline`. Call sites build their points in a `stackalloc` span, and `SkiaDrawingContext` reuses a single `SKPath`, so glyphs add no per-frame allocation. Both members are default interface members: an implementer that does not override them still renders the glyphs, as outlines drawn with `DrawLine`.
+
 ## Scroll & Viewport
 
 ### Coordinate System

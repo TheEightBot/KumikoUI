@@ -302,24 +302,17 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
 
     private void DrawArrow(IDrawingContext ctx, float x, float y, float w, float h)
     {
-        var paint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
+        var paint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Fill, IsAntiAlias = true };
         float cx = x + w / 2;
         float cy = y + h / 2;
-        float aw = 7; // arrow half-width
-        float ah = 4; // arrow height
+        float aw = 5;  // triangle half-width
+        float ah = 3;  // triangle half-height
 
+        // Filled disclosure triangle: points up while the dropdown is open, down while closed.
         if (_isDropdownOpen)
-        {
-            // Up arrow
-            ctx.DrawLine(cx - aw, cy + ah / 2, cx, cy - ah / 2, paint);
-            ctx.DrawLine(cx, cy - ah / 2, cx + aw, cy + ah / 2, paint);
-        }
+            GlyphDrawing.FillTriangleUp(ctx, cx, cy, aw, ah, paint);
         else
-        {
-            // Down arrow
-            ctx.DrawLine(cx - aw, cy - ah / 2, cx, cy + ah / 2, paint);
-            ctx.DrawLine(cx, cy + ah / 2, cx + aw, cy - ah / 2, paint);
-        }
+            GlyphDrawing.FillTriangleDown(ctx, cx, cy, aw, ah, paint);
     }
 
     private void DrawDropdown(IDrawingContext ctx)

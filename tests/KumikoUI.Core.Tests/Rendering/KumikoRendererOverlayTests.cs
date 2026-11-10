@@ -51,8 +51,9 @@ public class KumikoRendererOverlayTests
         Assert.Equal(10 + 88 + 10 + 4 + 10, city.Rect.X);
         Assert.True(years.Rect.X > city.Rect.Right);
         Assert.Equal(2, ctx.Fills.Count(f => f.Kind == DrawOpKind.FillRoundRect && f.Color == h.Style.GroupPanelChipBackgroundColor));
-        // One hierarchy chevron (two strokes) between the chips.
-        Assert.Equal(2, ctx.Lines.Count(l => l.Color == h.Style.GroupPanelLabelColor));
+        // One hierarchy chevron (one joined polyline) between the chips.
+        Assert.Single(ctx.Polylines, l => l.Color == h.Style.GroupPanelLabelColor);
+        Assert.Empty(ctx.Lines.Where(l => l.Color == h.Style.GroupPanelLabelColor));
     }
 
     [Theory]
@@ -63,12 +64,13 @@ public class KumikoRendererOverlayTests
         var h = Create();
         h.Source.AddGroupDescription(new GroupDescription("City") { GroupSortDirection = direction });
 
-        var arrow = h.Render().Lines.Where(l => l.Color == h.Style.GroupPanelChipAccentColor).ToList();
+        var arrow = Assert.Single(h.Render().Polygons, o => o.Color == h.Style.GroupPanelChipAccentColor);
 
-        Assert.Equal(3, arrow.Count);
-        var shaft = Assert.Single(arrow, l => Near(l.X1, l.X2));
-        Assert.Equal(8, shaft.Rect.Height);
-        Assert.All(arrow.Where(l => l != shaft), l => Assert.Equal(headY, l.Y2));
+        // One filled triangle: apex at the arrow head (top when ascending), base on the other side.
+        var apex = Assert.Single(arrow.Points!, p => Near(p.Y, headY));
+        Assert.Equal(3, arrow.Points!.Length);
+        Assert.Equal(2, arrow.Points.Count(p => Near(p.Y, headY == 16f ? 24f : 16f)));
+        Assert.True(apex.X > arrow.Points.Min(p => p.X) && apex.X < arrow.Points.Max(p => p.X));
     }
 
     // ── Group header rows ─────────────────────────────────────────
@@ -92,19 +94,23 @@ public class KumikoRendererOverlayTests
     }
 
     [Theory]
-    [InlineData(false, true)]  // expanded ▼: has a horizontal top edge
-    [InlineData(true, false)]  // collapsed ▶: has a vertical left edge
+    [InlineData(false, true)]  // expanded (down): a horizontal top edge
+    [InlineData(true, false)]  // collapsed (right): a vertical left edge
     public void GroupHeader_ChevronShape_FollowsExpansion(bool collapse, bool expectHorizontalEdge)
     {
         var h = Create();
         h.Source.AddGroupDescription(new GroupDescription("City"));
         if (collapse) h.Source.ToggleGroupExpansion(0);
 
-        var chevron = h.Render().Lines.Where(l => l.Color == h.Style.GroupChevronColor && l.Rect.Top >= 80 && l.Rect.Bottom <= 116).ToList();
+        var ctx = h.Render();
+        var chevron = Assert.Single(ctx.Polygons, o => o.Color == h.Style.GroupChevronColor && o.Rect.Top >= 80 && o.Rect.Bottom <= 116);
 
-        Assert.Equal(3, chevron.Count);
-        Assert.Equal(expectHorizontalEdge, chevron.Any(l => Near(l.Y1, l.Y2)));
-        Assert.Equal(!expectHorizontalEdge, chevron.Any(l => Near(l.X1, l.X2)));
+        Assert.Equal(3, chevron.Points!.Length);
+        bool horizontalEdge = chevron.Points.Count(p => Near(p.Y, chevron.Points.Min(q => q.Y))) == 2;
+        bool verticalEdge = chevron.Points.Count(p => Near(p.X, chevron.Points.Min(q => q.X))) == 2;
+        Assert.Equal(expectHorizontalEdge, horizontalEdge);
+        Assert.Equal(!expectHorizontalEdge, verticalEdge);
+        Assert.DoesNotContain(ctx.Lines, l => l.Color == h.Style.GroupChevronColor);
     }
 
     [Fact]

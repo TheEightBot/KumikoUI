@@ -472,15 +472,19 @@ public class KumikoRendererTests
         var h = Create();
         for (int i = 0; i < toggles; i++) h.Source.ToggleSort(h.Column("Name"));
 
-        var arrow = h.Render().Lines.Where(l => l.Color == h.Style.SortIndicatorColor).ToList();
+        var ctx = h.Render();
+        var arrow = Assert.Single(ctx.Polygons, o => o.Color == h.Style.SortIndicatorColor);
 
-        Assert.Equal(3, arrow.Count);
-        // Name is 150 px wide: arrow spans 134–142 (width − padding − 8), centred on the 40 px header.
-        Assert.Equal(134, arrow.Min(l => l.Rect.Left));
-        Assert.Equal(142, arrow.Max(l => l.Rect.Right));
-        var apex = arrow.SelectMany(l => new[] { (l.X1, l.Y1), (l.X2, l.Y2) }).Where(p => Near(p.Item1, 138f)).ToList();
-        Assert.NotEmpty(apex);
-        Assert.All(apex, p => Assert.Equal(apexY, p.Item2));
+        Assert.Equal(PaintStyle.Fill, arrow.Style);
+        Assert.Empty(ctx.Lines.Where(l => l.Color == h.Style.SortIndicatorColor));
+        Assert.Equal(3, arrow.Points!.Length);
+        // Name is 150 px wide: arrow spans 134-142 (width - padding - 8), centred on the 40 px header.
+        Assert.Equal(134, arrow.Points.Min(p => p.X));
+        Assert.Equal(142, arrow.Points.Max(p => p.X));
+        // The apex is the one vertex alone on its side of the base: at the top when ascending, bottom when descending.
+        var apex = Assert.Single(arrow.Points, p => Near(p.X, 138f));
+        Assert.Equal(apexY, apex.Y);
+        Assert.Equal(2, arrow.Points.Count(p => Near(p.Y, apexY == 17f ? 23f : 17f)));
     }
 
     [Fact]
@@ -488,7 +492,7 @@ public class KumikoRendererTests
     {
         var h = Create();
 
-        Assert.DoesNotContain(h.Render().Lines, l => l.Color == h.Style.SortIndicatorColor);
+        Assert.DoesNotContain(h.Render().Ops, o => o.Color == h.Style.SortIndicatorColor && (o.Kind == DrawOpKind.Line || o.Kind == DrawOpKind.FillPolygon));
     }
 
     [Fact]
@@ -502,7 +506,8 @@ public class KumikoRendererTests
 
         var badges = ctx.Ops.Where(o => o.Kind == DrawOpKind.Text && o.Color == h.Style.SortIndicatorColor).ToList();
         Assert.Equal(new[] { "1", "2" }, badges.Select(b => b.Text).OrderBy(t => t));
-        Assert.Equal(6, ctx.Lines.Count(l => l.Color == h.Style.SortIndicatorColor));
+        Assert.Equal(2, ctx.Polygons.Count(o => o.Color == h.Style.SortIndicatorColor));
+        Assert.Empty(ctx.Lines.Where(l => l.Color == h.Style.SortIndicatorColor));
     }
 
     // ── Filter icons ──────────────────────────────────────────────

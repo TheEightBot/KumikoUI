@@ -13,6 +13,8 @@ internal sealed class NoOpDrawingContext : IDrawingContext
     public void DrawRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint) { }
     public void FillRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint) { }
     public void DrawLine(float x1, float y1, float x2, float y2, KumikoPaint paint) { }
+    public void FillPolygon(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint) { }
+    public void DrawPolyline(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint) { }
     public void DrawText(string text, float x, float y, KumikoPaint paint) { }
     public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
         KumikoTextAlignment hAlign = KumikoTextAlignment.Left,

@@ -346,7 +346,7 @@ public class DrawnFilterPopup : DrawnComponent
     private void DrawSortRow(IDrawingContext ctx, PopupLayout layout)
     {
         var textPaint = new KumikoPaint { Color = AccentColor, Font = SmallFont, IsAntiAlias = true };
-        var iconPaint = new KumikoPaint { Color = AccentColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true };
+        var iconPaint = new KumikoPaint { Color = AccentColor, Style = PaintStyle.Fill, IsAntiAlias = true };
 
         // Sort A-Z button
         var sortAscRect = layout.SortAscending;
@@ -355,9 +355,7 @@ public class DrawnFilterPopup : DrawnComponent
         // Draw up-arrow icon
         float arrowX = sortAscRect.X + 8;
         float arrowCY = sortAscRect.Y + SortRowHeight / 2;
-        ctx.DrawLine(arrowX + 4, arrowCY - 4, arrowX + 4, arrowCY + 4, iconPaint);
-        ctx.DrawLine(arrowX + 1, arrowCY - 1, arrowX + 4, arrowCY - 4, iconPaint);
-        ctx.DrawLine(arrowX + 7, arrowCY - 1, arrowX + 4, arrowCY - 4, iconPaint);
+        GlyphDrawing.FillTriangleUp(ctx, arrowX + 4, arrowCY, 4, 4, iconPaint);
         ctx.DrawTextInRect("Sort A-Z", new KumikoRect(sortAscRect.X + 18, sortAscRect.Y, sortAscRect.Width - 18, SortRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
 
@@ -367,9 +365,7 @@ public class DrawnFilterPopup : DrawnComponent
             ctx.FillRect(sortDescRect, new KumikoPaint { Color = HoverColor, Style = PaintStyle.Fill });
         // Draw down-arrow icon
         float arrowX2 = sortDescRect.X + 8;
-        ctx.DrawLine(arrowX2 + 4, arrowCY + 4, arrowX2 + 4, arrowCY - 4, iconPaint);
-        ctx.DrawLine(arrowX2 + 1, arrowCY + 1, arrowX2 + 4, arrowCY + 4, iconPaint);
-        ctx.DrawLine(arrowX2 + 7, arrowCY + 1, arrowX2 + 4, arrowCY + 4, iconPaint);
+        GlyphDrawing.FillTriangleDown(ctx, arrowX2 + 4, arrowCY, 4, 4, iconPaint);
         ctx.DrawTextInRect("Sort Z-A", new KumikoRect(sortDescRect.X + 18, sortDescRect.Y, sortDescRect.Width - 18, SortRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
     }

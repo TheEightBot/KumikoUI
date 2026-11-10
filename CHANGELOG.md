@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- `IDrawingContext.FillPolygon(ReadOnlySpan<KumikoPoint>, KumikoPaint)` and `DrawPolyline(ReadOnlySpan<KumikoPoint>, KumikoPaint)` (round joins and caps) (#118). Both are default interface members, so existing `IDrawingContext` implementers keep compiling; the defaults fall back to `DrawLine` (outline only). `SkiaDrawingContext` overrides them with one reused `SKPath`, so drawing a glyph allocates nothing.
 - `IValueEditor` (`Value`, `HasValue`, `IsDirty`), implemented by every built-in editor; a custom editor implements it to have its value committed (#33). `DrawnScrollPicker` takes display/value pairs (`SetItems(displayTexts, values)`, `ItemValues`, `SelectedItemValue`, `SelectValue`, `ClearSelection`), and `DrawnDatePicker.TimeOfDay` keeps an edited cell's time of day.
 - Validation surface (#32): `EditSession.ValidationFailed` (`CellValidationEventArgs`) reports every error, warning or informational message with its severity and whether the value was committed, and the editor shows the message under the cell with an icon and a red (error) or orange (warning) outline. `KumikoValueConverter.TryConvert` is public. See "Validation" in the README.
 - Text-input contract and a rewritten `DrawnTextBox` (#39):
@@ -87,6 +88,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Row and cell background overrides, per-column header styles, group header labels, summary overflow text, multi-sort badges and group chips no longer allocate per frame, and the render path has no LINQ or boxed enumerators.
 
 ### Fixed
+- Expand/collapse chevrons, sort arrows (column headers, grouping-panel chips and the filter popup), the grouping-panel hierarchy chevron, the combo box dropdown arrow and the date and time picker arrows are drawn as one filled, anti-aliased triangle or one joined polyline each, instead of separate strokes whose corners did not meet (#118).
 - Scrolled rows no longer paint over the "Grouped by:" panel when the grid has no frozen columns (#117). Every row pass is now clipped vertically to the data area (below the header and top summaries, above a pinned footer) whether or not columns are frozen, and the visible-row range starts at the first row that intersects the data area instead of a few rows above it.
 - Editors never commit a value the user didn't choose (#33). Before, opening an editor and leaving it (a tap elsewhere, Tab, Enter) overwrote the cell and raised `CellValueChanged`:
   - a combo box whose value wasn't in its list wrote null;

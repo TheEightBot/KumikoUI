@@ -24,6 +24,11 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     private readonly Dictionary<FontKey, SKFont> _fontCache = new();
     private readonly Dictionary<TypefaceKey, SKTypeface> _typefaceCache = new();
 
+    // Reused for every FillPolygon / DrawPolyline call, so glyphs allocate nothing per call.
+    // Created on first use and released by Dispose (the context may be used again afterwards).
+    private SKPath? _path;
+    private SKPaint? _polylinePaint;
+
     /// <summary>Cache key for SKPaint objects.</summary>
     private readonly record struct PaintKey(uint Color, float StrokeWidth, SKPaintStyle Style, bool IsAntialias);
 
@@ -80,6 +85,46 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     {
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Stroke);
         _canvas.DrawLine(x1, y1, x2, y2, skPaint);
+    }
+
+    // ── Polygons & polylines ─────────────────────────────────────
+
+    /// <inheritdoc />
+    public void FillPolygon(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint)
+    {
+        if (points.Length < 3) return;
+        var path = BuildPath(points, close: true);
+        var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
+        _canvas.DrawPath(path, skPaint);
+    }
+
+    /// <inheritdoc />
+    public void DrawPolyline(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint)
+    {
+        if (points.Length < 2) return;
+        var path = BuildPath(points, close: false);
+        // Joins and caps are not part of the shared paint cache key, so strokes use their own paint.
+        var skPaint = _polylinePaint ??= new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            StrokeJoin = SKStrokeJoin.Round,
+            StrokeCap = SKStrokeCap.Round
+        };
+        skPaint.Color = ToSKColor(paint.Color);
+        skPaint.StrokeWidth = paint.StrokeWidth;
+        skPaint.IsAntialias = paint.IsAntiAlias;
+        _canvas.DrawPath(path, skPaint);
+    }
+
+    private SKPath BuildPath(ReadOnlySpan<KumikoPoint> points, bool close)
+    {
+        var path = _path ??= new SKPath();
+        path.Rewind();
+        path.MoveTo(points[0].X, points[0].Y);
+        for (int i = 1; i < points.Length; i++)
+            path.LineTo(points[i].X, points[i].Y);
+        if (close) path.Close();
+        return path;
     }
 
     // ── Text ─────────────────────────────────────────────────────
@@ -333,6 +378,11 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     /// </summary>
     public void Dispose()
     {
+        _path?.Dispose();
+        _path = null;
+        _polylinePaint?.Dispose();
+        _polylinePaint = null;
+
         foreach (var paint in _paintCache.Values)
             paint.Dispose();
         _paintCache.Clear();
