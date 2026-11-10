@@ -24,10 +24,14 @@ public class DrawnFocusManager
     /// <summary>Unregister a component.</summary>
     public void Unregister(DrawnComponent component)
     {
-        _components.Remove(component);
+        // A focused component loses its focus properly (OnLostFocus, FocusChanged) before it goes
         if (_focused == component)
-            _focused = null;
+            SetFocus(null);
+        _components.Remove(component);
     }
+
+    /// <summary>How many components are registered.</summary>
+    internal int ComponentCount => _components.Count;
 
     /// <summary>Set focus to the given component (null to clear).</summary>
     public void SetFocus(DrawnComponent? component)
