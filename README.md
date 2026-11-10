@@ -514,6 +514,16 @@ Each column can override the grid-level `EditTriggers` independently via its own
 
 Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column without making it fully read-only via `IsReadOnly`.
 
+### Boolean cells
+
+A Boolean cell toggles in place instead of opening an editor:
+- a single tap on the check box toggles it; a tap elsewhere in the cell only selects, unless the column has the `SingleTap` trigger, in which case any tap in the cell toggles;
+- a double-tap toggles once: the second tap toggles with the `DoubleTap` trigger only when the first tap didn't;
+- a long press toggles with the `LongPress` trigger, and `Space` toggles the current Boolean cell;
+- a column that is read-only or has `EditTriggers="None"` never toggles.
+
+A toggle goes through the same validation as an edit (see [Validation](#validation)).
+
 ### Edit text selection
 
 ```xml
@@ -527,7 +537,7 @@ Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column
 ### Commit / cancel
 
 - **Enter** — commit and move to the next row
-- **Tab / Shift+Tab** — commit and move to the next/previous editable cell
+- **Tab / Shift+Tab** — commit and move to the next/previous editable cell; at the last (first) one, commit and let focus leave the grid
 - **Escape** — cancel and restore the original value
 
 An open edit belongs to its item and column, not to a row number. If the rows move underneath it (a background collection change, a programmatic sort or filter), the editor moves with the item and the commit writes to that item; if the item is filtered out, collapsed or removed, the edit is canceled. Tapping a header to sort, opening a filter, toggling a group or starting a drag commits the edit first; when the value is invalid the gesture is ignored and the editor stays open with the error. The editor follows its cell while the grid scrolls and is hidden while the cell is out of view.
@@ -615,6 +625,8 @@ To create the editor yourself, set `EditorFactory`. Its `CellEditorContext` carr
 
 Selection is by row and tracks **items**, not row numbers: after a sort, filter, regroup or collection change the same items stay selected (items that are filtered out or removed leave the selection), and the current cell stays on its item and column. Group header and summary rows are never selected; Ctrl+A and Shift ranges skip them. Cell selection is planned for 1.x (#108).
 
+A tap on the empty part of the rows area (below the last row or right of the last column) commits an open edit and clears the selection and the current cell. Set `ClearSelectionOnEmptyAreaTap="False"` to keep the selection.
+
 ### Reading and changing selections (code)
 
 ```csharp
@@ -665,15 +677,20 @@ Full keyboard navigation is supported on all platforms (iOS/macOS via `UIKeyComm
 
 | Key | Action |
 |---|---|
-| `Arrow keys` | Move selection one cell/row |
-| `Tab` | Move to next editable cell (wraps rows) |
-| `Shift+Tab` | Move to previous editable cell |
-| `Enter` | Commit edit / open edit on selected cell |
-| `Escape` | Cancel edit |
+| `Arrow keys` | Move the current cell one cell/row (`Shift` extends the row selection) |
+| `Tab` | Move to the next editable cell (wraps rows) and edit it; past the last one, focus leaves the grid |
+| `Shift+Tab` | Move to the previous editable cell and edit it; before the first one, focus leaves the grid |
+| `Enter` | Commit the edit and move down / open the editor on the current cell (if `F2Key` trigger enabled) |
+| `Escape` | Cancel the edit / clear the selection |
 | `F2` | Open inline editor (if `F2Key` trigger enabled) |
+| `Space` | Toggle the current Boolean cell / toggle the current row's selection |
 | `Home` / `End` | First / last cell in row |
 | `Ctrl+Home` / `Ctrl+End` | First / last cell in grid |
-| `Page Up` / `Page Down` | Scroll one viewport height |
+| `Page Up` / `Page Down` | Move one page of visible rows |
+| `Ctrl+A` | Select all rows |
+| Typing a character | Open the editor with that character (if `Typing` trigger enabled) |
+
+The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, and the pinned bottom summary footer. Tab stops are visible columns that are not read-only and allow tab stops (`AllowTabStop`); Tab moves to a column whose `EditTriggers` is `None` without opening its editor. When Tab or Shift+Tab has no further cell to go to, or nothing is current, the grid leaves the key unhandled and the host moves focus to the next control, so the grid is never a keyboard trap. Enter and Escape are also left to the page when the grid has nothing to do with them.
 
 ---
 
