@@ -355,7 +355,7 @@ public class KumikoSourceGroupingTests
 
         Assert.Equal(new[] { "H0:East(2)", "H0:West(3)", "r1", "r3", "r5", "S:0" }, Rows(source));
         Assert.Null(source.GetGroupSummaries("Region=East"));
-        Assert.NotNull(source.GetGroupSummaries("Region=West"));
+        Assert.Equal(90d, source.GetGroupSummaries("Region=West")!.Single().RawValues["Amount"]);
     }
 
     [Fact]
@@ -614,5 +614,69 @@ public class KumikoSourceGroupingTests
         });
 
         Assert.Equal("150 units", source.ComputedBottomSummaries.Single().Values["Amount"]);
+    }
+
+    // ── Summary row registries ────────────────────────────────────
+
+    [Fact]
+    public void TableSummaryRows_ListTheAddedRowsInOrder_AndCountsFollowTheirPositions()
+    {
+        var source = MakeSource();
+        var top = new TableSummaryRow("Top", SummaryPosition.Top) { Columns = { new("Amount", SummaryType.Sum) } };
+        var bottom = new TableSummaryRow("Bottom") { Columns = { new("Amount", SummaryType.Max) } };
+
+        source.AddTableSummaryRow(top);
+        source.AddTableSummaryRow(bottom);
+
+        Assert.Equal(new[] { top, bottom }, source.TableSummaryRows);
+        Assert.Equal(1, source.TopSummaryCount);
+        Assert.Equal(1, source.BottomSummaryCount);
+        Assert.Equal("Sum: 150", source.ComputedTopSummaries.Single().Values["Amount"]);
+        Assert.Equal("Max: 50", source.ComputedBottomSummaries.Single().Values["Amount"]);
+    }
+
+    [Fact]
+    public void RemoveTableSummaryRow_ByName_LeavesTheOthers_AndAnUnknownNameChangesNothing()
+    {
+        var source = MakeSource();
+        source.AddTableSummaryRow(new TableSummaryRow("A") { Columns = { new("Amount", SummaryType.Sum) } });
+        source.AddTableSummaryRow(new TableSummaryRow("B") { Columns = { new("Amount", SummaryType.Min) } });
+
+        source.RemoveTableSummaryRow("Nope");
+        Assert.Equal(2, source.TableSummaryRows.Count);
+
+        source.RemoveTableSummaryRow("A");
+        Assert.Equal(new[] { "B" }, source.TableSummaryRows.Select(r => r.Name));
+        Assert.Equal(1, source.BottomSummaryCount);
+    }
+
+    [Fact]
+    public void GroupSummaryRows_ListTheAddedRows_AndRemovingByNameKeepsTheRest()
+    {
+        var source = MakeSource();
+        source.AddGroupSummaryRow(new GroupSummaryRow("A") { Columns = { new("Amount", SummaryType.Sum) } });
+        source.AddGroupSummaryRow(new GroupSummaryRow("B") { Columns = { new("Amount", SummaryType.Count) } });
+
+        source.RemoveGroupSummaryRow("A");
+
+        Assert.Equal(new[] { "B" }, source.GroupSummaryRows.Select(r => r.Name));
+        Assert.True(source.HasGroupSummaries);
+    }
+
+    [Fact]
+    public void Refresh_RebuildsTheViewFromTheCurrentItems()
+    {
+        var items = Sales();
+        var source = MakeSource(items);
+        source.AddGroupDescription(new GroupDescription("Region"));
+
+        items[0].Region = "East"; // a plain object: no change notification
+        Assert.Equal("H0:East(2)", Rows(source)[0]);
+        Assert.Equal("H0:West(3)", Rows(source)[3]); // stale until refreshed
+
+        source.Refresh();
+
+        Assert.Equal("H0:East(3)", Rows(source)[0]);
+        Assert.Equal("H0:West(2)", Rows(source)[4]);
     }
 }

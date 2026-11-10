@@ -367,7 +367,7 @@ public class KumikoSourceSortingAndCultureTests
         Assert.Equal(3.5, ((Item)source.GetItem(0)).Score);
     }
 
-    [Fact(Skip = "Known defect: summary values are formatted in the thread culture, ignoring KumikoSource.Culture (#47)")]
+    [Fact(Skip = "Known defect: summary values are formatted in the thread culture, ignoring KumikoSource.Culture; fixed by PR #157 (#47), remove this Skip when it merges")]
     public void SummaryFormat_UsesTheSourceCulture()
     {
         var source = MakeSource(new Item { Score = 1234.5 }, new Item { Score = 1000 });
