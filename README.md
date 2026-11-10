@@ -75,7 +75,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 | **Rendering** | 100% SkiaSharp canvas, zero native controls, 60 fps |
 | **Virtual scrolling** | Only visible rows/columns rendered — tested with 100K+ rows |
 | **Column types** | Text, Numeric, Boolean, Date, ComboBox, Picker, ProgressBar, Image, Template |
-| **Action buttons** | Pill-button columns with `ICommand` / callback support; activate on first tap |
+| **Action buttons** | Pill-button columns with `ICommand` / callback support; run on a tap without an editor, honor `CanExecute` (drawn disabled) |
 | **Column sizing** | Fixed, Star (proportional), Auto (content-sized) |
 | **Frozen columns** | Pin columns to left or right edge |
 | **Frozen rows** | Pin top N rows to viewport |
@@ -240,9 +240,12 @@ Keep `Render` free of allocations, as the built-in renderers are: draw with `cel
 
 Action button columns render a row of clickable pill-buttons directly inside every cell. Any number of buttons can be declared; they are distributed with equal widths across the cell area. Buttons support both `ICommand` (for MVVM data-binding) and an `Action` callback (for code-behind).
 
-Action buttons use the **Template** column type with `ActionButtonsCellRenderer` as the `CustomCellRenderer`. The renderer also implements `ICellEditorProvider`, so no separate `CustomEditorFactory` is required — the same button definitions handle both display and interaction.
+Action buttons use the **Template** column type with `ActionButtonsCellRenderer` as the `CustomCellRenderer`. The renderer is an *interactive cell* (`IInteractiveCellRenderer`): a tap runs the button under the finger directly, **without opening an editor**. A tap raises no `CellBeginEdit`, `CellEndEdit` or `CellValueChanged`, and no view change, and it works in a read-only column. No `EditTriggers` setting is needed, and no editor opens from F2, typing or a double-tap on the cell.
 
-> **Tip:** Set the column's `EditTriggers="SingleTap"` so buttons respond on the first touch, even when the grid's default trigger is `DoubleTap`. See [Per-column edit trigger override](#per-column-edit-trigger-override).
+- **`CanExecute`.** A button whose `Command.CanExecute(parameter)` is false is drawn disabled (the style's `ActionButtonDisabledBackgroundColor` and `ActionButtonDisabledTextColor`, set for every theme) and does nothing when tapped. The parameter is `CommandParameter`, or the row item when that is not set. The renderer listens to `CanExecuteChanged` and the grid redraws; the listener holds the renderer weakly, and `ActionButtonsCellRenderer.Dispose()` removes it. A button with only an `Action` is always enabled.
+- **Keyboard.** Enter on the current action cell runs its **first** button when that button is enabled (a disabled first button does nothing, so a stray Enter never runs a different command). Space keeps toggling the row's selection. Give the column `AllowTabStop="False"` to keep Tab out of it.
+- **Safe commands.** A command may remove the row it was run for, even the last one; the grid reads nothing about the row after the command returns.
+- A column with its own `EditorFactory`, `CustomEditorFactory` or `EditorDescriptor` is not interactive: the editor wins (see "Code-behind factory").
 
 ### XAML declaration (MVVM)
 
@@ -261,8 +264,7 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
                              Width="200"
                              AllowSorting="False"
                              AllowFiltering="False"
-                             AllowTabStop="False"
-                             EditTriggers="SingleTap">
+                             AllowTabStop="False">
             <core:KumikoColumn.CustomCellRenderer>
                 <render:ActionButtonsCellRenderer>
                     <render:ActionButtonsCellRenderer.Buttons>
@@ -286,17 +288,15 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
 
 > **Note:** `MauiActionButtonDefinition` is not in the visual tree, so it does **not** inherit `BindingContext` automatically. Use `Source={x:Reference …}` or `Source={RelativeSource …}` to point bindings at the correct source object.
 
-### Code-behind factory
+### Code-behind
 
-Use `ActionButtonDefinition` (in `KumikoUI.Core`) when you want a code-behind closure per row:
+Use `ActionButtonDefinition` (in `KumikoUI.Core`) when you want a code-behind callback. The row item is the cell value (`PropertyName=""`), passed to `Command` by default:
 
 ```csharp
-actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
+actionsColumn.CustomCellRenderer = new ActionButtonsCellRenderer
 {
-    Bounds  = bounds,
-    RowItem = value,
     Buttons =
-    [
+    {
         new ActionButtonDefinition
         {
             Label           = "Edit",
@@ -307,11 +307,13 @@ actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
         {
             Label           = "Delete",
             BackgroundColor = new KumikoColor(220, 53, 69),
-            Action          = () => vm.DeleteEmployee((Employee)value!)
+            Command         = vm.DeleteCommand // CanExecute false draws it disabled
         }
-    ]
+    }
 };
 ```
+
+To open the buttons as an editor instead (the pre-0.2 behavior), set `CustomEditorFactory` to create a `DrawnActionButtons` with the same `Buttons`; the editor also honors `CanExecute`, but raises the edit events.
 
 ### Button properties
 

@@ -152,6 +152,10 @@ public class KumikoStyle
     public KumikoColor GroupPanelChipTextColor { get; set => Set(ref field, value); } = new(40, 45, 55);
     /// <summary>Color of the remove (×) button on group-by chips.</summary>
     public KumikoColor GroupPanelChipRemoveColor { get; set => Set(ref field, value); } = new(140, 145, 155);
+    /// <summary>Background color of an action button whose command cannot execute (<see cref="System.Windows.Input.ICommand.CanExecute"/> is false).</summary>
+    public KumikoColor ActionButtonDisabledBackgroundColor { get; set => Set(ref field, value); } = new(222, 226, 230);
+    /// <summary>Label color of an action button whose command cannot execute.</summary>
+    public KumikoColor ActionButtonDisabledTextColor { get; set => Set(ref field, value); } = new(134, 142, 150);
     /// <summary>Font for group-by chip labels in the panel.</summary>
     public KumikoFont GroupPanelFont { get; set => Set(ref field, value); } = new("Default", 12, bold: true);
 

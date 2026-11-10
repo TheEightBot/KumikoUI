@@ -10,7 +10,7 @@ namespace KumikoUI.Core;
 /// Renders the entire grid (header, rows, grid lines, selection, frozen columns)
 /// using the platform-independent IDrawingContext.
 /// </summary>
-public class KumikoRenderer
+public class KumikoRenderer : IDisposable
 {
     private readonly KumikoLayoutEngine _layout = new();
     private readonly PaintCache _paintCache = new();
@@ -24,6 +24,15 @@ public class KumikoRenderer
     private readonly List<(KumikoColumn Column, float X, int OriginalIndex)> _rightFrozenCols = new();
     private readonly List<(KumikoColumn Column, float X, int OriginalIndex)> _scrollableCols = new();
     private readonly List<(KumikoColumn Column, float X, int OriginalIndex)> _allCols = new();
+
+    private readonly HashSet<IInteractiveCellRenderer> _interactiveRenderers = new();
+
+    /// <summary>
+    /// Raised when an interactive cell renderer (<see cref="IInteractiveCellRenderer"/>) changed its look
+    /// outside a draw, for example an action button's command raised <c>CanExecuteChanged</c>. The host
+    /// redraws. It can be raised from any thread.
+    /// </summary>
+    public event Action? RedrawRequested;
 
     // Paints whose color varies per row, cell or column (resolver and per-column style overrides); set just
     // before each draw, so overrides allocate nothing. Drawing contexts read a paint during the call only.
@@ -61,6 +70,22 @@ public class KumikoRenderer
         _cellRenderers[KumikoColumnType.Picker] = textRenderer;
         _cellRenderers[KumikoColumnType.Boolean] = new BooleanCellRenderer();
         _cellRenderers[KumikoColumnType.Image] = new ImageCellRenderer();
+    }
+
+    /// <summary>Stops listening to the interactive cell renderers it has drawn.</summary>
+    public void Dispose()
+    {
+        foreach (var renderer in _interactiveRenderers) renderer.RedrawRequested -= OnInteractiveRedrawRequested;
+        _interactiveRenderers.Clear();
+        GC.SuppressFinalize(this);
+    }
+
+    private void OnInteractiveRedrawRequested() => RedrawRequested?.Invoke();
+
+    private void TrackInteractive(ICellRenderer renderer)
+    {
+        if (renderer is IInteractiveCellRenderer interactive && _interactiveRenderers.Add(interactive))
+            interactive.RedrawRequested += OnInteractiveRedrawRequested;
     }
 
     /// <summary>Register a custom cell renderer for a column type.</summary>
@@ -717,6 +742,7 @@ public class KumikoRenderer
                 continue;
 
             var renderer = col.CustomCellRenderer ?? GetCellRenderer(col.ColumnType);
+            TrackInteractive(renderer);
             string displayText = dataSource.GetCachedCellText(row, dataItem, col, out object? value);
 
             var cell = new CellRenderContext(cellRect, row, value, displayText, col, style, colCellStyle, isSelected,
