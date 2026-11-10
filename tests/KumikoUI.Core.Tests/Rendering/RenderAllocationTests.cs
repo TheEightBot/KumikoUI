@@ -4,6 +4,11 @@ using KumikoUI.Core.Tests.TestHelpers;
 
 namespace KumikoUI.Core.Tests.Rendering;
 
+// Runs alone: other tests change shared state (the accessor registry, the current culture) that rightly
+// invalidates the cell text cache, which would show up here as allocation in the measured frames.
+[CollectionDefinition(nameof(RenderAllocationCollection), DisableParallelization = true)]
+public sealed class RenderAllocationCollection;
+
 /// <summary>
 /// The steady-state render loop allocates nothing (#68): once warm-up frames have filled the paint cache and the
 /// display text cache, drawing the same data again allocates 0 bytes on the rendering thread, for a bare grid and
@@ -15,6 +20,7 @@ namespace KumikoUI.Core.Tests.Rendering;
 /// initialization, the caches' first fill); tiered recompilation happens on a background thread and allocates
 /// nothing here. The expected value is exactly 0.
 /// </remarks>
+[Collection(nameof(RenderAllocationCollection))]
 public class RenderAllocationTests
 {
     private const int WarmUpFrames = 20;
