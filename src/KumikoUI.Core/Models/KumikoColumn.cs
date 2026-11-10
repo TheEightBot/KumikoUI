@@ -77,8 +77,10 @@ public class KumikoColumn
     public bool IsReadOnly { get; set; }
 
     /// <summary>
-    /// When true, Tab navigation will stop on this column's cells during editing.
-    /// When false, Tab will skip this column. Default: true.
+    /// When true (the default), Tab and Shift+Tab stop on this column's cells, whether or not a cell is being
+    /// edited, as long as the column is visible and not read-only; every column type is a tab stop, including
+    /// Boolean (Space toggles it) and action-button columns. When false, Tab skips the column. Read-only and
+    /// hidden columns are always skipped.
     /// </summary>
     public bool AllowTabStop { get; set; } = true;
 
