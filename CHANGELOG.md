@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- `IInteractiveCellRenderer` (`OnCellTap`, `OnCellActivate`, `RedrawRequested`): a cell renderer whose cell is acted on without an editor. `ActionButtonsCellRenderer` implements it, is `IDisposable`, and listens to its commands' `CanExecuteChanged` through weak listeners. `KumikoRenderer` is `IDisposable` and raises `RedrawRequested` for such renderers (the MAUI and Uno grids redraw on it) (#35).
+- `KumikoStyle.ActionButtonDisabledBackgroundColor` and `ActionButtonDisabledTextColor`, with values for the Light, Dark and HighContrast themes: the look of an action button whose command cannot execute (#35).
 - `KumikoSelectionModel.ClearSelectionOnEmptyAreaTap` (default `true`), also `ClearSelectionOnEmptyAreaTap` on the MAUI and Uno `KumikoDataGrid`: a tap on the empty part of the rows area (below the last row, right of the last column) commits an open edit and clears the selection and the current cell (#45).
 - `KumikoInputController.WouldHandleTab(selection, source, backwards)` tells a host whether Tab would be handled before it processes the key, for hosts that must claim Tab up front (#45).
 - Space toggles the current Boolean cell when its column is editable (not read-only, edit triggers not `None`); on other cells it still toggles the row's selection (#45).
@@ -40,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `KumikoStyle.PinBottomSummaryRows` (default `true`): `Position=Bottom` table summary rows are pinned to the bottom of the viewport as a fixed footer instead of scrolling after the last row. **Behavior change** for existing users of bottom summaries; set it to `false` to restore the previous layout.
 
 ### Changed
+- **Breaking:** a tap on an action-button cell runs the button without opening an editor (#35). A column whose renderer is an `ActionButtonsCellRenderer` (and that has no `EditorFactory`, `CustomEditorFactory` or `EditorDescriptor`) never opens an editor from a tap, double-tap, long press, F2 or typing, so `CellBeginEdit`, `CellEndEdit`, `CellValueChanged` and the view change a commit caused no longer fire from a button tap, and `EditTriggers` and `IsReadOnly` no longer matter for it. Enter on the current action cell runs its first button when enabled; Space still toggles the row's selection. To keep the old editor behavior, set `CustomEditorFactory` to create a `DrawnActionButtons`.
 - **Breaking:** keyboard and tap contract (#45):
   - Tab and Shift+Tab are no longer a keyboard trap. With no current cell, or past the last (before the first) tab stop, `HandleKey` leaves Tab unhandled and the hosts move focus to the next (previous) control; an open edit is committed first. Tab only opens the editor of the cell it lands on when that column's edit triggers are not `None`.
   - Enter outside an edit opens the editor of the current cell, like F2 (the `F2Key` trigger); when it can't, Enter is left unhandled so the page's default button works. Escape outside an edit is left unhandled when there is nothing to clear.
@@ -83,6 +86,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno is built with Uno.Sdk 6.7.30 (was 6.5.31).
 
 ### Fixed
+- Action buttons (#35):
+  - `ICommand.CanExecute` is checked before `Execute`, for the button's `CommandParameter` or the row item. A button that cannot execute is drawn disabled and does nothing when tapped, in the cell and in the `DrawnActionButtons` editor; `CanExecuteChanged` redraws the grid.
+  - A command that removes its own row, even the last one, no longer throws from the tap handler: the tap reads nothing about the row after the command runs.
+  - A button tap no longer commits an edit through `EditSession` (it raised `CellBeginEdit`/`CellEndEdit` and rebuilt the view).
 - Keyboard navigation (#45):
   - Scrolling the current cell into view keeps a scrollable row between the grouping panel, header, top summaries and frozen rows and the pinned bottom summary footer, with every combination of them, and keeps a column between the frozen columns net of the row drag handle (it ignored the handle's width).
   - Tab's search for the next tab stop walks rows, not rows × columns cells, so a read-only grid with many rows no longer freezes on Tab.

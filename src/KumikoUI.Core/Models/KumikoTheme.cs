@@ -78,6 +78,8 @@ public static class KumikoTheme
             GroupPanelChipAccentColor = new KumikoColor(55, 148, 255),
             GroupPanelChipTextColor = new KumikoColor(200, 205, 215),
             GroupPanelChipRemoveColor = new KumikoColor(140, 145, 155),
+            ActionButtonDisabledBackgroundColor = new KumikoColor(58, 60, 66),
+            ActionButtonDisabledTextColor = new KumikoColor(120, 124, 132),
 
             // ── Summaries ────────────────────────────────────────────
             SummaryRowBackgroundColor = new KumikoColor(38, 42, 50),
@@ -159,6 +161,8 @@ public static class KumikoTheme
             GroupPanelChipAccentColor = new KumikoColor(255, 255, 0),
             GroupPanelChipTextColor = KumikoColor.White,
             GroupPanelChipRemoveColor = new KumikoColor(255, 0, 0),
+            ActionButtonDisabledBackgroundColor = new KumikoColor(40, 40, 40),
+            ActionButtonDisabledTextColor = new KumikoColor(170, 170, 170),
 
             // ── Summaries ────────────────────────────────────────────
             SummaryRowBackgroundColor = new KumikoColor(0, 0, 80),

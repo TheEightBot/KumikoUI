@@ -122,6 +122,7 @@ public class KumikoDataGrid : Grid
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
         _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
@@ -883,6 +884,15 @@ public class KumikoDataGrid : Grid
 
     private void OnEditSessionNeedsRedraw() => _canvasView.InvalidateSurface();
 
+    // An action button's command raised CanExecuteChanged: that can happen on any thread.
+    private void OnRendererRedrawRequested()
+    {
+        if (Dispatcher.IsDispatchRequired)
+            Dispatcher.Dispatch(() => _canvasView.InvalidateSurface());
+        else
+            _canvasView.InvalidateSurface();
+    }
+
     private void OnEditSessionCellBeginEdit(object? sender, CellBeginEditEventArgs e)
     {
         if (!e.Cancel)
@@ -935,6 +945,8 @@ public class KumikoDataGrid : Grid
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
         _inputController.NeedsRedraw -= OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested -= OnRendererRedrawRequested;
+        _renderer.Dispose();
         _inputController.ColumnReordered -= OnColumnReordered;
         _inputController.RowReordered -= OnRowReordered;
         _inputController.AutoFitColumnRequested -= OnAutoFitColumnRequested;
@@ -998,6 +1010,7 @@ public class KumikoDataGrid : Grid
     {
         _dataSource.ViewChanged += OnDataSourceViewChanged;
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
         _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
