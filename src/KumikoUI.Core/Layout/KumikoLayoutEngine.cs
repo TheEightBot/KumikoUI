@@ -102,6 +102,13 @@ public class KumikoLayoutEngine
             _starSettled = new bool[Math.Max(count, _starSettled.Length * 2)];
         Array.Clear(_starSettled, 0, count);
 
+        // No weight to share by (every Star column weighs 0): leave their widths as they are
+        float totalWeight = 0f;
+        for (int i = 0; i < count; i++)
+            if (columns[i].IsVisible && columns[i].SizeMode == ColumnSizeMode.Star)
+                totalWeight += Math.Max(0f, columns[i].StarWeight);
+        if (totalWeight <= 0f) return;
+
         float remaining = space;
 
         // Each pass either holds at least one column at a bound or sizes all the others and stops.
