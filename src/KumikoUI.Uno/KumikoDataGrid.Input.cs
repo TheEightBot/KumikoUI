@@ -293,6 +293,10 @@ public partial class KumikoDataGrid
 
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        // A key the proxy TextBox left unhandled bubbles up here after OnProxyKeyDown already sent it to Core:
+        // don't send it twice.
+        if (ReferenceEquals(e.OriginalSource, _inputProxy)) return;
+
         var key = InputMapping.ToGridKey(e.Key);
         if (key == KumikoKey.None) return; // printable text comes via the proxy's TextChanged
 
@@ -306,7 +310,17 @@ public partial class KumikoDataGrid
             IsKeyDown = true,
         };
         _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
-        if (evt.Handled) e.Handled = true;
+        if (evt.Handled)
+        {
+            e.Handled = true;
+        }
+        else if (key == KumikoKey.Tab)
+        {
+            // Core leaves Tab unhandled past the last/first tab stop: focus leaves the grid. Default focus
+            // navigation from the grid would land on its own hidden proxy, so step past it explicitly.
+            MoveFocusOutOfGrid(backwards: evt.HasShift);
+            e.Handled = true;
+        }
     }
 
     // ── Inertial scroll timer (mirrors MAUI's _scrollTimer) ──────
