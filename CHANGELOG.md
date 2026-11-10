@@ -73,6 +73,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno is built with Uno.Sdk 6.7.30 (was 6.5.31).
 
 ### Fixed
+- An unknown font family no longer crashes the SkiaSharp backend: a family the platform cannot resolve (SkiaSharp returns null on Android and Windows, for example for a MAUI font alias) falls back to the default typeface in the same weight and slant, the fallback is what gets cached, and disposing the drawing context is null-safe and never disposes the shared default typeface. Each unknown family is logged once through `Trace.TraceWarning` (#73).
 - Editors never commit a value the user didn't choose (#33). Before, opening an editor and leaving it (a tap elsewhere, Tab, Enter) overwrote the cell and raised `CellValueChanged`:
   - a combo box whose value wasn't in its list wrote null;
   - a scroll picker wrote its first item;
