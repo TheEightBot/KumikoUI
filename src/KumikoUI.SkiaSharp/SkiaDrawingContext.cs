@@ -275,7 +275,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         {
             // Check the custom font registrar first — this allows host apps to supply fonts
             // that the system font manager cannot resolve (e.g. CJK fonts on Android, icon fonts).
-            if (SkiaFontRegistrar.TryGetTypeface(family, out var registeredTypeface))
+            if (SkiaFontRegistrar.TryGetTypeface(family, out var registeredTypeface) && registeredTypeface is not null)
             {
                 typeface = registeredTypeface;
             }
@@ -291,9 +291,16 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
                 // plain default typeface and drops the style (bold headers rendered regular). An unknown
                 // family falls back to the default family in the same style rather than to null.
                 var defaultFamily = SKTypeface.Default.FamilyName;
-                typeface = SKFontManager.Default.MatchFamily(family == "Default" ? defaultFamily : family, style)
-                    ?? SKFontManager.Default.MatchFamily(defaultFamily, style)
-                    ?? SKTypeface.Default;
+                var requested = family == "Default" ? defaultFamily : family;
+                typeface = FamilyMatcher(requested, style);
+                if (typeface is null)
+                {
+                    // SkiaSharp returns null for a family the platform does not know (e.g. a MAUI font
+                    // alias on Android or Windows). Never cache that null: fall back to the default
+                    // family in the same style, then to the shared default typeface.
+                    ReportUnknownFamily(requested);
+                    typeface = FamilyMatcher(defaultFamily, style) ?? SKTypeface.Default;
+                }
             }
             else
             {
@@ -302,6 +309,33 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
             _typefaceCache[key] = typeface;
         }
         return typeface;
+    }
+
+    /// <summary>
+    /// Resolves a family name and style to a typeface, or <c>null</c> when the platform does not know
+    /// the family. A seam so tests can simulate the platforms where SkiaSharp returns <c>null</c>.
+    /// </summary>
+    internal static Func<string, SKFontStyle, SKTypeface?> FamilyMatcher { get; set; } =
+        static (family, style) => SKFontManager.Default.MatchFamily(family, style);
+
+    private static readonly HashSet<string> _reportedUnknownFamilies = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Logs each unknown family once per process, so a grid redrawn at 60 fps does not flood the log.</summary>
+    private static void ReportUnknownFamily(string family)
+    {
+        lock (_reportedUnknownFamilies)
+        {
+            if (!_reportedUnknownFamilies.Add(family)) return;
+        }
+        System.Diagnostics.Trace.TraceWarning(
+            $"KumikoUI: font family '{family}' was not found; using the default typeface instead. " +
+            "Register it with SkiaFontRegistrar if it is a custom font.");
+    }
+
+    /// <summary>Forgets which unknown families were already reported (tests only).</summary>
+    internal static void ResetUnknownFamilyReports()
+    {
+        lock (_reportedUnknownFamilies) _reportedUnknownFamilies.Clear();
     }
 
     private static string TruncateTextWithEllipsis(string text, SKFont font, SKPaint paint, float maxWidth)
@@ -342,11 +376,15 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         _fontCache.Clear();
 
         // Don't dispose SKTypeface.Default or any typeface registered in SkiaFontRegistrar
-        // (those are externally owned). Only dispose typefaces we created dynamically.
-        foreach (var (key, typeface) in _typefaceCache)
+        // (those are externally owned). Only dispose typefaces we created dynamically. The same
+        // instance can sit under several cache keys, so dispose each one once.
+        var disposed = new HashSet<SKTypeface>();
+        foreach (var typeface in _typefaceCache.Values)
         {
-            if (typeface != SKTypeface.Default && !SkiaFontRegistrar.IsRegistered(typeface))
-                typeface.Dispose();
+            if (typeface is null || ReferenceEquals(typeface, SKTypeface.Default)
+                || SkiaFontRegistrar.IsRegistered(typeface) || !disposed.Add(typeface))
+                continue;
+            typeface.Dispose();
         }
         _typefaceCache.Clear();
     }
