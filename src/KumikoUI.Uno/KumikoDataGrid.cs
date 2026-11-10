@@ -17,9 +17,10 @@ namespace KumikoUI.Uno;
 /// <summary>
 /// Uno Platform / WinUI KumikoUI DataGrid control backed by SkiaSharp rendering.
 /// Drop this into any Uno page. The entire grid is drawn onto a single
-/// <see cref="SKXamlCanvas"/> child — there are no templated parts or visual
-/// states. Mirrors <c>KumikoUI.Maui.KumikoDataGrid</c> (which derives from
-/// <c>Grid</c> and hosts a single canvas) so the reused
+/// <see cref="SKXamlCanvas"/> — there are no templated parts or visual
+/// states. The canvas and the keyboard proxy are the control's private content: it has no
+/// layout API, and its XAML content is <see cref="Columns"/>. Mirrors
+/// <c>KumikoUI.Maui.KumikoDataGrid</c> (a <c>ContentView</c> with private content) so the reused
 /// <see cref="KumikoRenderer"/> / <see cref="KumikoInputController"/> drive the
 /// same way on both platforms.
 /// </summary>
@@ -30,8 +31,10 @@ namespace KumikoUI.Uno;
 /// <see cref="OnLoaded"/>, detached from <see cref="OnUnloaded"/>) and the mapping helpers in
 /// <c>Input/InputMapping.cs</c>.
 /// </remarks>
-public partial class KumikoDataGrid : Grid
+[Microsoft.UI.Xaml.Markup.ContentProperty(Name = nameof(Columns))]
+public partial class KumikoDataGrid : UserControl
 {
+    private readonly Grid _root = new();
     private readonly SKXamlCanvas _canvasView = new();
     private readonly KumikoRenderer _renderer = new();
     private readonly KumikoSource _dataSource = new();
@@ -54,12 +57,17 @@ public partial class KumikoDataGrid : Grid
         // Layout: the canvas fills the grid (mirrors MAUI's LayoutOptions.Fill).
         _canvasView.HorizontalAlignment = HorizontalAlignment.Stretch;
         _canvasView.VerticalAlignment = VerticalAlignment.Stretch;
-        Children.Add(_canvasView);
+        _root.Children.Add(_canvasView);
+        Content = _root;
+        UseSystemFocusVisuals = false; // the grid draws its own focus (the current cell)
 
         // Add the hidden TextBox proxy for soft-keyboard input (iOS/Android/WASM).
         // Must be added after the canvas so it sits on top in the z-order, though its
         // Opacity=0 / 1×1px size means it is not visible regardless.
         SetupInputProxy();
+
+        // The content is the grid's own: replacing it would detach the canvas
+        RegisterPropertyChangedCallback(ContentProperty, OnContentReplaced);
 
         // Auto-init the bindable collections so XAML can add items directly,
         // matching the MAUI control's ctor.
@@ -130,14 +138,12 @@ public partial class KumikoDataGrid : Grid
         }
     }
 
-    /// <summary>Set the data items imperatively (alternative to <see cref="ItemsSource"/>).</summary>
-    public void SetItemsSource(IEnumerable items) => _dataSource.SetItems(items);
-
-    /// <summary>Set the column definitions imperatively (alternative to <see cref="Columns"/>).</summary>
-    public void SetColumns(IEnumerable<KumikoColumn> columns)
+    private void OnContentReplaced(DependencyObject sender, DependencyProperty property)
     {
-        _dataSource.SetColumns(columns);
-        InvalidateSurface();
+        if (ReferenceEquals(Content, _root)) return;
+        Content = _root;
+        throw new InvalidOperationException(
+            "KumikoDataGrid draws its own content; it cannot be replaced. Add columns through Columns.");
     }
 
     // ── Rendering ─────────────────────────────────────────────────
