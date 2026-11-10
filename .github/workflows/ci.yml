@@ -382,11 +382,12 @@ jobs:
         with:
           fetch-depth: 0   # MinVer computes the version from git tags
 
-      # Only wasm-tools: a workload restore of the sample would also ask for the iOS workload, which Linux lacks.
-      - name: Setup .NET + wasm-tools workload (pinned)
+      # wasm-tools for the head itself, android because restore evaluates every head the Uno projects target on
+      # Linux (Uno drops iOS there); not a workload restore, which would also ask for iOS.
+      - name: Setup .NET + wasm-tools and android workloads (pinned)
         uses: ./.github/actions/setup-dotnet
         with:
-          workloads: wasm-tools
+          workloads: wasm-tools android
           cache-nuget: 'true'
 
       - name: Build sample — Uno WebAssembly
