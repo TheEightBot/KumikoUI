@@ -532,7 +532,13 @@ An open edit belongs to its item and column, not to a row number. If the rows mo
 
 ### Validation
 
-When an edit is committed (Enter, Tab, leaving the cell), the value goes through four steps:
+An edit is written only when the user changed the value. Opening an editor and leaving it never touches the cell:
+- a combo box or picker whose cell value isn't in its list opens with nothing selected;
+- a date picker opens empty on an empty cell, and keeps the cell's time of day when a new date is picked.
+
+A custom editor takes part by implementing `IValueEditor` (`Value`, `HasValue`, `IsDirty`); one that doesn't is never written.
+
+When a changed value is committed (Enter, Tab, leaving the cell), it goes through four steps:
 
 1. **Conversion.** The editor's value is converted to the property's type, in `KumikoSource.Culture`:
    - every numeric type, with whole numbers only for integer types, and in range;

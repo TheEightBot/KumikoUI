@@ -189,6 +189,8 @@ public class EditSession
     /// <remarks>
     /// <para>In order:</para>
     /// <list type="number">
+    /// <item>nothing is written when the editor has no value (<see cref="IValueEditor.HasValue"/>), the user
+    /// didn't change it (<see cref="IValueEditor.IsDirty"/>), or it converts to the original value;</item>
     /// <item>the editor's value is converted to the property type in the source's culture
     /// (<see cref="KumikoValueConverter"/>); text that doesn't convert is an error;</item>
     /// <item><see cref="CellValidator"/> checks the converted value;</item>
@@ -214,16 +216,12 @@ public class EditSession
         var column = _editColumn;
         var editedCell = _editCell;
 
-        // An editor with no value (action buttons) or a column with nothing to write to: the edit just ends
-        if (!CellEditorFactory.HoldsValue(_activeEditor) ||
+        // Nothing to write: an editor without a value (action buttons, a custom editor that isn't an
+        // IValueEditor), nothing chosen (a combo box whose value isn't in its list, an empty date), no change
+        // by the user, or a column with nothing to write to. The cell keeps its value and the edit just ends.
+        if (_activeEditor is not IValueEditor { HasValue: true, IsDirty: true } ||
             column.ValueSetter == null && string.IsNullOrEmpty(column.PropertyName))
-        {
-            var unchanged = _originalValue;
-            EndEdit();
-            CellEndEdit?.Invoke(this, new CellEndEditEventArgs(
-                editedCell.Row, editedCell.Column, column, unchanged, unchanged, committed: true));
-            return true;
-        }
+            return EndUnchanged(editedCell, column);
 
         var editorValue = CellEditorFactory.GetEditorValue(_activeEditor, column);
 
@@ -234,6 +232,10 @@ public class EditSession
         {
             return Refuse(CellValidationResult.Error(conversionError ?? KumikoValueConverter.Messages.Invalid), editorValue);
         }
+
+        // The user changed the value back: nothing to write
+        if (Equals(newValue, _originalValue))
+            return EndUnchanged(editedCell, column);
 
         // 2. The grid's validator
         var result = CellValidator?.Invoke(editedCell.Row, editedCell.Column, newValue);
@@ -289,6 +291,16 @@ public class EditSession
 
         EndEdit();
         CellEndEdit?.Invoke(this, endArgs);
+        return true;
+    }
+
+    /// <summary>End the edit without writing: committed, with the original value as old and new.</summary>
+    private bool EndUnchanged(CellPosition editedCell, KumikoColumn column)
+    {
+        var unchanged = _originalValue;
+        EndEdit();
+        CellEndEdit?.Invoke(this, new CellEndEditEventArgs(
+            editedCell.Row, editedCell.Column, column, unchanged, unchanged, committed: true));
         return true;
     }
 

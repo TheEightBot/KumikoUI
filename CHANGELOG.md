@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- `IValueEditor` (`Value`, `HasValue`, `IsDirty`), implemented by every built-in editor; a custom editor implements it to have its value committed (#33). `DrawnScrollPicker` takes display/value pairs (`SetItems(displayTexts, values)`, `ItemValues`, `SelectedItemValue`, `SelectValue`, `ClearSelection`), and `DrawnDatePicker.TimeOfDay` keeps an edited cell's time of day.
 - Validation surface (#32): `EditSession.ValidationFailed` (`CellValidationEventArgs`) reports every error, warning or informational message with its severity and whether the value was committed, and the editor shows the message under the cell with an icon and a red (error) or orange (warning) outline. `KumikoValueConverter.TryConvert` is public. See "Validation" in the README.
 - Text-input contract and a rewritten `DrawnTextBox` (#39):
   - `ITextInputSession` (`KumikoUI.Core.Input`) is what a host's native text-input adapter drives: committed text, input-method composition (`SetComposition`, `CommitComposition`, `CancelComposition`), grapheme-wise deletion and selection, with `KumikoTextRange` for ranges and `TextInputStateChanged` for changes made in Core. `EditSession.ActiveTextInput` exposes it for the open editor. The contract is described in [docs/TEXT-INPUT.md](docs/TEXT-INPUT.md); the host adapters follow in #40–#43.
@@ -35,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `KumikoStyle.PinBottomSummaryRows` (default `true`): `Position=Bottom` table summary rows are pinned to the bottom of the viewport as a fixed footer instead of scrolling after the last row. **Behavior change** for existing users of bottom summaries; set it to `false` to restore the previous layout.
 
 ### Changed
+- **Breaking:** `DrawnDatePicker.SelectedDate` is `DateTime?` (null: nothing selected). `DrawnScrollPicker.SelectedIndex` can be -1 (nothing selected), and its `ValueChanged` reports item texts instead of indices. `CellEditorFactory.GetEditorValue` reads `IValueEditor.Value`, so a picker returns the selected item's value. An edit whose editor wasn't changed ends without writing or validating (#33).
 - **Breaking:** `KumikoSource.SetCellValue` returns `bool` (whether the value was written) and raises a change only on success. `CellEditorFactory.GetEditorValue` returns the editor's own value (a text box's text) and no longer converts it: `EditSession.CommitEdit` converts. `CellEditorFactory.CreateEditor` takes an optional culture. A warning from validation now keeps the editor open on the first commit (#32).
 - **Breaking:** `KumikoColumn.AllowSorting` now defaults to `false` for Template and Image columns and for columns with neither a `PropertyName` nor a `ValueAccessor`; set it to `true` to sort them. `KumikoSource.FormatCellValue` is now an instance method, so it formats in the source's `Culture` (#15).
 - **Breaking:** item-based selection (#30). `KumikoSelectionModel` is created for a source (`new KumikoSelectionModel(source)`; the hosts do this) and tracks the selected **items** and the current cell's item and column, so the same items stay selected through sorts, filters, regrouping and collection changes, and items that are no longer visible leave the selection.
@@ -71,6 +73,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno is built with Uno.Sdk 6.7.30 (was 6.5.31).
 
 ### Fixed
+- Editors never commit a value the user didn't choose (#33). Before, opening an editor and leaving it (a tap elsewhere, Tab, Enter) overwrote the cell and raised `CellValueChanged`:
+  - a combo box whose value wasn't in its list wrote null;
+  - a scroll picker wrote its first item;
+  - a date picker on an empty cell wrote today, and any picked date lost its time of day;
+  - a custom editor wrote null.
+
+  Now `CommitEdit` writes only when the editor has a value the user changed, and only when it differs from the original. Combo boxes and pickers start with nothing selected when the cell's value isn't in their list; they match enum values to names. The date picker opens empty on an empty cell, keeps the original time, and reads `DateOnly`. Enter confirms in the date and scroll pickers. A scroll picker no longer coasts past the item its release confirmed, and Up/Down at the ends no longer report a change.
 - Typed value conversion and validation (#32):
   - **Conversion to the property type.** Edited text converts to the property's type in `KumikoSource.Culture`: every numeric type, `decimal` at full precision (it went through `double`), enums by name, `Guid`, `DateOnly`, `TimeOnly`, `DateTimeOffset`, `TimeSpan`, `bool`, `char`, `string` and nullable forms. The date picker writes `DateOnly` properties.
   - **No more silent failures.** Out-of-range numbers, fractions in integer properties (they were rounded), unparsable text, blank text for a non-nullable property, and setters that throw are now errors with a message. They used to be dropped silently while the commit reported success.

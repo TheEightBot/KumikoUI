@@ -29,11 +29,11 @@ public static class CellEditorFactory
         CultureInfo? culture = null)
     {
         culture ??= CultureInfo.CurrentCulture;
-        return column.ColumnType switch
+        var editor = column.ColumnType switch
         {
             KumikoColumnType.Text => CreateTextEditor(column, currentValue, cellBounds, initialCharacter, selectionMode, culture),
             KumikoColumnType.Numeric => CreateNumericEditor(column, currentValue, cellBounds, initialCharacter, selectionMode, culture),
-            KumikoColumnType.Date => CreateDateEditor(column, currentValue, cellBounds),
+            KumikoColumnType.Date => CreateDateEditor(column, currentValue, cellBounds, culture),
             KumikoColumnType.Boolean => null, // Toggled directly, no overlay editor
             KumikoColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds),
             KumikoColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
@@ -41,6 +41,11 @@ public static class CellEditorFactory
             KumikoColumnType.Template => CreateTemplateEditor(column, currentValue, cellBounds),
             _ => null
         };
+
+        // From here on, a value change is the user's: it makes the editor dirty (IValueEditor.IsDirty)
+        if (editor is { IsTrackingChanges: false })
+            editor.StartTrackingChanges();
+        return editor;
     }
 
     /// <summary>
@@ -49,22 +54,8 @@ public static class CellEditorFactory
     /// picker. <see cref="EditSession.CommitEdit"/> converts it to the property type with
     /// <see cref="Data.KumikoValueConverter"/>.
     /// </summary>
-    public static object? GetEditorValue(DrawnComponent editor, KumikoColumn column)
-    {
-        return editor switch
-        {
-            DrawnTextBox textBox => textBox.Text,
-            DrawnNumericUpDown numeric => numeric.Value,
-            DrawnDatePicker datePicker => datePicker.SelectedDate,
-            DrawnComboBox comboBox => comboBox.SelectedValue,
-            DrawnScrollPicker picker => picker.SelectedValue,
-            _ => null
-        };
-    }
-
-    /// <summary>Whether <paramref name="editor"/> holds a value to commit (action buttons and unknown custom editors don't).</summary>
-    internal static bool HoldsValue(DrawnComponent editor) =>
-        editor is DrawnTextBox or DrawnNumericUpDown or DrawnDatePicker or DrawnComboBox or DrawnScrollPicker;
+    public static object? GetEditorValue(DrawnComponent editor, KumikoColumn column) =>
+        editor is IValueEditor valueEditor ? valueEditor.Value : null;
 
     /// <summary>
     /// Applies theme colors from a <see cref="KumikoStyle"/> to the given editor component.
@@ -108,13 +99,12 @@ public static class CellEditorFactory
                 : selectionMode
         };
 
+        textBox.Text = FormatForEditing(value, culture);
         if (initialCharacter.HasValue)
         {
+            // The typed character replaces the value: a change by the user
+            textBox.StartTrackingChanges();
             textBox.Text = initialCharacter.Value.ToString();
-        }
-        else
-        {
-            textBox.Text = FormatForEditing(value, culture);
         }
 
         return textBox;
@@ -144,6 +134,9 @@ public static class CellEditorFactory
              number.NumberDecimalSeparator.Contains(initialCharacter.Value) ||
              number.NegativeSign.Contains(initialCharacter.Value)))
         {
+            // The typed character replaces the value: a change by the user
+            textBox.Text = FormatForEditing(value, culture);
+            textBox.StartTrackingChanges();
             textBox.Text = initialCharacter.Value.ToString();
         }
         else
@@ -155,7 +148,7 @@ public static class CellEditorFactory
     }
 
     private static DrawnDatePicker CreateDateEditor(
-        KumikoColumn column, object? value, KumikoRect cellBounds)
+        KumikoColumn column, object? value, KumikoRect cellBounds, CultureInfo culture)
     {
         var picker = new DrawnDatePicker
         {
@@ -163,12 +156,18 @@ public static class CellEditorFactory
             IsVisible = true
         };
 
-        if (value is DateTime dt)
-            picker.SelectedDate = dt;
-        else if (value is DateTimeOffset dto)
-            picker.SelectedDate = dto.DateTime;
-        else if (DateTime.TryParse(value?.ToString(), out var parsed))
-            picker.SelectedDate = parsed;
+        DateTime? initial = value switch
+        {
+            DateTime dt => dt,
+            DateTimeOffset dto => dto.DateTime,
+            DateOnly date => date.ToDateTime(TimeOnly.MinValue),
+            string text when DateTime.TryParse(text, culture, DateTimeStyles.AllowWhiteSpaces, out var parsed) => parsed,
+            _ => null,
+        };
+
+        // An empty cell opens with nothing selected; a date keeps its time of day through the edit
+        picker.SelectedDate = initial;
+        picker.TimeOfDay = initial?.TimeOfDay ?? TimeSpan.Zero;
 
         // Auto-open the calendar when the editor is created
         picker.OpenCalendar();
@@ -214,10 +213,9 @@ public static class CellEditorFactory
 
         if (column.EditorItems != null)
         {
-            var items = new List<string>();
-            foreach (var item in column.EditorItems)
-                items.Add(item?.ToString() ?? string.Empty);
-            picker.SetItems(items);
+            // Each item is shown as text and committed as itself (an enum, a number, an object)
+            var values = column.EditorItems.Cast<object?>().ToList();
+            picker.SetItems(values.Select(v => v?.ToString() ?? string.Empty).ToList(), values);
         }
 
         // Expand the picker to popup-size below the cell so items are visible.
@@ -229,12 +227,9 @@ public static class CellEditorFactory
             cellBounds.Width,
             pickerHeight);
 
-        if (value != null)
-        {
-            var valueStr = value.ToString() ?? string.Empty;
-            var idx = picker.Items.ToList().IndexOf(valueStr);
-            if (idx >= 0) picker.SelectedIndex = idx;
-        }
+        // Select the cell's value, or nothing when it isn't one of the items
+        if (!picker.SelectValue(value))
+            picker.ClearSelection();
 
         return picker;
     }

@@ -220,6 +220,7 @@ public class EditSessionTests
         var f = new Fixture();
         f.Session.CellValidator = (_, _, _) => CellValidationResult.Error("no");
         f.Begin(0, 0);
+        f.Box.Text = "Changed";
 
         // The previous edit cannot commit, but a read-only target is refused outright.
         Assert.False(f.Begin(0, 2));
@@ -410,6 +411,7 @@ public class EditSessionTests
         var f = new Fixture();
         f.Session.CellValidator = (_, _, _) => new CellValidationResult { IsValid = false, Severity = severity };
         f.Begin(0, 0);
+        f.Box.Text = "Changed";
         f.Session.CommitEdit(f.Source);
         var ctx = new RecordingDrawingContext();
 
@@ -511,6 +513,7 @@ public class EditSessionTests
         source.SetItems(new[] { row });
         var session = new EditSession();
         session.BeginEdit(0, 0, column, source, Bounds);
+        ((DrawnTextBox)session.ActiveEditor!).Text = "y";
 
         Assert.False(session.CommitEdit(source));
 
@@ -541,6 +544,7 @@ public class EditSessionTests
         source.SetItems(new[] { row });
         var session = new EditSession { CellValidator = (_, _, _) => CellValidationResult.Valid };
         session.BeginEdit(0, 0, column, source, Bounds);
+        ((DrawnTextBox)session.ActiveEditor!).Text = "y";
 
         Assert.False(session.CommitEdit(source));
         Assert.Equal("bad name", session.CurrentValidation!.ErrorMessage);

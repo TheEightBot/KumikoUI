@@ -50,7 +50,7 @@ public class DrawnScrollPickerTests
         Assert.Equal(2, p.SelectedIndex);
         Assert.Equal("Item 2", p.SelectedValue);
         Assert.Equal(2, Assert.Single(picks).SelectedIndex);
-        Assert.Equal((0, 2), ((int)values[0].OldValue!, (int)values[0].NewValue!));
+        Assert.Equal(("Item 0", "Item 2"), ((string)values[0].OldValue!, (string)values[0].NewValue!));
         Assert.Equal(1, completed);
     }
 
@@ -142,12 +142,19 @@ public class DrawnScrollPickerTests
     }
 
     [Fact]
-    public void OtherKeys_AreNotHandled()
+    public void Enter_ConfirmsTheSelection_AndOtherKeysAreNotHandled()
     {
         var p = Picker();
+        int completed = 0;
+        p.EditCompleted += () => completed++;
 
         Assert.False(p.Key(KumikoKey.Left));
-        Assert.False(p.Key(KumikoKey.Enter));
+        Assert.True(p.Key(KumikoKey.Enter));
+        Assert.Equal(1, completed);
+
+        p.ClearSelection();
+        Assert.False(p.Key(KumikoKey.Enter)); // nothing selected: nothing to confirm
+        Assert.Equal(1, completed);
     }
 
     // ── Items and selection ───────────────────────────────────────
@@ -161,9 +168,10 @@ public class DrawnScrollPickerTests
         Assert.Equal(3, p.SelectedIndex);
         Assert.Equal("Item 3", p.SelectedValue);
 
-        p.SelectedIndex = -4;
-        Assert.Equal(0, p.SelectedIndex);
-        Assert.Equal(86, Draw(p).SingleText("Item 0").Rect.Y, 2);
+        p.SelectedIndex = -4; // -1 is "nothing selected"
+        Assert.Equal(-1, p.SelectedIndex);
+        Assert.Null(p.SelectedValue);
+        Assert.Equal(86, Draw(p).SingleText("Item 0").Rect.Y, 2); // the wheel rests on the first item
     }
 
     [Fact]
@@ -192,24 +200,19 @@ public class DrawnScrollPickerTests
     }
 
     [Fact]
-    public void UpdateAnimation_CoastsAfterAFlick_ThenComesToRestOnAnItem()
+    public void Release_AfterAFlick_StopsOnTheConfirmedItem_WithoutCoasting()
     {
         var p = Picker();
-        var picks = new List<int>();
-        p.SelectionChanged += (_, e) => picks.Add(e.SelectedIndex);
-        DragUp(p, 20);
-        p.Up(50, 130);
+        int completed = 0;
+        p.EditCompleted += () => completed++;
+        DragUp(p, 30);
+        p.Up(50, 120);
 
-        int frames = 0;
-        while (p.UpdateAnimation(16) && frames < 1000) frames++;
-
-        Assert.InRange(frames, 1, 999);
-        Assert.True(p.SelectedIndex > 0);
-        Assert.Equal(p.SelectedIndex, picks[^1]);
-        // At rest the selected item is exactly on the center line
-        var selected = Draw(p).SingleText($"Item {p.SelectedIndex}");
-        Assert.Equal(86, selected.Rect.Y, 2);
+        // The confirmed item is the one the wheel rests on: nothing moves afterward
+        Assert.Equal(1, completed);
+        Assert.Equal(1, p.SelectedIndex);
         Assert.False(p.UpdateAnimation(16));
+        Assert.Equal(86, Draw(p).SingleText("Item 1").Rect.Y, 2);
     }
 
     [Fact]

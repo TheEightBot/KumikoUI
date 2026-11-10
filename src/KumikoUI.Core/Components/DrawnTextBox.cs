@@ -12,7 +12,7 @@ namespace KumikoUI.Core.Components;
 /// input-method composition (<see cref="ITextInputSession"/>), undo/redo, word and line selection by
 /// double and triple click, drag selection, clipboard requests and horizontal scrolling.
 /// </summary>
-public class DrawnTextBox : DrawnComponent, ITextInputSession
+public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
 {
     private const int MaxUndoDepth = 200;
     private const long MultiClickTimeMs = 500;
@@ -1173,4 +1173,12 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession
     void ITextInputSession.DeleteForward() { _adapterCallDepth++; try { DeleteForward(); } finally { _adapterCallDepth--; } }
 
     void ITextInputSession.SetSelection(int anchor, int active) { _adapterCallDepth++; try { SetSelection(anchor, active); } finally { _adapterCallDepth--; } }
+
+    // ── IValueEditor ────────────────────────────────────────────
+
+    object? IValueEditor.Value => _text;
+
+    bool IValueEditor.HasValue => true;
+
+    bool IValueEditor.IsDirty => HasChangedSinceTracking;
 }

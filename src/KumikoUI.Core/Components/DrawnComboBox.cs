@@ -1,3 +1,5 @@
+using System.Globalization;
+using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -8,7 +10,7 @@ namespace KumikoUI.Core.Components;
 /// Fully custom-drawn combo box with dropdown popup.
 /// Supports item selection, keyboard navigation, and filterable search.
 /// </summary>
-public class DrawnComboBox : DrawnComponent
+public class DrawnComboBox : DrawnComponent, IValueEditor
 {
     private readonly List<DrawnComboBoxItem> _items = new();
     private int _selectedIndex = -1;
@@ -213,19 +215,22 @@ public class DrawnComboBox : DrawnComponent
     }
 
     /// <summary>
-    /// Select the item whose Value equals the given value.
+    /// Select the item whose Value equals the given value, or whose value has the same text (an enum
+    /// property shown with a list of names, a number with a list of strings). Nothing is selected when no
+    /// item matches.
     /// </summary>
-    public void SetSelectedValue(object? value)
+    public void SetSelectedValue(object? value) => SelectedIndex = IndexOfValue(value);
+
+    private int IndexOfValue(object? value)
     {
         for (int i = 0; i < _items.Count; i++)
-        {
-            if (Equals(_items[i].Value, value))
-            {
-                SelectedIndex = i;
-                return;
-            }
-        }
-        SelectedIndex = -1;
+            if (Equals(_items[i].Value, value)) return i;
+
+        if (value == null) return -1;
+        string text = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
+        for (int i = 0; i < _items.Count; i++)
+            if (_items[i].Value != null && Convert.ToString(_items[i].Value, CultureInfo.InvariantCulture) == text) return i;
+        return -1;
     }
 
     private static object? GetPropertyValue(object obj, string propertyPath) =>
@@ -583,4 +588,12 @@ public class DrawnComboBox : DrawnComponent
         CloseDropdown();
         base.OnLostFocus();
     }
+
+    // ── IValueEditor ────────────────────────────────────────────
+
+    object? IValueEditor.Value => SelectedValue;
+
+    bool IValueEditor.HasValue => _selectedIndex >= 0;
+
+    bool IValueEditor.IsDirty => HasChangedSinceTracking;
 }
