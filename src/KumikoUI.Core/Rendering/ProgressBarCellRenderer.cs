@@ -38,18 +38,29 @@ public class ProgressBarCellRenderer : ICellRenderer
     /// </summary>
     public Func<double, double, double, KumikoColor>? ColorSelector { get; set; }
 
-    public void Render(
-        IDrawingContext ctx, KumikoRect cellRect, object? value,
-        string displayText, KumikoUI.Core.Models.KumikoColumn column,
-        KumikoStyle style, bool isSelected,
-        KumikoCellStyle? cellStyle = null)
+    // Reused for every cell (only the color varies), so drawing a bar allocates nothing.
+    private readonly KumikoPaint _trackPaint = new();
+    private readonly KumikoPaint _fillPaint = new();
+    private readonly KumikoPaint _textPaint = new() { IsAntiAlias = true };
+
+    // The label font, derived from the style's cell font (one point smaller, at least 9) when that changes.
+    private KumikoFont? _textFont;
+    private string? _textFontFamily;
+    private float _textFontSourceSize = float.NaN;
+
+    // Formatted labels by value, so a value shown again is not formatted again each frame. Built for one format
+    // and culture; emptied when either changes, or when it holds more values than a screen shows.
+    private const int MaxLabels = 512;
+    private readonly Dictionary<double, string> _labels = new();
+    private string? _labelsFormat;
+    private System.Globalization.CultureInfo? _labelsCulture;
+
+    /// <inheritdoc />
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
     {
-        double numValue = 0;
-        if (value is IConvertible conv)
-        {
-            try { numValue = conv.ToDouble(null); }
-            catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException) { /* leave at 0 */ }
-        }
+        var cellRect = cell.Bounds;
+        var style = cell.Style;
+        double numValue = ToDouble(cell.Value);
 
         double range = Maximum - Minimum;
         double pct = range > 0 ? Math.Clamp((numValue - Minimum) / range, 0, 1) : 0;
@@ -61,7 +72,8 @@ public class ProgressBarCellRenderer : ICellRenderer
         var trackRect = new KumikoRect(cellRect.X + pad, trackY, cellRect.Width - pad * 2, trackH);
 
         // Track background
-        ctx.FillRoundRect(trackRect, CornerRadius, new KumikoPaint { Color = TrackColor });
+        _trackPaint.Color = TrackColor;
+        ctx.FillRoundRect(trackRect, CornerRadius, _trackPaint);
 
         // Fill
         float fillWidth = trackRect.Width * (float)pct;
@@ -74,23 +86,69 @@ public class ProgressBarCellRenderer : ICellRenderer
             // so only the left portion with fill width is visible
             ctx.Save();
             ctx.ClipRect(new KumikoRect(trackRect.X, trackRect.Y, fillWidth, trackRect.Height));
-            ctx.FillRoundRect(trackRect, CornerRadius, new KumikoPaint { Color = fillColor });
+            _fillPaint.Color = fillColor;
+            ctx.FillRoundRect(trackRect, CornerRadius, _fillPaint);
             ctx.Restore();
         }
 
         // Text overlay
         if (ShowText)
         {
-            string text = numValue.ToString(TextFormat);
-            var textPaint = new KumikoPaint
-            {
-                Color = pct > 0.45 ? KumikoColor.White : style.CellTextColor,
-                Font = new KumikoFont(style.CellFont.Family, Math.Max(9, style.CellFont.Size - 1)),
-                IsAntiAlias = true
-            };
-            ctx.DrawTextInRect(text, trackRect, textPaint,
+            string text = Label(numValue);
+            _textPaint.Color = pct > 0.45 ? KumikoColor.White : style.CellTextColor;
+            _textPaint.Font = TextFont(style.CellFont);
+            ctx.DrawTextInRect(text, trackRect, _textPaint,
                 KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
         }
+    }
+
+    /// <summary>The value as a number (0 when it is not one), without throwing for text.</summary>
+    private static double ToDouble(object? value)
+    {
+        // Text parses the way IConvertible.ToDouble would, but without an exception per frame when it is not a number.
+        if (value is string s)
+            return double.TryParse(s, System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands,
+                null, out double parsed) ? parsed : 0;
+
+        if (value is IConvertible conv)
+        {
+            try { return conv.ToDouble(null); }
+            catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException) { /* leave at 0 */ }
+        }
+        return 0;
+    }
+
+    /// <summary>The value formatted with <see cref="TextFormat"/> in the current culture, reusing a recent result.</summary>
+    private string Label(double value)
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        if (!ReferenceEquals(_labelsFormat, TextFormat) || !ReferenceEquals(_labelsCulture, culture))
+        {
+            _labels.Clear();
+            _labelsFormat = TextFormat;
+            _labelsCulture = culture;
+        }
+
+        if (_labels.TryGetValue(value, out var text))
+            return text;
+
+        if (_labels.Count >= MaxLabels)
+            _labels.Clear();
+        text = value.ToString(TextFormat, culture);
+        _labels[value] = text;
+        return text;
+    }
+
+    /// <summary>The label font: one point smaller than <paramref name="cellFont"/>, but not below 9.</summary>
+    private KumikoFont TextFont(KumikoFont cellFont)
+    {
+        if (_textFont == null || !ReferenceEquals(cellFont.Family, _textFontFamily) || cellFont.Size != _textFontSourceSize)
+        {
+            _textFont = new KumikoFont(cellFont.Family, Math.Max(9, cellFont.Size - 1));
+            _textFontFamily = cellFont.Family;
+            _textFontSourceSize = cellFont.Size;
+        }
+        return _textFont;
     }
 
     private static KumikoColor DefaultGradientColor(double pct)

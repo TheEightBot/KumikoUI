@@ -40,6 +40,9 @@ public class KumikoColumn
     // The path resolved for the last item type seen, so a cell read costs no registry lookup.
     private Data.KumikoValuePath? _resolvedPath;
 
+    // The display text of this column's drawn cells, cached by the source that draws them (#68).
+    internal CellTextCache? TextCache;
+
     /// <summary>Resolves <see cref="PropertyName"/> for <paramref name="itemType"/>, caching the last result.</summary>
     internal Data.KumikoValuePath ResolvePath(Type itemType)
     {

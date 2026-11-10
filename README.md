@@ -196,6 +196,40 @@ Each column is a `KumikoColumn` with a `ColumnType` that controls both the read-
                      AllowTabStop="False" />
 ```
 
+### Custom cell renderers
+
+Implement `ICellRenderer` to draw a column's cells yourself, and set it as the column's `CustomCellRenderer` (or register it for a column type with `KumikoRenderer.SetCellRenderer`). The grid calls `Render` for every visible cell on every frame, passing a `CellRenderContext` by reference:
+
+| Member | Meaning |
+|---|---|
+| `Bounds` | The rectangle to draw in (the cell minus its horizontal padding) |
+| `Row` | The visible row index |
+| `Value`, `DisplayText` | The raw value, and its text formatted with the column's `Format` in the source's culture |
+| `Column`, `Style` | The column and the grid style |
+| `CellStyle` | The cell's effective style overrides (column style merged with the resolvers'), or `null` |
+| `IsSelected` | Whether the row is selected |
+| `Paints` | The grid's shared `PaintCache` (cell text, checkbox, grid line, selection paints and more) |
+| `TextPaint`, `TextAlignment` | The paint and alignment for the cell's text, with the cell style's overrides applied |
+
+```csharp
+public sealed class StatusDotRenderer : ICellRenderer
+{
+    // Created once and reused: only the color changes per cell
+    private readonly KumikoPaint _dot = new() { IsAntiAlias = true };
+
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
+    {
+        _dot.Color = cell.Value is true ? new KumikoColor(40, 167, 70) : new KumikoColor(220, 53, 69);
+        var b = cell.Bounds;
+        ctx.FillRoundRect(new KumikoRect(b.X, b.Y + b.Height / 2 - 5, 10, 10), 5, _dot);
+        ctx.DrawTextInRect(cell.DisplayText, new KumikoRect(b.X + 16, b.Y, b.Width - 16, b.Height),
+            cell.TextPaint, cell.TextAlignment, KumikoVerticalAlignment.Center);
+    }
+}
+```
+
+Keep `Render` free of allocations, as the built-in renderers are: draw with `cell.Paints` and `cell.TextPaint`, or with paints and fonts the renderer creates once, and don't create a `KumikoPaint`, `KumikoFont` or string per call. The context's `CellStyle`, `TextPaint` and `Paints` may be reused for the next cell, so read them during the call and don't keep or modify them.
+
 ---
 
 ## 🖱️ Action Button Columns
@@ -792,18 +826,16 @@ Store the Unicode code-point string as the cell value and render it with a custo
 // Renderer that draws cell text using a named icon-font typeface
 public class IconFontCellRenderer(string fontFamily, float fontSize) : ICellRenderer
 {
-    public void Render(IDrawingContext ctx, KumikoRect cellRect, object? value,
-        string displayText, KumikoColumn column,
-        KumikoStyle style, bool isSelected, KumikoCellStyle? cellStyle = null)
-    {
-        if (string.IsNullOrEmpty(displayText)) return;
+    // Created once and reused: only the color changes per cell
+    private readonly KumikoPaint _paint = new() { Font = new KumikoFont(fontFamily, fontSize), IsAntiAlias = true };
 
-        ctx.DrawTextInRect(displayText, cellRect, new KumikoPaint
-        {
-            Color       = isSelected ? style.SelectionTextColor : style.CellTextColor,
-            Font        = new KumikoFont(fontFamily, fontSize),
-            IsAntiAlias = true
-        }, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
+    {
+        if (string.IsNullOrEmpty(cell.DisplayText)) return;
+
+        _paint.Color = cell.IsSelected ? cell.Style.SelectionTextColor : cell.Style.CellTextColor;
+        ctx.DrawTextInRect(cell.DisplayText, cell.Bounds, _paint,
+            KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
     }
 }
 ```
@@ -851,9 +883,15 @@ Column visibility is resolved by `KumikoLayoutEngine` walking cumulative widths 
 
 Touch-based scrolling uses **physics-based inertia** — a velocity tracker samples recent pointer deltas and the `InertialScroller` decelerates with configurable friction once the finger lifts. The deceleration is frame-normalized so it behaves consistently at any refresh rate.
 
-### PaintCache
+### Allocation-free frames
 
-~60 `KumikoPaint` objects are pre-computed once per frame from `KumikoStyle` so there are zero per-cell paint allocations during rendering.
+Once the visible data has been drawn, redrawing it allocates nothing in the managed render loop, which keeps the garbage collector out of scrolling and animation:
+
+- **PaintCache** — the `KumikoPaint` objects the grid draws with are built from `KumikoStyle` and rebuilt only when the style instance or its `Version` (incremented by every property change) changes.
+- **Display text cache** — each drawn cell's value and formatted text is cached per row and column, and read again only when the row shows another item, the item raises `PropertyChanged`, the view is rebuilt, or the culture or the column's format changes. Items that don't implement `INotifyPropertyChanged` need `KumikoSource.Refresh()` after a change (see [Live Data](#-live-data)).
+- **Cell renderers** draw with shared paints passed in `CellRenderContext` (see [Custom cell renderers](#custom-cell-renderers)).
+
+`bench/KumikoUI.Benchmarks` (`RenderBenchmarks`) measures a 30 × 10 visible grid at 0 bytes allocated per frame.
 
 ### SkiaDrawingContext caching
 
@@ -900,6 +938,8 @@ public class Employee : INotifyPropertyChanged
 ```
 
 A change to a property that a sort, column filter, grouping or summary uses re-sorts, re-filters, regroups or recomputes; any other change only repaints. With a `SetFilter` predicate set, every change re-filters, since the predicate may read any property. A `null` or empty property name means every property changed. Items added to or removed from an `ObservableCollection` honor the active filters at once.
+
+The grid caches the text of the cells it draws and reads a cell again when its item raises `PropertyChanged`. If your items don't implement `INotifyPropertyChanged`, call `KumikoSource.Refresh()` after changing them; values written through the grid (editing, `SetCellValue`) always show.
 
 ### Nested property paths
 
@@ -975,7 +1015,7 @@ KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 | `KumikoSource` | Data management: filtering, sorting, grouping, summaries, `INotifyCollectionChanged` observation |
 | `KumikoLayoutEngine` | Column width computation (Fixed / Auto / Star), visible row/column range |
 | `KumikoHitTester` | Resolves pointer coordinates to one of 14 `HitRegion` types across 3 column panes |
-| `PaintCache` | Pre-computes ~60 `KumikoPaint` objects per frame from `KumikoStyle` |
+| `PaintCache` | The `KumikoPaint` objects the grid draws with, rebuilt from `KumikoStyle` only when the style changes |
 | `KumikoInputController` | Routes pointer and keyboard events to selection, editing, resizing, drag handlers |
 | `KumikoSelectionModel` | Row/cell selection state, Single / Multiple / Extended modes |
 | `EditSession` | Cell edit lifecycle — begin, commit, cancel, validation, write-back |

@@ -42,26 +42,26 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider
     /// <summary>Inset from all four cell edges (pixels).</summary>
     public float CellPadding { get; set; } = 4f;
 
-    /// <inheritdoc />
-    public void Render(
-        IDrawingContext ctx, KumikoRect cellRect, object? value,
-        string displayText, KumikoColumn column,
-        KumikoStyle style, bool isSelected,
-        KumikoCellStyle? cellStyle = null)
-    {
-        if (Buttons.Count == 0) return;
-        var rects = ActionButtonLayout.ComputeButtonRects(cellRect, Buttons.Count, CellPadding, ButtonSpacing);
+    // Reused for every button (only the colors vary), so drawing the buttons allocates nothing.
+    private readonly KumikoPaint _buttonPaint = new() { IsAntiAlias = true };
+    private readonly KumikoPaint _labelPaint = new() { Font = new KumikoFont("Default", 11, bold: true), IsAntiAlias = true };
 
-        for (int i = 0; i < Buttons.Count; i++)
+    /// <inheritdoc />
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
+    {
+        var buttons = Buttons;
+        int count = buttons.Count;
+        var cellRect = cell.Bounds;
+        if (count == 0 || cellRect.Width <= 0 || cellRect.Height <= 0) return;
+
+        for (int i = 0; i < count; i++)
         {
-            var btn = Buttons[i];
-            ctx.FillRoundRect(rects[i], CornerRadius, new KumikoPaint { Color = btn.BackgroundColor, IsAntiAlias = true });
-            ctx.DrawTextInRect(btn.Label, rects[i], new KumikoPaint
-            {
-                Color = btn.TextColor,
-                Font = new KumikoFont("Default", 11, bold: true),
-                IsAntiAlias = true
-            }, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
+            var btn = buttons[i];
+            var rect = ActionButtonLayout.ComputeButtonRect(cellRect, count, i, CellPadding, ButtonSpacing);
+            _buttonPaint.Color = btn.BackgroundColor;
+            ctx.FillRoundRect(rect, CornerRadius, _buttonPaint);
+            _labelPaint.Color = btn.TextColor;
+            ctx.DrawTextInRect(btn.Label, rect, _labelPaint, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
         }
     }
 
