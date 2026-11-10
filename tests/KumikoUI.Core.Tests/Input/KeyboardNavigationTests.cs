@@ -810,6 +810,127 @@ public class KeyboardNavigationTests
         Assert.Equal(new CellPosition(0, 3), g.Selection.CurrentCell);
     }
 
+    // The five test columns are Name(0) Age(1) City(2) Dept(3) Score(4). Every editable column type is a Tab
+    // stop; only read-only, hidden and AllowTabStop = false columns are skipped.
+    public static TheoryData<KumikoColumnType> EditableColumnTypes => new()
+    {
+        KumikoColumnType.Text,
+        KumikoColumnType.Numeric,
+        KumikoColumnType.Date,
+        KumikoColumnType.Boolean,
+        KumikoColumnType.ComboBox,
+        KumikoColumnType.Picker,
+        KumikoColumnType.Template,
+    };
+
+    private static void MakeColumnType(KumikoColumn column, KumikoColumnType type)
+    {
+        column.ColumnType = type;
+        if (type is KumikoColumnType.ComboBox or KumikoColumnType.Picker)
+            column.EditorItems = new List<string> { "A", "B" };
+    }
+
+    [Theory]
+    [MemberData(nameof(EditableColumnTypes))]
+    public void Tab_StopsAtAnEditableColumnOfEveryType(KumikoColumnType type)
+    {
+        var g = Grid(configure: x => MakeColumnType(x.City, type));
+        g.Select(0, 1);
+
+        Assert.True(g.Key(KumikoKey.Tab).Handled);
+
+        Assert.Equal(new CellPosition(0, 2), g.Selection.CurrentCell);
+    }
+
+    [Theory]
+    [MemberData(nameof(EditableColumnTypes))]
+    public void ShiftTab_StopsAtAnEditableColumnOfEveryType(KumikoColumnType type)
+    {
+        var g = Grid(configure: x => MakeColumnType(x.City, type));
+        g.Select(0, 3);
+
+        Assert.True(g.Key(KumikoKey.Tab, InputModifiers.Shift).Handled);
+
+        Assert.Equal(new CellPosition(0, 2), g.Selection.CurrentCell);
+    }
+
+    [Theory]
+    [MemberData(nameof(EditableColumnTypes))]
+    public void Tab_SkipsAColumnOfEveryTypeThatOptsOutOrIsReadOnly(KumikoColumnType type)
+    {
+        var g = Grid(configure: x =>
+        {
+            MakeColumnType(x.City, type);
+            MakeColumnType(x.Dept, type);
+            x.City.AllowTabStop = false;
+            x.Dept.IsReadOnly = true;
+        });
+        g.Select(0, 1);
+
+        g.Key(KumikoKey.Tab);
+
+        Assert.Equal(new CellPosition(0, 4), g.Selection.CurrentCell);
+
+        g.Edit.CancelEdit();
+        g.Key(KumikoKey.Tab, InputModifiers.Shift);
+
+        Assert.Equal(new CellPosition(0, 1), g.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void Tab_WalksEveryEditableColumnInAMixedRow_ThenLeavesTheGrid()
+    {
+        var g = Grid(rows: 1, configure: x =>
+        {
+            x.Age.ColumnType = KumikoColumnType.Date;
+            x.City.ColumnType = KumikoColumnType.Boolean;
+            MakeColumnType(x.Dept, KumikoColumnType.ComboBox);
+            MakeColumnType(x.Score, KumikoColumnType.Picker);
+        });
+        g.Select(0, 0);
+
+        var visited = new List<int>();
+        while (g.Key(KumikoKey.Tab).Handled)
+        {
+            visited.Add(g.Selection.CurrentCell.Column);
+            g.Edit.CancelEdit();
+        }
+
+        Assert.Equal(new[] { 1, 2, 3, 4 }, visited);
+        Assert.Equal(new CellPosition(0, 4), g.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void Tab_StopsAtAnInteractiveActionButtonColumn_WithoutOpeningAnEditor()
+    {
+        var g = Grid(configure: x =>
+        {
+            x.City.PropertyName = "";
+            x.City.ColumnType = KumikoColumnType.Template;
+            x.City.CustomCellRenderer = new KumikoUI.Core.Rendering.ActionButtonsCellRenderer
+            {
+                Buttons = { new KumikoUI.Core.Rendering.ActionButtonDefinition { Label = "Go", Action = () => { } } },
+            };
+        });
+        g.Select(0, 1);
+
+        Assert.True(g.Key(KumikoKey.Tab).Handled);
+
+        Assert.Equal(new CellPosition(0, 2), g.Selection.CurrentCell);
+        Assert.False(g.Edit.IsEditing);
+    }
+
+    [Fact]
+    public void Tab_SkipsAHiddenColumn()
+    {
+        var g = Grid(configure: x => x.City.IsVisible = false);
+        g.Select(0, 1);
+
+        g.Key(KumikoKey.Tab);
+
+        Assert.Equal(new CellPosition(0, 3), g.Selection.CurrentCell);
+    }
+
     [Fact]
     public void Tab_AtTheRowEnd_WrapsToTheNextRow()
     {

@@ -54,10 +54,10 @@ public class DrawnFilterPopup : DrawnComponent
     private const float DragThreshold = 6f;
     private const int WheelRowsPerNotch = 3;
 
-    private enum Target { None, SortAscending, SortDescending, Search, SelectAll, DeselectAll, List, Scrollbar, Ok, Cancel, Clear }
+    private enum Target { None, FirstSortRow, SecondSortRow, Search, SelectAll, DeselectAll, List, Scrollbar, Ok, Cancel, Clear }
 
     private readonly record struct PopupLayout(
-        KumikoRect Popup, KumikoRect SortAscending, KumikoRect SortDescending, KumikoRect Search,
+        KumikoRect Popup, KumikoRect FirstSortRow, KumikoRect SecondSortRow, KumikoRect Search,
         KumikoRect SelectAll, KumikoRect DeselectAll, KumikoRect List, KumikoRect Ok, KumikoRect Cancel, KumikoRect Clear,
         float TopSeparatorY, float BottomSeparatorY);
 
@@ -348,26 +348,32 @@ public class DrawnFilterPopup : DrawnComponent
         var textPaint = new KumikoPaint { Color = AccentColor, Font = SmallFont, IsAntiAlias = true };
         var iconPaint = new KumikoPaint { Color = AccentColor, Style = PaintStyle.Fill, IsAntiAlias = true };
 
-        // Sort A-Z button
-        var sortAscRect = layout.SortAscending;
+        // The first row sorts in the column's first header-tap direction, the second row in the opposite one.
+        var firstDir = _column.FirstSortDirection;
+        var secondDir = KumikoColumn.Opposite(firstDir);
+
+        var firstRect = layout.FirstSortRow;
         if (_hoveredItemIndex == -1000)
-            ctx.FillRect(sortAscRect, new KumikoPaint { Color = HoverColor, Style = PaintStyle.Fill });
-        // Draw up-arrow icon
-        float arrowX = sortAscRect.X + 8;
-        float arrowCY = sortAscRect.Y + SortRowHeight / 2;
-        GlyphDrawing.FillTriangleUp(ctx, arrowX + 4, arrowCY, 4, 4, iconPaint);
-        ctx.DrawTextInRect(_dataSource.Strings.SortAscending(_column.ColumnType), new KumikoRect(sortAscRect.X + 18, sortAscRect.Y, sortAscRect.Width - 18, SortRowHeight),
+            ctx.FillRect(firstRect, new KumikoPaint { Color = HoverColor, Style = PaintStyle.Fill });
+        DrawSortArrow(ctx, firstRect.X + 8, firstRect.Y + SortRowHeight / 2, firstDir, iconPaint);
+        ctx.DrawTextInRect(_dataSource.Strings.SortLabel(_column.ColumnType, firstDir), new KumikoRect(firstRect.X + 18, firstRect.Y, firstRect.Width - 18, SortRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
 
-        // Sort Z-A button
-        var sortDescRect = layout.SortDescending;
+        var secondRect = layout.SecondSortRow;
         if (_hoveredItemIndex == -1001)
-            ctx.FillRect(sortDescRect, new KumikoPaint { Color = HoverColor, Style = PaintStyle.Fill });
-        // Draw down-arrow icon
-        float arrowX2 = sortDescRect.X + 8;
-        GlyphDrawing.FillTriangleDown(ctx, arrowX2 + 4, arrowCY, 4, 4, iconPaint);
-        ctx.DrawTextInRect(_dataSource.Strings.SortDescending(_column.ColumnType), new KumikoRect(sortDescRect.X + 18, sortDescRect.Y, sortDescRect.Width - 18, SortRowHeight),
+            ctx.FillRect(secondRect, new KumikoPaint { Color = HoverColor, Style = PaintStyle.Fill });
+        DrawSortArrow(ctx, secondRect.X + 8, secondRect.Y + SortRowHeight / 2, secondDir, iconPaint);
+        ctx.DrawTextInRect(_dataSource.Strings.SortLabel(_column.ColumnType, secondDir), new KumikoRect(secondRect.X + 18, secondRect.Y, secondRect.Width - 18, SortRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+    }
+
+    private static void DrawSortArrow(IDrawingContext ctx, float x, float centerY, KumikoSortDirection direction, KumikoPaint paint)
+    {
+        // A filled triangle (#118): pointing down for descending, up otherwise
+        if (direction == KumikoSortDirection.Descending)
+            GlyphDrawing.FillTriangleDown(ctx, x + 4, centerY, 4, 4, paint);
+        else
+            GlyphDrawing.FillTriangleUp(ctx, x + 4, centerY, 4, 4, paint);
     }
 
     private void DrawSearchBox(IDrawingContext ctx, KumikoRect searchRect)
@@ -524,8 +530,8 @@ public class DrawnFilterPopup : DrawnComponent
 
     private Target TargetAt(PopupLayout layout, float x, float y)
     {
-        if (layout.SortAscending.Contains(x, y)) return Target.SortAscending;
-        if (layout.SortDescending.Contains(x, y)) return Target.SortDescending;
+        if (layout.FirstSortRow.Contains(x, y)) return Target.FirstSortRow;
+        if (layout.SecondSortRow.Contains(x, y)) return Target.SecondSortRow;
         if (layout.Search.Contains(x, y)) return Target.Search;
         if (layout.SelectAll.Contains(x, y)) return Target.SelectAll;
         if (layout.DeselectAll.Contains(x, y)) return Target.DeselectAll;
@@ -641,11 +647,11 @@ public class DrawnFilterPopup : DrawnComponent
                     filterItem.IsChecked = !filterItem.IsChecked;
                 }
                 break;
-            case Target.SortAscending when sameTarget:
-                SortRequested?.Invoke(KumikoSortDirection.Ascending);
+            case Target.FirstSortRow when sameTarget:
+                SortRequested?.Invoke(_column.FirstSortDirection);
                 break;
-            case Target.SortDescending when sameTarget:
-                SortRequested?.Invoke(KumikoSortDirection.Descending);
+            case Target.SecondSortRow when sameTarget:
+                SortRequested?.Invoke(KumikoColumn.Opposite(_column.FirstSortDirection));
                 break;
             case Target.SelectAll when sameTarget:
                 SelectAll();
@@ -684,8 +690,8 @@ public class DrawnFilterPopup : DrawnComponent
         int old = _hoveredItemIndex;
         _hoveredItemIndex = TargetAt(layout, x, y) switch
         {
-            Target.SortAscending => -1000,
-            Target.SortDescending => -1001,
+            Target.FirstSortRow => -1000,
+            Target.SecondSortRow => -1001,
             Target.SelectAll => -2000,
             Target.DeselectAll => -2001,
             Target.List when !_isPanning => ItemAt(layout.List, y),

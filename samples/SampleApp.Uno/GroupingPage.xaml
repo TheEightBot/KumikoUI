@@ -57,7 +57,7 @@
                 <core:KumikoColumn Header="Salary" PropertyName="Salary" Width="120"
                                      Format="C0" ColumnType="Numeric" TextAlignment="Right" />
                 <core:KumikoColumn Header="Active" PropertyName="IsActive" Width="80"
-                                     ColumnType="Boolean" AllowTabStop="False" />
+                                     ColumnType="Boolean" />
                 <core:KumikoColumn Header="City" PropertyName="City" Width="140" />
                 <kumiko:KumikoDataGrid.GroupDescriptions>
                     <core:GroupDescription PropertyName="Department" Header="Department" />

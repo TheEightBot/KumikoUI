@@ -73,7 +73,8 @@ KumikoUI.Maui (net10.0-ios/android/maccatalyst → MAUI + SkiaSharp.Views.Maui.C
 | Class | Responsibility |
 |-------|---------------|
 | `IDrawingContext` | Platform-independent API: rectangles, lines, text, images, clipping |
-| `SkiaDrawingContext` | `SKCanvas` implementation with 3-tier native object caching |
+| `SkiaDrawingContext` | `SKCanvas` implementation; a thin per-frame wrapper over the canvas |
+| `SkiaResourceCache` | Per-control, bounded cache of `SKPaint` / `SKFont` / `SKTypeface` reused across frames |
 | `ICellRenderer` | Per-column-type cell content renderer (Text, Boolean, Image, ProgressBar); receives a `CellRenderContext` |
 | `KumikoColor` / `KumikoFont` / `KumikoPaint` / `KumikoRect` | Platform-independent value types |
 
@@ -114,7 +115,7 @@ Scrollable, left-frozen, and right-frozen columns are each rendered in separate 
 The `KumikoPaint` objects the grid draws with are built from `KumikoStyle` and rebuilt only when the style instance or `KumikoStyle.Version` changes; per-cell overrides reuse a few paints, and `KumikoSource` caches each drawn cell's display text, so a steady-state frame allocates nothing (#68).
 
 ### 3-Tier Native Object Caching (SkiaDrawingContext)
-`SKPaint`, `SKFont`, and `SKTypeface` instances are cached by value-type keys (struct with color/size/style) and disposed at frame end.
+`SKPaint`, `SKFont`, and `SKTypeface` instances are cached by value-type keys (struct with color/size/style) in a `SkiaResourceCache` owned by the host control and reused across frames; `SkiaDrawingContext` is a thin per-frame wrapper. The cache is bounded (LRU), disposed with the control, and invalidated by `SkiaFontRegistrar` changes before the registrar disposes anything (see [RENDERING.md](RENDERING.md#skiadrawingcontext-caching)).
 
 ### Compiled Expression Tree Property Accessors
 `KumikoSource.BuildAccessor` compiles `Func<object, object?>` from dotted property paths (e.g., `"Address.City"`) via `Expression.Property` chains. Compiled delegates are cached by `"TypeName.PropertyPath"`.

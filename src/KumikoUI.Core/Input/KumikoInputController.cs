@@ -318,6 +318,16 @@ public class KumikoInputController
         switch (e.Key)
         {
             case KumikoKey.Enter:
+                // Enter on an interactive cell (action buttons) runs its default control, without an editor.
+                if (selection.CurrentCell.IsValid &&
+                    InteractiveRendererAt(dataSource, selection.CurrentCell) is { } interactive)
+                {
+                    var activated = dataSource.GetCellValue(selection.CurrentCell.Row, dataSource.Columns[selection.CurrentCell.Column]);
+                    e.Handled = interactive.OnCellActivate(activated);
+                    Redraw();
+                    break;
+                }
+
                 // Enter opens the editor of the current cell, like F2 (column- or grid-level F2Key trigger).
                 // Otherwise it is left unhandled, so the page's default button still works.
                 if (_editSession != null && selection.CurrentCell.IsValid &&
@@ -872,7 +882,7 @@ public class KumikoInputController
                 _lastTapToggledCell = CellPosition.Invalid;
 
                 // Double-tap edit trigger
-                if (_editSession != null && hit.Column != null &&
+                if (_editSession != null && hit.Column != null && GetInteractiveRenderer(hit.Column) == null &&
                     (GetEffectiveEditTriggers(hit.Column) & EditTrigger.DoubleTap) != 0)
                 {
                     if (isBooleanCell)
@@ -890,7 +900,16 @@ public class KumikoInputController
             {
                 _lastTapToggledCell = CellPosition.Invalid;
 
-                if (isBooleanCell)
+                if (GetInteractiveRenderer(hit.Column) is { } interactive)
+                {
+                    // An interactive cell (action buttons) acts on the tap itself: no editor, no edit events.
+                    // The control may remove the row (even the last one), so nothing about the row is read
+                    // after it runs: the cell value and bounds are taken first, and only a redraw follows.
+                    var value = dataSource.GetCellValue(hit.RowIndex, hit.Column);
+                    var bounds = GetInteractiveCellBounds(hit.RowIndex, hit.ColumnIndex, scroll, style, dataSource);
+                    interactive.OnCellTap(bounds, e.X, e.Y, value);
+                }
+                else if (isBooleanCell)
                 {
                     // A single tap toggles a Boolean cell when it lands on the check box, or anywhere in the
                     // cell with the SingleTap trigger; elsewhere it only selects. EditTriggers=None never toggles.
@@ -1358,6 +1377,34 @@ public class KumikoInputController
     }
 
     /// <summary>
+    /// The column's renderer when its cells are interactive without being edited
+    /// (<see cref="IInteractiveCellRenderer"/>), unless the column has an editor of its own, which wins.
+    /// </summary>
+    private static IInteractiveCellRenderer? GetInteractiveRenderer(KumikoColumn? column)
+        => column is { EditorFactory: null, CustomEditorFactory: null, EditorDescriptor: null } &&
+           column.CustomCellRenderer is IInteractiveCellRenderer interactive
+            ? interactive
+            : null;
+
+    private IInteractiveCellRenderer? InteractiveRendererAt(KumikoSource dataSource, CellPosition cell)
+    {
+        if (cell.Column < 0 || cell.Column >= dataSource.Columns.Count) return null;
+        if (cell.Row < 0 || cell.Row >= dataSource.RowCount || dataSource.IsNonDataRow(cell.Row)) return null;
+        return GetInteractiveRenderer(dataSource.Columns[cell.Column]);
+    }
+
+    /// <summary>The cell rectangle as the renderer drew it: the screen bounds inset by the cell padding.</summary>
+    private KumikoRect GetInteractiveCellBounds(
+        int row, int col, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    {
+        float groupPanelOffset = dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
+        float topSummaryHeight = dataSource.TopSummaryCount * style.SummaryRowHeight;
+        var cell = GetCellScreenBounds(row, col, scroll, style, dataSource.Columns, groupPanelOffset, topSummaryHeight, dataSource);
+        float padding = dataSource.Columns[col].CellStyle?.Padding ?? style.CellPadding;
+        return new KumikoRect(cell.X + padding, cell.Y, cell.Width - padding * 2, cell.Height);
+    }
+
+    /// <summary>
     /// Resolves the effective <see cref="EditTrigger"/> for <paramref name="column"/>.
     /// When the column has its own <see cref="KumikoColumn.EditTriggers"/> override it is
     /// returned directly; otherwise the grid-level <see cref="EditSession.EditTriggers"/> is
@@ -1386,6 +1433,9 @@ public class KumikoInputController
 
         var column = dataSource.Columns[col];
         if (column.IsReadOnly) return false;
+
+        // An interactive cell (action buttons) is acted on, never edited
+        if (GetInteractiveRenderer(column) != null) return false;
 
         // Bring the cell fully into view first, so the editor never opens partly hidden under the
         // header/frozen rows or straddling the pinned bottom summary footer (which is drawn below the
@@ -1546,7 +1596,7 @@ public class KumikoInputController
         return FindNextTabStop(selection.CurrentCell, dataSource, backwards ? -1 : 1).IsValid;
     }
 
-    /// <summary>A Tab stop: a visible, editable column that allows tab stops.</summary>
+    /// <summary>A Tab stop: a visible, editable column that allows tab stops, of any column type.</summary>
     private static bool IsTabStop(KumikoColumn column) =>
         column.IsVisible && column.AllowTabStop && !column.IsReadOnly;
 

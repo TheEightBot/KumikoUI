@@ -18,6 +18,13 @@ public class GroupSummaryRow
     /// </summary>
     public List<SummaryColumnDescription> Columns { get; set; } = new();
 
+    /// <summary>
+    /// The grouping levels this row appears at. <see cref="GroupSummaryLevels.Innermost"/> (the default)
+    /// shows it after the innermost groups only; <see cref="GroupSummaryLevels.All"/> shows it after
+    /// the groups of every level.
+    /// </summary>
+    public GroupSummaryLevels Levels { get; set; } = GroupSummaryLevels.Innermost;
+
     public GroupSummaryRow() { }
 
     public GroupSummaryRow(string name)
