@@ -341,11 +341,11 @@ jobs:
       - name: Build sample — desktop
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-desktop -c Release
 
-  # ─── Android and WebAssembly sample heads ───
+  # ─── Android sample heads ───
   # Windows, not Linux: the samples (and KumikoUI.Maui) also target iOS, and restore needs the iOS workload packs,
   # which the MAUI workload installs on Windows but does not exist on Linux.
-  build-samples-android-wasm:
-    name: Build (Samples — Android + WebAssembly)
+  build-samples-android:
+    name: Build (Samples — Android)
     runs-on: windows-latest
     timeout-minutes: 45
     needs: [changes, build-core]
@@ -368,6 +368,25 @@ jobs:
 
       - name: Build sample — Uno Android
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-android -c Release
+
+  # ─── WebAssembly sample head (Linux: the Emscripten native relink of Uno's Skia shims fails on Windows) ───
+  build-sample-wasm:
+    name: Build (Sample — Uno WebAssembly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Setup .NET + Uno workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          restore-project: samples/SampleApp.Uno/SampleApp.Uno.csproj
+          cache-nuget: 'true'
 
       - name: Build sample — Uno WebAssembly
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-browserwasm -c Release
