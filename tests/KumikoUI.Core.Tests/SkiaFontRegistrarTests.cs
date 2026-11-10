@@ -109,7 +109,7 @@ public class SkiaFontRegistrarTests : IDisposable
         using var cache = new SkiaResourceCache();
         var paint = Paint(Family);
 
-        var ctx = new SkiaDrawingContext(_canvas, cache);
+        using var ctx = new SkiaDrawingContext(_canvas, cache);
         ctx.DrawText("Hello", 4, 20, paint);
         var font = cache.GetFont(paint.Font);
 
@@ -200,44 +200,33 @@ public class SkiaFontRegistrarTests : IDisposable
         const int Iterations = 25;
         using var cache = new SkiaResourceCache();
         using var start = new Barrier(Threads + 1);
-        var errors = new System.Collections.Concurrent.ConcurrentQueue<Exception>();
 
-        var workers = Enumerable.Range(0, Threads).Select(t => new Thread(() =>
+        // Worker exceptions fault their task; WaitAll below rethrows them, failing the test with the real error.
+        var workers = Enumerable.Range(0, Threads).Select(t => Task.Factory.StartNew(() =>
         {
-            try
+            start.SignalAndWait();
+            for (int i = 0; i < Iterations; i++)
             {
-                start.SignalAndWait();
-                for (int i = 0; i < Iterations; i++)
-                {
-                    SkiaFontRegistrar.RegisterTypefaceFromStream($"Own{t}", OpenSansStream());
-                    SkiaFontRegistrar.RegisterTypefaceFromStream("Shared", OpenSansStream());
-                    Assert.True(SkiaFontRegistrar.TryGetTypeface($"Own{t}", out var mine));
-                    Assert.True(SkiaFontRegistrar.IsRegistered(mine!));
-                    if (i % 5 == 4)
-                        SkiaFontRegistrar.Unregister($"Own{t}");
-                }
+                SkiaFontRegistrar.RegisterTypefaceFromStream($"Own{t}", OpenSansStream());
+                SkiaFontRegistrar.RegisterTypefaceFromStream("Shared", OpenSansStream());
+                Assert.True(SkiaFontRegistrar.TryGetTypeface($"Own{t}", out var mine));
+                Assert.True(SkiaFontRegistrar.IsRegistered(mine!));
+                if (i % 5 == 4)
+                    SkiaFontRegistrar.Unregister($"Own{t}");
             }
-            catch (Exception ex)
-            {
-                errors.Enqueue(ex);
-            }
-        })).ToList();
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)).ToArray();
 
-        foreach (var worker in workers)
-            worker.Start();
         start.SignalAndWait();
 
         // Render on this thread while the workers churn the registry.
-        while (workers.Any(w => w.IsAlive))
+        while (workers.Any(w => !w.IsCompleted))
         {
             for (int t = 0; t < Threads; t++)
                 DrawFrame(_canvas, cache, Paint($"Own{t}"));
             DrawFrame(_canvas, cache, Paint("Shared", 16));
         }
-        foreach (var worker in workers)
-            worker.Join();
+        Task.WaitAll(workers);
 
-        Assert.Empty(errors);
         Assert.True(SkiaFontRegistrar.TryGetTypeface("Shared", out var shared));
         Assert.False(IsDisposed(shared!));
         Assert.True(DrawFrame(_canvas, cache, Paint("Shared", 16)) > 0);

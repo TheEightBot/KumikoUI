@@ -1,3 +1,4 @@
+using System.Linq;
 using KumikoUI.Core.Rendering;
 using SkiaSharp;
 
@@ -229,7 +230,7 @@ public sealed class SkiaResourceCache : IDisposable
         if (!key.IsBold && !key.IsItalic && key.Family == "Default")
             return new TypefaceEntry(SKTypeface.Default, TypefaceSource.Shared);
 
-        var style = new SKFontStyle(
+        using var style = new SKFontStyle(
             key.IsBold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal,
             SKFontStyleWidth.Normal,
             key.IsItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
@@ -320,11 +321,9 @@ public sealed class SkiaResourceCache : IDisposable
 
         var typefaces = new List<TypefaceEntry>();
         _typefaces.Clear(typefaces);
-        foreach (var typeface in typefaces)
-        {
-            if (typeface.Source == TypefaceSource.FontManager)
-                Retire(typeface.Typeface);
-        }
+        // Cold path (dispose / registrar clear), so LINQ is fine here; the lookup and eviction paths stay allocation-free.
+        foreach (var typeface in typefaces.Where(static t => t.Source == TypefaceSource.FontManager))
+            Retire(typeface.Typeface);
     }
 
     /// <summary>Releases <paramref name="resource"/> now, or when the current frame ends if one is being drawn.</summary>

@@ -69,7 +69,7 @@ public class SkiaResourceCacheTests : IDisposable
     [Fact]
     public void Legacy_constructor_disposes_its_private_cache_with_the_frame()
     {
-        var ctx = new SkiaDrawingContext(_canvas);
+        using var ctx = new SkiaDrawingContext(_canvas);
         var paint = Paint(bold: true);
         ctx.DrawText("Hello", 4, 20, paint);
         var cache = ctx.ResourceCache;
@@ -91,7 +91,7 @@ public class SkiaResourceCacheTests : IDisposable
         SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansStream());
         Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, out var registered));
 
-        var cache = new SkiaResourceCache();
+        using var cache = new SkiaResourceCache();
         var released = new List<object>();
         cache.ResourceReleased = released.Add;
 
@@ -156,7 +156,7 @@ public class SkiaResourceCacheTests : IDisposable
     public void Objects_evicted_during_a_frame_stay_alive_until_the_frame_ends()
     {
         using var cache = new SkiaResourceCache(maxPaints: 2, maxFonts: 2, maxTypefaces: 2);
-        var ctx = new SkiaDrawingContext(_canvas, cache);
+        using var ctx = new SkiaDrawingContext(_canvas, cache);
 
         var paint = Paint(size: 10);
         ctx.DrawText("Hello", 4, 20, paint);
@@ -193,8 +193,8 @@ public class SkiaResourceCacheTests : IDisposable
         var shared = CreateOpenSans();
         SkiaDrawingContext.FamilyMatcher = (_, _) => shared;
 
-        var a = new SkiaResourceCache();
-        var b = new SkiaResourceCache();
+        using var a = new SkiaResourceCache();
+        using var b = new SkiaResourceCache();
         DrawFrame(_canvas, a, Paint("Anything", bold: true));
         DrawFrame(_canvas, b, Paint("Anything", bold: true));
         Assert.Same(shared, a.GetTypeface("Anything", isBold: true, isItalic: false));
@@ -230,7 +230,7 @@ public class SkiaResourceCacheTests : IDisposable
     public void A_disposed_cache_is_no_longer_tracked_by_the_registrar()
     {
         int before = SkiaFontRegistrar.AttachedCacheCount;
-        var cache = new SkiaResourceCache();
+        using var cache = new SkiaResourceCache();
         Assert.Equal(before + 1, SkiaFontRegistrar.AttachedCacheCount);
         cache.Dispose();
         Assert.Equal(before, SkiaFontRegistrar.AttachedCacheCount);
