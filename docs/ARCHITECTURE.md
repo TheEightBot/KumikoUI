@@ -48,7 +48,7 @@ KumikoUI.Maui (net10.0-ios/android/maccatalyst → MAUI + SkiaSharp.Views.Maui.C
 | `KumikoSource` | Data management — filtering, sorting, grouping, summaries, change observation |
 | `KumikoLayoutEngine` | Column width computation (Auto/Star/Fixed), visible row/column ranges |
 | `KumikoHitTester` | Resolves pointer coordinates to one of 14 `HitRegion` types |
-| `PaintCache` | Pre-computes ~60 `KumikoPaint` objects per frame from `KumikoStyle` |
+| `PaintCache` | The `KumikoPaint` objects the grid draws with, rebuilt from `KumikoStyle` only when the style changes |
 
 ### Input & Selection
 
@@ -75,7 +75,7 @@ KumikoUI.Maui (net10.0-ios/android/maccatalyst → MAUI + SkiaSharp.Views.Maui.C
 | `IDrawingContext` | Platform-independent API: rectangles, lines, text, images, clipping |
 | `SkiaDrawingContext` | `SKCanvas` implementation; a thin per-frame wrapper over the canvas |
 | `SkiaResourceCache` | Per-control, bounded cache of `SKPaint` / `SKFont` / `SKTypeface` reused across frames |
-| `ICellRenderer` | Per-column-type cell content renderer (Text, Boolean, Image, ProgressBar) |
+| `ICellRenderer` | Per-column-type cell content renderer (Text, Boolean, Image, ProgressBar); receives a `CellRenderContext` |
 | `KumikoColor` / `KumikoFont` / `KumikoPaint` / `KumikoRect` | Platform-independent value types |
 
 ### MAUI Integration
@@ -112,7 +112,7 @@ Every UI element is drawn directly on the SkiaSharp canvas. This ensures pixel-p
 Scrollable, left-frozen, and right-frozen columns are each rendered in separate clip regions with identical draw call sequences. This maintains correct z-ordering while keeping the code DRY.
 
 ### PaintCache Allocation Elimination
-~60 `KumikoPaint` objects are pre-computed once per frame from `KumikoStyle`. Factory methods (`BackgroundPaint`, `CellTextPaint`) handle dynamic per-cell overrides without heap allocation during rendering.
+The `KumikoPaint` objects the grid draws with are built from `KumikoStyle` and rebuilt only when the style instance or `KumikoStyle.Version` changes; per-cell overrides reuse a few paints, and `KumikoSource` caches each drawn cell's display text, so a steady-state frame allocates nothing (#68).
 
 ### 3-Tier Native Object Caching (SkiaDrawingContext)
 `SKPaint`, `SKFont`, and `SKTypeface` instances are cached by value-type keys (struct with color/size/style) in a `SkiaResourceCache` owned by the host control and reused across frames; `SkiaDrawingContext` is a thin per-frame wrapper. The cache is bounded (LRU), disposed with the control, and invalidated by `SkiaFontRegistrar` changes before the registrar disposes anything (see [RENDERING.md](RENDERING.md#skiadrawingcontext-caching)).
