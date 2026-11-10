@@ -145,18 +145,27 @@ public class KumikoRenderer
             scroll, style, dataSource.RowCount, topSummaryHeight, frozenRowCount);
         bool isMultiSort = dataSource.IsMultiSortActive;
 
+        // Vertical extent rows may paint in: below header + top summaries, above a pinned footer.
+        float dataClipBottom = adjustedViewportHeight - (style.PinBottomSummaryRows ? bottomSummaryHeight : 0);
+        float dataClipHeight = Math.Max(0, dataClipBottom - dataAreaTop);
+        var dataClip = new KumikoRect(0, dataAreaTop, scroll.ViewportWidth, dataClipHeight);
+
         // ── Pass 1: Scrollable columns area ──────────────────────
         ctx.Save();
         float scrollClipLeft = frozenWidth + handleOffset;
         float scrollClipWidth = effectiveViewportWidth - frozenWidth - rightFrozenWidth;
-        if (frozenWidth > 0 || rightFrozenWidth > 0 || handleOffset > 0 || rightHandleWidth > 0)
-        {
-            ctx.ClipRect(new KumikoRect(scrollClipLeft, 0, scrollClipWidth, adjustedViewportHeight));
-        }
+        // Always clipped to the pane (also without frozen columns): rows partly above the data area must
+        // not reach the grouping panel, which is drawn before the translation.
+        ctx.ClipRect(new KumikoRect(scrollClipLeft, 0, scrollClipWidth, adjustedViewportHeight));
 
+        // Scrolling rows are further clipped to the data area (below the header and top summaries, above a
+        // pinned footer); the header is drawn after them with only the pane clip.
+        ctx.Save();
+        ctx.ClipRect(dataClip);
         DrawRows(ctx, dataSource, scrollableCols, firstRow, lastRow, scroll, selection, style, false, frozenWidth, editSession, topSummaryHeight, frozenRowCount);
         DrawCurrentCellBorder(ctx, scrollableCols, scroll, selection, style, false, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
         DrawGridLines(ctx, scrollableCols, firstRow, lastRow, scroll, style, dataSource.RowCount, false, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
+        ctx.Restore();
         DrawHeader(ctx, scrollableCols, scroll, style, false, frozenWidth, handleOffset, rightHandleWidth);
         DrawSortIndicators(ctx, scrollableCols, scroll, style, false, frozenWidth, isMultiSort);
         DrawFilterIcons(ctx, scrollableCols, scroll, style, false, frozenWidth);
@@ -177,9 +186,12 @@ public class KumikoRenderer
 
             ctx.FillRect(new KumikoRect(handleOffset, 0, frozenWidth, adjustedViewportHeight),
                 _paintCache.FrozenColumnBackground);
+            ctx.Save();
+            ctx.ClipRect(dataClip);
             DrawRows(ctx, dataSource, frozenCols, firstRow, lastRow, scroll, selection, style, true, frozenWidth, editSession, topSummaryHeight, frozenRowCount);
             DrawCurrentCellBorder(ctx, frozenCols, scroll, selection, style, true, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
             DrawGridLines(ctx, frozenCols, firstRow, lastRow, scroll, style, dataSource.RowCount, true, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
+            ctx.Restore();
             DrawHeader(ctx, frozenCols, scroll, style, true, frozenWidth, handleOffset, rightHandleWidth);
             DrawSortIndicators(ctx, frozenCols, scroll, style, true, frozenWidth, isMultiSort);
             DrawFilterIcons(ctx, frozenCols, scroll, style, true, frozenWidth);
@@ -204,9 +216,12 @@ public class KumikoRenderer
             ctx.ClipRect(new KumikoRect(rightFrozenLeft, 0, rightFrozenWidth, adjustedViewportHeight));
 
             DrawRightFrozenBackground(ctx, rightFrozenLeft, rightFrozenWidth, scroll, style);
+            ctx.Save();
+            ctx.ClipRect(dataClip);
             DrawRows(ctx, dataSource, rightFrozenCols, firstRow, lastRow, scroll, selection, style, ColumnFreezeMode.Right, frozenWidth, editSession, topSummaryHeight, frozenRowCount);
             DrawCurrentCellBorder(ctx, rightFrozenCols, scroll, selection, style, ColumnFreezeMode.Right, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
             DrawGridLines(ctx, rightFrozenCols, firstRow, lastRow, scroll, style, dataSource.RowCount, ColumnFreezeMode.Right, frozenWidth, dataSource, topSummaryHeight, frozenRowCount, rightFrozenLeft, rightFrozenWidth);
+            ctx.Restore();
             DrawHeader(ctx, rightFrozenCols, scroll, style, ColumnFreezeMode.Right, frozenWidth, rightFrozenLeft, rightFrozenWidth, handleOffset, rightHandleWidth);
             DrawSortIndicators(ctx, rightFrozenCols, scroll, style, ColumnFreezeMode.Right, frozenWidth, isMultiSort);
             DrawFilterIcons(ctx, rightFrozenCols, scroll, style, ColumnFreezeMode.Right, frozenWidth);

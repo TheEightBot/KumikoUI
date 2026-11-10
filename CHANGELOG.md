@@ -73,6 +73,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno is built with Uno.Sdk 6.7.30 (was 6.5.31).
 
 ### Fixed
+- Scrolled rows no longer paint over the "Grouped by:" panel when the grid has no frozen columns (#117). Every row pass is now clipped vertically to the data area (below the header and top summaries, above a pinned footer) whether or not columns are frozen, and the visible-row range starts at the first row that intersects the data area instead of a few rows above it.
 - Editors never commit a value the user didn't choose (#33). Before, opening an editor and leaving it (a tap elsewhere, Tab, Enter) overwrote the cell and raised `CellValueChanged`:
   - a combo box whose value wasn't in its list wrote null;
   - a scroll picker wrote its first item;
