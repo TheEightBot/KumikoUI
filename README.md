@@ -632,6 +632,29 @@ selection.SelectionChanged += (_, e) =>
 };
 ```
 
+### Selection in MVVM
+
+Both hosts (MAUI and Uno) expose the selection as bindable properties, so a view model never reads row indices:
+
+```xml
+<dg:KumikoDataGrid ItemsSource="{Binding Employees}"
+                   SelectedItem="{Binding SelectedEmployee, Mode=TwoWay}"
+                   SelectedItems="{Binding SelectedEmployees, Mode=OneWay}"
+                   SelectedIndex="{Binding SelectedRow, Mode=TwoWay}"
+                   SelectionChangedCommand="{Binding SelectionChangedCommand}" />
+```
+
+| Property / event | Meaning |
+|---|---|
+| `SelectedItem` (two-way) | The primary selected item: the current cell's item while it is selected, otherwise the item selected last; null when nothing is selected. Setting it selects only that item and moves the current cell to it. |
+| `SelectedItems` (`IList`) | The selected items. By default an `ObservableCollection<object>` the grid owns and keeps in sync. Bind your own list to have the grid select its items and keep it updated; if it implements `INotifyCollectionChanged`, adding or removing items selects and deselects in the grid. Set null to go back to the owned collection. |
+| `SelectedIndex` (two-way) | The visible row of `SelectedItem`, or -1; it follows the item through sort and filter. Setting it selects the item at that row. |
+| `CurrentCell` (two-way) | The keyboard-focus cell as a `CellPosition` (visible row and column). |
+| `SelectionChanged` | `KumikoSelectionChangedEventArgs` with `AddedItems` and `RemovedItems`; the properties above are already up to date. |
+| `SelectionChangedCommand` | Executed on every selection change with `SelectionChangedCommandParameter`, or the event arguments when that is null. |
+
+Selection is by item, so all of this keeps working after a sort, filter or regroup. Setting `SelectedItem` to an item that is not visible, or any value in `None` mode, leaves the selection empty. A change made on one side is applied to the other without echoing back, so two-way bindings do not loop. On Uno, set `Mode=TwoWay` explicitly (WinUI bindings default to one-way).
+
 ---
 
 ## ⌨️ Keyboard Navigation
