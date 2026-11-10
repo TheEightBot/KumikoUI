@@ -16,6 +16,13 @@ namespace KumikoUI.Core.Components;
 /// <c>EditTrigger = SingleTap</c>) and closes automatically after any
 /// button action fires.
 ///
+/// <b>Prefer <see cref="ActionButtonsCellRenderer"/> alone.</b> It runs the buttons without opening an
+/// editor, so a tap raises no edit events. This editor remains for columns that supply their own
+/// <c>CustomEditorFactory</c>.
+///
+/// A button whose command's <c>CanExecute</c> is false is drawn disabled and a tap on it does nothing
+/// (the edit just ends).
+///
 /// <b>Code-behind usage</b> — capture the row item and wire <c>Command</c> per button:
 /// <code>
 /// actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
@@ -35,6 +42,8 @@ namespace KumikoUI.Core.Components;
 public class DrawnActionButtons : DrawnComponent
 {
     private int _pressedIndex = -1;
+    private KumikoColor _disabledBackground = new KumikoStyle().ActionButtonDisabledBackgroundColor;
+    private KumikoColor _disabledText = new KumikoStyle().ActionButtonDisabledTextColor;
 
     /// <inheritdoc />
     /// <remarks>
@@ -71,7 +80,9 @@ public class DrawnActionButtons : DrawnComponent
         if (Buttons.Count == 0) return;
         var rects = ActionButtonLayout.ComputeButtonRects(Bounds, Buttons.Count, CellPadding, ButtonSpacing);
         for (int i = 0; i < Buttons.Count; i++)
-            DrawButton(ctx, rects[i], Buttons[i], pressed: i == _pressedIndex);
+            ActionButtonPainter.Draw(ctx, rects[i], Buttons[i], CornerRadius,
+                enabled: ActionButtonPainter.IsEnabled(Buttons[i], RowItem), pressed: i == _pressedIndex,
+                _disabledBackground, _disabledText);
     }
 
     /// <inheritdoc />
@@ -102,10 +113,8 @@ public class DrawnActionButtons : DrawnComponent
         var rects = ActionButtonLayout.ComputeButtonRects(Bounds, Buttons.Count, CellPadding, ButtonSpacing);
         if (rects[wasPressed].Contains(e.X, e.Y))
         {
-            var btn = Buttons[wasPressed];
-            var param = btn.CommandParameter ?? RowItem;
-            btn.Command?.Execute(param);
-            btn.Action?.Invoke();
+            // CanExecute is checked again at release: it may have changed since the press
+            ActionButtonPainter.TryInvoke(Buttons[wasPressed], RowItem);
             RaiseEditCompleted();
             return true;
         }
@@ -115,29 +124,12 @@ public class DrawnActionButtons : DrawnComponent
 
     /// <summary>
     /// Called by <c>CellEditorFactory.ApplyThemeToEditor</c> to adapt button
-    /// colors to the active grid theme. Override to customize.
+    /// colors to the active grid theme: disabled buttons use the style's
+    /// <c>ActionButtonDisabled*</c> colors. Override to customize.
     /// </summary>
-    public virtual void ApplyTheme(KumikoStyle style) { }
-
-    // ── Drawing ──────────────────────────────────────────────────
-
-    private void DrawButton(IDrawingContext ctx, KumikoRect rect, IActionButtonDefinition btn, bool pressed)
+    public virtual void ApplyTheme(KumikoStyle style)
     {
-        var bg = pressed
-            ? new KumikoColor(
-                (byte)Math.Max(0, btn.BackgroundColor.R - 40),
-                (byte)Math.Max(0, btn.BackgroundColor.G - 40),
-                (byte)Math.Max(0, btn.BackgroundColor.B - 40),
-                btn.BackgroundColor.A)
-            : btn.BackgroundColor;
-
-        ctx.FillRoundRect(rect, CornerRadius, new KumikoPaint { Color = bg, IsAntiAlias = true });
-        ctx.DrawTextInRect(btn.Label, rect, new KumikoPaint
-        {
-            Color = btn.TextColor,
-            Font = new KumikoFont("Default", 11, bold: true),
-            IsAntiAlias = true
-        }, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
+        _disabledBackground = style.ActionButtonDisabledBackgroundColor;
+        _disabledText = style.ActionButtonDisabledTextColor;
     }
 }
-

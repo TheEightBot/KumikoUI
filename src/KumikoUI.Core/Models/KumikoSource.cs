@@ -1728,10 +1728,13 @@ public class KumikoSource
             {
                 BuildGroupedFlatView(indices, level + 1, groupPath);
 
-                // Emit group summary rows after the group's data (at leaf level only)
-                if (_groupSummaryRows.Count > 0 && level == _groupDescriptions.Count - 1)
+                // Emit group summary rows after the group's data: at every level for rows set to All,
+                // at the innermost level for rows set to Innermost
+                var computedRows = _groupSummaryRows.Count > 0
+                    ? ComputeGroupSummaries(indices, level == _groupDescriptions.Count - 1)
+                    : null;
+                if (computedRows is { Count: > 0 })
                 {
-                    var computedRows = ComputeGroupSummaries(indices);
                     _computedGroupSummaries[groupPath] = computedRows;
 
                     for (int si = 0; si < computedRows.Count; si++)
@@ -1773,11 +1776,12 @@ public class KumikoSource
     /// <summary>
     /// Compute group-level summaries for a set of source indices belonging to a group.
     /// </summary>
-    private List<ComputedSummaryRow> ComputeGroupSummaries(List<int> sourceIndices)
+    private List<ComputedSummaryRow> ComputeGroupSummaries(List<int> sourceIndices, bool isInnermost)
     {
         var result = new List<ComputedSummaryRow>();
         foreach (var sumRow in _groupSummaryRows)
         {
+            if (sumRow.Levels == GroupSummaryLevels.Innermost && !isInnermost) continue;
             result.Add(ComputeSummaryRow(sumRow.Name, sumRow.Title, sumRow.Columns, sourceIndices));
         }
         return result;
@@ -1821,26 +1825,47 @@ public class KumikoSource
     }
 
     /// <summary>
-    /// Compute a single summary row from column descriptions and source indices.
+    /// Compute a single summary row from column descriptions and source indices. Every description is kept:
+    /// several aggregates of one property show side by side in that property's cell.
     /// </summary>
     private ComputedSummaryRow ComputeSummaryRow(
         string name, string? title,
         List<SummaryColumnDescription> columnDescs,
         List<int> sourceIndices)
     {
-        var values = new Dictionary<string, string>();
-        var rawValues = new Dictionary<string, object?>();
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var rawValues = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        var aggregates = new List<ComputedSummaryValue>(columnDescs.Count);
+        var valuesByProperty = new Dictionary<string, List<object?>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var colDesc in columnDescs)
         {
-            var colValues = CollectColumnValues(colDesc.PropertyName, sourceIndices);
+            // Several aggregates of one property read its values once
+            if (!valuesByProperty.TryGetValue(colDesc.PropertyName, out var colValues))
+                valuesByProperty[colDesc.PropertyName] = colValues = CollectColumnValues(colDesc.PropertyName, sourceIndices);
+
             object? rawResult = ComputeAggregate(colDesc.SummaryType, colValues, colDesc.CustomAggregate);
 
             string label = colDesc.Label ?? _strings.SummaryLabel(colDesc.SummaryType);
             string formatted = FormatSummaryValue(rawResult, colDesc, _comparer.Culture);
+            string text = $"{label}{formatted}";
 
-            values[colDesc.PropertyName] = $"{label}{formatted}";
-            rawValues[colDesc.PropertyName] = rawResult;
+            aggregates.Add(new ComputedSummaryValue
+            {
+                PropertyName = colDesc.PropertyName,
+                SummaryType = colDesc.SummaryType,
+                Label = label,
+                Value = rawResult,
+                Text = text
+            });
+
+            if (values.TryGetValue(colDesc.PropertyName, out var existing))
+                values[colDesc.PropertyName] = existing + SummarySeparator + text;
+            else
+            {
+                values[colDesc.PropertyName] = text;
+                rawValues[colDesc.PropertyName] = rawResult;
+            }
         }
 
         return new ComputedSummaryRow
@@ -1848,21 +1873,27 @@ public class KumikoSource
             Name = name,
             Title = title,
             Values = values,
-            RawValues = rawValues
+            RawValues = rawValues,
+            Aggregates = aggregates
         };
     }
 
+    /// <summary>Separates the aggregates of one property in a summary cell.</summary>
+    private const string SummarySeparator = "  |  ";
+
     /// <summary>
-    /// Collect raw cell values for a column from a set of source indices.
+    /// Collect raw cell values for a property from a set of source indices. The property need not have a
+    /// column; without one it is read from the items directly.
     /// </summary>
     private List<object?> CollectColumnValues(string propertyName, List<int> sourceIndices)
     {
         var column = _columns.FirstOrDefault(c =>
-            string.Equals(c.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase));
+            string.Equals(c.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase))
+            ?? new KumikoColumn { PropertyName = propertyName };
 
         var result = new List<object?>(sourceIndices.Count);
 
-        if (column == null || _sourceItems.Count == 0) return result;
+        if (_sourceItems.Count == 0) return result;
 
         var reader = CreateColumnReader(column);
         foreach (var idx in sourceIndices)
@@ -1888,29 +1919,15 @@ public class KumikoSource
 
             case SummaryType.Sum:
             {
-                double sum = 0;
-                foreach (var v in values)
-                {
-                    if (v != null && TryToDouble(v, out double d))
-                        sum += d;
-                }
-                return sum;
+                SumNumbers(values, out bool exact, out var dec, out var dbl, out _);
+                return exact ? dec : dbl;
             }
 
             case SummaryType.Average:
             {
-                if (values.Count == 0) return null;
-                double sum = 0;
-                int count = 0;
-                foreach (var v in values)
-                {
-                    if (v != null && TryToDouble(v, out double d))
-                    {
-                        sum += d;
-                        count++;
-                    }
-                }
-                return count > 0 ? sum / count : (object?)null;
+                SumNumbers(values, out bool exact, out var dec, out var dbl, out int count);
+                if (count == 0) return null;
+                return exact ? dec / count : dbl / count;
             }
 
             case SummaryType.Min:
@@ -1944,20 +1961,53 @@ public class KumikoSource
     }
 
     /// <summary>
-    /// Try to convert a value to double for numeric aggregates.
+    /// Totals the numeric values. When a <c>decimal</c> is present and no floating-point value is, the total is
+    /// exact (<paramref name="exact"/>, in <paramref name="decimalSum"/>); otherwise it is in
+    /// <paramref name="doubleSum"/>. Values that are not numbers (text, dates, booleans, other objects) are
+    /// skipped by a type-code switch, so no exception is raised per value.
     /// </summary>
-    private static bool TryToDouble(object value, out double result)
+    private static void SumNumbers(List<object?> values, out bool exact, out decimal decimalSum,
+        out double doubleSum, out int count)
     {
-        result = 0;
-        try
+        decimal dec = 0;
+        double dbl = 0;
+        int n = 0;
+        bool hasDecimal = false, hasFloat = false, decimalOverflow = false;
+
+        foreach (var v in values)
         {
-            result = Convert.ToDouble(value);
-            return true;
+            if (v == null) continue;
+            decimal m = 0;
+            double d;
+            switch (Type.GetTypeCode(v.GetType()))
+            {
+                case TypeCode.Decimal: m = (decimal)v; d = (double)m; hasDecimal = true; break;
+                case TypeCode.Int32: m = (int)v; d = (int)v; break;
+                case TypeCode.Int64: m = (long)v; d = (long)v; break;
+                case TypeCode.Int16: m = (short)v; d = (short)v; break;
+                case TypeCode.SByte: m = (sbyte)v; d = (sbyte)v; break;
+                case TypeCode.Byte: m = (byte)v; d = (byte)v; break;
+                case TypeCode.UInt16: m = (ushort)v; d = (ushort)v; break;
+                case TypeCode.UInt32: m = (uint)v; d = (uint)v; break;
+                case TypeCode.UInt64: m = (ulong)v; d = (ulong)v; break;
+                case TypeCode.Double: d = (double)v; hasFloat = true; break;
+                case TypeCode.Single: d = (float)v; hasFloat = true; break;
+                default: continue; // not a number
+            }
+
+            n++;
+            dbl += d;
+            if (!decimalOverflow && !hasFloat)
+            {
+                try { dec = checked(dec + m); }
+                catch (OverflowException) { decimalOverflow = true; }
+            }
         }
-        catch
-        {
-            return false;
-        }
+
+        count = n;
+        decimalSum = dec;
+        doubleSum = dbl;
+        exact = hasDecimal && !hasFloat && !decimalOverflow;
     }
 
     /// <summary>
