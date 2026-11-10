@@ -38,7 +38,7 @@ public static class CellEditorFactory
             KumikoColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds),
             KumikoColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
             KumikoColumnType.Image => null, // Not editable
-            KumikoColumnType.Template => CreateTemplateEditor(column, currentValue, cellBounds),
+            KumikoColumnType.Template => CreateTemplateEditor(column, currentValue, cellBounds, initialCharacter, culture),
             _ => null
         };
 
@@ -235,19 +235,25 @@ public static class CellEditorFactory
     }
 
     private static DrawnComponent? CreateTemplateEditor(
-        KumikoColumn column, object? value, KumikoRect cellBounds)
+        KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter, CultureInfo culture)
     {
-        // Priority: explicit factory → EditorDescriptor → renderer self-creates → text fallback
+        // Priority: context factory → explicit factory → EditorDescriptor → renderer self-creates → text fallback.
+        // Every custom path gets the typing-trigger character, the legacy factory delegate excepted.
+        var context = new CellEditorContext(value, cellBounds, initialCharacter, culture);
+
+        if (column.EditorFactory != null)
+            return column.EditorFactory(context);
+
         if (column.CustomEditorFactory != null)
             return column.CustomEditorFactory(value, cellBounds);
 
         if (column.EditorDescriptor != null)
-            return column.EditorDescriptor.CreateEditor(value, cellBounds);
+            return column.EditorDescriptor.CreateEditor(context);
 
         if (column.CustomCellRenderer is ICellEditorProvider editorProvider)
-            return editorProvider.CreateEditor(value, cellBounds);
+            return editorProvider.CreateEditor(context);
 
         // Fallback to text editor
-        return CreateTextEditor(column, value, cellBounds, null, EditTextSelectionMode.SelectAll, CultureInfo.CurrentCulture);
+        return CreateTextEditor(column, value, cellBounds, initialCharacter, EditTextSelectionMode.SelectAll, culture);
     }
 }
