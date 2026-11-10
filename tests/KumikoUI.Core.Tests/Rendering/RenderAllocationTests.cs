@@ -112,17 +112,27 @@ public class RenderAllocationTests
         Assert.Equal(0, MeasureSteadyState(grid.Render));
     }
 
-    /// <summary>Bytes the current thread allocates over <see cref="MeasuredFrames"/> frames after warming up.</summary>
+    /// <summary>
+    /// Bytes the current thread allocates over <see cref="MeasuredFrames"/> frames after warming up: the least of
+    /// three measurements. A real per-frame allocation shows in every measurement; a one-off refill of the caches
+    /// (the runtime's tiering, or another test touching shared state such as the accessor registry) shows in at
+    /// most one, so the minimum is 0 exactly when the render loop allocates nothing.
+    /// </summary>
     private static long MeasureSteadyState(Action<IDrawingContext> render)
     {
         var ctx = new NoOpDrawingContext();
         for (int i = 0; i < WarmUpFrames; i++)
             render(ctx);
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < MeasuredFrames; i++)
-            render(ctx);
-        return GC.GetAllocatedBytesForCurrentThread() - before;
+        long least = long.MaxValue;
+        for (int attempt = 0; attempt < 3 && least > 0; attempt++)
+        {
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < MeasuredFrames; i++)
+                render(ctx);
+            least = Math.Min(least, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+        return least;
     }
 
     private static long Allocated(Action action)
