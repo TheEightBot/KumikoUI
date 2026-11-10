@@ -342,7 +342,7 @@ Pin the first N rows so they remain visible while the rest of the data scrolls:
 
 ### Sorting
 
-Tap any column header to sort. The indicator cycles through **Ascending → Descending → None**. Sort state is set through the data source (column `SortDirection` and `SortOrder` are read-only):
+Tap any column header to sort. The first tap depends on the column type: **Boolean** columns sort checked rows first (`Descending`), **Date** columns newest first (`Descending`), and text, numeric, ComboBox and Picker columns ascending. Later taps switch to the opposite direction and then remove the sort (for example **Ascending → Descending → None**, or checked first → unchecked first → none). Set `KumikoColumn.InitialSortDirection` to choose a column's first direction (`null`, the default, means the type's default); `KumikoColumn.FirstSortDirection` reports the one in effect. The sort arrow and the filter popup follow it: the popup's first sort row is the first-tap direction ("Sort Checked First" / "Sort Unchecked First" for Boolean columns, "Sort Newest to Oldest" first for Date columns). Shift or Ctrl-tap adds a column to a multi-column sort with the same first direction. Sort state is set through the data source (column `SortDirection` and `SortOrder` are read-only):
 
 ```csharp
 // Sort by one column:
@@ -384,7 +384,7 @@ Every column header displays a filter icon. Tapping it opens an **Excel-style fi
 
 - Full-text search across all values in that column
 - Value checklist (check/uncheck individual values)
-- Quick sort buttons (A→Z / Z→A) inside the popup
+- Two sort rows inside the popup whose text follows the column type (A to Z, smallest to largest, newest to oldest, checked first), the first row being the header's first-tap direction
 
 Filters are applied immediately on close and stacked across columns. Remove a filter by opening the popup and selecting all values.
 
