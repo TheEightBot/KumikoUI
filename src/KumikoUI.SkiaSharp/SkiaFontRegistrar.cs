@@ -16,76 +16,126 @@ namespace KumikoUI.SkiaSharp;
 /// </para>
 /// <para>
 /// Registering a custom typeface here gives <see cref="SkiaDrawingContext"/> an exact match for the
-/// requested family name, bypassing the system font manager entirely.
+/// requested family name, bypassing the system font manager entirely. Family names are compared
+/// case-insensitively.
 /// </para>
 /// <para><b>Lifetime:</b> Registered typefaces are <em>not</em> disposed by
-/// <see cref="SkiaDrawingContext"/> — the registrar or the caller owns the lifetime.
-/// Typefaces created via <see cref="RegisterTypefaceFromStream"/> are owned by the registrar and
-/// are disposed when <see cref="Clear"/> is called.
-/// Typefaces passed directly to <see cref="RegisterTypeface"/> are <em>not</em> disposed by the
-/// registrar; the caller retains ownership.
+/// <see cref="SkiaDrawingContext"/> or <see cref="SkiaResourceCache"/> — the registrar or the caller owns
+/// the lifetime. Typefaces created via <see cref="RegisterTypefaceFromStream"/> are owned by the registrar
+/// and are disposed when they are replaced, unregistered (<see cref="Unregister"/>) or cleared
+/// (<see cref="Clear"/>). Typefaces passed directly to <see cref="RegisterTypeface"/> are <em>not</em>
+/// disposed by the registrar; the caller retains ownership and may dispose one once it has been
+/// replaced or unregistered.
+/// </para>
+/// <para><b>Changes while grids are alive:</b> every change increments <see cref="Version"/> and, before the
+/// registrar disposes anything, makes every live <see cref="SkiaResourceCache"/> drop the typefaces and
+/// fonts of the affected family. The next frame resolves the family again, so replacing, unregistering or
+/// clearing fonts at run time is safe and takes effect on the next redraw (invalidate the grid to see it
+/// immediately).
+/// </para>
+/// <para><b>Threading:</b> all members are thread-safe. Registering fonts from a background thread at
+/// startup is fine. Prefer to replace, unregister or clear fonts on the UI thread: it is safe from any
+/// thread, but a change made while a grid is drawing on another thread waits for that grid's current
+/// cache lookup to finish.
 /// </para>
 /// </remarks>
 public static class SkiaFontRegistrar
 {
+    private static readonly object _lock = new();
+
     private static readonly Dictionary<string, SKTypeface> _registry =
         new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Set of typefaces whose lifetime is owned by this registrar (created from streams).</summary>
-    private static readonly HashSet<SKTypeface> _ownedTypefaces = [];
+    /// <summary>
+    /// Every registered typeface and the number of families it is registered under, so
+    /// <see cref="IsRegistered"/> is a single hash lookup.
+    /// </summary>
+    private static readonly Dictionary<SKTypeface, int> _registrations = new(ReferenceEqualityComparer.Instance);
 
-    private static readonly object _lock = new();
+    /// <summary>Typefaces whose lifetime is owned by this registrar (created from streams).</summary>
+    private static readonly HashSet<SKTypeface> _ownedTypefaces = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>Live caches to invalidate on a change. Weak, so a cache that was never disposed can still be collected.</summary>
+    private static readonly List<WeakReference<SkiaResourceCache>> _caches = new();
+
+    private static long _version;
 
     /// <summary>
-    /// Registers a <see cref="SKTypeface"/> under the given <paramref name="family"/> name.
-    /// The caller retains ownership and must not dispose the typeface while the registrar holds it.
+    /// Incremented by every registration, replacement, <see cref="Unregister"/> and <see cref="Clear"/>.
+    /// </summary>
+    public static long Version => Interlocked.Read(ref _version);
+
+    /// <summary>
+    /// Registers a <see cref="SKTypeface"/> under the given <paramref name="family"/> name, replacing any
+    /// typeface registered under it (a replaced typeface the registrar owns is disposed).
+    /// The caller retains ownership of <paramref name="typeface"/> and must not dispose it while the
+    /// registrar holds it.
     /// </summary>
     /// <param name="family">
     /// Family name to register. Must match the value used in
     /// <see cref="KumikoUI.Core.Rendering.KumikoFont.Family"/>.
     /// </param>
     /// <param name="typeface">The <see cref="SKTypeface"/> to register.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="typeface"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="family"/> or <paramref name="typeface"/> is <c>null</c>.</exception>
     public static void RegisterTypeface(string family, SKTypeface typeface)
     {
+        ArgumentNullException.ThrowIfNull(family);
         ArgumentNullException.ThrowIfNull(typeface);
-
-        lock (_lock)
-        {
-            _registry[family] = typeface;
-        }
+        Register(family, typeface, owned: false);
     }
 
     /// <summary>
     /// Creates a <see cref="SKTypeface"/> from the given <paramref name="stream"/> and registers it
-    /// under <paramref name="family"/>. The <see cref="SkiaFontRegistrar"/> takes ownership of the
-    /// created typeface and disposes it on <see cref="Clear"/>.
-    /// The <paramref name="stream"/> may be disposed after this call returns.
+    /// under <paramref name="family"/>, replacing any typeface registered under it. The
+    /// <see cref="SkiaFontRegistrar"/> takes ownership of the created typeface and disposes it when it is
+    /// replaced, unregistered or cleared. The <paramref name="stream"/> may be disposed after this call returns.
     /// </summary>
     /// <param name="family">
     /// Family name to register. Must match the value used in
     /// <see cref="KumikoUI.Core.Rendering.KumikoFont.Family"/>.
     /// </param>
     /// <param name="stream">A readable stream containing a valid TrueType (.ttf) or OpenType (.otf) font.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="family"/> or <paramref name="stream"/> is <c>null</c>.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the stream cannot be decoded as a valid font.</exception>
     public static void RegisterTypefaceFromStream(string family, Stream stream)
     {
+        ArgumentNullException.ThrowIfNull(family);
         ArgumentNullException.ThrowIfNull(stream);
 
         var typeface = SKTypeface.FromStream(stream)
             ?? throw new InvalidOperationException(
                 $"Could not create a typeface from the provided stream for family '{family}'.");
 
+        Register(family, typeface, owned: true);
+    }
+
+    /// <summary>
+    /// Removes the typeface registered under <paramref name="family"/>. Every <see cref="SkiaResourceCache"/>
+    /// drops it first; then, if the registrar owns it (it came from <see cref="RegisterTypefaceFromStream"/>)
+    /// and it is not registered under another family, it is disposed. Later frames resolve the family
+    /// through the system font manager again.
+    /// </summary>
+    /// <param name="family">The family name to remove.</param>
+    /// <returns><c>true</c> if a typeface was registered under <paramref name="family"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="family"/> is <c>null</c>.</exception>
+    public static bool Unregister(string family)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+
+        SKTypeface? retired;
+        SkiaResourceCache[] caches;
         lock (_lock)
         {
-            // If a previous owned typeface exists under this name, dispose it.
-            if (_registry.TryGetValue(family, out var previous) && _ownedTypefaces.Remove(previous))
-                previous.Dispose();
-
-            _registry[family] = typeface;
-            _ownedTypefaces.Add(typeface);
+            if (!_registry.Remove(family, out var previous))
+                return false;
+            retired = RemoveRegistration(previous);
+            Interlocked.Increment(ref _version);
+            caches = LiveCaches();
         }
+
+        Invalidate(caches, family);
+        retired?.Dispose();
+        return true;
     }
 
     /// <summary>
@@ -104,32 +154,139 @@ public static class SkiaFontRegistrar
     }
 
     /// <summary>
-    /// Returns <c>true</c> if <paramref name="typeface"/> was registered via this registrar.
-    /// Used internally by <see cref="SkiaDrawingContext"/> to avoid disposing externally owned typefaces.
+    /// Returns <c>true</c> if <paramref name="typeface"/> is currently registered (under any family).
+    /// A single hash lookup. Used by <see cref="SkiaResourceCache"/> to avoid disposing typefaces it does not own.
     /// </summary>
     /// <param name="typeface">The typeface instance to check.</param>
     public static bool IsRegistered(SKTypeface typeface)
     {
+        if (typeface is null) return false;
         lock (_lock)
         {
-            return _registry.ContainsValue(typeface);
+            return _registrations.ContainsKey(typeface);
         }
     }
 
     /// <summary>
-    /// Removes all registered typefaces. Typefaces created via
-    /// <see cref="RegisterTypefaceFromStream"/> are disposed; those registered via
-    /// <see cref="RegisterTypeface"/> are <em>not</em> disposed (caller owns them).
+    /// Removes all registered typefaces. Every <see cref="SkiaResourceCache"/> drops the registered
+    /// typefaces it holds first; then typefaces created via <see cref="RegisterTypefaceFromStream"/> are
+    /// disposed. Those registered via <see cref="RegisterTypeface"/> are <em>not</em> disposed (caller owns them).
+    /// Safe to call while grids are alive.
     /// </summary>
     public static void Clear()
     {
+        SKTypeface[] retired;
+        SkiaResourceCache[] caches;
         lock (_lock)
         {
-            foreach (var owned in _ownedTypefaces)
-                owned.Dispose();
-
+            retired = [.. _ownedTypefaces];
             _ownedTypefaces.Clear();
+            _registrations.Clear();
             _registry.Clear();
+            Interlocked.Increment(ref _version);
+            caches = LiveCaches();
         }
+
+        Invalidate(caches, family: null);
+        foreach (var typeface in retired)
+            typeface.Dispose();
+    }
+
+    // ── Cache tracking ───────────────────────────────────────────
+
+    internal static void Attach(SkiaResourceCache cache)
+    {
+        lock (_lock)
+            _caches.Add(new WeakReference<SkiaResourceCache>(cache));
+    }
+
+    internal static void Detach(SkiaResourceCache cache)
+    {
+        lock (_lock)
+        {
+            for (int i = _caches.Count - 1; i >= 0; i--)
+            {
+                if (!_caches[i].TryGetTarget(out var target) || ReferenceEquals(target, cache))
+                    _caches.RemoveAt(i);
+            }
+        }
+    }
+
+    /// <summary>Number of tracked caches (tests only).</summary>
+    internal static int AttachedCacheCount
+    {
+        get { lock (_lock) return _caches.Count; }
+    }
+
+    // ── Internals ────────────────────────────────────────────────
+
+    private static void Register(string family, SKTypeface typeface, bool owned)
+    {
+        SKTypeface? retired = null;
+        SkiaResourceCache[] caches;
+        lock (_lock)
+        {
+            if (_registry.TryGetValue(family, out var previous))
+            {
+                if (ReferenceEquals(previous, typeface))
+                {
+                    // Same instance again: only the ownership can change.
+                    if (owned) _ownedTypefaces.Add(typeface);
+                    return;
+                }
+                retired = RemoveRegistration(previous);
+            }
+
+            _registry[family] = typeface;
+            _registrations[typeface] = _registrations.TryGetValue(typeface, out var count) ? count + 1 : 1;
+            if (owned) _ownedTypefaces.Add(typeface);
+            Interlocked.Increment(ref _version);
+            caches = LiveCaches();
+        }
+
+        // Caches drop what they resolved for this family (the replaced typeface, or a system fallback
+        // cached before the family was registered) before the replaced typeface is disposed.
+        Invalidate(caches, family);
+        retired?.Dispose();
+    }
+
+    /// <summary>
+    /// Drops one registration of <paramref name="typeface"/>; returns it when that was its last
+    /// registration and the registrar owns it, so the caller disposes it after invalidating caches.
+    /// </summary>
+    private static SKTypeface? RemoveRegistration(SKTypeface typeface)
+    {
+        if (_registrations.TryGetValue(typeface, out var count) && count > 1)
+        {
+            _registrations[typeface] = count - 1;
+            return null;
+        }
+        _registrations.Remove(typeface);
+        return _ownedTypefaces.Remove(typeface) ? typeface : null;
+    }
+
+    /// <summary>Snapshot of the live caches; prunes collected ones. Call under <see cref="_lock"/>.</summary>
+    private static SkiaResourceCache[] LiveCaches()
+    {
+        var live = new List<SkiaResourceCache>(_caches.Count);
+        for (int i = _caches.Count - 1; i >= 0; i--)
+        {
+            if (_caches[i].TryGetTarget(out var cache))
+                live.Add(cache);
+            else
+                _caches.RemoveAt(i);
+        }
+        return [.. live];
+    }
+
+    /// <summary>
+    /// Makes every cache drop <paramref name="family"/> (or every registered typeface when <c>null</c>).
+    /// Runs outside the registrar lock: a cache takes its own lock, which waits for a lookup in flight
+    /// on a render thread, and that lookup may itself read the registry.
+    /// </summary>
+    private static void Invalidate(SkiaResourceCache[] caches, string? family)
+    {
+        foreach (var cache in caches)
+            cache.OnRegistrarChanged(family);
     }
 }

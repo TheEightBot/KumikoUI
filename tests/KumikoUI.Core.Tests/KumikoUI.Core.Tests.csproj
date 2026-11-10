@@ -21,6 +21,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- A real font for the SkiaFontRegistrar / SkiaResourceCache tests (#62). -->
+    <EmbeddedResource Include="../../samples/SampleApp.Maui/Resources/Fonts/OpenSans-Regular.ttf"
+                      LogicalName="KumikoUI.Core.Tests.OpenSans-Regular.ttf" Link="TestFonts/OpenSans-Regular.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../src/KumikoUI.Core/KumikoUI.Core.csproj" />
     <ProjectReference Include="../../src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" />
     <!-- Runs the [KumikoGridItem] generator over the test models, as the package does in apps. -->

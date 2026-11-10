@@ -770,7 +770,7 @@ public static MauiApp CreateMauiApp()
 }
 ```
 
-> **Note:** `RegisterTypefaceFromStream` takes ownership of the created typeface and disposes it when `SkiaFontRegistrar.Clear()` is called. The stream may be disposed after the call returns. Use `RegisterTypeface(family, typeface)` instead when you want to manage the typeface lifetime yourself.
+> **Note:** `RegisterTypefaceFromStream` takes ownership of the created typeface and disposes it when the family is replaced, unregistered (`SkiaFontRegistrar.Unregister(family)`) or cleared (`SkiaFontRegistrar.Clear()`). Changes are safe while grids are alive: every grid drops the affected family before anything is disposed, and the next frame uses the new registration. All members are thread-safe; registering at startup from a background thread is fine. The stream may be disposed after the call returns. Use `RegisterTypeface(family, typeface)` instead when you want to manage the typeface lifetime yourself.
 
 ### Using registered fonts in the grid
 
@@ -830,7 +830,10 @@ new KumikoColumn
 | `SkiaFontRegistrar.RegisterTypefaceFromStream(family, stream)` | Creates a typeface from a stream and registers it. Registrar owns the typeface lifetime. |
 | `SkiaFontRegistrar.RegisterTypeface(family, typeface)` | Registers an existing `SKTypeface`. Caller retains ownership. |
 | `SkiaFontRegistrar.TryGetTypeface(family, out typeface)` | Looks up a registered typeface by family name. |
+| `SkiaFontRegistrar.IsRegistered(typeface)` | Whether a typeface instance is registered under any family. |
+| `SkiaFontRegistrar.Unregister(family)` | Removes one family; disposes its typeface if the registrar owns it. |
 | `SkiaFontRegistrar.Clear()` | Removes all registrations and disposes owned typefaces. |
+| `SkiaFontRegistrar.Version` | Incremented by every change. |
 
 ---
 
@@ -857,7 +860,17 @@ Touch-based scrolling uses **physics-based inertia** — a velocity tracker samp
 
 ### SkiaDrawingContext caching
 
-`SKTypeface`, `SKFont`, and `SKPaint` instances are cached by value-type keys and disposed at frame end — no GC pressure from native Skia objects.
+`SKTypeface`, `SKFont`, and `SKPaint` instances are cached by value-type keys in a `SkiaResourceCache` that each grid keeps for its lifetime, so steady-state frames create no native Skia objects. The cache is bounded (least recently used eviction) and disposed when the grid is torn down. A custom host does the same:
+
+```csharp
+private readonly SkiaResourceCache _resources = new();   // one per control; Dispose() on teardown
+
+void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
+{
+    using var ctx = new SkiaDrawingContext(e.Surface.Canvas, _resources);
+    renderer.Render(ctx, /* ... */);
+}
+```
 
 ### Incremental collection updates
 
@@ -983,7 +996,8 @@ KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 | `InertialScroller` | Physics-based scroll deceleration with configurable friction |
 | `PopupManager` | Popup z-order and input priority routing (filter, ComboBox, DatePicker) |
 | `IDrawingContext` | Platform-independent drawing API: fill, stroke, text, images, clipping |
-| `SkiaDrawingContext` | `SKCanvas` implementation with 3-tier native object caching |
+| `SkiaDrawingContext` | `SKCanvas` implementation; a thin per-frame wrapper over the canvas |
+| `SkiaResourceCache` | Per-control, bounded cache of `SKPaint` / `SKFont` / `SKTypeface` reused across frames |
 | `KumikoDataGrid` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor guide and [docs/RENDERING.md](docs/RENDERING.md) for the full 18-step rendering pipeline.

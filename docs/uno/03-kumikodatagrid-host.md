@@ -108,7 +108,9 @@ differs (see step 4).
       canvas.Save();
       canvas.Scale(scale);
 
-      using var drawingContext = new SkiaDrawingContext(canvas);   // REUSED from KumikoUI.SkiaSharp
+      // REUSED from KumikoUI.SkiaSharp; ResourceCache is a SkiaResourceCache the control keeps across
+      // frames (disposed in OnUnloaded, created again on the next frame), #62.
+      using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
       _renderer.Render(                                            // REUSED from KumikoUI.Core
           drawingContext, _dataSource, _scroll, _selection, _style,
           _inputController.DragColumnIndex, _inputController.DragColumnScreenX,

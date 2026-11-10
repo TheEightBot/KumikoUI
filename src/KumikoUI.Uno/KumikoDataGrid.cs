@@ -41,6 +41,12 @@ public partial class KumikoDataGrid : Grid
     private readonly EditSession _editSession = new();
     private KumikoStyle _style = new();
 
+    // Native Skia objects (paints, fonts, typefaces) reused across frames (#62). Created on first
+    // use, disposed in OnUnloaded and created again on the next frame after OnLoaded.
+    private SkiaResourceCache? _resourceCache;
+
+    private SkiaResourceCache ResourceCache => _resourceCache ??= new SkiaResourceCache();
+
     /// <summary>
     /// Creates a new <see cref="KumikoDataGrid"/>, adds the Skia canvas child, and
     /// wires the Core redraw signals. Pointer / keyboard handlers are attached in
@@ -166,7 +172,7 @@ public partial class KumikoDataGrid : Grid
         canvas.Save();
         canvas.Scale(scale);
 
-        using var drawingContext = new SkiaDrawingContext(canvas);
+        using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
 
         _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
@@ -204,7 +210,7 @@ public partial class KumikoDataGrid : Grid
         // Use a throwaway 1x1 Skia surface for text measurement (mirrors MAUI).
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
-        var measureCtx = new SkiaDrawingContext(canvas);
+        using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
         var layoutEngine = new KumikoLayoutEngine();
 
         float optimalWidth = layoutEngine.CalculateAutoFitWidth(
@@ -336,6 +342,10 @@ public partial class KumikoDataGrid : Grid
         // _editSession), so they don't leak the page — but the canvas's
         // PaintSurface delegate roots `this`, so it must be released.
         _canvasView.PaintSurface -= OnPaintSurface;
+
+        // Release the cached native Skia objects; the first frame after OnLoaded creates a new cache.
+        _resourceCache?.Dispose();
+        _resourceCache = null;
 
         // Detach pointer + keyboard handlers and stop input-driven timers
         // (inertial scroll, cursor blink) — see DetachInputHandlers in KumikoDataGrid.Input.cs.
