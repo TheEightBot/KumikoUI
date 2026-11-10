@@ -60,8 +60,7 @@ public class ActionButtonsInteractionTests
                     new ActionButtonDefinition { Label = "Delete", Command = second },
                 },
             };
-            InputGrid? grid = null;
-            Grid = grid = new InputGrid(rows, configure: g =>
+            Grid = new InputGrid(rows, configure: g =>
             {
                 g.Name.PropertyName = "";
                 g.Name.ColumnType = KumikoColumnType.Template;
