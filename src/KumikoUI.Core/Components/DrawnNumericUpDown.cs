@@ -1,3 +1,4 @@
+using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -8,7 +9,7 @@ namespace KumikoUI.Core.Components;
 /// Fully custom-drawn numeric up/down control with side-by-side [−] value [+] layout.
 /// Sized for touch (44pt minimum recommended button size on mobile).
 /// </summary>
-public class DrawnNumericUpDown : DrawnComponent
+public class DrawnNumericUpDown : DrawnComponent, IValueEditor
 {
     private double _value;
     private long _repeatTimerStart;
@@ -338,4 +339,12 @@ public class DrawnNumericUpDown : DrawnComponent
 
     /// <summary>Decrement the value by one step.</summary>
     public void Decrement() => Value -= Step;
+
+    // ── IValueEditor ────────────────────────────────────────────
+
+    object? IValueEditor.Value => Value;
+
+    bool IValueEditor.HasValue => true;
+
+    bool IValueEditor.IsDirty => HasChangedSinceTracking;
 }

@@ -162,13 +162,12 @@ public class CellEditorFactoryTests
     [Theory]
     [InlineData(null)]
     [InlineData("not a date")]
-    public void DateEditor_KeepsItsDefaultForAMissingOrUnparsableValue(object? value)
+    public void DateEditor_SelectsNothing_ForAMissingOrUnparsableValue(object? value)
     {
-        var untouched = new DrawnDatePicker().SelectedDate;
-
         var picker = Create<DrawnDatePicker>(Column(KumikoColumnType.Date), value);
 
-        Assert.Equal(untouched, picker.SelectedDate);
+        Assert.Null(picker.SelectedDate);
+        Assert.False(((IValueEditor)picker).HasValue);
         Assert.True(picker.IsCalendarOpen);
     }
 
@@ -269,15 +268,14 @@ public class CellEditorFactoryTests
     }
 
     [Fact]
-    public void PickerEditor_UnknownValueKeepsTheDefaultSelection()
+    public void PickerEditor_UnknownValue_SelectsNothing()
     {
         var column = Column(KumikoColumnType.Picker, c => c.EditorItemsString = "a,b");
-        var untouched = new DrawnScrollPicker();
-        untouched.SetItems(new[] { "a", "b" });
 
         var picker = Create<DrawnScrollPicker>(column, "zzz");
 
-        Assert.Equal(untouched.SelectedIndex, picker.SelectedIndex);
+        Assert.Equal(-1, picker.SelectedIndex);
+        Assert.False(((IValueEditor)picker).HasValue);
     }
 
     // ── Template ──────────────────────────────────────────────────

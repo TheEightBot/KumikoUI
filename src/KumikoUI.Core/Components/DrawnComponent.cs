@@ -148,8 +148,31 @@ public abstract class DrawnComponent
     public event Action? EditCompleted;
 
     /// <summary>Invoke the ValueChanged event.</summary>
-    protected void RaiseValueChanged(object? oldValue, object? newValue) =>
+    protected void RaiseValueChanged(object? oldValue, object? newValue)
+    {
+        if (_trackingChanges) HasChangedSinceTracking = true;
         ValueChanged?.Invoke(this, new ComponentValueChangedEventArgs(oldValue, newValue));
+    }
+
+    // ── Change tracking (for IValueEditor.IsDirty) ───────────────
+
+    private bool _trackingChanges;
+
+    /// <summary>Whether <see cref="StartTrackingChanges"/> was called.</summary>
+    internal bool IsTrackingChanges => _trackingChanges;
+
+    /// <summary>Whether the value changed (<see cref="ValueChanged"/>) since <see cref="StartTrackingChanges"/>.</summary>
+    internal bool HasChangedSinceTracking { get; private set; }
+
+    /// <summary>
+    /// Start counting value changes: called once an editor holds its cell's value, so that only changes
+    /// made after that (by the user) make it dirty.
+    /// </summary>
+    internal void StartTrackingChanges()
+    {
+        _trackingChanges = true;
+        HasChangedSinceTracking = false;
+    }
 
     /// <summary>
     /// Signal that the editor's value is final and the edit session should commit.

@@ -1,3 +1,5 @@
+using System.Globalization;
+using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -8,9 +10,16 @@ namespace KumikoUI.Core.Components;
 /// Fully custom-drawn scroll-wheel picker (mobile-style).
 /// Vertically scrolling list with center-selection indicator and snap-to-item.
 /// </summary>
-public class DrawnScrollPicker : DrawnComponent
+/// <remarks>
+/// Each item has display text and a value (<see cref="SetItems(IReadOnlyList{string}, IReadOnlyList{object?})"/>);
+/// <see cref="SelectedIndex"/> is -1 when nothing is selected. The choice is confirmed
+/// (<see cref="DrawnComponent.EditCompleted"/>) by releasing the wheel, which snaps to the nearest item and
+/// stops there, or by Enter.
+/// </remarks>
+public class DrawnScrollPicker : DrawnComponent, IValueEditor
 {
     private readonly List<string> _items = new();
+    private readonly List<object?> _values = new();
     private int _selectedIndex;
     private float _scrollOffset;
     private float _velocity;
@@ -70,24 +79,56 @@ public class DrawnScrollPicker : DrawnComponent
     /// <summary>Items to display.</summary>
     public IReadOnlyList<string> Items => _items;
 
-    /// <summary>Selected item index.</summary>
+    /// <summary>The value of each item (its display text unless set with values).</summary>
+    public IReadOnlyList<object?> ItemValues => _values;
+
+    /// <summary>Selected item index, or -1 when nothing is selected.</summary>
     public int SelectedIndex
     {
         get => _selectedIndex;
         set
         {
-            value = Math.Clamp(value, 0, Math.Max(0, _items.Count - 1));
+            value = Math.Clamp(value, -1, _items.Count - 1);
             if (_selectedIndex == value) return;
+            var old = SelectedValue;
             _selectedIndex = value;
-            _scrollOffset = value * ItemHeight;
-            RaiseValueChanged(null, SelectedValue);
+            _scrollOffset = Math.Max(0, value) * ItemHeight;
+            RaiseValueChanged(old, SelectedValue);
             InvalidateVisual();
         }
     }
 
-    /// <summary>Selected item text.</summary>
+    /// <summary>Selected item text, or null when nothing is selected.</summary>
     public string? SelectedValue => _selectedIndex >= 0 && _selectedIndex < _items.Count
         ? _items[_selectedIndex] : null;
+
+    /// <summary>Selected item's value, or null when nothing is selected.</summary>
+    public object? SelectedItemValue => _selectedIndex >= 0 && _selectedIndex < _values.Count
+        ? _values[_selectedIndex] : null;
+
+    /// <summary>Select nothing (the wheel shows the first item, unhighlighted).</summary>
+    public void ClearSelection() => SelectedIndex = -1;
+
+    /// <summary>
+    /// Select the item whose value equals <paramref name="value"/>, or whose value or display text has
+    /// the same text. Returns false, selecting nothing, when no item matches.
+    /// </summary>
+    public bool SelectValue(object? value)
+    {
+        int index = -1;
+        for (int i = 0; i < _values.Count && index < 0; i++)
+            if (Equals(_values[i], value)) index = i;
+
+        if (index < 0 && value != null)
+        {
+            string text = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
+            for (int i = 0; i < _items.Count && index < 0; i++)
+                if (Convert.ToString(_values[i], CultureInfo.InvariantCulture) == text || _items[i] == text) index = i;
+        }
+
+        SelectedIndex = index;
+        return index >= 0;
+    }
 
     // ── Events ──────────────────────────────────────────────────
 
@@ -96,14 +137,28 @@ public class DrawnScrollPicker : DrawnComponent
 
     // ── Items management ────────────────────────────────────────
 
-    /// <summary>Replace the picker's items with the given collection.</summary>
+    /// <summary>Replace the picker's items with the given collection; each item's value is its text.</summary>
     /// <param name="items">The new set of display strings to show.</param>
     public void SetItems(IEnumerable<string> items)
     {
+        var texts = items.ToList();
+        SetItems(texts, texts.Cast<object?>().ToList());
+    }
+
+    /// <summary>Replace the picker's items with display texts and their values (the same count).</summary>
+    public void SetItems(IReadOnlyList<string> displayTexts, IReadOnlyList<object?> values)
+    {
+        ArgumentNullException.ThrowIfNull(displayTexts);
+        ArgumentNullException.ThrowIfNull(values);
+        if (displayTexts.Count != values.Count)
+            throw new ArgumentException("Each display text needs a value.", nameof(values));
+
         _items.Clear();
-        _items.AddRange(items);
-        _selectedIndex = Math.Clamp(_selectedIndex, 0, Math.Max(0, _items.Count - 1));
-        _scrollOffset = _selectedIndex * ItemHeight;
+        _items.AddRange(displayTexts);
+        _values.Clear();
+        _values.AddRange(values);
+        _selectedIndex = _items.Count == 0 ? -1 : Math.Clamp(_selectedIndex, -1, _items.Count - 1);
+        _scrollOffset = Math.Max(0, _selectedIndex) * ItemHeight;
         InvalidateVisual();
     }
 
@@ -133,15 +188,14 @@ public class DrawnScrollPicker : DrawnComponent
         ctx.DrawLine(b.X, bandY, b.X + b.Width, bandY, sepPaint);
         ctx.DrawLine(b.X, bandY + ItemHeight, b.X + b.Width, bandY + ItemHeight, sepPaint);
 
-        // Draw items
-        float offsetFromCenter = _scrollOffset - (_selectedIndex * ItemHeight);
-        int startIndex = Math.Max(0, _selectedIndex - halfVisible - 1);
-        int endIndex = Math.Min(_items.Count - 1, _selectedIndex + halfVisible + 1);
+        // Draw the items around the center of the wheel
+        int center = GetNearestIndex();
+        int startIndex = Math.Max(0, center - halfVisible - 1);
+        int endIndex = Math.Min(_items.Count - 1, center + halfVisible + 1);
 
         for (int i = startIndex; i <= endIndex; i++)
         {
-            float itemY = centerY + (i - _selectedIndex) * ItemHeight - offsetFromCenter + (_scrollOffset - _selectedIndex * ItemHeight);
-            float actualItemY = centerY + (i * ItemHeight - _scrollOffset) - ItemHeight / 2 + ItemHeight / 2;
+            float actualItemY = centerY + (i * ItemHeight - _scrollOffset);
 
             // Calculate distance from center for fade effect
             float distFromCenter = Math.Abs(actualItemY + ItemHeight / 2 - centerY);
@@ -151,7 +205,8 @@ public class DrawnScrollPicker : DrawnComponent
 
             float alpha = 1f - (distFromCenter / maxDist) * 0.6f;
 
-            bool isSelected = i == GetNearestIndex();
+            // With nothing selected (and the wheel untouched) no item is highlighted
+            bool isSelected = i == center && (_selectedIndex >= 0 || _isDragging || Math.Abs(_velocity) > MinVelocity);
             var font = isSelected ? SelectedFont : Font;
             var color = isSelected ? SelectedTextColor : TextColor;
             color = new KumikoColor(color.R, color.G, color.B, (byte)(color.A * alpha));
@@ -199,11 +254,14 @@ public class DrawnScrollPicker : DrawnComponent
         return true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Release: snap to the nearest item, stop there (the wheel doesn't coast past the item it confirms),
+    /// and confirm it.
+    /// </summary>
     public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
         _isDragging = false;
-        // Snap to nearest item and signal edit complete
+        _velocity = 0;
         SnapToNearest();
         RaiseEditCompleted();
         return true;
@@ -215,15 +273,25 @@ public class DrawnScrollPicker : DrawnComponent
         switch (e.Key)
         {
             case KumikoKey.Up:
-                SelectedIndex = Math.Max(0, _selectedIndex - 1);
-                SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
+                MoveSelection(_selectedIndex < 0 ? 0 : _selectedIndex - 1);
                 return true;
             case KumikoKey.Down:
-                SelectedIndex = Math.Min(_items.Count - 1, _selectedIndex + 1);
-                SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
+                MoveSelection(_selectedIndex < 0 ? 0 : _selectedIndex + 1);
+                return true;
+            case KumikoKey.Enter when _selectedIndex >= 0:
+                RaiseEditCompleted(); // confirm the selection
                 return true;
         }
         return false;
+    }
+
+    private void MoveSelection(int index)
+    {
+        if (_items.Count == 0) return;
+        index = Math.Clamp(index, 0, _items.Count - 1);
+        if (index == _selectedIndex) return;
+        SelectedIndex = index;
+        SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
     }
 
     /// <summary>Animate scroll physics. Call from a frame timer. Returns true if still animating.</summary>
@@ -250,10 +318,10 @@ public class DrawnScrollPicker : DrawnComponent
         int nearest = GetNearestIndex();
         if (nearest != _selectedIndex)
         {
-            var old = _selectedIndex;
+            var old = SelectedValue;
             _selectedIndex = nearest;
             SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
-            RaiseValueChanged(old, _selectedIndex);
+            RaiseValueChanged(old, SelectedValue);
         }
         _scrollOffset = nearest * ItemHeight;
         InvalidateVisual();
@@ -270,8 +338,10 @@ public class DrawnScrollPicker : DrawnComponent
             var newIdx = GetNearestIndex();
             if (newIdx != _selectedIndex)
             {
+                var old = SelectedValue;
                 _selectedIndex = newIdx;
                 SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
+                RaiseValueChanged(old, SelectedValue);
             }
             InvalidateVisual();
             return false;
@@ -281,4 +351,12 @@ public class DrawnScrollPicker : DrawnComponent
         InvalidateVisual();
         return true;
     }
+
+    // ── IValueEditor ────────────────────────────────────────────
+
+    object? IValueEditor.Value => SelectedItemValue;
+
+    bool IValueEditor.HasValue => _selectedIndex >= 0;
+
+    bool IValueEditor.IsDirty => HasChangedSinceTracking;
 }

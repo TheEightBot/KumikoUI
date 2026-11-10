@@ -1,3 +1,4 @@
+using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -8,9 +9,10 @@ namespace KumikoUI.Core.Components;
 /// Fully custom-drawn date picker with a calendar popup.
 /// Renders month grid, navigation arrows, and day selection.
 /// </summary>
-public class DrawnDatePicker : DrawnComponent
+public class DrawnDatePicker : DrawnComponent, IValueEditor
 {
-    private DateTime _selectedDate = DateTime.Today;
+    private DateTime _selectedDate = DateTime.Today; // the selection, or where the keyboard starts when there is none
+    private bool _hasSelection = true;
     private DateTime? _rangeEndDate;
     private DateTime _displayMonth;
     private bool _isCalendarOpen;
@@ -113,21 +115,41 @@ public class DrawnDatePicker : DrawnComponent
 
     // ── Properties ──────────────────────────────────────────────
 
-    /// <summary>Gets or sets the selected date.</summary>
-    public DateTime SelectedDate
+    /// <summary>
+    /// Gets or sets the selected date (the date part only), or null for no selection: the field is then
+    /// blank and the calendar highlights no day. Today by default.
+    /// </summary>
+    public DateTime? SelectedDate
     {
-        get => _selectedDate;
+        get => _hasSelection ? _selectedDate : null;
         set
         {
-            if (_selectedDate.Date == value.Date) return;
-            var old = _selectedDate;
-            _selectedDate = value.Date;
-            _displayMonth = new DateTime(value.Year, value.Month, 1);
+            if (value is not { } date)
+            {
+                if (!_hasSelection) return;
+                var cleared = _selectedDate;
+                _hasSelection = false;
+                RaiseValueChanged(cleared, null);
+                InvalidateVisual();
+                return;
+            }
+
+            if (_hasSelection && _selectedDate.Date == date.Date) return;
+            DateTime? old = _hasSelection ? _selectedDate : null;
+            _hasSelection = true;
+            _selectedDate = date.Date;
+            _displayMonth = new DateTime(date.Year, date.Month, 1);
             RaiseValueChanged(old, _selectedDate);
-            DateSelected?.Invoke(this, new DateSelectedEventArgs(old, _selectedDate));
+            DateSelected?.Invoke(this, new DateSelectedEventArgs(old ?? _selectedDate, _selectedDate));
             InvalidateVisual();
         }
     }
+
+    /// <summary>
+    /// The time of day kept with the selected date when <see cref="ShowTimePicker"/> is off: an edited
+    /// cell's original time, so picking a new date doesn't reset it to midnight.
+    /// </summary>
+    public TimeSpan TimeOfDay { get; set; }
 
     /// <summary>
     /// End date for range selection mode. Null when not in range mode or no end selected.
@@ -206,7 +228,7 @@ public class DrawnDatePicker : DrawnComponent
         });
 
         // Date text
-        string dateText = _selectedDate.ToString(DateFormat);
+        string dateText = _hasSelection ? _selectedDate.ToString(DateFormat) : string.Empty;
         if (ShowTimePicker)
         {
             int displayHour = SelectedHour;
@@ -368,7 +390,7 @@ public class DrawnDatePicker : DrawnComponent
 
                 bool isCurrentMonth = date.Month == firstOfMonth.Month;
                 bool isToday = date.Date == today;
-                bool isSelected = date.Date == _selectedDate.Date;
+                bool isSelected = _hasSelection && date.Date == _selectedDate.Date;
                 bool isRangeEnd = IsRangeMode && _rangeEndDate.HasValue && date.Date == _rangeEndDate.Value.Date;
                 bool isInRange = rangeStart.HasValue && rangeEnd.HasValue &&
                                  date.Date >= rangeStart.Value.Date && date.Date <= rangeEnd.Value.Date;
@@ -638,19 +660,20 @@ public class DrawnDatePicker : DrawnComponent
         switch (e.Key)
         {
             case KumikoKey.Left:
-                SelectedDate = _selectedDate.AddDays(-1);
+                Step(-1);
                 return true;
             case KumikoKey.Right:
-                SelectedDate = _selectedDate.AddDays(1);
+                Step(1);
                 return true;
             case KumikoKey.Up:
-                SelectedDate = _selectedDate.AddDays(-7);
+                Step(-7);
                 return true;
             case KumikoKey.Down:
-                SelectedDate = _selectedDate.AddDays(7);
+                Step(7);
                 return true;
             case KumikoKey.Enter:
                 CloseCalendar();
+                if (_hasSelection) RaiseEditCompleted(); // Enter confirms the date, like a click on it
                 return true;
             case KumikoKey.Escape:
                 CloseCalendar();
@@ -906,4 +929,17 @@ public class DrawnDatePicker : DrawnComponent
         CloseCalendar();
         base.OnLostFocus();
     }
+
+    /// <summary>Move the selection by <paramref name="days"/>; with nothing selected, select the starting date first.</summary>
+    private void Step(int days) => SelectedDate = _hasSelection ? _selectedDate.AddDays(days) : _selectedDate;
+
+    // ── IValueEditor ────────────────────────────────────────────
+
+    object? IValueEditor.Value => !_hasSelection ? null
+        : ShowTimePicker ? SelectedDateTime
+        : _selectedDate.Date + TimeOfDay;
+
+    bool IValueEditor.HasValue => _hasSelection;
+
+    bool IValueEditor.IsDirty => HasChangedSinceTracking;
 }
