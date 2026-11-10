@@ -251,8 +251,15 @@ public class KumikoColumn
     public Func<object?, Rendering.KumikoRect, Components.DrawnComponent?>? CustomEditorFactory { get; set; }
 
     /// <summary>
+    /// Custom editor factory for Template columns that also receives the character typed to open the edit
+    /// (<see cref="Editing.CellEditorContext.InitialCharacter"/>). Takes precedence over
+    /// <see cref="CustomEditorFactory"/>, which cannot see that character.
+    /// </summary>
+    public Func<Editing.CellEditorContext, Components.DrawnComponent?>? EditorFactory { get; set; }
+
+    /// <summary>
     /// XAML-declarable editor descriptor for Template columns.
-    /// When set and <see cref="CustomEditorFactory"/> is null, this descriptor
+    /// When set and neither <see cref="EditorFactory"/> nor <see cref="CustomEditorFactory"/> is set, this descriptor
     /// is used to create editors. Allows full XAML configuration of editor
     /// properties without code-behind.
     /// </summary>

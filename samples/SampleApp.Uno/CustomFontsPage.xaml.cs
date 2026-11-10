@@ -45,7 +45,7 @@ public sealed partial class CustomFontsPage : Page
         };
 
         japaneseGrid.GridStyle = style;
-        japaneseGrid.Columns!.Add(new KumikoColumn
+        japaneseGrid.Columns.Add(new KumikoColumn
         {
             Header = "現品票ID",   // 現品票ID
             PropertyName = nameof(InventoryItem.ItemId),
@@ -55,19 +55,19 @@ public sealed partial class CustomFontsPage : Page
             IsReadOnly = true,
             IsFrozen = true,
         });
-        japaneseGrid.Columns!.Add(new KumikoColumn
+        japaneseGrid.Columns.Add(new KumikoColumn
         {
             Header = "RFID",
             PropertyName = nameof(InventoryItem.Rfid),
             Width = 160,
         });
-        japaneseGrid.Columns!.Add(new KumikoColumn
+        japaneseGrid.Columns.Add(new KumikoColumn
         {
             Header = "品番",           // 品番
             PropertyName = nameof(InventoryItem.PartNumber),
             Width = 130,
         });
-        japaneseGrid.Columns!.Add(new KumikoColumn
+        japaneseGrid.Columns.Add(new KumikoColumn
         {
             Header = "数量",           // 数量
             PropertyName = nameof(InventoryItem.Quantity),
@@ -75,7 +75,7 @@ public sealed partial class CustomFontsPage : Page
             ColumnType = KumikoColumnType.Numeric,
             TextAlignment = KumikoTextAlignment.Right,
         });
-        japaneseGrid.Columns!.Add(new KumikoColumn
+        japaneseGrid.Columns.Add(new KumikoColumn
         {
             Header = "倉庫",           // 倉庫
             PropertyName = nameof(InventoryItem.Warehouse),
@@ -111,20 +111,20 @@ public sealed partial class CustomFontsPage : Page
     private void BuildIconGrid()
     {
         // Regular columns use the default font; only the Priority/Done columns use MaterialIcons.
-        iconGrid.Columns!.Add(new KumikoColumn
+        iconGrid.Columns.Add(new KumikoColumn
         {
             Header = "Name",
             PropertyName = nameof(TaskItem.Name),
             Width = 180,
             IsFrozen = true,
         });
-        iconGrid.Columns!.Add(new KumikoColumn
+        iconGrid.Columns.Add(new KumikoColumn
         {
             Header = "Assignee",
             PropertyName = nameof(TaskItem.Assignee),
             Width = 130,
         });
-        iconGrid.Columns!.Add(new KumikoColumn
+        iconGrid.Columns.Add(new KumikoColumn
         {
             Header = "Priority",
             PropertyName = nameof(TaskItem.PriorityIcon),
@@ -134,7 +134,7 @@ public sealed partial class CustomFontsPage : Page
             // from the MaterialIcons typeface registered at startup.
             CustomCellRenderer = new IconFontCellRenderer("MaterialIcons", 22f),
         });
-        iconGrid.Columns!.Add(new KumikoColumn
+        iconGrid.Columns.Add(new KumikoColumn
         {
             Header = "Done",
             PropertyName = nameof(TaskItem.DoneIcon),

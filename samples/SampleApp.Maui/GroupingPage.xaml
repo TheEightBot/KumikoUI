@@ -35,7 +35,6 @@
                          HorizontalOptions="Fill"
                          VerticalOptions="Fill">
 
-            <dg:KumikoDataGrid.Columns>
                 <core:KumikoColumn Header="Id"
                                      PropertyName="Id"
                                      Width="72"
@@ -73,7 +72,6 @@
                 <core:KumikoColumn Header="City"
                                      PropertyName="City"
                                      Width="130" />
-            </dg:KumikoDataGrid.Columns>
 
             <dg:KumikoDataGrid.TableSummaryRows>
                 <core:TableSummaryRow Name="Totals" Position="Bottom" Title="Totals">

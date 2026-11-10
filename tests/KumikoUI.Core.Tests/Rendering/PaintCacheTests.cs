@@ -120,13 +120,19 @@ public class PaintCacheTests
     }
 
     [Fact]
-    public void BeforeTheFirstUpdate_PaintsAreUsableDefaults()
+    public void BeforeTheFirstUpdate_PaintsAreUsableDefaults_ThatUpdateReplaces()
     {
         var cache = new PaintCache();
+        var defaults = new KumikoPaint();
 
-        Assert.NotNull(cache.Background);
-        Assert.NotNull(cache.CellText);
-        Assert.NotNull(cache.SummaryText);
+        Assert.Equal(defaults.Color, cache.Background.Color);
+        Assert.Equal(defaults.Color, cache.CellText.Color);
+        Assert.Equal(defaults.Color, cache.SummaryText.Color);
+
+        var style = DistinctStyle();
+        cache.Update(style);
+        Assert.Equal(style.BackgroundColor, cache.Background.Color);
+        Assert.NotEqual(defaults.Color, cache.Background.Color);
     }
 
     // ── CellTextPaint ─────────────────────────────────────────────

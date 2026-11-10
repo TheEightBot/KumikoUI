@@ -5,7 +5,7 @@ namespace KumikoUI.Core.Editing;
 /// <see cref="Value"/> only when the editor <see cref="HasValue">has one</see> and the user
 /// <see cref="IsDirty">changed it</see>, so opening an editor and leaving (a tap elsewhere, Tab, Enter)
 /// never overwrites the cell with a value the user didn't choose. Every built-in editor implements it;
-/// a custom editor (<see cref="Models.KumikoColumn.CustomEditorFactory"/>, <see cref="ICellEditorProvider"/>)
+/// a custom editor (<see cref="Models.KumikoColumn.EditorFactory"/>, <see cref="Rendering.ICellEditorProvider"/>)
 /// implements it to have its value committed. Editors that don't implement it never write.
 /// </summary>
 public interface IValueEditor

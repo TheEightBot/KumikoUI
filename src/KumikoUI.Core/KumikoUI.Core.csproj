@@ -33,4 +33,9 @@
     <None Include="buildTransitive/KumikoUI.Core.targets" Pack="true" PackagePath="buildTransitive/;build/" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Lets the test project check internal editing state, such as the editor the focus manager holds. -->
+    <InternalsVisibleTo Include="KumikoUI.Core.Tests" />
+  </ItemGroup>
+
 </Project>
