@@ -44,6 +44,9 @@ public class KumikoRenderer : IDisposable
     // Summary values that do not fit their column, reused for every summary row
     private readonly List<string> _overflowValues = new();
 
+    // Group headers pinned at the top of the data area this frame (#174), outermost first; reused every frame
+    private readonly List<PinnedGroupHeader> _pinnedGroupHeaders = new();
+
     // "1".."16": multi-sort order badges without formatting a number per frame
     private static readonly string[] s_sortOrderLabels = CreateSortOrderLabels(16);
 
@@ -216,6 +219,11 @@ public class KumikoRenderer : IDisposable
         float dataClipHeight = Math.Max(0, dataClipBottom - dataAreaTop);
         var dataClip = new KumikoRect(0, dataAreaTop, scroll.ViewportWidth, dataClipHeight);
 
+        // Sticky group headers (#174): pinned below the frozen rows, over the scrolling rows.
+        float scrollingRowsTop = dataAreaTop + frozenRowHeight;
+        float pinnedBandBottom = PinnedGroupHeaders.Compute(dataSource, style, scrollingRowsTop, scroll.OffsetY,
+            frozenRowCount, _pinnedGroupHeaders);
+
         // ── Pass 1: Scrollable columns area ──────────────────────
         ctx.Save();
         float scrollClipLeft = frozenWidth + handleOffset;
@@ -353,12 +361,26 @@ public class KumikoRenderer : IDisposable
             ctx.Restore();
         }
 
+        // ── Sticky group headers (#174): on top of every pane's rows, inside the data area below the frozen rows.
+        // Innermost first, so a pushed-up inner header slides under the outer ones.
+        if (_pinnedGroupHeaders.Count > 0)
+        {
+            ctx.Save();
+            ctx.ClipRect(new KumikoRect(0, scrollingRowsTop, scroll.ViewportWidth, Math.Max(0, dataClipBottom - scrollingRowsTop)));
+            for (int i = _pinnedGroupHeaders.Count - 1; i >= 0; i--)
+            {
+                var pinned = _pinnedGroupHeaders[i];
+                DrawGroupHeaderRow(ctx, dataSource, pinned.Row, pinned.Y, allCols, scroll, style, frozenWidth, handleOffset);
+            }
+            ctx.Restore();
+        }
+
         // ── Draw drag handle column ──────────────────────────────
         if (style.ShowRowDragHandle)
         {
             DrawDragHandleColumn(ctx, dataSource, firstRow, lastRow, scroll, style,
                 handleOffset, rightHandleWidth, topSummaryHeight, frozenRowCount, frozenRowHeight,
-                adjustedViewportHeight);
+                adjustedViewportHeight, _pinnedGroupHeaders.Count > 0 ? pinnedBandBottom : float.NegativeInfinity);
         }
 
         // Pinned bottom summary (footer): drawn on top of all scrolling data — and after the drag-handle
@@ -390,7 +412,7 @@ public class KumikoRenderer : IDisposable
         {
             float pinnedFooterHeight = style.PinBottomSummaryRows ? bottomSummaryHeight : 0;
             editSession.PlaceEditor(GetEditorCellBounds(editSession.EditCell, scroll, style,
-                groupPanelOffset, dataAreaTop, frozenRowCount, frozenRowHeight,
+                groupPanelOffset, dataAreaTop, frozenRowCount, frozenRowHeight, pinnedBandBottom,
                 scrollClipLeft, scrollClipLeft + scrollClipWidth, adjustedViewportHeight - pinnedFooterHeight));
         }
         editSession?.DrawEditor(ctx);
@@ -414,7 +436,7 @@ public class KumikoRenderer : IDisposable
     /// scrolled out of its pane or band, or its column is not laid out.
     /// </summary>
     private KumikoRect? GetEditorCellBounds(CellPosition cell, ScrollState scroll, KumikoStyle style,
-        float groupPanelOffset, float dataAreaTop, int frozenRowCount, float frozenRowHeight,
+        float groupPanelOffset, float dataAreaTop, int frozenRowCount, float frozenRowHeight, float scrollingRowsTop,
         float scrollPaneLeft, float scrollPaneRight, float dataAreaBottom)
     {
         if (!cell.IsValid) return null;
@@ -436,7 +458,9 @@ public class KumikoRenderer : IDisposable
         else
         {
             y = dataAreaTop + frozenRowHeight + (cell.Row - frozenRowCount) * style.RowHeight - scroll.OffsetY;
-            if (y + style.RowHeight <= dataAreaTop + frozenRowHeight || y >= dataAreaBottom)
+            // Hidden once the row is entirely above the scrolling rows' top: the frozen rows, or the sticky group
+            // headers pinned over it (#174).
+            if (y + style.RowHeight <= scrollingRowsTop || y >= dataAreaBottom)
                 return null;
         }
 
@@ -1538,8 +1562,10 @@ public class KumikoRenderer : IDisposable
         float topSummaryHeight,
         int frozenRowCount,
         float frozenRowHeight,
-        float adjustedViewportHeight)
+        float adjustedViewportHeight,
+        float pinnedBandBottom)
     {
+        // pinnedBandBottom: bottom of the sticky group headers, or negative infinity when none is pinned
         float handleWidth = style.RowDragHandleWidth;
         bool isLeft = style.RowDragHandlePosition == DragHandlePosition.Left;
         float handleX = isLeft ? 0 : scroll.ViewportWidth - rightHandleWidth;
@@ -1570,6 +1596,8 @@ public class KumikoRenderer : IDisposable
             if (dataSource.IsNonDataRow(row)) continue;
             float rowY = dataAreaTop + frozenRowHeight + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY;
             if (rowY + style.RowHeight <= scrollableAreaTop || rowY > adjustedViewportHeight) continue;
+            // No grip for a row whose middle is under the sticky group headers (#174)
+            if (rowY + style.RowHeight / 2 < pinnedBandBottom) continue;
             DrawGripIcon(ctx, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
         }
 

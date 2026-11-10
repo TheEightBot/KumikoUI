@@ -80,6 +80,36 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_StickyGroupHeadersPinnedMidGroup_AllocatesNothing()
+    {
+        // Two group levels (City, then Active), scrolled into the middle of a group so both levels are pinned (#174),
+        // alternating with an offset three rows lower where the next inner header pushes the pinned one up.
+        var grid = CreateGrid(featured: true);
+        grid.Source.AddGroupDescription(new GroupDescription(nameof(Row.Active)));
+        float rowHeight = grid.Style.RowHeight;
+        int nextInnerHeader = Enumerable.Range(2, grid.Source.RowCount - 2)
+            .First(r => grid.Source.GetGroupHeaderInfo(r)?.Level == 1);
+        float pushing = (nextInnerHeader - 2) * rowHeight + 20;   // that header 20 px into the inner slot
+        float midGroup = pushing - 3 * rowHeight;
+        float rowsTop = grid.Style.GroupPanelHeight + grid.Style.HeaderHeight + grid.Style.SummaryRowHeight;
+
+        grid.Scroll.OffsetY = pushing;
+        var check = new RecordingDrawingContext();
+        grid.Render(check);
+        Assert.True(grid.Style.StickyGroupHeaders);
+        Assert.Contains(check.Texts, o => o.Text!.StartsWith("City: ", StringComparison.Ordinal) && Math.Abs(o.Rect.Y - rowsTop) < 0.01f);
+        Assert.Contains(check.Texts, o => o.Text!.StartsWith("Active: ", StringComparison.Ordinal)
+            && Math.Abs(o.Rect.Y - (rowsTop + rowHeight - 20)) < 0.01f);
+
+        int frame = 0;
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+        {
+            grid.Scroll.OffsetY = frame++ % 2 == 0 ? midGroup : pushing;
+            grid.Render(ctx);
+        }));
+    }
+
+    [Fact]
     public void ChangingTheStyle_RebuildsThePaintsOnce_ThenAllocatesNothingAgain()
     {
         var grid = CreateGrid(featured: false);

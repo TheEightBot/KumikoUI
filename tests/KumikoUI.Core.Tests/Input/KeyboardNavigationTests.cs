@@ -541,6 +541,7 @@ public class KeyboardNavigationTests
     public void Up_UnderTheGroupPanelHeaderAndTopSummary_ScrollsTheRowToTheTop()
     {
         var g = Banded(groupPanel: true, topSummary: true, frozenRows: false, pinnedFooter: false);
+        g.Style.StickyGroupHeaders = false; // the fixed bands only; the sticky band is covered in StickyGroupHeaderTests (#174)
         g.Select(11, 0);
         g.Scroll.OffsetY = 400;
 
