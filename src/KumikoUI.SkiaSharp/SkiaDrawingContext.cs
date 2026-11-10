@@ -116,6 +116,9 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         _canvas.DrawPath(path, skPaint);
     }
 
+    // SkiaSharp 4 marks SKPath's mutators obsolete in favor of SKPathBuilder, but SKPathBuilder.Detach/Snapshot
+    // create a new SKPath per call; one reused, rewound SKPath keeps glyph drawing allocation-free.
+#pragma warning disable CS0618
     private SKPath BuildPath(ReadOnlySpan<KumikoPoint> points, bool close)
     {
         var path = _path ??= new SKPath();
@@ -126,6 +129,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         if (close) path.Close();
         return path;
     }
+#pragma warning restore CS0618
 
     // ── Text ─────────────────────────────────────────────────────
 
