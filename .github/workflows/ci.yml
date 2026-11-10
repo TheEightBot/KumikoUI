@@ -144,6 +144,11 @@ jobs:
         run: dotnet pack src/KumikoUI.Uno/KumikoUI.Uno.csproj
           --no-restore -c Release -o C:\ci-pack
 
+      # Fails on AndroidX/content entries, a package over 2 MB, dev-time dependencies or missing metadata
+      - name: Check package contents — Uno
+        shell: bash
+        run: eng/check-uno-package.sh 'C:\ci-pack'
+
       # Uno input-mapping unit tests (net10.0-desktop head)
       - name: Test — Uno
         run: dotnet test tests/KumikoUI.Uno.Tests/KumikoUI.Uno.Tests.csproj
