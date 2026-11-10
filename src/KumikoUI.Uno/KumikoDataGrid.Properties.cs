@@ -81,16 +81,26 @@ public partial class KumikoDataGrid
             nameof(Columns), typeof(ObservableCollection<KumikoColumn>), typeof(KumikoDataGrid),
             new PropertyMetadata(null, OnColumnsChanged));
 
-    /// <summary>Bindable collection of column definitions. Supports runtime add/remove.</summary>
-    public ObservableCollection<KumikoColumn>? Columns
+    /// <summary>Bindable collection of column definitions. Supports runtime add/remove. Never null:
+    /// assigning null sets an empty collection.</summary>
+    public ObservableCollection<KumikoColumn> Columns
     {
-        get => (ObservableCollection<KumikoColumn>?)GetValue(ColumnsProperty);
+        get => (ObservableCollection<KumikoColumn>)GetValue(ColumnsProperty);
         set => SetValue(ColumnsProperty, value);
     }
 
     private static void OnColumnsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var view = (KumikoDataGrid)d;
+
+        // Never null: null becomes an empty collection (which re-enters this callback)
+        if (e.NewValue is null)
+        {
+            if (e.OldValue is ObservableCollection<KumikoColumn> previous)
+                previous.CollectionChanged -= view.OnColumnsCollectionChanged;
+            view.Columns = new ObservableCollection<KumikoColumn>();
+            return;
+        }
 
         if (e.OldValue is ObservableCollection<KumikoColumn> oldCollection)
             oldCollection.CollectionChanged -= view.OnColumnsCollectionChanged;
@@ -110,8 +120,7 @@ public partial class KumikoDataGrid
 
     private void OnColumnsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (Columns != null)
-            _dataSource.SetColumns(Columns);
+        _dataSource.SetColumns(Columns);
         Invalidate();
     }
 
@@ -123,16 +132,26 @@ public partial class KumikoDataGrid
             nameof(TableSummaryRows), typeof(ObservableCollection<TableSummaryRow>), typeof(KumikoDataGrid),
             new PropertyMetadata(null, OnTableSummaryRowsChanged));
 
-    /// <summary>Bindable collection of table summary row definitions.</summary>
-    public ObservableCollection<TableSummaryRow>? TableSummaryRows
+    /// <summary>Bindable collection of table summary row definitions. Never null: assigning null sets an
+    /// empty collection.</summary>
+    public ObservableCollection<TableSummaryRow> TableSummaryRows
     {
-        get => (ObservableCollection<TableSummaryRow>?)GetValue(TableSummaryRowsProperty);
+        get => (ObservableCollection<TableSummaryRow>)GetValue(TableSummaryRowsProperty);
         set => SetValue(TableSummaryRowsProperty, value);
     }
 
     private static void OnTableSummaryRowsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var view = (KumikoDataGrid)d;
+
+        // Never null: null becomes an empty collection (which re-enters this callback)
+        if (e.NewValue is null)
+        {
+            if (e.OldValue is ObservableCollection<TableSummaryRow> previous)
+                previous.CollectionChanged -= view.OnTableSummaryRowsCollectionChanged;
+            view.TableSummaryRows = new ObservableCollection<TableSummaryRow>();
+            return;
+        }
 
         if (e.OldValue is ObservableCollection<TableSummaryRow> oldCollection)
             oldCollection.CollectionChanged -= view.OnTableSummaryRowsCollectionChanged;
@@ -150,8 +169,7 @@ public partial class KumikoDataGrid
 
     private void OnTableSummaryRowsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (TableSummaryRows != null)
-            SyncTableSummaryRows(TableSummaryRows);
+        SyncTableSummaryRows(TableSummaryRows);
     }
 
     private void SyncTableSummaryRows(IEnumerable<TableSummaryRow> rows)

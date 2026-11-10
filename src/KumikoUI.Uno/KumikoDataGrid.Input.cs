@@ -70,8 +70,7 @@ public partial class KumikoDataGrid
     private void AttachInputHandlers()
     {
         // Focusable so KeyDown / CharacterReceived are delivered. IsTabStop / TabIndex / Focus
-        // live on UIElement in WinUI (not Control), so they are available on this Grid-derived
-        // control. Set here (not just the ctor) so a re-attach after Unloaded restores it.
+        // live on UIElement in WinUI, so they are available on this control. Set here (not just the ctor) so a re-attach after Unloaded restores it.
         IsTabStop = true;
         if (TabIndex == int.MaxValue) // WinUI default — only set once, respect any XAML override.
             TabIndex = 0;
@@ -163,7 +162,7 @@ public partial class KumikoDataGrid
         DispatchPointer(e, point, InputAction.Pressed, clickCount);
 
         // Route the keyboard to the hidden TextBox proxy for non-touch input (mouse/pen). The proxy
-        // is a real focusable element on every head, unlike this Grid-derived control whose KeyDown/
+        // is a real focusable element on every head, unlike this control, whose KeyDown/
         // CharacterReceived don't fire on WASM/Skia. Done AFTER DispatchPointer so it wins over any
         // focus change made while Core handled the press (e.g. CellEndEdit). For touch we deliberately
         // do NOT focus here — it would summon the soft keyboard on every tap; editing focuses the
