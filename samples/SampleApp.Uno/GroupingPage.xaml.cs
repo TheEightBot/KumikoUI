@@ -10,7 +10,7 @@ namespace SampleApp.Uno;
 
 /// <summary>
 /// Grouping demo (← SampleApp.Maui GroupingPage). Drives group descriptions, expand/collapse,
-/// group summary rows and filtering toggling through the control's <c>DataSource</c>.
+/// group summary rows and filtering toggling through the control's <c>GroupDescriptions</c> and <c>GroupSummaryRows</c> collections.
 /// </summary>
 public sealed partial class GroupingPage : Page
 {
@@ -52,26 +52,26 @@ public sealed partial class GroupingPage : Page
 
     private void OnGroupByDepartmentClicked(object sender, RoutedEventArgs e)
     {
-        kumiko.DataSource.ClearGroupDescriptions();
-        kumiko.DataSource.AddGroupDescription(new GroupDescription("Department", "Department"));
+        kumiko.GroupDescriptions.Clear();
+        kumiko.GroupDescriptions.Add(new GroupDescription("Department", "Department"));
     }
 
     private void OnGroupByLevelClicked(object sender, RoutedEventArgs e)
     {
-        kumiko.DataSource.ClearGroupDescriptions();
-        kumiko.DataSource.AddGroupDescription(new GroupDescription("Level", "Level"));
+        kumiko.GroupDescriptions.Clear();
+        kumiko.GroupDescriptions.Add(new GroupDescription("Level", "Level"));
     }
 
     private void OnGroupByBothClicked(object sender, RoutedEventArgs e)
     {
-        kumiko.DataSource.ClearGroupDescriptions();
-        kumiko.DataSource.AddGroupDescription(new GroupDescription("Department", "Department"));
-        kumiko.DataSource.AddGroupDescription(new GroupDescription("Level", "Level"));
+        kumiko.GroupDescriptions.Clear();
+        kumiko.GroupDescriptions.Add(new GroupDescription("Department", "Department"));
+        kumiko.GroupDescriptions.Add(new GroupDescription("Level", "Level"));
     }
 
     private void OnClearGroupsClicked(object sender, RoutedEventArgs e)
     {
-        kumiko.DataSource.ClearGroupDescriptions();
+        kumiko.GroupDescriptions.Clear();
     }
 
     private void OnExpandAllClicked(object sender, RoutedEventArgs e)
@@ -88,7 +88,7 @@ public sealed partial class GroupingPage : Page
     {
         if (_hasGroupSummary)
         {
-            kumiko.DataSource.ClearGroupSummaryRows();
+            kumiko.GroupSummaryRows.Clear();
             _hasGroupSummary = false;
             groupSummaryToggle.Content = "Add Group Summary";
         }
@@ -111,7 +111,7 @@ public sealed partial class GroupingPage : Page
                 SummaryType = SummaryType.Count,
                 Label = "Count: "
             });
-            kumiko.DataSource.AddGroupSummaryRow(summaryRow);
+            kumiko.GroupSummaryRows.Add(summaryRow);
 
             // The salary average goes in its own row: a summary row shows one aggregate per column
             // (several aggregates of the same property in one row are tracked in #19).
@@ -127,7 +127,7 @@ public sealed partial class GroupingPage : Page
                 Format = "C0",
                 Label = "Avg: "
             });
-            kumiko.DataSource.AddGroupSummaryRow(averageRow);
+            kumiko.GroupSummaryRows.Add(averageRow);
             _hasGroupSummary = true;
             groupSummaryToggle.Content = "Remove Group Summary";
         }
@@ -137,6 +137,12 @@ public sealed partial class GroupingPage : Page
     {
         kumiko.AllowFiltering = !kumiko.AllowFiltering;
         filterToggle.Content = kumiko.AllowFiltering ? "Filtering: ON" : "Filtering: OFF";
+    }
+
+    private void OnToggleGridLinesClicked(object sender, RoutedEventArgs e)
+    {
+        kumiko.ShowHorizontalGridLines = kumiko.ShowHorizontalGridLines != true;
+        kumiko.ShowVerticalGridLines = kumiko.ShowVerticalGridLines != true;
     }
 }
 

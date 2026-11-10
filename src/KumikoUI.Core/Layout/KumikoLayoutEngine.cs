@@ -18,8 +18,10 @@ public class KumikoLayoutEngine
         float fixedTotal = 0f;
         float starTotal = 0f;
 
-        foreach (var col in columns)
+        // Indexed loops: foreach over an IReadOnlyList boxes its enumerator, and this runs every frame.
+        for (int i = 0; i < columns.Count; i++)
         {
+            var col = columns[i];
             if (!col.IsVisible) continue;
 
             if (col.SizeMode == ColumnSizeMode.Fixed || col.SizeMode == ColumnSizeMode.Auto)
@@ -30,8 +32,9 @@ public class KumikoLayoutEngine
 
         float starSpace = Math.Max(0, viewportWidth - fixedTotal);
 
-        foreach (var col in columns)
+        for (int i = 0; i < columns.Count; i++)
         {
+            var col = columns[i];
             if (!col.IsVisible) continue;
 
             if (col.SizeMode == ColumnSizeMode.Star && starTotal > 0)
@@ -48,8 +51,8 @@ public class KumikoLayoutEngine
     public float GetContentWidth(IReadOnlyList<KumikoColumn> columns)
     {
         float w = 0;
-        foreach (var col in columns)
-            if (col.IsVisible) w += col.Width;
+        for (int i = 0; i < columns.Count; i++)
+            if (columns[i].IsVisible) w += columns[i].Width;
         return w;
     }
 
@@ -59,8 +62,8 @@ public class KumikoLayoutEngine
     public float GetFrozenColumnWidth(IReadOnlyList<KumikoColumn> columns)
     {
         float w = 0;
-        foreach (var col in columns)
-            if (col.IsVisible && col.IsFrozen) w += col.Width;
+        for (int i = 0; i < columns.Count; i++)
+            if (columns[i].IsVisible && columns[i].IsFrozen) w += columns[i].Width;
         return w;
     }
 
@@ -70,8 +73,8 @@ public class KumikoLayoutEngine
     public float GetRightFrozenColumnWidth(IReadOnlyList<KumikoColumn> columns)
     {
         float w = 0;
-        foreach (var col in columns)
-            if (col.IsVisible && col.IsFrozenRight) w += col.Width;
+        for (int i = 0; i < columns.Count; i++)
+            if (columns[i].IsVisible && columns[i].IsFrozenRight) w += columns[i].Width;
         return w;
     }
 

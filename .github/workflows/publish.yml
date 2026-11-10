@@ -24,6 +24,7 @@ jobs:
   resolve-version:
     name: Resolve version
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       version: ${{ steps.ver.outputs.version }}
 
@@ -91,6 +92,7 @@ jobs:
   pack-core:
     name: Pack Core & SkiaSharp
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: resolve-version
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
@@ -149,6 +151,7 @@ jobs:
   pack-maui:
     name: Pack KumikoUI.Maui (all TFMs)
     runs-on: windows-latest
+    timeout-minutes: 45
     needs: resolve-version
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
@@ -198,6 +201,7 @@ jobs:
   pack-uno:
     name: Pack KumikoUI.Uno (all heads)
     runs-on: windows-latest
+    timeout-minutes: 45
     needs: resolve-version
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
@@ -247,6 +251,7 @@ jobs:
   test:
     name: Run Core tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: resolve-version
 
     steps:
@@ -269,6 +274,7 @@ jobs:
   test-uno:
     name: Run Uno tests
     runs-on: windows-latest
+    timeout-minutes: 30
     needs: resolve-version
 
     steps:
@@ -290,6 +296,7 @@ jobs:
   publish:
     name: Publish to NuGet.org
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [ pack-core, pack-maui, pack-uno, test, test-uno ]
     permissions:
       contents: write   # create the GitHub Release

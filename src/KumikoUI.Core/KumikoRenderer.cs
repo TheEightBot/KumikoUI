@@ -25,6 +25,31 @@ public class KumikoRenderer
     private readonly List<(KumikoColumn Column, float X, int OriginalIndex)> _scrollableCols = new();
     private readonly List<(KumikoColumn Column, float X, int OriginalIndex)> _allCols = new();
 
+    // Paints whose color varies per row, cell or column (resolver and per-column style overrides); set just
+    // before each draw, so overrides allocate nothing. Drawing contexts read a paint during the call only.
+    private readonly KumikoPaint _rowBackground = new();
+    private readonly KumikoPaint _cellBackground = new();
+    private readonly KumikoPaint _headerBackground = new();
+    private readonly KumikoPaint _headerText = new() { IsAntiAlias = true };
+
+    // Summary values that do not fit their column, reused for every summary row
+    private readonly List<string> _overflowValues = new();
+
+    // "1".."16": multi-sort order badges without formatting a number per frame
+    private static readonly string[] s_sortOrderLabels = CreateSortOrderLabels(16);
+
+    private static string[] CreateSortOrderLabels(int count)
+    {
+        var labels = new string[count + 1];
+        for (int i = 0; i <= count; i++)
+            labels[i] = i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return labels;
+    }
+
+    private static string SortOrderLabel(int order) =>
+        order >= 0 && order < s_sortOrderLabels.Length ? s_sortOrderLabels[order] : order.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Create a renderer with the built-in cell renderers registered for every column type.</summary>
     public KumikoRenderer()
     {
         var textRenderer = new TextCellRenderer();
@@ -144,6 +169,7 @@ public class KumikoRenderer
         var (firstRow, lastRow) = _layout.GetVisibleRowRangeWithOffset(
             scroll, style, dataSource.RowCount, topSummaryHeight, frozenRowCount);
         bool isMultiSort = dataSource.IsMultiSortActive;
+        dataSource.PrepareCellTextCache(frozenRowCount, Math.Max(0, lastRow - firstRow + 1));
 
         // Vertical extent rows may paint in: below header + top summaries, above a pinned footer.
         float dataClipBottom = adjustedViewportHeight - (style.PinBottomSummaryRows ? bottomSummaryHeight : 0);
@@ -510,29 +536,26 @@ public class KumikoRenderer
 
             // Per-column header style overrides
             var hStyle = col.HeaderCellStyle;
-            var colPaint = hStyle != null && (hStyle.TextColor.HasValue || hStyle.Font != null)
-                ? new KumikoPaint
-                {
-                    Color = hStyle.TextColor ?? style.HeaderTextColor,
-                    Font = hStyle.Font ?? style.HeaderFont,
-                    IsAntiAlias = true
-                }
-                : headerPaint;
+            var colPaint = headerPaint;
+            if (hStyle != null && (hStyle.TextColor.HasValue || hStyle.Font != null))
+            {
+                colPaint = _headerText;
+                colPaint.Color = hStyle.TextColor ?? style.HeaderTextColor;
+                colPaint.Font = hStyle.Font ?? style.HeaderFont;
+            }
 
             // Per-column header background
             if (hStyle?.BackgroundColor != null)
             {
-                ctx.FillRect(new KumikoRect(screenX, 0, col.Width, style.HeaderHeight),
-                    new KumikoPaint { Color = hStyle.BackgroundColor.Value });
+                _headerBackground.Color = hStyle.BackgroundColor.Value;
+                ctx.FillRect(new KumikoRect(screenX, 0, col.Width, style.HeaderHeight), _headerBackground);
             }
 
             float padding = hStyle?.Padding ?? style.HeaderPadding;
 
-            // Reserve right-side space for sort indicator and filter icon
-            // to prevent header text from overlapping them
-            float rightReserved = 0;
-            if (col.AllowSorting) rightReserved += 12f;   // sort arrow (8) + gap (4)
-            if (col.AllowFiltering) rightReserved += 14f;  // filter icon (10) + gap (4)
+            // Reserve right-side space for the glyphs this column actually shows (sort arrow, filter icon),
+            // so the header text never runs under them and is not cut short for glyphs that are not drawn.
+            float rightReserved = SortGlyphSpace(col) + FilterGlyphSpace(col);
 
             var cellRect = new KumikoRect(
                 screenX + padding,
@@ -544,6 +567,12 @@ public class KumikoRenderer
                 KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
         }
     }
+
+    // Header width the sort arrow takes when it is drawn (the column is sorted): arrow (8) + gap (4).
+    private static float SortGlyphSpace(KumikoColumn col) => col.SortDirection != KumikoSortDirection.None ? 12f : 0f;
+
+    // Header width the filter icon takes when it is drawn (the column allows filtering): icon (10) + gap (4).
+    private static float FilterGlyphSpace(KumikoColumn col) => col.AllowFiltering ? 14f : 0f;
 
     private void DrawRows(
         IDrawingContext ctx,
@@ -597,13 +626,8 @@ public class KumikoRenderer
                 continue;
 
             // Resolve conditional row style
-            object? dataItem = null;
-            KumikoRowStyle? dynamicRowStyle = null;
-            if (style.RowStyleResolver != null || style.CellStyleResolver != null)
-            {
-                dataItem = dataSource.GetItem(row);
-                dynamicRowStyle = style.RowStyleResolver?.Invoke(dataItem);
-            }
+            object dataItem = dataSource.GetItem(row);
+            KumikoRowStyle? dynamicRowStyle = style.RowStyleResolver?.Invoke(dataItem);
 
             bool isFrozenLeft = freezeMode == ColumnFreezeMode.Left;
             bool isSelected = selection.IsRowSelected(row);
@@ -621,7 +645,8 @@ public class KumikoRenderer
             }
             else if (dynamicRowStyle?.BackgroundColor != null)
             {
-                rowBgPaint = new KumikoPaint { Color = dynamicRowStyle.BackgroundColor.Value };
+                rowBgPaint = _rowBackground;
+                rowBgPaint.Color = dynamicRowStyle.BackgroundColor.Value;
             }
             else if (style.AlternateRowBackground && row % 2 == 1)
             {
@@ -643,38 +668,61 @@ public class KumikoRenderer
                 new KumikoRect(0, rowY, scroll.ViewportWidth, style.RowHeight),
                 rowBgPaint);
 
-            foreach (var (col, colX, origIdx) in visibleCols)
+            DrawRowCells(ctx, dataSource, visibleCols, row, rowY, dataItem, dynamicRowStyle, scroll, style,
+                isSelected, editSession);
+        }
+    }
+
+    /// <summary>
+    /// Draw the cells of one data row: each cell's style background, then its content through the column's
+    /// <see cref="ICellRenderer"/>, with the value and display text from the source's display text cache.
+    /// </summary>
+    private void DrawRowCells(
+        IDrawingContext ctx,
+        KumikoSource dataSource,
+        List<(KumikoColumn Column, float X, int OriginalIndex)> visibleCols,
+        int row,
+        float rowY,
+        object dataItem,
+        KumikoRowStyle? dynamicRowStyle,
+        ScrollState scroll,
+        KumikoStyle style,
+        bool isSelected,
+        EditSession? editSession)
+    {
+        foreach (var (col, colX, origIdx) in visibleCols)
+        {
+            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+
+            // The column's style with the resolvers' overrides, never written into either
+            var colCellStyle = ResolveCellStyle(style, col, dataItem, dynamicRowStyle);
+
+            float cellPadding = colCellStyle?.Padding ?? style.CellPadding;
+
+            // Per-column cell background
+            if (colCellStyle?.BackgroundColor != null)
             {
-                float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
-
-                // The column's style with the resolvers' overrides, never written into either
-                var colCellStyle = ResolveCellStyle(style, col, dataItem, dynamicRowStyle);
-
-                float cellPadding = colCellStyle?.Padding ?? style.CellPadding;
-
-                // Per-column cell background
-                if (colCellStyle?.BackgroundColor != null)
-                {
-                    ctx.FillRect(new KumikoRect(screenX, rowY, col.Width, style.RowHeight),
-                        new KumikoPaint { Color = colCellStyle.BackgroundColor.Value });
-                }
-
-                var cellRect = new KumikoRect(
-                    screenX + cellPadding,
-                    rowY,
-                    col.Width - cellPadding * 2,
-                    style.RowHeight);
-
-                // Skip rendering content for the cell being edited (editor draws on top)
-                if (editSession != null && editSession.IsCellBeingEdited(row, origIdx))
-                    continue;
-
-                var renderer = col.CustomCellRenderer ?? GetCellRenderer(col.ColumnType);
-                var value = dataSource.GetCellValue(row, col);
-                var displayText = dataSource.FormatCellValue(value, col);
-
-                renderer.Render(ctx, cellRect, value, displayText, col, style, isSelected, colCellStyle);
+                _cellBackground.Color = colCellStyle.BackgroundColor.Value;
+                ctx.FillRect(new KumikoRect(screenX, rowY, col.Width, style.RowHeight), _cellBackground);
             }
+
+            var cellRect = new KumikoRect(
+                screenX + cellPadding,
+                rowY,
+                col.Width - cellPadding * 2,
+                style.RowHeight);
+
+            // Skip rendering content for the cell being edited (editor draws on top)
+            if (editSession != null && editSession.IsCellBeingEdited(row, origIdx))
+                continue;
+
+            var renderer = col.CustomCellRenderer ?? GetCellRenderer(col.ColumnType);
+            string displayText = dataSource.GetCachedCellText(row, dataItem, col, out object? value);
+
+            var cell = new CellRenderContext(cellRect, row, value, displayText, col, style, colCellStyle, isSelected,
+                _paintCache, _paintCache.CellTextPaint(colCellStyle, style),
+                colCellStyle?.TextAlignment ?? col.TextAlignment);
+            renderer.Render(ctx, in cell);
         }
     }
 
@@ -727,15 +775,9 @@ public class KumikoRenderer
                 continue;
 
             // Resolve conditional row style
-            object? dataItem = null;
-            KumikoRowStyle? dynamicRowStyle = null;
-            if (style.RowStyleResolver != null || style.CellStyleResolver != null)
-            {
-                dataItem = dataSource.GetItem(row);
-                dynamicRowStyle = style.RowStyleResolver?.Invoke(dataItem);
-            }
+            object dataItem = dataSource.GetItem(row);
+            KumikoRowStyle? dynamicRowStyle = style.RowStyleResolver?.Invoke(dataItem);
 
-            bool isFrozenLeft = freezeMode == ColumnFreezeMode.Left;
             bool isSelected = selection.IsRowSelected(row);
             bool isFocused = hasCurrentRow && row == currentRow;
 
@@ -751,7 +793,8 @@ public class KumikoRenderer
             }
             else if (dynamicRowStyle?.BackgroundColor != null)
             {
-                rowBgPaint = new KumikoPaint { Color = dynamicRowStyle.BackgroundColor.Value };
+                rowBgPaint = _rowBackground;
+                rowBgPaint.Color = dynamicRowStyle.BackgroundColor.Value;
             }
             else if (style.AlternateRowBackground && row % 2 == 1)
             {
@@ -767,44 +810,15 @@ public class KumikoRenderer
                 new KumikoRect(0, rowY, scroll.ViewportWidth, style.RowHeight),
                 rowBgPaint);
 
-            foreach (var (col, colX, origIdx) in visibleCols)
-            {
-                float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
-
-                // The column's style with the resolvers' overrides, never written into either
-                var colCellStyle = ResolveCellStyle(style, col, dataItem, dynamicRowStyle);
-
-                float cellPadding = colCellStyle?.Padding ?? style.CellPadding;
-
-                // Per-column cell background
-                if (colCellStyle?.BackgroundColor != null)
-                {
-                    ctx.FillRect(new KumikoRect(screenX, rowY, col.Width, style.RowHeight),
-                        new KumikoPaint { Color = colCellStyle.BackgroundColor.Value });
-                }
-
-                var cellRect = new KumikoRect(
-                    screenX + cellPadding,
-                    rowY,
-                    col.Width - cellPadding * 2,
-                    style.RowHeight);
-
-                if (editSession != null && editSession.IsCellBeingEdited(row, origIdx))
-                    continue;
-
-                var renderer = col.CustomCellRenderer ?? GetCellRenderer(col.ColumnType);
-                var value = dataSource.GetCellValue(row, col);
-                var displayText = dataSource.FormatCellValue(value, col);
-
-                renderer.Render(ctx, cellRect, value, displayText, col, style, isSelected, colCellStyle);
-            }
+            DrawRowCells(ctx, dataSource, visibleCols, row, rowY, dataItem, dynamicRowStyle, scroll, style,
+                isSelected, editSession);
         }
     }
 
     /// <summary>
     /// Draw a group header row spanning the full width with chevron, group text, and item count.
     /// </summary>
-    private static void DrawGroupHeaderRow(
+    private void DrawGroupHeaderRow(
         IDrawingContext ctx,
         KumikoSource dataSource,
         int row,
@@ -824,17 +838,11 @@ public class KumikoRenderer
 
         ctx.FillRect(
             new KumikoRect(areaLeft, rowY, areaWidth, style.RowHeight),
-            new KumikoPaint { Color = style.GroupHeaderBackgroundColor });
+            _paintCache.GroupHeaderBackground);
 
         // Bottom border line
         ctx.DrawLine(areaLeft, rowY + style.RowHeight, areaLeft + areaWidth, rowY + style.RowHeight,
-            new KumikoPaint
-            {
-                Color = style.GridLineColor,
-                StrokeWidth = style.GridLineWidth,
-                Style = PaintStyle.Stroke,
-                IsAntiAlias = false
-            });
+            _paintCache.GridLine);
 
         // Indent based on group level
         float indent = handleOffset + style.CellPadding + groupInfo.Level * style.GroupIndentWidth;
@@ -849,17 +857,10 @@ public class KumikoRenderer
         float pillH = chevronSize + 6f;
         var pillRect = new KumikoRect(
             chevronX - 4f, chevronCenterY - pillH / 2, pillW, pillH);
-        ctx.FillRoundRect(pillRect, 4f,
-            new KumikoPaint { Color = style.GroupChevronBackgroundColor, IsAntiAlias = true });
+        ctx.FillRoundRect(pillRect, 4f, _paintCache.GroupChevronBackground);
 
         // Draw filled triangle using thick lines converging to a solid shape
-        var chevronPaint = new KumikoPaint
-        {
-            Color = style.GroupChevronColor,
-            Style = PaintStyle.Stroke,
-            StrokeWidth = 2.5f,
-            IsAntiAlias = true
-        };
+        var chevronPaint = _paintCache.GroupChevron;
 
         if (groupInfo.IsExpanded)
         {
@@ -893,23 +894,13 @@ public class KumikoRenderer
 
         // Draw group text: "Header: DisplayText (count items)"
         float textX = indent + chevronSize + style.CellPadding;
-        string groupText = $"{groupInfo.HeaderText}: {groupInfo.DisplayText}";
-        string countText = $" ({groupInfo.ItemCount})";
 
         // Include caption summary if available
         string? captionText = dataSource.GetCaptionSummaryText(groupInfo.GroupPath);
-        if (captionText != null)
-            countText += $"  —  {captionText}";
-
-        var textPaint = new KumikoPaint
-        {
-            Color = style.GroupHeaderTextColor,
-            Font = style.GroupHeaderFont,
-            IsAntiAlias = true
-        };
+        string label = groupInfo.GetLabel(captionText);
 
         var textRect = new KumikoRect(textX, rowY, areaWidth - textX - style.CellPadding, style.RowHeight);
-        ctx.DrawTextInRect(groupText + countText, textRect, textPaint,
+        ctx.DrawTextInRect(label, textRect, _paintCache.GroupHeaderText,
             KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
     }
 
@@ -1088,17 +1079,9 @@ public class KumikoRenderer
             // Draw sort order number badge for multi-sort
             if (isMultiSort && col.SortOrder > 0)
             {
-                var numberText = col.SortOrder.ToString();
-                var numberPaint = new KumikoPaint
-                {
-                    Color = style.SortIndicatorColor,
-                    Font = new KumikoFont(style.HeaderFont.Family, style.HeaderFont.Size * 0.65f),
-                    IsAntiAlias = true
-                };
-
                 float numberX = arrowX - 2;
                 float numberY = arrowCenterY + (style.HeaderFont.Size * 0.65f) / 2 - 1;
-                ctx.DrawText(numberText, numberX, numberY, numberPaint);
+                ctx.DrawText(SortOrderLabel(col.SortOrder), numberX, numberY, _paintCache.SortOrderBadge);
             }
         }
     }
@@ -1130,9 +1113,9 @@ public class KumikoRenderer
             float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
             bool hasActiveFilter = col.ActiveFilter != null && col.ActiveFilter.IsActive;
 
-            // Position filter icon: right of header text, left of sort indicator if present
+            // Position filter icon: right of header text, left of the sort arrow when one is drawn
             float iconSize = 10f;
-            float sortSpace = col.AllowSorting ? 12f : 0f;  // sort arrow (8) + gap (4)
+            float sortSpace = SortGlyphSpace(col);
             float iconX = screenX + col.Width - style.CellPadding - sortSpace - iconSize;
             float iconCenterY = style.HeaderHeight / 2;
 
@@ -1158,12 +1141,7 @@ public class KumikoRenderer
             // Fill the funnel if filter is active
             if (hasActiveFilter)
             {
-                var fillPaint = new KumikoPaint
-                {
-                    Color = style.FilterActiveIconColor,
-                    Style = PaintStyle.Fill,
-                    IsAntiAlias = true
-                };
+                var fillPaint = _paintCache.FilterActiveIcon;
                 // Simple fill indication: draw a filled circle dot
                 float dotR = 2.5f;
                 float dotX = iconX + iconSize / 2;
@@ -1176,7 +1154,7 @@ public class KumikoRenderer
     /// <summary>
     /// Draw the grouping panel above the header, showing active group chips with remove buttons.
     /// </summary>
-    private static void DrawGroupingPanel(
+    private void DrawGroupingPanel(
         IDrawingContext ctx,
         KumikoSource dataSource,
         ScrollState scroll,
@@ -1184,30 +1162,17 @@ public class KumikoRenderer
         float panelHeight)
     {
         // Background
-        ctx.FillRect(new KumikoRect(0, 0, scroll.ViewportWidth, panelHeight),
-            new KumikoPaint { Color = style.GroupPanelBackgroundColor });
+        ctx.FillRect(new KumikoRect(0, 0, scroll.ViewportWidth, panelHeight), _paintCache.GroupPanelBackground);
 
         // Bottom border
-        ctx.DrawLine(0, panelHeight, scroll.ViewportWidth, panelHeight,
-            new KumikoPaint
-            {
-                Color = style.GridLineColor,
-                StrokeWidth = style.GridLineWidth,
-                Style = PaintStyle.Stroke,
-                IsAntiAlias = false
-            });
+        ctx.DrawLine(0, panelHeight, scroll.ViewportWidth, panelHeight, _paintCache.GridLine);
 
         var groups = dataSource.GroupDescriptions;
         if (groups.Count == 0) return;
 
         // Draw the group panel label
         float labelX = style.CellPadding + 2;
-        var labelPaint = new KumikoPaint
-        {
-            Color = style.GroupPanelLabelColor,
-            Font = style.GroupPanelLabelFont,
-            IsAntiAlias = true
-        };
+        var labelPaint = _paintCache.GroupPanelLabel;
         var labelSize = ctx.MeasureText(dataSource.Strings.GroupPanelLabel, labelPaint);
         var labelRect = new KumikoRect(labelX, 0, labelSize.Width, panelHeight);
         ctx.DrawTextInRect(dataSource.Strings.GroupPanelLabel, labelRect, labelPaint,
@@ -1220,24 +1185,28 @@ public class KumikoRenderer
         float chipGap = 4;
         float accentWidth = 4f;
 
-        var chipTextPaint = new KumikoPaint
-        {
-            Color = style.GroupPanelChipTextColor,
-            Font = style.GroupPanelFont,
-            IsAntiAlias = true
-        };
+        var chipTextPaint = _paintCache.GroupChipText;
+        var columns = dataSource.Columns;
 
-        foreach (var group in groups)
+        for (int g = 0; g < groups.Count; g++)
         {
-            // Find the column header text
-            string displayName = group.Header ?? group.PropertyName;
-            var col = dataSource.Columns.FirstOrDefault(c =>
-                string.Equals(c.PropertyName, group.PropertyName, StringComparison.OrdinalIgnoreCase));
-            if (col != null && group.Header == null)
-                displayName = col.Header;
+            var group = groups[g];
+
+            // The chip shows the group's header, else the header of the column it groups by, else the property
+            string chipText = group.Header ?? group.PropertyName;
+            if (group.Header == null)
+            {
+                for (int c = 0; c < columns.Count; c++)
+                {
+                    if (string.Equals(columns[c].PropertyName, group.PropertyName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        chipText = columns[c].Header;
+                        break;
+                    }
+                }
+            }
 
             // Measure chip text
-            string chipText = displayName;
             var textSize = ctx.MeasureText(chipText, chipTextPaint);
             float sortArrowWidth = 16;  // space for sort direction arrow
             float removeButtonSize = 16;
@@ -1245,22 +1214,16 @@ public class KumikoRenderer
 
             // Draw chip background with rounded corners
             var chipRect = new KumikoRect(chipX, chipY, chipWidth, chipHeight);
-            ctx.FillRoundRect(chipRect, 6, new KumikoPaint { Color = style.GroupPanelChipBackgroundColor });
+            ctx.FillRoundRect(chipRect, 6, _paintCache.GroupChipBackground);
 
             // Draw chip border
-            ctx.DrawRoundRect(chipRect, 6, new KumikoPaint
-            {
-                Color = style.GroupPanelChipBorderColor,
-                Style = PaintStyle.Stroke,
-                StrokeWidth = 1f,
-                IsAntiAlias = true
-            });
+            ctx.DrawRoundRect(chipRect, 6, _paintCache.GroupChipBorder);
 
             // Draw left accent bar (rounded)
             var accentRect = new KumikoRect(chipX, chipY, accentWidth + 6, chipHeight);
             ctx.Save();
             ctx.ClipRect(new KumikoRect(chipX, chipY, accentWidth + 3, chipHeight));
-            ctx.FillRoundRect(accentRect, 6, new KumikoPaint { Color = style.GroupPanelChipAccentColor });
+            ctx.FillRoundRect(accentRect, 6, _paintCache.GroupChipAccent);
             ctx.Restore();
 
             // Draw chip text
@@ -1272,13 +1235,7 @@ public class KumikoRenderer
             // Draw sort direction arrow
             float arrowX = textStartX + textSize.Width + 4;
             float arrowCY = chipY + chipHeight / 2;
-            var arrowPaint = new KumikoPaint
-            {
-                Color = style.GroupPanelChipAccentColor,
-                Style = PaintStyle.Stroke,
-                StrokeWidth = 2f,
-                IsAntiAlias = true
-            };
+            var arrowPaint = _paintCache.GroupChipArrow;
             if (group.GroupSortDirection == KumikoSortDirection.Ascending)
             {
                 // Up arrow
@@ -1304,15 +1261,9 @@ public class KumikoRenderer
             // Small circle background for remove
             ctx.FillRoundRect(
                 new KumikoRect(removeX - 7, removeCenterY - 7, 14, 14), 7,
-                new KumikoPaint { Color = style.GroupPanelChipRemoveColor.WithAlpha(40) });
+                _paintCache.GroupChipRemoveBackground);
 
-            var removePaint = new KumikoPaint
-            {
-                Color = style.GroupPanelChipRemoveColor,
-                Style = PaintStyle.Stroke,
-                StrokeWidth = 1.5f,
-                IsAntiAlias = true
-            };
+            var removePaint = _paintCache.GroupChipRemove;
             ctx.DrawLine(removeX - removeHalf, removeCenterY - removeHalf,
                          removeX + removeHalf, removeCenterY + removeHalf, removePaint);
             ctx.DrawLine(removeX - removeHalf, removeCenterY + removeHalf,
@@ -1322,17 +1273,11 @@ public class KumikoRenderer
             chipX += chipWidth + chipGap;
 
             // Draw hierarchy arrow between group chips (except after last)
-            if (group != groups[^1])
+            if (g < groups.Count - 1)
             {
                 float sepX = chipX + 2;
                 float sepCY = chipY + chipHeight / 2;
-                var sepPaint = new KumikoPaint
-                {
-                    Color = style.GroupPanelLabelColor,
-                    Style = PaintStyle.Stroke,
-                    StrokeWidth = 1.5f,
-                    IsAntiAlias = true
-                };
+                var sepPaint = _paintCache.GroupChipSeparator;
                 // Right-pointing chevron >
                 ctx.DrawLine(sepX, sepCY - 4, sepX + 5, sepCY, sepPaint);
                 ctx.DrawLine(sepX + 5, sepCY, sepX, sepCY + 4, sepPaint);
@@ -1344,7 +1289,7 @@ public class KumikoRenderer
     /// <summary>
     /// Draw table-level summary rows (top or bottom positioned).
     /// </summary>
-    private static void DrawTableSummaryRows(
+    private void DrawTableSummaryRows(
         IDrawingContext ctx,
         KumikoSource dataSource,
         List<(KumikoColumn Column, float X, int OriginalIndex)> allCols,
@@ -1355,6 +1300,10 @@ public class KumikoRenderer
         float startY,
         float handleOffset = 0)
     {
+        var borderPaint = _paintCache.SummaryBorder;
+        var titlePaint = _paintCache.SummaryLabel;
+        var valuePaint = _paintCache.SummaryText;
+
         for (int i = 0; i < summaryRows.Count; i++)
         {
             var summary = summaryRows[i];
@@ -1362,27 +1311,14 @@ public class KumikoRenderer
 
             // Background spans full viewport
             ctx.FillRect(new KumikoRect(0, rowY, scroll.ViewportWidth, style.SummaryRowHeight),
-                new KumikoPaint { Color = style.SummaryRowBackgroundColor });
+                _paintCache.SummaryBackground);
 
             // Top border line
-            ctx.DrawLine(0, rowY, scroll.ViewportWidth, rowY,
-                new KumikoPaint
-                {
-                    Color = style.SummaryRowBorderColor,
-                    StrokeWidth = 1f,
-                    Style = PaintStyle.Stroke,
-                    IsAntiAlias = false
-                });
+            ctx.DrawLine(0, rowY, scroll.ViewportWidth, rowY, borderPaint);
 
             // Draw title at a fixed left position (always visible, not clipped)
             if (summary.Title != null)
             {
-                var titlePaint = new KumikoPaint
-                {
-                    Color = style.SummaryRowLabelColor,
-                    Font = style.SummaryRowFont,
-                    IsAntiAlias = true
-                };
                 var titleRect = new KumikoRect(
                     handleOffset + style.CellPadding * 2,
                     rowY,
@@ -1392,84 +1328,87 @@ public class KumikoRenderer
                     KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
             }
 
-            // Draw summary values in their respective columns
-            // Collect values that don't fit in narrow columns to draw after the title
-            var overflowValues = new List<string>();
-
-            foreach (var (col, colX, origIdx) in allCols)
-            {
-                if (summary.Values.TryGetValue(col.PropertyName, out var displayText))
-                {
-                    float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
-                    float usableWidth = col.Width - style.CellPadding * 2;
-
-                    // If the column is too narrow for the label+value, overflow it
-                    if (usableWidth < 70)
-                    {
-                        overflowValues.Add(displayText);
-                        continue;
-                    }
-
-                    var cellRect = new KumikoRect(
-                        screenX + style.CellPadding,
-                        rowY,
-                        usableWidth,
-                        style.SummaryRowHeight);
-                    var valuePaint = new KumikoPaint
-                    {
-                        Color = style.SummaryRowTextColor,
-                        Font = style.SummaryRowFont,
-                        IsAntiAlias = true
-                    };
-                    ctx.DrawTextInRect(displayText, cellRect, valuePaint,
-                        col.TextAlignment, KumikoVerticalAlignment.Center);
-                }
-            }
-
-            // Draw overflow values after the title
-            if (overflowValues.Count > 0 && summary.Title != null)
-            {
-                string overflowText = "  |  " + string.Join("  |  ", overflowValues);
-                var overflowPaint = new KumikoPaint
-                {
-                    Color = style.SummaryRowTextColor,
-                    Font = style.SummaryRowFont,
-                    IsAntiAlias = true
-                };
-                var titleMeasurePaint = new KumikoPaint
-                {
-                    Color = style.SummaryRowLabelColor,
-                    Font = style.SummaryRowFont,
-                    IsAntiAlias = true
-                };
-                var titleTextSize = ctx.MeasureText(summary.Title, titleMeasurePaint);
-                float overflowX = handleOffset + style.CellPadding * 2 + titleTextSize.Width;
-                float overflowWidth = (frozenWidth > 0 ? frozenWidth : scroll.ViewportWidth / 3) - overflowX - style.CellPadding;
-                if (overflowWidth > 50)
-                {
-                    var overflowRect = new KumikoRect(overflowX, rowY, overflowWidth, style.SummaryRowHeight);
-                    ctx.DrawTextInRect(overflowText, overflowRect, overflowPaint,
-                        KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
-                }
-            }
+            // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
+            // after the title
+            DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.SummaryRowHeight, valuePaint);
+            DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.SummaryRowHeight,
+                handleOffset + style.CellPadding * 2, titlePaint, valuePaint);
 
             // Bottom border
             ctx.DrawLine(0, rowY + style.SummaryRowHeight,
-                scroll.ViewportWidth, rowY + style.SummaryRowHeight,
-                new KumikoPaint
-                {
-                    Color = style.SummaryRowBorderColor,
-                    StrokeWidth = 1f,
-                    Style = PaintStyle.Stroke,
-                    IsAntiAlias = false
-                });
+                scroll.ViewportWidth, rowY + style.SummaryRowHeight, borderPaint);
+        }
+    }
+
+    /// <summary>
+    /// Draw a summary row's values in their columns; values whose column is too narrow (under 70 px of text
+    /// width) are collected in <see cref="_overflowValues"/> instead.
+    /// </summary>
+    private void DrawSummaryValues(
+        IDrawingContext ctx,
+        List<(KumikoColumn Column, float X, int OriginalIndex)> allCols,
+        ScrollState scroll,
+        KumikoStyle style,
+        ComputedSummaryRow summary,
+        float rowY,
+        float rowHeight,
+        KumikoPaint valuePaint)
+    {
+        _overflowValues.Clear();
+        foreach (var (col, colX, _) in allCols)
+        {
+            if (!summary.Values.TryGetValue(col.PropertyName, out var displayText)) continue;
+
+            // Use correct screen X depending on whether column is frozen
+            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float usableWidth = col.Width - style.CellPadding * 2;
+
+            // If the column is too narrow for the label+value, overflow it
+            if (usableWidth < 70)
+            {
+                _overflowValues.Add(displayText);
+                continue;
+            }
+
+            var cellRect = new KumikoRect(screenX + style.CellPadding, rowY, usableWidth, rowHeight);
+            ctx.DrawTextInRect(displayText, cellRect, valuePaint,
+                col.TextAlignment, KumikoVerticalAlignment.Center);
+        }
+    }
+
+    /// <summary>
+    /// Draw the values <see cref="DrawSummaryValues"/> could not fit, joined with " | ", after the row's title
+    /// (only when the row has a title and the space left is wider than 50 px).
+    /// </summary>
+    private void DrawSummaryOverflow(
+        IDrawingContext ctx,
+        ScrollState scroll,
+        KumikoStyle style,
+        float frozenWidth,
+        ComputedSummaryRow summary,
+        float rowY,
+        float rowHeight,
+        float titleStartX,
+        KumikoPaint titlePaint,
+        KumikoPaint valuePaint)
+    {
+        if (_overflowValues.Count == 0 || summary.Title == null) return;
+
+        var titleTextSize = ctx.MeasureText(summary.Title, titlePaint);
+        float overflowX = titleStartX + titleTextSize.Width;
+        float overflowWidth = (frozenWidth > 0 ? frozenWidth : scroll.ViewportWidth / 3) - overflowX - style.CellPadding;
+        if (overflowWidth > 50)
+        {
+            var overflowRect = new KumikoRect(overflowX, rowY, overflowWidth, rowHeight);
+            ctx.DrawTextInRect(summary.GetOverflowText(_overflowValues), overflowRect, valuePaint,
+                KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
         }
     }
 
     /// <summary>
     /// Draw a group summary row (displayed after each group's data rows).
     /// </summary>
-    private static void DrawGroupSummaryRow(
+    private void DrawGroupSummaryRow(
         IDrawingContext ctx,
         KumikoSource dataSource,
         int row,
@@ -1488,110 +1427,35 @@ public class KumikoRenderer
         if (groupSummaries == null || summaryIndex >= groupSummaries.Count) return;
 
         var summary = groupSummaries[summaryIndex];
+        var textPaint = _paintCache.GroupSummaryText;
 
         // Background spans full viewport
         ctx.FillRect(new KumikoRect(0, rowY, scroll.ViewportWidth, style.RowHeight),
-            new KumikoPaint { Color = style.GroupSummaryRowBackgroundColor });
+            _paintCache.GroupSummaryBackground);
 
         // Bottom border
         ctx.DrawLine(0, rowY + style.RowHeight, scroll.ViewportWidth, rowY + style.RowHeight,
-            new KumikoPaint
-            {
-                Color = style.SummaryRowBorderColor,
-                StrokeWidth = 1f,
-                Style = PaintStyle.Stroke,
-                IsAntiAlias = false
-            });
+            _paintCache.SummaryBorder);
 
         // Draw title at a fixed left position (always visible at left edge)
+        float titleStartX = handleOffset + style.CellPadding * 2;
         if (summary.Title != null)
         {
-            var titlePaint = new KumikoPaint
-            {
-                Color = style.GroupSummaryRowTextColor,
-                Font = style.GroupSummaryRowFont,
-                IsAntiAlias = true
-            };
             // Title goes in the frozen area, or a fixed 200px width if no frozen cols
             float titleWidth = frozenWidth > 0 ? frozenWidth - style.CellPadding * 3 : 200f;
-            var titleRect = new KumikoRect(
-                handleOffset + style.CellPadding * 2,
-                rowY,
-                titleWidth,
-                style.RowHeight);
-            ctx.DrawTextInRect(summary.Title, titleRect, titlePaint,
+            var titleRect = new KumikoRect(titleStartX, rowY, titleWidth, style.RowHeight);
+            ctx.DrawTextInRect(summary.Title, titleRect, textPaint,
                 KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
         }
 
-        // Draw summary values in their respective columns
-        // Collect values that don't fit in narrow columns to draw in a flow layout
-        var overflowValues = new List<string>();
-
-        foreach (var (col, colX, origIdx) in allCols)
-        {
-            if (summary.Values.TryGetValue(col.PropertyName, out var displayText))
-            {
-                // Use correct screen X depending on whether column is frozen
-                float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
-                float usableWidth = col.Width - style.CellPadding * 2;
-
-                // If the column is too narrow for the label+value, add to overflow
-                if (usableWidth < 70)
-                {
-                    overflowValues.Add(displayText);
-                    continue;
-                }
-
-                var cellRect = new KumikoRect(
-                    screenX + style.CellPadding,
-                    rowY,
-                    usableWidth,
-                    style.RowHeight);
-                var valuePaint = new KumikoPaint
-                {
-                    Color = style.GroupSummaryRowTextColor,
-                    Font = style.GroupSummaryRowFont,
-                    IsAntiAlias = true
-                };
-                ctx.DrawTextInRect(displayText, cellRect, valuePaint,
-                    col.TextAlignment, KumikoVerticalAlignment.Center);
-            }
-        }
-
-        // Draw overflow values after the title
-        if (overflowValues.Count > 0 && summary.Title != null)
-        {
-            string overflowText = "  |  " + string.Join("  |  ", overflowValues);
-            float titleStartX = handleOffset + style.CellPadding * 2;
-            float titleWidth = frozenWidth > 0 ? frozenWidth - style.CellPadding * 3 : 200f;
-
-            var overflowPaint = new KumikoPaint
-            {
-                Color = style.GroupSummaryRowTextColor,
-                Font = style.GroupSummaryRowFont,
-                IsAntiAlias = true
-            };
-
-            // Measure title to place overflow after it
-            var titleMeasurePaint = new KumikoPaint
-            {
-                Color = style.GroupSummaryRowTextColor,
-                Font = style.GroupSummaryRowFont,
-                IsAntiAlias = true
-            };
-            var titleTextSize = ctx.MeasureText(summary.Title, titleMeasurePaint);
-            float overflowX = titleStartX + titleTextSize.Width;
-            float overflowWidth = (frozenWidth > 0 ? frozenWidth : scroll.ViewportWidth / 3) - overflowX - style.CellPadding;
-            if (overflowWidth > 50)
-            {
-                var overflowRect = new KumikoRect(overflowX, rowY, overflowWidth, style.RowHeight);
-                ctx.DrawTextInRect(overflowText, overflowRect, overflowPaint,
-                    KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
-            }
-        }
+        // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
+        // after the title
+        DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.RowHeight, textPaint);
+        DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.RowHeight,
+            titleStartX, textPaint, textPaint);
     }
 
-    private static void DrawColumnDragOverlay(
+    private void DrawColumnDragOverlay(
         IDrawingContext ctx,
         IReadOnlyList<KumikoColumn> columns,
         int dragColumnIndex,
@@ -1603,23 +1467,14 @@ public class KumikoRenderer
         var col = columns[dragColumnIndex];
 
         var ghostRect = new KumikoRect(dragScreenX, 0, col.Width, style.HeaderHeight);
-        ctx.FillRect(ghostRect, new KumikoPaint { Color = style.HeaderBackgroundColor.WithAlpha(180) });
-        ctx.DrawRect(ghostRect, new KumikoPaint
-        {
-            Color = style.CurrentCellBorderColor,
-            Style = PaintStyle.Stroke,
-            StrokeWidth = 2f
-        });
+        ctx.FillRect(ghostRect, _paintCache.ColumnDragGhost);
+        ctx.DrawRect(ghostRect, _paintCache.ColumnDragBorder);
 
         var textRect = new KumikoRect(
             dragScreenX + style.CellPadding, 0,
             col.Width - style.CellPadding * 2, style.HeaderHeight);
-        ctx.DrawTextInRect(col.Header, textRect, new KumikoPaint
-        {
-            Color = style.HeaderTextColor,
-            Font = style.HeaderFont,
-            IsAntiAlias = true
-        }, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+        ctx.DrawTextInRect(col.Header, textRect, _paintCache.HeaderText,
+            KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
     }
 
     /// <summary>
@@ -1643,7 +1498,7 @@ public class KumikoRenderer
         float handleX = isLeft ? 0 : scroll.ViewportWidth - rightHandleWidth;
 
         var handleBgPaint = _paintCache.DragHandleBackground;
-        var handleHeaderBgPaint = PaintCache.BackgroundPaint(style.RowDragHandleHeaderBackgroundColor);
+        var handleHeaderBgPaint = _paintCache.DragHandleHeaderBackground;
         var gripPaint = _paintCache.DragHandleIcon;
 
         // Draw handle header background
@@ -1673,12 +1528,7 @@ public class KumikoRenderer
 
         // Draw a subtle vertical divider between handle and columns
         float dividerX = isLeft ? handleWidth : handleX;
-        ctx.DrawLine(dividerX, 0, dividerX, adjustedViewportHeight, new KumikoPaint
-        {
-            Color = style.GridLineColor,
-            StrokeWidth = 1f,
-            Style = PaintStyle.Stroke
-        });
+        ctx.DrawLine(dividerX, 0, dividerX, adjustedViewportHeight, _paintCache.DragHandleDivider);
     }
 
     /// <summary>
@@ -1733,13 +1583,8 @@ public class KumikoRenderer
 
         // ── Ghost row ──
         var ghostRect = new KumikoRect(handleOffset, dragScreenY, rowWidth - handleOffset - rightHandleWidth, rowHeight);
-        ctx.FillRect(ghostRect, new KumikoPaint { Color = style.RowDragOverlayColor });
-        ctx.DrawRect(ghostRect, new KumikoPaint
-        {
-            Color = style.RowDragBorderColor,
-            Style = PaintStyle.Stroke,
-            StrokeWidth = 2f
-        });
+        ctx.FillRect(ghostRect, _paintCache.RowDragGhost);
+        ctx.DrawRect(ghostRect, _paintCache.RowDragBorder);
 
         // Draw cell text in the ghost row
         float cellX = handleOffset - scroll.OffsetX;
@@ -1766,12 +1611,8 @@ public class KumikoRenderer
                     var textRect = new KumikoRect(
                         cellX + style.CellPadding, dragScreenY,
                         colWidth - style.CellPadding * 2, rowHeight);
-                    ctx.DrawTextInRect(cellText, textRect, new KumikoPaint
-                    {
-                        Color = style.CellTextColor.WithAlpha(200),
-                        Font = style.CellFont,
-                        IsAntiAlias = true
-                    }, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+                    ctx.DrawTextInRect(cellText, textRect, _paintCache.RowDragText,
+                        KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
                 }
             }
 
@@ -1811,28 +1652,13 @@ public class KumikoRenderer
         // Draw the horizontal drop indicator line
         float indicatorLeft = handleOffset;
         float indicatorRight = rowWidth - rightHandleWidth;
-        ctx.DrawLine(indicatorLeft, indicatorY, indicatorRight, indicatorY, new KumikoPaint
-        {
-            Color = style.RowDropIndicatorColor,
-            StrokeWidth = style.RowDropIndicatorWidth,
-            Style = PaintStyle.Stroke
-        });
+        ctx.DrawLine(indicatorLeft, indicatorY, indicatorRight, indicatorY, _paintCache.RowDropIndicator);
 
         // Draw small triangles at the ends of the indicator line for visibility
         float triSize = 6f;
         // Left triangle
-        ctx.DrawLine(indicatorLeft, indicatorY - triSize, indicatorLeft, indicatorY + triSize, new KumikoPaint
-        {
-            Color = style.RowDropIndicatorColor,
-            StrokeWidth = style.RowDropIndicatorWidth,
-            Style = PaintStyle.Stroke
-        });
+        ctx.DrawLine(indicatorLeft, indicatorY - triSize, indicatorLeft, indicatorY + triSize, _paintCache.RowDropIndicator);
         // Right triangle
-        ctx.DrawLine(indicatorRight, indicatorY - triSize, indicatorRight, indicatorY + triSize, new KumikoPaint
-        {
-            Color = style.RowDropIndicatorColor,
-            StrokeWidth = style.RowDropIndicatorWidth,
-            Style = PaintStyle.Stroke
-        });
+        ctx.DrawLine(indicatorRight, indicatorY - triSize, indicatorRight, indicatorY + triSize, _paintCache.RowDropIndicator);
     }
 }
