@@ -129,7 +129,7 @@ public class KumikoRenderer
         }
         float effectiveViewportWidth = scroll.ViewportWidth - handleOffset - rightHandleWidth;
 
-        _layout.ComputeColumnWidths(columns, effectiveViewportWidth);
+        _layout.ComputeColumnWidths(columns, effectiveViewportWidth, ctx, style);
         scroll.ContentWidth = _layout.GetContentWidth(columns) + handleOffset + rightHandleWidth;
         scroll.ContentHeight = _layout.GetContentHeight(dataSource.RowCount, style)
             + groupPanelOffset + topSummaryHeight + bottomSummaryHeight;
@@ -614,10 +614,10 @@ public class KumikoRenderer
     }
 
     // Header width the sort arrow takes when it is drawn (the column is sorted): arrow (8) + gap (4).
-    private static float SortGlyphSpace(KumikoColumn col) => col.SortDirection != KumikoSortDirection.None ? 12f : 0f;
+    private static float SortGlyphSpace(KumikoColumn col) => col.SortDirection != KumikoSortDirection.None ? KumikoLayoutEngine.SortGlyphSpace : 0f;
 
     // Header width the filter icon takes when it is drawn (the column allows filtering): icon (10) + gap (4).
-    private static float FilterGlyphSpace(KumikoColumn col) => col.AllowFiltering ? 14f : 0f;
+    private static float FilterGlyphSpace(KumikoColumn col) => col.AllowFiltering ? KumikoLayoutEngine.FilterGlyphSpace : 0f;
 
     private void DrawRows(
         IDrawingContext ctx,

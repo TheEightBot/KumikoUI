@@ -63,11 +63,11 @@ The grid calls `InvalidateSurface()` in response to:
 
 `KumikoLayoutEngine.ComputeColumnWidths()` resolves column widths in order:
 
-1. **Fixed** — Column's `Width` value is used directly (DIP).
-2. **Auto** — Measures header text + padding + sort/filter icons. If data rows are available, samples up to the first N visible rows.
-3. **Star** — Remaining width after Fixed + Auto columns is distributed proportionally by star factor.
+0. **Header fit** — each visible column's `HeaderFitWidth` is updated: header text measured in the header font through the frame's drawing context, plus header padding on both sides, the sort-arrow slot (12) when sortable, the filter-icon slot (14) when filterable, and a 4 px margin. The text width is cached on the column per (header text, font instance and font properties), so a steady-state frame measures nothing (#182).
+1. **Fixed / Auto** — an explicit `Width` (`HasExplicitWidth`) is used directly (DIP). Without one, the column is `DefaultWidth` (120) or its header-fit width when wider, within `MinWidth`/`MaxWidth`. Auto is laid out like Fixed for now (#24).
+2. **Star** — the width Fixed and Auto columns leave is shared by `StarWeight`. A Star column whose share falls outside its minimum (`MinWidth`, and the header-fit width capped at `MaxWidth` when it has no explicit `Width`) or its `MaxWidth` is held at that bound and the rest is shared again among the others. When the minimums don't fit the viewport, the content is wider than the viewport and the grid scrolls horizontally.
 
-The result is a `float[]` array indexed by column ordinal, consumed by all subsequent draw and hit-test operations.
+The resolved width is written back to each `KumikoColumn.Width` (layout writes don't make it explicit) and consumed by all subsequent draw and hit-test operations.
 
 ## 3-Pass Frozen Column Rendering
 

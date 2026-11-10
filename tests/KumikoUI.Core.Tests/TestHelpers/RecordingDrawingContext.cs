@@ -170,6 +170,21 @@ internal sealed class RecordingDrawingContext : IDrawingContext
 
     public KumikoSize MeasureText(string text, KumikoPaint paint) => new(text.Length * CharWidth, TextHeight);
 
+    /// <summary>
+    /// The text a <see cref="DrawOpKind.TextInRect"/> call shows on screen, by the rule the SkiaSharp context
+    /// applies: text wider than its rectangle (when the rectangle is wider than 20 px) is cut to the characters
+    /// that fit beside an ellipsis. Measures with this context's monospace <see cref="CharWidth"/>.
+    /// </summary>
+    public static string ShownText(DrawOp op)
+    {
+        string text = op.Text ?? string.Empty;
+        float width = text.Length * CharWidth;
+        if (op.Kind != DrawOpKind.TextInRect || width <= op.Rect.Width || op.Rect.Width <= 20)
+            return text;
+        int fit = Math.Max(0, (int)((op.Rect.Width - CharWidth) / CharWidth));
+        return text[..Math.Min(fit, text.Length)] + "…";
+    }
+
     public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) => new(-11, 3, 2);
 
     public void ClipRect(KumikoRect rect)

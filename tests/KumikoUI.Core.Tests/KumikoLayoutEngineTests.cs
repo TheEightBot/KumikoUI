@@ -99,6 +99,94 @@ public class KumikoLayoutEngineTests
         Assert.Equal(400f, cols[0].Width, 0.01f);
     }
 
+    [Fact]
+    public void ComputeColumnWidths_StarColumnHeldAtItsMaxWidth_LeavesTheRestToTheOthers()
+    {
+        var engine = new KumikoLayoutEngine();
+        var cols = MakeColumns((0f, ColumnSizeMode.Star, 1f), (0f, ColumnSizeMode.Star, 1f));
+        cols[0].MaxWidth = 100f;
+
+        engine.ComputeColumnWidths(cols, 400f);
+
+        Assert.Equal(100f, cols[0].Width, 0.01f);
+        Assert.Equal(300f, cols[1].Width, 0.01f);
+    }
+
+    [Fact]
+    public void ComputeColumnWidths_StarColumnHeldAtItsMinWidth_TakesFromTheOthers()
+    {
+        var engine = new KumikoLayoutEngine();
+        var cols = MakeColumns((0f, ColumnSizeMode.Star, 1f), (0f, ColumnSizeMode.Star, 1f), (0f, ColumnSizeMode.Star, 1f));
+        cols[0].MinWidth = 200f;
+
+        engine.ComputeColumnWidths(cols, 300f);
+
+        Assert.Equal(200f, cols[0].Width, 0.01f);
+        Assert.Equal(50f, cols[1].Width, 0.01f);
+        Assert.Equal(50f, cols[2].Width, 0.01f);
+    }
+
+    [Fact]
+    public void ComputeColumnWidths_MinWidthAboveMaxWidth_UsesTheMinimumWithoutThrowing()
+    {
+        var engine = new KumikoLayoutEngine();
+        var cols = MakeColumns((0f, ColumnSizeMode.Star, 1f));
+        cols[0].MinWidth = 150f;
+        cols[0].MaxWidth = 100f;
+
+        engine.ComputeColumnWidths(cols, 400f);
+
+        Assert.Equal(150f, cols[0].Width, 0.01f);
+    }
+
+    [Fact]
+    public void ComputeColumnWidths_DoesNotMakeLaidOutWidthsExplicit()
+    {
+        var engine = new KumikoLayoutEngine();
+        var star = new KumikoColumn { SizeMode = ColumnSizeMode.Star };
+        var fixedDefault = new KumikoColumn();
+
+        engine.ComputeColumnWidths(new[] { star, fixedDefault }, 500f);
+
+        Assert.Equal(380f, star.Width, 0.01f);
+        Assert.False(star.HasExplicitWidth);
+        Assert.False(fixedDefault.HasExplicitWidth);
+    }
+
+    [Fact]
+    public void ComputeColumnWidths_WithAMeasuringContext_FitsHeadersOfColumnsWithoutAWidth()
+    {
+        var engine = new KumikoLayoutEngine();
+        var style = new KumikoStyle();
+        var fitted = new KumikoColumn { Header = "A rather long column header", PropertyName = "X" };
+        var explicitWidth = new KumikoColumn { Header = "A rather long column header", PropertyName = "X", Width = 90 };
+
+        engine.ComputeColumnWidths(new[] { fitted, explicitWidth }, 500f, new TestHelpers.NoOpDrawingContext(), style);
+
+        // 27 characters at 7 px, 8 px padding on each side, sort arrow 12, filter icon 14, margin 4.
+        float fit = MathF.Ceiling(27 * 7f) + 16 + 12 + 14 + 4;
+        Assert.Equal(fit, fitted.HeaderFitWidth);
+        Assert.Equal(fit, fitted.Width);
+        Assert.Equal(fit, explicitWidth.HeaderFitWidth);
+        Assert.Equal(90f, explicitWidth.Width);
+        Assert.Equal(fit, KumikoLayoutEngine.EffectiveMinWidth(fitted));
+        Assert.Equal(explicitWidth.MinWidth, KumikoLayoutEngine.EffectiveMinWidth(explicitWidth));
+    }
+
+    [Fact]
+    public void CalculateAutoFitWidth_IsNeverNarrowerThanTheHeaderFit()
+    {
+        var engine = new KumikoLayoutEngine();
+        var source = new KumikoSource();
+        var column = new KumikoColumn { Header = "A rather long column header", PropertyName = "Length" };
+        source.SetColumns(new[] { column });
+        source.SetItems(new[] { "a", "b" });
+
+        float width = engine.CalculateAutoFitWidth(column, source, new TestHelpers.NoOpDrawingContext(), new KumikoStyle());
+
+        Assert.Equal(MathF.Ceiling(27 * 7f) + 16 + 12 + 14 + 4, width);
+    }
+
     // ── GetContentWidth ───────────────────────────────────────────
 
     [Fact]
