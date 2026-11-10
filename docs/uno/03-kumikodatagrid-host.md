@@ -33,6 +33,10 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
   > `Microsoft.UI.Xaml.Controls.SelectionModel` / `SelectionMode` into scope, which collided with Core's
   > `SelectionModel` / `SelectionMode`. This was first resolved with `using`-aliases; the Core types are now
   > named `KumikoSelectionModel` / `KumikoSelectionMode`, so no aliases are needed (#16).
+  > Update (#52): both hosts now keep their children private. MAUI derives from `ContentView` and Uno
+  > from `UserControl`, each with an internal `Grid` (canvas + keyboard proxy) as its `Content`, so
+  > consumers can't reach a layout API; replacing `Content` throws. `[ContentProperty(Columns)]` makes
+  > XAML implicit content add columns on both hosts.
 - [x] The `unolib` template ships a sample `MyTemplatedControl` + `Themes/Generic.xaml`. Remove the
   sample control. Keep an (empty) `Themes/Generic.xaml` only if you later add stylable resources;
   it is **not** required by the drawn `KumikoDataGrid`.
