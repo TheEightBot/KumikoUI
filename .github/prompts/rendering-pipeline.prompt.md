@@ -90,9 +90,10 @@ private void Draw{FeatureName}(
 
 `SkiaDrawingContext` is in `KumikoUI.SkiaSharp`. It wraps `SKCanvas` and adds:
 
-- **Per-frame paint cache** — `GetOrCreatePaint(PaintKey key)` returns a cached `SKPaint`
-- **Per-frame font cache** — `GetOrCreateFont(FontKey key)` returns a cached `SKFont`
-- **Frame disposal** — All cached objects are `Dispose()`d when the context is disposed
+- **Long-lived resource cache** — paints, fonts and typefaces come from a `SkiaResourceCache` the host
+  control owns and passes in every frame (`new SkiaDrawingContext(canvas, cache)`); bounded (LRU)
+- **Frame end** — disposing the context ends the frame and keeps the cached objects; the host disposes
+  the cache on teardown
 
 If you need a SkiaSharp feature not exposed by `IDrawingContext`, **add it to the
 `IDrawingContext` interface first** (in `KumikoUI.Core`), then implement it in

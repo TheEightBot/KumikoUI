@@ -8,40 +8,58 @@ namespace KumikoUI.SkiaSharp;
 /// Maps all platform-independent drawing calls to SKCanvas operations.
 /// Uses the modern SKFont-based text APIs (SkiaSharp 3.x).
 ///
-/// <para><b>Performance:</b> Caches all native SkiaSharp objects (SKPaint, SKFont, SKTypeface)
-/// per frame to avoid creating and disposing native resources on every draw call.
-/// Call <see cref="Dispose"/> at the end of each frame to release cached resources.</para>
+/// <para><b>Performance:</b> the native SkiaSharp objects a frame draws with (SKPaint, SKFont,
+/// SKTypeface) come from a <see cref="SkiaResourceCache"/>. A host creates one cache per control and
+/// passes it to <see cref="SkiaDrawingContext(SKCanvas, SkiaResourceCache)"/> every frame, so the same
+/// native objects are reused frame after frame; the context itself is a thin per-frame wrapper over the
+/// canvas. Dispose the context at the end of each frame: that ends the frame on the cache but leaves the
+/// cached objects alive.</para>
 /// </summary>
 public class SkiaDrawingContext : IDrawingContext, IDisposable
 {
     private readonly SKCanvas _canvas;
-
-    // ── Native object caches (keyed by configuration) ────────────
-    // These avoid creating + disposing SKPaint/SKFont/SKTypeface per draw call.
-    // Instead, identical configurations reuse the same native object within a frame.
-
-    private readonly Dictionary<PaintKey, SKPaint> _paintCache = new();
-    private readonly Dictionary<FontKey, SKFont> _fontCache = new();
-    private readonly Dictionary<TypefaceKey, SKTypeface> _typefaceCache = new();
-
-    /// <summary>Cache key for SKPaint objects.</summary>
-    private readonly record struct PaintKey(uint Color, float StrokeWidth, SKPaintStyle Style, bool IsAntialias);
-
-    /// <summary>Cache key for SKFont objects.</summary>
-    private readonly record struct FontKey(string Family, float Size, bool IsBold, bool IsItalic);
-
-    /// <summary>Cache key for SKTypeface objects.</summary>
-    private readonly record struct TypefaceKey(string Family, bool IsBold, bool IsItalic);
+    private readonly SkiaResourceCache _cache;
+    private readonly bool _ownsCache;
+    private bool _disposed;
 
     /// <summary>
-    /// Initializes a new <see cref="SkiaDrawingContext"/> that renders onto the specified <see cref="SKCanvas"/>.
+    /// Initializes a new <see cref="SkiaDrawingContext"/> that renders onto the specified <see cref="SKCanvas"/>
+    /// with a private <see cref="SkiaResourceCache"/> that is disposed with the context. Every frame drawn
+    /// this way creates its native objects again; hosts that draw repeatedly should keep a
+    /// <see cref="SkiaResourceCache"/> and use <see cref="SkiaDrawingContext(SKCanvas, SkiaResourceCache)"/>.
     /// </summary>
     /// <param name="canvas">The SkiaSharp canvas to draw on. Must not be <c>null</c>.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="canvas"/> is <c>null</c>.</exception>
     public SkiaDrawingContext(SKCanvas canvas)
+        : this(canvas ?? throw new ArgumentNullException(nameof(canvas)), new SkiaResourceCache(), ownsCache: true)
     {
-        _canvas = canvas ?? throw new ArgumentNullException(nameof(canvas));
     }
+
+    /// <summary>
+    /// Initializes a new <see cref="SkiaDrawingContext"/> for one frame on <paramref name="canvas"/>, drawing
+    /// with the native objects in <paramref name="resourceCache"/>. The cache is not disposed with the
+    /// context; its owner (normally the host control) disposes it.
+    /// </summary>
+    /// <param name="canvas">The SkiaSharp canvas to draw on. Must not be <c>null</c>.</param>
+    /// <param name="resourceCache">The long-lived cache to draw with. Must not be <c>null</c> or disposed.</param>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is <c>null</c>.</exception>
+    /// <exception cref="ObjectDisposedException">Thrown when <paramref name="resourceCache"/> is disposed.</exception>
+    public SkiaDrawingContext(SKCanvas canvas, SkiaResourceCache resourceCache)
+        : this(canvas ?? throw new ArgumentNullException(nameof(canvas)),
+               resourceCache ?? throw new ArgumentNullException(nameof(resourceCache)), ownsCache: false)
+    {
+    }
+
+    private SkiaDrawingContext(SKCanvas canvas, SkiaResourceCache resourceCache, bool ownsCache)
+    {
+        _canvas = canvas;
+        _cache = resourceCache;
+        _ownsCache = ownsCache;
+        _cache.BeginFrame();
+    }
+
+    /// <summary>The cache this context draws with.</summary>
+    public SkiaResourceCache ResourceCache => _cache;
 
     // ── Rectangles ───────────────────────────────────────────────
 
@@ -213,103 +231,10 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     // ── Conversion helpers ───────────────────────────────────────
 
     private static SKRect ToSKRect(KumikoRect r) => new(r.Left, r.Top, r.Right, r.Bottom);
-    private static SKColor ToSKColor(KumikoColor c) => new(c.R, c.G, c.B, c.A);
 
-    /// <summary>
-    /// Get or create a cached SKPaint for the given configuration.
-    /// Cached paints are reused within the same frame to avoid native object churn.
-    /// </summary>
-    private SKPaint GetOrCreatePaint(KumikoPaint paint, SKPaintStyle styleOverride)
-    {
-        var key = new PaintKey(paint.Color.ToUint32(), paint.StrokeWidth, styleOverride, paint.IsAntiAlias);
-        if (!_paintCache.TryGetValue(key, out var skPaint))
-        {
-            skPaint = new SKPaint
-            {
-                Color = ToSKColor(paint.Color),
-                StrokeWidth = paint.StrokeWidth,
-                IsAntialias = paint.IsAntiAlias,
-                Style = styleOverride
-            };
-            _paintCache[key] = skPaint;
-        }
-        return skPaint;
-    }
+    private SKPaint GetOrCreatePaint(KumikoPaint paint, SKPaintStyle styleOverride) => _cache.GetPaint(paint, styleOverride);
 
-    /// <summary>
-    /// Get or create a cached SKFont for the given paint's font settings.
-    /// Cached fonts are reused within the same frame to avoid native object churn.
-    /// </summary>
-    private SKFont GetOrCreateFont(KumikoPaint paint)
-    {
-        var gridFont = paint.Font;
-        var family = gridFont?.Family ?? "Default";
-        var size = gridFont?.Size ?? 14f;
-        var isBold = gridFont?.IsBold ?? false;
-        var isItalic = gridFont?.IsItalic ?? false;
-
-        var key = new FontKey(family, size, isBold, isItalic);
-        if (!_fontCache.TryGetValue(key, out var skFont))
-        {
-            var typeface = GetOrCreateTypeface(family, isBold, isItalic);
-            skFont = new SKFont(typeface, size)
-            {
-                Edging = SKFontEdging.SubpixelAntialias,
-                Subpixel = true
-            };
-            _fontCache[key] = skFont;
-        }
-        return skFont;
-    }
-
-    /// <summary>
-    /// Get or create a cached SKTypeface for the given family and style.
-    /// Typefaces are expensive to resolve from family names; caching avoids repeated lookups.
-    /// The <see cref="SkiaFontRegistrar"/> is consulted first so that custom fonts registered
-    /// by the host application (e.g. CJK fonts, icon fonts) take priority over system fonts.
-    /// </summary>
-    private SKTypeface GetOrCreateTypeface(string family, bool isBold, bool isItalic)
-    {
-        var key = new TypefaceKey(family, isBold, isItalic);
-        if (!_typefaceCache.TryGetValue(key, out var typeface))
-        {
-            // Check the custom font registrar first — this allows host apps to supply fonts
-            // that the system font manager cannot resolve (e.g. CJK fonts on Android, icon fonts).
-            if (SkiaFontRegistrar.TryGetTypeface(family, out var registeredTypeface) && registeredTypeface is not null)
-            {
-                typeface = registeredTypeface;
-            }
-            else if (isBold || isItalic || family != "Default")
-            {
-                var style = new SKFontStyle(
-                    isBold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal,
-                    SKFontStyleWidth.Normal,
-                    isItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
-
-                // Resolve through the font manager with an explicit family so the requested weight and
-                // slant are honoured. SkiaSharp 4's SKTypeface.FromFamilyName(null, …) falls back to the
-                // plain default typeface and drops the style (bold headers rendered regular). An unknown
-                // family falls back to the default family in the same style rather than to null.
-                var defaultFamily = SKTypeface.Default.FamilyName;
-                var requested = family == "Default" ? defaultFamily : family;
-                typeface = FamilyMatcher(requested, style);
-                if (typeface is null)
-                {
-                    // SkiaSharp returns null for a family the platform does not know (e.g. a MAUI font
-                    // alias on Android or Windows). Never cache that null: fall back to the default
-                    // family in the same style, then to the shared default typeface.
-                    ReportUnknownFamily(requested);
-                    typeface = FamilyMatcher(defaultFamily, style) ?? SKTypeface.Default;
-                }
-            }
-            else
-            {
-                typeface = SKTypeface.Default;
-            }
-            _typefaceCache[key] = typeface;
-        }
-        return typeface;
-    }
+    private SKFont GetOrCreateFont(KumikoPaint paint) => _cache.GetFont(paint.Font);
 
     /// <summary>
     /// Resolves a family name and style to a typeface, or <c>null</c> when the platform does not know
@@ -321,7 +246,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     private static readonly HashSet<string> _reportedUnknownFamilies = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Logs each unknown family once per process, so a grid redrawn at 60 fps does not flood the log.</summary>
-    private static void ReportUnknownFamily(string family)
+    internal static void ReportUnknownFamily(string family)
     {
         lock (_reportedUnknownFamilies)
         {
@@ -363,29 +288,16 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     // ── IDisposable ──────────────────────────────────────────────
 
     /// <summary>
-    /// Dispose all cached native objects. Call at the end of each frame.
+    /// Ends the frame. Call at the end of each frame. Objects in a shared <see cref="SkiaResourceCache"/>
+    /// stay cached for the next frame; a private cache (created by <see cref="SkiaDrawingContext(SKCanvas)"/>)
+    /// is disposed. Calling it again does nothing.
     /// </summary>
     public void Dispose()
     {
-        foreach (var paint in _paintCache.Values)
-            paint.Dispose();
-        _paintCache.Clear();
-
-        foreach (var font in _fontCache.Values)
-            font.Dispose();
-        _fontCache.Clear();
-
-        // Don't dispose SKTypeface.Default or any typeface registered in SkiaFontRegistrar
-        // (those are externally owned). Only dispose typefaces we created dynamically. The same
-        // instance can sit under several cache keys, so dispose each one once.
-        var disposed = new HashSet<SKTypeface>();
-        foreach (var typeface in _typefaceCache.Values)
-        {
-            if (typeface is null || ReferenceEquals(typeface, SKTypeface.Default)
-                || SkiaFontRegistrar.IsRegistered(typeface) || !disposed.Add(typeface))
-                continue;
-            typeface.Dispose();
-        }
-        _typefaceCache.Clear();
+        if (_disposed) return;
+        _disposed = true;
+        _cache.EndFrame();
+        if (_ownsCache)
+            _cache.Dispose();
     }
 }

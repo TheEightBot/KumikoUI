@@ -44,8 +44,8 @@ var paint = new KumikoPaint
 };
 ```
 
-Never construct `SKPaint`, `SKFont`, or `SKColor` in Core. `SkiaDrawingContext` caches
-all Skia objects per frame; they are disposed at end-of-frame.
+Never construct `SKPaint`, `SKFont`, or `SKColor` in Core. `SkiaDrawingContext` draws with
+Skia objects from the host's long-lived `SkiaResourceCache`; they are reused across frames.
 
 ## `KumikoColor`
 
@@ -134,8 +134,12 @@ it on theme change.
 
 ## `SkiaDrawingContext` — SkiaSharp internals
 
-- Per-frame cache: `GetOrCreatePaint(PaintKey)` and `GetOrCreateFont(FontKey)` using `record struct` keys.
-- `IDisposable` — MAUI host disposes at end of every `PaintSurface` frame.
+- Thin per-frame wrapper over the canvas; paints, fonts and typefaces come from a `SkiaResourceCache`
+  (`record struct` keys, bounded LRU) that each host control owns, passes to
+  `new SkiaDrawingContext(canvas, cache)` every frame, and disposes on teardown (MAUI `Cleanup`, Uno `Unloaded`).
+- `IDisposable` — hosts dispose the context at the end of every `PaintSurface` frame; that ends the frame
+  (objects evicted mid-frame are released then) and leaves the cached objects alive.
+- `SkiaFontRegistrar` changes invalidate every live cache before the registrar disposes a typeface.
 - Text rendering uses modern SkiaSharp 3.x `SKFont`-based API (not deprecated `SKPaint.TextSize`).
 - Binary-search ellipsis truncation for text overflow.
 - If a new `IDrawingContext` method is needed: **add to the interface in Core first**, then implement in `SkiaDrawingContext`.
