@@ -30,9 +30,14 @@ namespace KumikoUI.Maui;
 /// Drop this into any MAUI page. All rendering is done on the SKCanvas.
 /// Uses a hidden Entry overlay for keyboard input capture.
 /// </summary>
+/// <remarks>
+/// The control is a <see cref="ContentView"/> whose content (the canvas and the keyboard proxy) is
+/// private: it has no layout API, and its XAML content is <see cref="Columns"/>.
+/// </remarks>
 [ContentProperty(nameof(Columns))]
-public class KumikoDataGrid : Grid
+public class KumikoDataGrid : ContentView
 {
+    private readonly Grid _root = new();
     private readonly SKCanvasView _canvasView = new();
     private readonly Entry _keyboardProxy;
     private readonly KumikoRenderer _renderer = new();
@@ -87,6 +92,7 @@ public class KumikoDataGrid : Grid
     private bool _useNativeKeyInput;
 #endif
 
+    /// <summary>Creates the grid with its canvas, keyboard proxy and empty <see cref="Columns"/>.</summary>
     public KumikoDataGrid()
     {
         // The selection follows the source's view changes by itself (item-based, #30).
@@ -116,8 +122,10 @@ public class KumikoDataGrid : Grid
         _canvasView.EnableTouchEvents = true;
         _canvasView.IgnorePixelScaling = false;
 
-        Children.Add(_canvasView);
-        Children.Add(_keyboardProxy);
+        _root.Children.Add(_canvasView);
+        _root.Children.Add(_keyboardProxy);
+        Content = _root;
+        _contentSealed = true;
 
         // Auto-init the Columns collection so XAML can add items directly
         Columns = new ObservableCollection<KumikoColumn>();
@@ -162,6 +170,22 @@ public class KumikoDataGrid : Grid
         // Configure Android-specific keyboard proxy once its handler is connected
         _keyboardProxy.HandlerChanged += OnKeyboardProxyHandlerChanged_Android;
 #endif
+    }
+
+    private readonly bool _contentSealed;
+
+    /// <inheritdoc/>
+    /// <exception cref="InvalidOperationException">When <see cref="ContentView.Content"/> is replaced: the
+    /// grid draws everything itself, so it has no content slot. Add columns through <see cref="Columns"/>.</exception>
+    protected override void OnPropertyChanged(string? propertyName = null)
+    {
+        base.OnPropertyChanged(propertyName);
+        if (_contentSealed && propertyName == ContentProperty.PropertyName && !ReferenceEquals(Content, _root))
+        {
+            Content = _root;
+            throw new InvalidOperationException(
+                "KumikoDataGrid draws its own content; it cannot be replaced. Add columns through Columns.");
+        }
     }
 
     /// <summary>Canvas size for coordinate mapping.</summary>
@@ -243,19 +267,6 @@ public class KumikoDataGrid : Grid
     }
     private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
 
-    /// <summary>Set the data items.</summary>
-    public void SetItemsSource(System.Collections.IEnumerable items)
-    {
-        _dataSource.SetItems(items);
-    }
-
-    /// <summary>Set the column definitions.</summary>
-    public void SetColumns(IEnumerable<KumikoColumn> columns)
-    {
-        _dataSource.SetColumns(columns);
-        InvalidateSurface();
-    }
-
     // ── Bindable Properties ──────────────────────────────────────
 
     // ── ItemsSource ──
@@ -265,6 +276,10 @@ public class KumikoDataGrid : Grid
         nameof(ItemsSource), typeof(IEnumerable), typeof(KumikoDataGrid),
         propertyChanged: (b, o, n) => ((KumikoDataGrid)b).OnItemsSourceChanged((IEnumerable?)o, (IEnumerable?)n));
 
+    /// <summary>
+    /// The items the grid shows, one row each. An <see cref="INotifyCollectionChanged"/> collection is
+    /// followed as it changes.
+    /// </summary>
     public IEnumerable? ItemsSource
     {
         get => (IEnumerable?)GetValue(ItemsSourceProperty);
@@ -354,7 +369,7 @@ public class KumikoDataGrid : Grid
         nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid), false);
 
     /// <summary>When true, cells cannot be edited.</summary>
-    public new bool IsReadOnly
+    public bool IsReadOnly
     {
         get => (bool)GetValue(IsReadOnlyProperty);
         set => SetValue(IsReadOnlyProperty, value);
@@ -444,18 +459,18 @@ public class KumikoDataGrid : Grid
 
     /// <summary>Identifies the <see cref="HeaderHeight"/> bindable property.</summary>
     public static readonly BindableProperty HeaderHeightProperty = BindableProperty.Create(
-        nameof(HeaderHeight), typeof(float), typeof(KumikoDataGrid), 40f,
+        nameof(HeaderHeight), typeof(double), typeof(KumikoDataGrid), 40d,
         propertyChanged: (b, _, n) =>
         {
             var view = (KumikoDataGrid)b;
-            view._style.HeaderHeight = (float)n;
+            view._style.HeaderHeight = (float)(double)n;
             view.InvalidateSurface();
         });
 
     /// <summary>Height of the column header row in pixels.</summary>
-    public float HeaderHeight
+    public double HeaderHeight
     {
-        get => (float)GetValue(HeaderHeightProperty);
+        get => (double)GetValue(HeaderHeightProperty);
         set => SetValue(HeaderHeightProperty, value);
     }
 
@@ -463,18 +478,18 @@ public class KumikoDataGrid : Grid
 
     /// <summary>Identifies the <see cref="RowHeight"/> bindable property.</summary>
     public static readonly BindableProperty RowHeightProperty = BindableProperty.Create(
-        nameof(RowHeight), typeof(float), typeof(KumikoDataGrid), 36f,
+        nameof(RowHeight), typeof(double), typeof(KumikoDataGrid), 36d,
         propertyChanged: (b, _, n) =>
         {
             var view = (KumikoDataGrid)b;
-            view._style.RowHeight = (float)n;
+            view._style.RowHeight = (float)(double)n;
             view.InvalidateSurface();
         });
 
     /// <summary>Height of each data row in pixels.</summary>
-    public float RowHeight
+    public double RowHeight
     {
-        get => (float)GetValue(RowHeightProperty);
+        get => (double)GetValue(RowHeightProperty);
         set => SetValue(RowHeightProperty, value);
     }
 
@@ -504,17 +519,18 @@ public class KumikoDataGrid : Grid
         typeof(ObservableCollection<KumikoColumn>),
         typeof(KumikoDataGrid),
         defaultValue: null,
+        coerceValue: (_, v) => v ?? new ObservableCollection<KumikoColumn>(),
         propertyChanged: (b, o, n) => ((KumikoDataGrid)b).OnColumnsChanged(
             o as ObservableCollection<KumikoColumn>,
             n as ObservableCollection<KumikoColumn>));
 
     /// <summary>
     /// Bindable collection of column definitions. Supports ObservableCollection
-    /// for dynamic add/remove of columns at runtime.
+    /// for dynamic add/remove of columns at runtime. Never null: assigning null sets an empty collection.
     /// </summary>
-    public ObservableCollection<KumikoColumn>? Columns
+    public ObservableCollection<KumikoColumn> Columns
     {
-        get => (ObservableCollection<KumikoColumn>?)GetValue(ColumnsProperty);
+        get => (ObservableCollection<KumikoColumn>)GetValue(ColumnsProperty);
         set => SetValue(ColumnsProperty, value);
     }
 
@@ -540,8 +556,7 @@ public class KumikoDataGrid : Grid
 
     private void OnColumnsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (Columns != null)
-            _dataSource.SetColumns(Columns);
+        _dataSource.SetColumns(Columns);
         InvalidateSurface();
     }
 
@@ -553,17 +568,18 @@ public class KumikoDataGrid : Grid
         typeof(ObservableCollection<TableSummaryRow>),
         typeof(KumikoDataGrid),
         defaultValue: null,
+        coerceValue: (_, v) => v ?? new ObservableCollection<TableSummaryRow>(),
         propertyChanged: (b, o, n) => ((KumikoDataGrid)b).OnTableSummaryRowsChanged(
             o as ObservableCollection<TableSummaryRow>,
             n as ObservableCollection<TableSummaryRow>));
 
     /// <summary>
     /// Bindable collection of table summary row definitions.
-    /// Define summary rows in XAML with column aggregates.
+    /// Define summary rows in XAML with column aggregates. Never null: assigning null sets an empty collection.
     /// </summary>
-    public ObservableCollection<TableSummaryRow>? TableSummaryRows
+    public ObservableCollection<TableSummaryRow> TableSummaryRows
     {
-        get => (ObservableCollection<TableSummaryRow>?)GetValue(TableSummaryRowsProperty);
+        get => (ObservableCollection<TableSummaryRow>)GetValue(TableSummaryRowsProperty);
         set => SetValue(TableSummaryRowsProperty, value);
     }
 
@@ -587,8 +603,7 @@ public class KumikoDataGrid : Grid
 
     private void OnTableSummaryRowsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (TableSummaryRows != null)
-            SyncTableSummaryRows(TableSummaryRows);
+        SyncTableSummaryRows(TableSummaryRows);
     }
 
     private void SyncTableSummaryRows(IEnumerable<TableSummaryRow> rows)
