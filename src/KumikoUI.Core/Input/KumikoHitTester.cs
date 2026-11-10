@@ -21,6 +21,24 @@ public class KumikoHitTester
         ScrollState scroll, KumikoStyle style,
         IReadOnlyList<KumikoColumn> columns, int totalRows,
         KumikoSource? dataSource = null)
+        => HitTestCore(viewportX, viewportY, scroll, style, columns, totalRows, dataSource).ToResult();
+
+    /// <summary>
+    /// Whether a column's header edge is a resize grip: it allows resizing and its width can change
+    /// (<see cref="KumikoColumn.MaxWidth"/> above <see cref="KumikoColumn.MinWidth"/>). Elsewhere the edge
+    /// is part of the header cell.
+    /// </summary>
+    internal static bool IsResizable(KumikoColumn column) =>
+        column.AllowResize && column.MaxWidth > column.MinWidth;
+
+    /// <summary>
+    /// <see cref="HitTest"/> without allocating: the result is a value. Used on every hover move.
+    /// </summary>
+    internal KumikoHitInfo HitTestCore(
+        float viewportX, float viewportY,
+        ScrollState scroll, KumikoStyle style,
+        IReadOnlyList<KumikoColumn> columns, int totalRows,
+        KumikoSource? dataSource = null)
     {
         // Pinned bottom summary footer first: it is drawn last, at the bottom of the viewport, over the
         // scrolling rows — and over the header and grouping panel when the viewport is short — so a
@@ -29,7 +47,7 @@ public class KumikoHitTester
         float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(bottomSummaryCount);
         if (pinnedFooterHeight > 0 && viewportY >= scroll.ViewportHeight - pinnedFooterHeight)
         {
-            return new KumikoHitTestResult { Region = HitRegion.TableSummaryRow, ContentX = viewportX, ContentY = viewportY };
+            return new KumikoHitInfo { Region = HitRegion.TableSummaryRow, ContentX = viewportX, ContentY = viewportY };
         }
 
         // Check grouping panel area
@@ -49,8 +67,9 @@ public class KumikoHitTester
         // Compute frozen column widths
         float frozenWidth = 0;
         float rightFrozenWidth = 0;
-        foreach (var col in columns)
+        for (int i = 0; i < columns.Count; i++) // not foreach: the interface enumerator would be boxed
         {
+            var col = columns[i];
             if (!col.IsVisible) continue;
             if (col.IsFrozen) frozenWidth += col.Width;
             if (col.IsFrozenRight) rightFrozenWidth += col.Width;
@@ -108,7 +127,7 @@ public class KumikoHitTester
         // Check if in top summary area
         if (adjustedY >= style.HeaderHeight && adjustedY < style.HeaderHeight + topSummaryHeight)
         {
-            return new KumikoHitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
+            return new KumikoHitInfo { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
         }
 
         // Compute frozen rows
@@ -124,7 +143,7 @@ public class KumikoHitTester
             float bottomSummaryTop = dataAreaTop + totalRows * style.RowHeight - scroll.OffsetY;
             if (adjustedY >= bottomSummaryTop && adjustedY < bottomSummaryTop + bottomSummaryCount * style.SummaryRowHeight)
             {
-                return new KumikoHitTestResult { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
+                return new KumikoHitInfo { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
             }
         }
         int row;
@@ -144,13 +163,13 @@ public class KumikoHitTester
 
         if (row < 0 || row >= totalRows)
         {
-            return new KumikoHitTestResult { Region = HitRegion.EmptyArea, ContentX = effectiveContentX, ContentY = contentY };
+            return new KumikoHitInfo { Region = HitRegion.EmptyArea, ContentX = effectiveContentX, ContentY = contentY };
         }
 
         // Check if this row is a group summary
         if (dataSource != null && dataSource.IsGroupSummaryRow(row))
         {
-            return new KumikoHitTestResult
+            return new KumikoHitInfo
             {
                 Region = HitRegion.GroupSummaryRow,
                 RowIndex = row,
@@ -174,7 +193,7 @@ public class KumikoHitTester
                 // since group headers span the full viewport
                 if (viewportX >= chevronLeft && viewportX <= chevronRight + style.CellPadding)
                 {
-                    return new KumikoHitTestResult
+                    return new KumikoHitInfo
                     {
                         Region = HitRegion.GroupChevron,
                         RowIndex = row,
@@ -183,7 +202,7 @@ public class KumikoHitTester
                     };
                 }
 
-                return new KumikoHitTestResult
+                return new KumikoHitInfo
                 {
                     Region = HitRegion.GroupHeaderRow,
                     RowIndex = row,
@@ -209,7 +228,7 @@ public class KumikoHitTester
 
             if (isOnHandle)
             {
-                return new KumikoHitTestResult
+                return new KumikoHitInfo
                 {
                     Region = HitRegion.RowDragHandle,
                     RowIndex = row,
@@ -228,7 +247,7 @@ public class KumikoHitTester
     /// Hit test a column header, properly handling frozen, scrollable, and right-frozen panes.
     /// viewportX here is columnAreaViewportX (already offset by drag handle width).
     /// </summary>
-    private KumikoHitTestResult HitTestHeader(
+    private KumikoHitInfo HitTestHeader(
         float viewportX, float effectiveContentX, float contentY,
         IReadOnlyList<KumikoColumn> columns, ScrollState scroll, KumikoStyle style,
         float frozenWidth, float rightFrozenWidth, float rightFrozenLeft, float handleOffset)
@@ -243,7 +262,7 @@ public class KumikoHitTester
                 if (!col.IsVisible || !col.IsFrozen) continue;
                 float colRight = x + col.Width;
                 var result = CheckHeaderColumn(col, i, x, colRight, viewportX, effectiveContentX, contentY, style);
-                if (result != null) return result;
+                if (result.HasValue) return result.Value;
                 x += col.Width;
             }
         }
@@ -259,7 +278,7 @@ public class KumikoHitTester
                 if (!col.IsVisible || !col.IsFrozenRight) continue;
                 float colRight = x + col.Width;
                 var result = CheckHeaderColumn(col, i, x, colRight, viewportX, effectiveContentX, contentY, style);
-                if (result != null) return result;
+                if (result.HasValue) return result.Value;
                 x += col.Width;
             }
         }
@@ -274,11 +293,11 @@ public class KumikoHitTester
                 if (!col.IsVisible || col.IsFrozen || col.IsFrozenRight) continue;
                 float colRight = x + col.Width;
 
-                if (col.AllowResize &&
+                if (IsResizable(col) &&
                     scrollContentX >= colRight - ResizeGripWidth &&
                     scrollContentX <= colRight + ResizeGripWidth)
                 {
-                    return new KumikoHitTestResult
+                    return new KumikoHitInfo
                     {
                         Region = HitRegion.HeaderResizeGrip,
                         ColumnIndex = i, Column = col,
@@ -293,7 +312,7 @@ public class KumikoHitTester
                         float filterIconX = colRight - FilterIconRightMargin - FilterIconSize;
                         if (scrollContentX >= filterIconX && scrollContentX <= colRight - ResizeGripWidth)
                         {
-                            return new KumikoHitTestResult
+                            return new KumikoHitInfo
                             {
                                 Region = HitRegion.HeaderFilterIcon,
                                 ColumnIndex = i, Column = col,
@@ -302,7 +321,7 @@ public class KumikoHitTester
                         }
                     }
 
-                    return new KumikoHitTestResult
+                    return new KumikoHitInfo
                     {
                         Region = HitRegion.HeaderCell,
                         ColumnIndex = i, Column = col,
@@ -314,19 +333,19 @@ public class KumikoHitTester
             }
         }
 
-        return new KumikoHitTestResult { Region = HitRegion.EmptyArea, ContentX = effectiveContentX, ContentY = contentY };
+        return new KumikoHitInfo { Region = HitRegion.EmptyArea, ContentX = effectiveContentX, ContentY = contentY };
     }
 
     /// <summary>Check a single column header for resize grip, filter icon, or header cell hit.</summary>
-    private KumikoHitTestResult? CheckHeaderColumn(
+    private static KumikoHitInfo? CheckHeaderColumn(
         KumikoColumn col, int index, float colLeft, float colRight,
         float testX, float effectiveContentX, float contentY, KumikoStyle style)
     {
-        if (col.AllowResize &&
+        if (IsResizable(col) &&
             testX >= colRight - ResizeGripWidth &&
             testX <= colRight + ResizeGripWidth)
         {
-            return new KumikoHitTestResult
+            return new KumikoHitInfo
             {
                 Region = HitRegion.HeaderResizeGrip,
                 ColumnIndex = index, Column = col,
@@ -341,7 +360,7 @@ public class KumikoHitTester
                 float filterIconX = colRight - FilterIconRightMargin - FilterIconSize;
                 if (testX >= filterIconX && testX <= colRight - ResizeGripWidth)
                 {
-                    return new KumikoHitTestResult
+                    return new KumikoHitInfo
                     {
                         Region = HitRegion.HeaderFilterIcon,
                         ColumnIndex = index, Column = col,
@@ -350,7 +369,7 @@ public class KumikoHitTester
                 }
             }
 
-            return new KumikoHitTestResult
+            return new KumikoHitInfo
             {
                 Region = HitRegion.HeaderCell,
                 ColumnIndex = index, Column = col,
@@ -365,7 +384,7 @@ public class KumikoHitTester
     /// Hit test a data cell column, handling frozen, scrollable, and right-frozen columns.
     /// viewportX here is columnAreaViewportX (already offset by drag handle width).
     /// </summary>
-    private KumikoHitTestResult HitTestColumn(
+    private KumikoHitInfo HitTestColumn(
         float viewportX, float effectiveContentX, float contentY, int row,
         IReadOnlyList<KumikoColumn> columns, ScrollState scroll,
         float frozenWidth, float rightFrozenWidth, float rightFrozenLeft, float handleOffset)
@@ -380,7 +399,7 @@ public class KumikoHitTester
                 if (!col.IsVisible || !col.IsFrozen) continue;
                 if (viewportX >= x && viewportX < x + col.Width)
                 {
-                    return new KumikoHitTestResult
+                    return new KumikoHitInfo
                     {
                         Region = HitRegion.Cell, RowIndex = row,
                         ColumnIndex = i, Column = col,
@@ -402,7 +421,7 @@ public class KumikoHitTester
                 if (!col.IsVisible || !col.IsFrozenRight) continue;
                 if (viewportX >= x && viewportX < x + col.Width)
                 {
-                    return new KumikoHitTestResult
+                    return new KumikoHitInfo
                     {
                         Region = HitRegion.Cell, RowIndex = row,
                         ColumnIndex = i, Column = col,
@@ -422,7 +441,7 @@ public class KumikoHitTester
             if (!col.IsVisible || col.IsFrozen || col.IsFrozenRight) continue;
             if (scrollContentX >= cx && scrollContentX < cx + col.Width)
             {
-                return new KumikoHitTestResult
+                return new KumikoHitInfo
                 {
                     Region = HitRegion.Cell, RowIndex = row,
                     ColumnIndex = i, Column = col,
@@ -432,7 +451,7 @@ public class KumikoHitTester
             cx += col.Width;
         }
 
-        return new KumikoHitTestResult
+        return new KumikoHitInfo
         {
             Region = HitRegion.EmptyArea, RowIndex = row,
             ContentX = effectiveContentX, ContentY = contentY
@@ -441,14 +460,14 @@ public class KumikoHitTester
     /// <summary>
     /// Hit test within the grouping panel area (chips and remove buttons).
     /// </summary>
-    private KumikoHitTestResult HitTestGroupPanel(
+    private KumikoHitInfo HitTestGroupPanel(
         float viewportX, float viewportY,
         ScrollState scroll, KumikoStyle style,
         KumikoSource dataSource)
     {
         var groups = dataSource.GroupDescriptions;
         if (groups.Count == 0)
-            return new KumikoHitTestResult { Region = HitRegion.EmptyArea };
+            return new KumikoHitInfo { Region = HitRegion.EmptyArea };
 
         // Replicate the layout from DrawGroupingPanel
         // "Grouped by:" label takes space first
@@ -464,10 +483,19 @@ public class KumikoHitTester
         {
             var group = groups[i];
             string displayName = group.Header ?? group.PropertyName;
-            var col = dataSource.Columns.FirstOrDefault(c =>
-                string.Equals(c.PropertyName, group.PropertyName, StringComparison.OrdinalIgnoreCase));
-            if (col != null && group.Header == null)
-                displayName = col.Header;
+            if (group.Header == null)
+            {
+                // A loop, not FirstOrDefault with a capturing lambda: this runs on every hover move.
+                var columns = dataSource.Columns;
+                for (int c = 0; c < columns.Count; c++)
+                {
+                    if (string.Equals(columns[c].PropertyName, group.PropertyName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        displayName = columns[c].Header;
+                        break;
+                    }
+                }
+            }
 
             // Approximate chip width (match renderer layout)
             float approxTextWidth = displayName.Length * style.GroupPanelFont.Size * 0.6f;
@@ -482,14 +510,14 @@ public class KumikoHitTester
                 float removeAreaX = chipX + chipWidth - removeButtonSize - chipPadding / 2 - 4;
                 if (viewportX >= removeAreaX)
                 {
-                    return new KumikoHitTestResult
+                    return new KumikoHitInfo
                     {
                         Region = HitRegion.GroupPanelChipRemove,
                         GroupDescriptionIndex = i
                     };
                 }
 
-                return new KumikoHitTestResult
+                return new KumikoHitInfo
                 {
                     Region = HitRegion.GroupPanelChip,
                     GroupDescriptionIndex = i
@@ -503,6 +531,33 @@ public class KumikoHitTester
                 chipX += 14 + chipGap;
         }
 
-        return new KumikoHitTestResult { Region = HitRegion.EmptyArea };
+        return new KumikoHitInfo { Region = HitRegion.EmptyArea };
     }
+}
+
+/// <summary>
+/// The allocation-free form of <see cref="KumikoHitTestResult"/> that <see cref="KumikoHitTester"/> computes.
+/// </summary>
+internal readonly struct KumikoHitInfo
+{
+    public KumikoHitInfo() { }
+
+    public HitRegion Region { get; init; }
+    public int RowIndex { get; init; } = -1;
+    public int ColumnIndex { get; init; } = -1;
+    public KumikoColumn? Column { get; init; }
+    public float ContentX { get; init; }
+    public float ContentY { get; init; }
+    public int GroupDescriptionIndex { get; init; } = -1;
+
+    public KumikoHitTestResult ToResult() => new()
+    {
+        Region = Region,
+        RowIndex = RowIndex,
+        ColumnIndex = ColumnIndex,
+        Column = Column,
+        ContentX = ContentX,
+        ContentY = ContentY,
+        GroupDescriptionIndex = GroupDescriptionIndex,
+    };
 }

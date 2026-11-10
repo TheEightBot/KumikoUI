@@ -77,6 +77,7 @@ public partial class KumikoDataGrid : Grid
         _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
+        _inputController.CursorChanged += OnInputControllerCursorChanged;
 
         // Wire edit session to input controller and style (mirrors MAUI).
         _inputController.EditSession = _editSession;

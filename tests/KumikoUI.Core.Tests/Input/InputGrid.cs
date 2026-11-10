@@ -44,7 +44,8 @@ internal sealed class InputGrid
     public KumikoColumn Dept { get; } = new() { Header = "Dept", PropertyName = "Dept", Width = 100 };
     public KumikoColumn Score { get; } = new() { Header = "Score", PropertyName = "Score", Width = 100, ColumnType = KumikoColumnType.Numeric };
     public int Redraws { get; private set; }
-    public List<bool> Cursors { get; } = new();
+    /// <summary>Every <see cref="KumikoInputController.CursorChanged"/>, in order.</summary>
+    public List<KumikoCursor> Cursors { get; } = new();
 
     public InputGrid(int rows = 30, float viewportHeight = DefaultViewportHeight, float viewportWidth = ViewportWidth,
         bool withEditSession = true, Action<InputGrid>? configure = null)
@@ -64,7 +65,7 @@ internal sealed class InputGrid
         Edit.Style = Style;
         if (withEditSession) Input.EditSession = Edit;
         Input.NeedsRedraw += () => Redraws++;
-        Input.CursorChanged += resize => Cursors.Add(resize);
+        Input.CursorChanged += cursor => Cursors.Add(cursor);
         configure?.Invoke(this);
         Render();
     }
@@ -109,6 +110,9 @@ internal sealed class InputGrid
         Pointer(InputAction.Pressed, x, y, modifiers, clicks);
 
     public void Move(float x, float y, long timestampMs = 0) => Pointer(InputAction.Moved, x, y, timestampMs: timestampMs);
+
+    /// <summary>A mouse move with no button pressed.</summary>
+    public KumikoPointerEventArgs Hover(float x, float y) => Pointer(InputAction.Hover, x, y, button: PointerButton.None);
 
     public void Release(float x, float y, InputModifiers modifiers = InputModifiers.None, int clicks = 1) =>
         Pointer(InputAction.Released, x, y, modifiers, clicks);

@@ -309,6 +309,20 @@ Columns support three sizing modes controlled by the `SizeMode` property.
 
 Modes can be mixed freely — the layout engine resolves them in a single pass per frame.
 
+### Resizing and hover cursors
+
+Drag the right edge of a column header to resize the column, or double-click it to request an auto-fit (`AutoFitColumnRequested`). The edge is a resize grip only when the column has `AllowResize` set (the default) and room to change (`MaxWidth` above `MinWidth`).
+
+With a mouse, the cursor shows what a click does:
+
+| Over | Cursor |
+|---|---|
+| A column resize grip, and for the whole of a resize drag | Left-right resize |
+| A filter icon, a group chevron, a grouping chip or its ×, the row drag handle, an editable check box, an enabled action button | Hand |
+| Anything else | Arrow |
+
+The grid's `InputController.Cursor` holds the current value (`KumikoCursor`) and `CursorChanged` reports changes. The Uno control applies it on the Windows, desktop and WebAssembly heads, and the MAUI control on Windows and Mac Catalyst; touch platforms ignore it. Moving the mouse with no button pressed never scrolls or selects.
+
 ---
 
 ## 📌 Frozen Columns & Rows

@@ -31,7 +31,7 @@ namespace KumikoUI.Maui;
 /// Uses a hidden Entry overlay for keyboard input capture.
 /// </summary>
 [ContentProperty(nameof(Columns))]
-public class KumikoDataGrid : Grid
+public partial class KumikoDataGrid : Grid
 {
     private readonly SKCanvasView _canvasView = new();
     private readonly Entry _keyboardProxy;
@@ -129,6 +129,7 @@ public class KumikoDataGrid : Grid
         _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
+        _inputController.CursorChanged += OnInputControllerCursorChanged;
 
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
@@ -658,6 +659,12 @@ public class KumikoDataGrid : Grid
 
     private void OnCanvasTouch(object? sender, SKTouchEventArgs e)
     {
+        // A move with no contact is a mouse hover (Windows); entering in contact (a drag coming back) is
+        // nothing to act on.
+        if (e.ActionType == SKTouchAction.Entered && e.InContact)
+            return;
+        var action = MapAction(e.ActionType, e.InContact);
+
         // On desktop platforms, focus keyboard input on press so we can capture
         // key events for grid navigation (arrow keys, Tab, etc.).
         // On mobile (iOS/Android), we do NOT focus here because it would
@@ -711,7 +718,7 @@ public class KumikoDataGrid : Grid
             _pendingClickCount = 1;
             CancelLongPressTimer();
         }
-        else if (e.ActionType == SKTouchAction.Moved)
+        else if (action == InputAction.Moved)
         {
             // Cancel long press if finger moved too far
             float lpDx = x - _longPressX;
@@ -736,8 +743,8 @@ public class KumikoDataGrid : Grid
         {
             X = x,
             Y = y,
-            Action = MapAction(e.ActionType),
-            Button = e.MouseButton switch
+            Action = action,
+            Button = action is InputAction.Hover or InputAction.Exited ? PointerButton.None : e.MouseButton switch
             {
                 SKMouseButton.Right => PointerButton.Secondary,
                 SKMouseButton.Middle => PointerButton.Middle,
@@ -749,6 +756,8 @@ public class KumikoDataGrid : Grid
         };
 
         _inputController.HandlePointer(gridEvent, _scroll, _selection, _style, _dataSource);
+        if (action == InputAction.Moved)
+            ReassertPlatformCursor(); // keeps the resize cursor through a drag on Catalyst
 
         // Start/stop inertial scroll timer
         if ((e.ActionType == SKTouchAction.Released || e.ActionType == SKTouchAction.Cancelled)
@@ -758,11 +767,15 @@ public class KumikoDataGrid : Grid
         e.Handled = gridEvent.Handled;
     }
 
-    private static InputAction MapAction(SKTouchAction action) => action switch
+    private static InputAction MapAction(SKTouchAction action, bool inContact) => action switch
     {
         SKTouchAction.Pressed => InputAction.Pressed,
         SKTouchAction.Released => InputAction.Released,
-        SKTouchAction.Moved => InputAction.Moved,
+        // Hover (no button down) only updates the cursor and hover feedback; it never pans
+        SKTouchAction.Moved => inContact ? InputAction.Moved : InputAction.Hover,
+        SKTouchAction.Entered => InputAction.Hover,
+        // Leaving resets the cursor; it does not cancel a drag (the pointer may come back)
+        SKTouchAction.Exited => InputAction.Exited,
         SKTouchAction.Cancelled => InputAction.Cancelled,
         SKTouchAction.WheelChanged => InputAction.Scroll,
         _ => InputAction.Cancelled
@@ -953,6 +966,7 @@ public class KumikoDataGrid : Grid
         _inputController.KeyboardFocusRequested -= OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened -= OnFilterPopupOpened;
         _inputController.FilterPopupClosed -= OnFilterPopupClosed;
+        _inputController.CursorChanged -= OnInputControllerCursorChanged;
         _editSession.NeedsRedraw -= OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit -= OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit -= OnEditSessionCellEndEdit;
@@ -991,6 +1005,9 @@ public class KumikoDataGrid : Grid
                 platformView.RemoveGestureRecognizer(_nativeScrollGesture);
             _nativeScrollGesture = null;
         }
+#if MACCATALYST
+        TeardownNativeHover(Handler?.PlatformView as UIView);
+#endif
 
         // Unsubscribe handler changed (prevent duplicate native setup on re-attach)
         this.HandlerChanged -= OnHandlerChanged_SetupNativeKeyboard;
@@ -1017,6 +1034,7 @@ public class KumikoDataGrid : Grid
         _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
+        _inputController.CursorChanged += OnInputControllerCursorChanged;
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
@@ -1273,6 +1291,12 @@ public class KumikoDataGrid : Grid
 
     private void OnHandlerChanged_SetupNativeScroll(object? sender, EventArgs e)
     {
+#if MACCATALYST
+        // Mouse hover (cursor feedback): SKCanvasView only reports touches on Catalyst
+        if (Handler?.PlatformView is UIView hoverView)
+            SetupNativeHover(hoverView);
+#endif
+
         // Guard against duplicate setup
         if (_nativeScrollGesture != null) return;
 
