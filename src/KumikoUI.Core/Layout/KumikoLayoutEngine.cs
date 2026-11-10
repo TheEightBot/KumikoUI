@@ -231,7 +231,9 @@ public class KumikoLayoutEngine
         float scrollY = scroll.OffsetY;
         float viewportBottom = scrollY + scroll.ViewportHeight;
 
-        int first = Math.Max(0, (int)((scrollY - headerBottom) / style.RowHeight));
+        // First row whose bottom edge is below the data area's top: row r spans
+        // [headerBottom + r*RowHeight - scrollY, +RowHeight), so r = floor(scrollY / RowHeight).
+        int first = Math.Max(0, (int)(scrollY / style.RowHeight));
         int last = Math.Min(scrollableRowCount - 1,
             (int)((viewportBottom - headerBottom) / style.RowHeight));
 
