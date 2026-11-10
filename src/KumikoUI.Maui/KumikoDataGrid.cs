@@ -402,6 +402,28 @@ public partial class KumikoDataGrid : ContentView
         set => SetValue(IsReadOnlyProperty, value);
     }
 
+    // ── ShowFrameStats ──
+
+    /// <summary>Identifies the <see cref="ShowFrameStats"/> bindable property.</summary>
+    public static readonly BindableProperty ShowFrameStatsProperty = BindableProperty.Create(
+        nameof(ShowFrameStats), typeof(bool), typeof(KumikoDataGrid), false,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._renderer.ShowFrameStats = (bool)n;
+            grid.InvalidateSurface();
+        });
+
+    /// <summary>
+    /// Draws a frame-time overlay (render time, frames per second, bytes allocated per frame) in the grid's
+    /// top-right corner. A debugging aid, off by default; when off it costs nothing per frame.
+    /// </summary>
+    public bool ShowFrameStats
+    {
+        get => (bool)GetValue(ShowFrameStatsProperty);
+        set => SetValue(ShowFrameStatsProperty, value);
+    }
+
     // ── DismissKeyboardOnEnter ──
 
     /// <summary>Identifies the <see cref="DismissKeyboardOnEnter"/> bindable property.</summary>

@@ -19,12 +19,17 @@
             <Button x:Name="btn100K" Text="Load 100K" Clicked="OnLoad100KClicked" Margin="4,0,0,4" />
             <Button x:Name="btnClear" Text="Clear" Clicked="OnClearClicked" Margin="4,0,0,4" />
             <Button x:Name="btnUpdateRandom" Text="Update Random" Clicked="OnUpdateRandomClicked" Margin="4,0,0,4" />
+            <HorizontalStackLayout Margin="8,0,0,4" VerticalOptions="Center">
+                <CheckBox x:Name="frameStatsCheck" />
+                <Label Text="Frame stats" VerticalOptions="Center" />
+            </HorizontalStackLayout>
             <Label x:Name="statusLabel" Text="No data loaded" VerticalOptions="Center" Margin="8,0" />
         </FlexLayout>
 
         <dg:KumikoDataGrid x:Name="kumiko"
                          Grid.Row="2"
                          ItemsSource="{Binding Items}"
+                         ShowFrameStats="{Binding IsChecked, Source={x:Reference frameStatsCheck}}"
                          AllowSorting="True"
                          AllowFiltering="True"
                          RowHeight="34"
