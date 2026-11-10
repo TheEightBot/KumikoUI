@@ -44,6 +44,12 @@ public partial class KumikoDataGrid : UserControl
     private readonly EditSession _editSession = new();
     private KumikoStyle _style = new();
 
+    // Native Skia objects (paints, fonts, typefaces) reused across frames (#62). Created on first
+    // use, disposed in OnUnloaded and created again on the next frame after OnLoaded.
+    private SkiaResourceCache? _resourceCache;
+
+    private SkiaResourceCache ResourceCache => _resourceCache ??= new SkiaResourceCache();
+
     /// <summary>
     /// Creates a new <see cref="KumikoDataGrid"/>, adds the Skia canvas child, and
     /// wires the Core redraw signals. Pointer / keyboard handlers are attached in
@@ -82,6 +88,7 @@ public partial class KumikoDataGrid : UserControl
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
         _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
@@ -197,7 +204,7 @@ public partial class KumikoDataGrid : UserControl
         canvas.Save();
         canvas.Scale(scale);
 
-        using var drawingContext = new SkiaDrawingContext(canvas);
+        using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
 
         _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
@@ -222,6 +229,15 @@ public partial class KumikoDataGrid : UserControl
 
     private void OnEditSessionNeedsRedraw() => _canvasView.Invalidate();
 
+    // An action button's command raised CanExecuteChanged: that can happen on any thread.
+    private void OnRendererRedrawRequested()
+    {
+        if (DispatcherQueue is { } queue && !queue.HasThreadAccess)
+            queue.TryEnqueue(() => _canvasView.Invalidate());
+        else
+            _canvasView.Invalidate();
+    }
+
     // ── Core structural event handlers (forwarded into the data source) ──
 
     private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
@@ -235,7 +251,7 @@ public partial class KumikoDataGrid : UserControl
         // Use a throwaway 1x1 Skia surface for text measurement (mirrors MAUI).
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
-        var measureCtx = new SkiaDrawingContext(canvas);
+        using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
         var layoutEngine = new KumikoLayoutEngine();
 
         float optimalWidth = layoutEngine.CalculateAutoFitWidth(
@@ -351,6 +367,8 @@ public partial class KumikoDataGrid : UserControl
         // navigation. Idempotent: detach first to avoid a double subscription.
         _canvasView.PaintSurface -= OnPaintSurface;
         _canvasView.PaintSurface += OnPaintSurface;
+        _renderer.RedrawRequested -= OnRendererRedrawRequested;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
 
         // Re-render with the current DPI now that we are in the visual tree.
         InvalidateSurface();
@@ -367,6 +385,15 @@ public partial class KumikoDataGrid : UserControl
         // _editSession), so they don't leak the page — but the canvas's
         // PaintSurface delegate roots `this`, so it must be released.
         _canvasView.PaintSurface -= OnPaintSurface;
+
+        // Stop listening to action-button commands (a cell renderer can outlive this grid). The renderer
+        // re-attaches to them on the next paint after a reload.
+        _renderer.RedrawRequested -= OnRendererRedrawRequested;
+        _renderer.Dispose();
+
+        // Release the cached native Skia objects; the first frame after OnLoaded creates a new cache.
+        _resourceCache?.Dispose();
+        _resourceCache = null;
 
         // Detach pointer + keyboard handlers and stop input-driven timers
         // (inertial scroll, cursor blink) — see DetachInputHandlers in KumikoDataGrid.Input.cs.

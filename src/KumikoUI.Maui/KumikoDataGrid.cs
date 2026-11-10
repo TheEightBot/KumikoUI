@@ -75,6 +75,12 @@ public partial class KumikoDataGrid : ContentView
     // Track whether Cleanup has been called so Reconnect knows to re-wire
     private bool _wasCleanedUp;
 
+    // Native Skia objects (paints, fonts, typefaces) reused across frames (#62). Created on first
+    // use, disposed in Cleanup and created again on the next frame after Reconnect.
+    private SkiaResourceCache? _resourceCache;
+
+    private SkiaResourceCache ResourceCache => _resourceCache ??= new SkiaResourceCache();
+
     // Sentinel character used to detect backspace on Entry.
     // Zero-width space avoids collision with user-typed spaces and reduces
     // interference from Android IME composing/replacement behavior.
@@ -134,6 +140,7 @@ public partial class KumikoDataGrid : ContentView
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
         _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
@@ -695,7 +702,7 @@ public partial class KumikoDataGrid : ContentView
         canvas.Save();
         canvas.Scale(scale);
 
-        using var drawingContext = new SkiaDrawingContext(canvas);
+        using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
 
         _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
@@ -912,7 +919,7 @@ public partial class KumikoDataGrid : ContentView
         // Use a temporary SKBitmap/Canvas for text measurement
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
-        var measureCtx = new SkiaDrawingContext(canvas);
+        using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
         var layoutEngine = new KumikoLayoutEngine();
 
         float optimalWidth = layoutEngine.CalculateAutoFitWidth(
@@ -934,6 +941,15 @@ public partial class KumikoDataGrid : ContentView
     private void OnInputControllerNeedsRedraw() => _canvasView.InvalidateSurface();
 
     private void OnEditSessionNeedsRedraw() => _canvasView.InvalidateSurface();
+
+    // An action button's command raised CanExecuteChanged: that can happen on any thread.
+    private void OnRendererRedrawRequested()
+    {
+        if (Dispatcher.IsDispatchRequired)
+            Dispatcher.Dispatch(() => _canvasView.InvalidateSurface());
+        else
+            _canvasView.InvalidateSurface();
+    }
 
     private void OnEditSessionCellBeginEdit(object? sender, CellBeginEditEventArgs e)
     {
@@ -987,6 +1003,8 @@ public partial class KumikoDataGrid : ContentView
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
         _inputController.NeedsRedraw -= OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested -= OnRendererRedrawRequested;
+        _renderer.Dispose();
         _inputController.ColumnReordered -= OnColumnReordered;
         _inputController.RowReordered -= OnRowReordered;
         _inputController.AutoFitColumnRequested -= OnAutoFitColumnRequested;
@@ -1000,6 +1018,10 @@ public partial class KumikoDataGrid : ContentView
         // Unsubscribe canvas events
         _canvasView.PaintSurface -= OnPaintSurface;
         _canvasView.Touch -= OnCanvasTouch;
+
+        // Release the cached native Skia objects; the next frame after Reconnect creates a new cache.
+        _resourceCache?.Dispose();
+        _resourceCache = null;
 
         // Unsubscribe keyboard proxy events
         _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;
@@ -1050,6 +1072,7 @@ public partial class KumikoDataGrid : ContentView
     {
         _dataSource.ViewChanged += OnDataSourceViewChanged;
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
+        _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
         _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;

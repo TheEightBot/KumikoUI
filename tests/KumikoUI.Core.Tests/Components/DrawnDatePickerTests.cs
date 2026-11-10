@@ -21,7 +21,8 @@ public class DrawnDatePickerTests
 
     private static DrawnDatePicker Picker(DateTime? date = null, bool open = false, Action<DrawnDatePicker>? configure = null)
     {
-        var p = new DrawnDatePicker { Bounds = new KumikoRect(0, 0, 200, 30) };
+        // Invariant names ("Su", "January", "AM"), whatever culture the machine running the tests uses
+        var p = new DrawnDatePicker { Bounds = new KumikoRect(0, 0, 200, 30), Culture = System.Globalization.CultureInfo.InvariantCulture };
         configure?.Invoke(p);
         p.SelectedDate = date ?? Mar15;
         if (open) p.OpenCalendar();

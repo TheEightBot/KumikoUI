@@ -94,7 +94,7 @@ template — confirm after scaffolding):
 |---|---|---|
 | Render surface | `SKCanvasView` | `SKXamlCanvas` |
 | Paint event | `PaintSurface` → `e.Surface.Canvas` | `PaintSurface` → `e.Surface.Canvas` (**identical**) |
-| Drawing bridge | `new SkiaDrawingContext(canvas)` | `new SkiaDrawingContext(canvas)` (**reused**) |
+| Drawing bridge | `new SkiaDrawingContext(canvas, cache)` | `new SkiaDrawingContext(canvas, cache)` (**reused**; one `SkiaResourceCache` per control) |
 | Render call | `KumikoRenderer.Render(ctx, …)` | `KumikoRenderer.Render(ctx, …)` (**reused**) |
 | Request redraw | `InvalidateSurface()` | `SKXamlCanvas.Invalidate()` |
 | Pointer input | `SKCanvasView.Touch` | `UIElement.PointerPressed/Moved/Released`, `PointerWheelChanged` |

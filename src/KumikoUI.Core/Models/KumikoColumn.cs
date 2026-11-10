@@ -115,8 +115,10 @@ public class KumikoColumn
     public bool IsReadOnly { get; set; }
 
     /// <summary>
-    /// When true, Tab navigation will stop on this column's cells during editing.
-    /// When false, Tab will skip this column. Default: true.
+    /// When true (the default), Tab and Shift+Tab stop on this column's cells, whether or not a cell is being
+    /// edited, as long as the column is visible and not read-only; every column type is a tab stop, including
+    /// Boolean (Space toggles it) and action-button columns. When false, Tab skips the column. Read-only and
+    /// hidden columns are always skipped.
     /// </summary>
     public bool AllowTabStop { get; set; } = true;
 
@@ -174,6 +176,30 @@ public class KumikoColumn
     /// Controls how the column is frozen (pinned). None = scrollable, Left = pinned left, Right = pinned right.
     /// </summary>
     public ColumnFreezeMode FreezeMode { get; set; } = ColumnFreezeMode.None;
+
+    /// <summary>
+    /// The direction of the first header tap, or null (the default) for the column type's default: a
+    /// <see cref="KumikoColumnType.Boolean"/> column sorts checked rows first
+    /// (<see cref="KumikoSortDirection.Descending"/>), a <see cref="KumikoColumnType.Date"/> column newest first
+    /// (<see cref="KumikoSortDirection.Descending"/>) and every other column ascending. Later taps switch to the
+    /// opposite direction and then remove the sort. <see cref="KumikoSortDirection.None"/> is the same as null.
+    /// The filter popup's first sort row follows it.
+    /// </summary>
+    public KumikoSortDirection? InitialSortDirection { get; set; }
+
+    /// <summary>
+    /// The direction of the first header tap: <see cref="InitialSortDirection"/>, or the column type's default.
+    /// Never <see cref="KumikoSortDirection.None"/>.
+    /// </summary>
+    public KumikoSortDirection FirstSortDirection =>
+        InitialSortDirection is { } initial && initial != KumikoSortDirection.None
+            ? initial
+            : ColumnType is KumikoColumnType.Boolean or KumikoColumnType.Date
+                ? KumikoSortDirection.Descending
+                : KumikoSortDirection.Ascending;
+
+    internal static KumikoSortDirection Opposite(KumikoSortDirection direction) =>
+        direction == KumikoSortDirection.Ascending ? KumikoSortDirection.Descending : KumikoSortDirection.Ascending;
 
     /// <summary>Current sort direction. Set it with <see cref="KumikoSource.SetSort"/>.</summary>
     public KumikoSortDirection SortDirection { get; internal set; } = KumikoSortDirection.None;

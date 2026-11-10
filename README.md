@@ -75,7 +75,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 | **Rendering** | 100% SkiaSharp canvas, zero native controls, allocation-free steady-state frames ([measured](#measured-performance)) |
 | **Virtual scrolling** | Only visible rows/columns rendered — benchmarked with 100K rows |
 | **Column types** | Text, Numeric, Boolean, Date, ComboBox, Picker, ProgressBar, Image, Template |
-| **Action buttons** | Pill-button columns with `ICommand` / callback support; activate on first tap |
+| **Action buttons** | Pill-button columns with `ICommand` / callback support; run on a tap without an editor, honor `CanExecute` (drawn disabled) |
 | **Column sizing** | Fixed, Star (proportional), Auto (content-sized) |
 | **Frozen columns** | Pin columns to left or right edge |
 | **Frozen rows** | Pin top N rows to viewport |
@@ -240,9 +240,12 @@ Keep `Render` free of allocations, as the built-in renderers are: draw with `cel
 
 Action button columns render a row of clickable pill-buttons directly inside every cell. Any number of buttons can be declared; they are distributed with equal widths across the cell area. Buttons support both `ICommand` (for MVVM data-binding) and an `Action` callback (for code-behind).
 
-Action buttons use the **Template** column type with `ActionButtonsCellRenderer` as the `CustomCellRenderer`. The renderer also implements `ICellEditorProvider`, so no separate `CustomEditorFactory` is required — the same button definitions handle both display and interaction.
+Action buttons use the **Template** column type with `ActionButtonsCellRenderer` as the `CustomCellRenderer`. The renderer is an *interactive cell* (`IInteractiveCellRenderer`): a tap runs the button under the finger directly, **without opening an editor**. A tap raises no `CellBeginEdit`, `CellEndEdit` or `CellValueChanged`, and no view change, and it works in a read-only column. No `EditTriggers` setting is needed, and no editor opens from F2, typing or a double-tap on the cell.
 
-> **Tip:** Set the column's `EditTriggers="SingleTap"` so buttons respond on the first touch, even when the grid's default trigger is `DoubleTap`. See [Per-column edit trigger override](#per-column-edit-trigger-override).
+- **`CanExecute`.** A button whose `Command.CanExecute(parameter)` is false is drawn disabled (the style's `ActionButtonDisabledBackgroundColor` and `ActionButtonDisabledTextColor`, set for every theme) and does nothing when tapped. The parameter is `CommandParameter`, or the row item when that is not set. The renderer listens to `CanExecuteChanged` and the grid redraws; the listener holds the renderer weakly, and `ActionButtonsCellRenderer.Dispose()` removes it. A button with only an `Action` is always enabled.
+- **Keyboard.** Enter on the current action cell runs its **first** button when that button is enabled (a disabled first button does nothing, so a stray Enter never runs a different command). Space keeps toggling the row's selection. Tab stops at the column like any other editable cell (it moves there without opening an editor); give the column `AllowTabStop="False"` to keep Tab out of it.
+- **Safe commands.** A command may remove the row it was run for, even the last one; the grid reads nothing about the row after the command returns.
+- A column with its own `EditorFactory`, `CustomEditorFactory` or `EditorDescriptor` is not interactive: the editor wins (see "Code-behind factory").
 
 ### XAML declaration (MVVM)
 
@@ -260,9 +263,7 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
                              ColumnType="Template"
                              Width="200"
                              AllowSorting="False"
-                             AllowFiltering="False"
-                             AllowTabStop="False"
-                             EditTriggers="SingleTap">
+                             AllowFiltering="False">
             <core:KumikoColumn.CustomCellRenderer>
                 <render:ActionButtonsCellRenderer>
                     <render:ActionButtonsCellRenderer.Buttons>
@@ -286,17 +287,15 @@ xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
 
 > **Note:** `MauiActionButtonDefinition` is not in the visual tree, so it does **not** inherit `BindingContext` automatically. Use `Source={x:Reference …}` or `Source={RelativeSource …}` to point bindings at the correct source object.
 
-### Code-behind factory
+### Code-behind
 
-Use `ActionButtonDefinition` (in `KumikoUI.Core`) when you want a code-behind closure per row:
+Use `ActionButtonDefinition` (in `KumikoUI.Core`) when you want a code-behind callback. The row item is the cell value (`PropertyName=""`), passed to `Command` by default:
 
 ```csharp
-actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
+actionsColumn.CustomCellRenderer = new ActionButtonsCellRenderer
 {
-    Bounds  = bounds,
-    RowItem = value,
     Buttons =
-    [
+    {
         new ActionButtonDefinition
         {
             Label           = "Edit",
@@ -307,11 +306,13 @@ actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
         {
             Label           = "Delete",
             BackgroundColor = new KumikoColor(220, 53, 69),
-            Action          = () => vm.DeleteEmployee((Employee)value!)
+            Command         = vm.DeleteCommand // CanExecute false draws it disabled
         }
-    ]
+    }
 };
 ```
+
+To open the buttons as an editor instead (the pre-0.2 behavior), set `CustomEditorFactory` to create a `DrawnActionButtons` with the same `Buttons`; the editor also honors `CanExecute`, but raises the edit events.
 
 ### Button properties
 
@@ -396,7 +397,7 @@ Pin the first N rows so they remain visible while the rest of the data scrolls:
 
 ### Sorting
 
-Tap any column header to sort. The indicator cycles through **Ascending → Descending → None**. Sort state is set through the data source (column `SortDirection` and `SortOrder` are read-only):
+Tap any column header to sort. The first tap depends on the column type: **Boolean** columns sort checked rows first (`Descending`), **Date** columns newest first (`Descending`), and text, numeric, ComboBox and Picker columns ascending. Later taps switch to the opposite direction and then remove the sort (for example **Ascending → Descending → None**, or checked first → unchecked first → none). Set `KumikoColumn.InitialSortDirection` to choose a column's first direction (`null`, the default, means the type's default); `KumikoColumn.FirstSortDirection` reports the one in effect. The sort arrow and the filter popup follow it: the popup's first sort row is the first-tap direction ("Sort Checked First" / "Sort Unchecked First" for Boolean columns, "Sort Newest to Oldest" first for Date columns). Shift or Ctrl-tap adds a column to a multi-column sort with the same first direction. Sort state is set through the data source (column `SortDirection` and `SortOrder` are read-only):
 
 ```csharp
 // Sort by one column:
@@ -438,7 +439,7 @@ Every column header displays a filter icon. Tapping it opens an **Excel-style fi
 
 - Full-text search across all values in that column
 - Value checklist (check/uncheck individual values)
-- Quick sort buttons (A→Z / Z→A) inside the popup
+- Two sort rows inside the popup whose text follows the column type (A to Z, smallest to largest, newest to oldest, checked first), the first row being the header's first-tap direction
 
 Filters are applied immediately on close and stacked across columns. Remove a filter by opening the popup and selecting all values.
 
@@ -517,11 +518,15 @@ Summaries appear as pinned rows at the top or bottom of the grid (table summarie
 </dg:KumikoDataGrid.TableSummaryRows>
 ```
 
+Several aggregates of one property appear together in that property's cell, in declaration order (`Sum: $1,300  |  Avg: $163`); the summary row keeps its one-line height, so make the column wide enough for them. A property that has no column, or a hidden one, can still be aggregated, and property names match case-insensitively.
+
 ### Group summaries (code)
 
 ```csharp
-kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
+kumiko.DataSource.AddGroupSummaryRow(new GroupSummaryRow("Totals")
 {
+    Title = "Total",
+    Levels = GroupSummaryLevels.All, // after every group level; Innermost (the default) only after the innermost
     Columns =
     {
         new SummaryColumnDescription { PropertyName = "Salary", SummaryType = SummaryType.Sum,   Format = "C0" },
@@ -530,9 +535,13 @@ kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
 });
 ```
 
+With `Levels = All` each group, outer or inner, gets a summary of all the rows beneath it. Read computed values with `GetGroupSummaries(groupPath)` or `ComputedBottomSummaries`: `Values` (display text) and `RawValues` are keyed by property, and `Aggregates` / `GetRawValue(property, type)` give each aggregate when a property has several.
+
 ### Available summary types
 
-`Sum` · `Average` · `Count` · `Min` · `Max`
+`Sum` · `Average` · `Count` · `Min` · `Max` · `Custom`
+
+`Sum` and `Average` of `decimal` values are exact (a `decimal` result); integers and floating-point numbers give a `double`. Values that are not numbers (text, dates, booleans, nulls) are skipped. `Min` and `Max` use the grid's comparer, so mixed types never throw.
 
 ---
 
@@ -798,7 +807,7 @@ Full keyboard navigation is supported on all platforms (iOS/macOS via `UIKeyComm
 | `Ctrl+A` | Select all rows |
 | Typing a character | Open the editor with that character (if `Typing` trigger enabled) |
 
-The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, and the pinned bottom summary footer. Tab stops are visible columns that are not read-only and allow tab stops (`AllowTabStop`); Tab moves to a column whose `EditTriggers` is `None` without opening its editor. When Tab or Shift+Tab has no further cell to go to, or nothing is current, the grid leaves the key unhandled and the host moves focus to the next control, so the grid is never a keyboard trap. Enter and Escape are also left to the page when the grid has nothing to do with them.
+The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, and the pinned bottom summary footer. Tab stops at every visible column that is not read-only, whatever its type (text, numeric, date, Boolean, ComboBox, picker, template, action buttons), unless the column sets `AllowTabStop = false`; Tab moves to a column whose `EditTriggers` is `None` without opening its editor. When Tab or Shift+Tab has no further cell to go to, or nothing is current, the grid leaves the key unhandled and the host moves focus to the next control, so the grid is never a keyboard trap. Enter and Escape are also left to the page when the grid has nothing to do with them.
 
 ---
 
@@ -986,7 +995,7 @@ public static MauiApp CreateMauiApp()
 }
 ```
 
-> **Note:** `RegisterTypefaceFromStream` takes ownership of the created typeface and disposes it when `SkiaFontRegistrar.Clear()` is called. The stream may be disposed after the call returns. Use `RegisterTypeface(family, typeface)` instead when you want to manage the typeface lifetime yourself.
+> **Note:** `RegisterTypefaceFromStream` takes ownership of the created typeface and disposes it when the family is replaced, unregistered (`SkiaFontRegistrar.Unregister(family)`) or cleared (`SkiaFontRegistrar.Clear()`). Changes are safe while grids are alive: every grid drops the affected family before anything is disposed, and the next frame uses the new registration. All members are thread-safe; registering at startup from a background thread is fine. The stream may be disposed after the call returns. Use `RegisterTypeface(family, typeface)` instead when you want to manage the typeface lifetime yourself.
 
 ### Using registered fonts in the grid
 
@@ -1044,7 +1053,10 @@ new KumikoColumn
 | `SkiaFontRegistrar.RegisterTypefaceFromStream(family, stream)` | Creates a typeface from a stream and registers it. Registrar owns the typeface lifetime. |
 | `SkiaFontRegistrar.RegisterTypeface(family, typeface)` | Registers an existing `SKTypeface`. Caller retains ownership. |
 | `SkiaFontRegistrar.TryGetTypeface(family, out typeface)` | Looks up a registered typeface by family name. |
+| `SkiaFontRegistrar.IsRegistered(typeface)` | Whether a typeface instance is registered under any family. |
+| `SkiaFontRegistrar.Unregister(family)` | Removes one family; disposes its typeface if the registrar owns it. |
 | `SkiaFontRegistrar.Clear()` | Removes all registrations and disposes owned typefaces. |
+| `SkiaFontRegistrar.Version` | Incremented by every change. |
 
 ---
 
@@ -1091,7 +1103,17 @@ Frame rate on a particular device depends on the device and the Skia backend, so
 
 ### SkiaDrawingContext caching
 
-`SKTypeface`, `SKFont`, and `SKPaint` instances are cached by value-type keys and disposed at frame end — no GC pressure from native Skia objects.
+`SKTypeface`, `SKFont`, and `SKPaint` instances are cached by value-type keys in a `SkiaResourceCache` that each grid keeps for its lifetime, so steady-state frames create no native Skia objects. The cache is bounded (least recently used eviction) and disposed when the grid is torn down. A custom host does the same:
+
+```csharp
+private readonly SkiaResourceCache _resources = new();   // one per control; Dispose() on teardown
+
+void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
+{
+    using var ctx = new SkiaDrawingContext(e.Surface.Canvas, _resources);
+    renderer.Render(ctx, /* ... */);
+}
+```
 
 ### Incremental collection updates
 
@@ -1219,7 +1241,8 @@ KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 | `InertialScroller` | Physics-based scroll deceleration with configurable friction |
 | `PopupManager` | Popup z-order and input priority routing (filter, ComboBox, DatePicker) |
 | `IDrawingContext` | Platform-independent drawing API: fill, stroke, text, images, clipping |
-| `SkiaDrawingContext` | `SKCanvas` implementation with 3-tier native object caching |
+| `SkiaDrawingContext` | `SKCanvas` implementation; a thin per-frame wrapper over the canvas |
+| `SkiaResourceCache` | Per-control, bounded cache of `SKPaint` / `SKFont` / `SKTypeface` reused across frames |
 | `KumikoDataGrid` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor guide and [docs/RENDERING.md](docs/RENDERING.md) for the full 18-step rendering pipeline.

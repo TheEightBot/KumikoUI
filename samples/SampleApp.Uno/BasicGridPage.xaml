@@ -91,11 +91,10 @@
                                      Format="yyyy-MM-dd"
                                      ColumnType="Date" />
 
-                <!-- BOOLEAN column — checkbox toggle (skipped during tab navigation) -->
+                <!-- BOOLEAN column — checkbox toggle (Tab stops here, Space toggles) -->
                 <core:KumikoColumn Header="Active"
                                      PropertyName="IsActive"
-                                     ColumnType="Boolean"
-                                     AllowTabStop="False" />
+                                     ColumnType="Boolean" />
 
                 <!-- PICKER column — scroll-wheel picker with items declared in XAML -->
                 <core:KumikoColumn Header="Level"
