@@ -162,9 +162,8 @@ public class LocalizationTests
         // The filter popup of a text, a numeric and a date column
         var (source, title, count, when) = EventSource();
         source.Strings = GermanStrings;
-        foreach (var column in new[] { title, count, when })
+        foreach (var popup in new[] { title, count, when }.Select(column => new DrawnFilterPopup(column, source)))
         {
-            var popup = new DrawnFilterPopup(column, source);
             new PopupManager().Show(popup, new KumikoRect(0, 0, 150, 0));
             var ctx = new RecordingDrawingContext();
             popup.OnDraw(ctx);
