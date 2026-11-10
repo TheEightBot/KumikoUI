@@ -86,6 +86,27 @@ public class RenderBenchmarks
     [Benchmark]
     public void Render_30x10_Featured() => Render(_featured);
 
+    /// <summary>
+    /// A scrolling frame: the plain grid drawn at one of 200 offsets (a row and 7 px further each time, so every
+    /// frame reveals one new row and only the display text cache's misses allocate), then wrapping around.
+    /// </summary>
+    [Benchmark]
+    public void Render_30x10_Scrolling()
+    {
+        _scrollStep = (_scrollStep + 1) % 200;
+        _plain.Scroll.OffsetY = _scrollStep * (_plain.Style.RowHeight + 7);
+        Render(_plain);
+    }
+
+    private int _scrollStep;
+
+    private readonly KumikoRenderer _statsRenderer = new() { ShowFrameStats = true };
+
+    /// <summary>The plain frame with the frame-time overlay on; the overlay's own cost is the difference to <c>Render_30x10_Plain</c>.</summary>
+    [Benchmark]
+    public void Render_30x10_Plain_FrameStatsOn() =>
+        _statsRenderer.Render(_ctx, _plain.Source, _plain.Scroll, _plain.Selection, _plain.Style);
+
     private void Render(Grid grid) =>
         _renderer.Render(_ctx, grid.Source, grid.Scroll, grid.Selection, grid.Style);
 
