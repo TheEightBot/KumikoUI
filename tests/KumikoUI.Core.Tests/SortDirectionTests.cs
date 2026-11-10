@@ -218,14 +218,16 @@ public class SortDirectionTests
         h.Source.ToggleSort(active);
         var arrow = h.Render().Lines.Where(l => l.Color == h.Style.SortIndicatorColor).ToList();
         Assert.Equal(3, arrow.Count);
-        Assert.Single(arrow, l => l.Y1 == 17f && l.Y2 == 17f);
+        Assert.Single(arrow, l => Near(l.Y1, 17f) && Near(l.Y2, 17f));
 
         // Unchecked first is ascending: flat edge at the bottom (y 23).
         h.Source.ToggleSort(active);
         arrow = h.Render().Lines.Where(l => l.Color == h.Style.SortIndicatorColor).ToList();
         Assert.Equal(3, arrow.Count);
-        Assert.Single(arrow, l => l.Y1 == 23f && l.Y2 == 23f);
+        Assert.Single(arrow, l => Near(l.Y1, 23f) && Near(l.Y2, 23f));
     }
+
+    private static bool Near(float a, float b) => Math.Abs(a - b) < 0.01f;
 
     // ── Filter popup ──────────────────────────────────────────────
 
@@ -280,9 +282,9 @@ public class SortDirectionTests
         var requested = new List<KumikoSortDirection>();
         popup.SortRequested += requested.Add;
 
-        foreach (var label in new[] { "Sort Checked First", "Sort Unchecked First" })
+        foreach (var rect in new[] { "Sort Checked First", "Sort Unchecked First" }
+                     .Select(label => ctx.Texts.Single(t => t.Text == label).Rect))
         {
-            var rect = ctx.Texts.Single(t => t.Text == label).Rect;
             float x = rect.X + rect.Width / 2, y = rect.Y + rect.Height / 2;
             manager.HandlePointer(new KumikoPointerEventArgs { X = x, Y = y, Action = InputAction.Pressed });
             manager.HandlePointer(new KumikoPointerEventArgs { X = x, Y = y, Action = InputAction.Released });
