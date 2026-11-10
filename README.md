@@ -447,6 +447,18 @@ kumiko.DataSource.ClearGroupDescriptions();
 
 Group summaries (aggregate values per group) are declared with `AddGroupSummaryRow()` — see [Summaries](#-summaries) below.
 
+### Sticky group headers
+
+While a grouped grid scrolls, the header of the group the top rows belong to stays pinned at the top of the data area (below the column header and any top summaries), so you always see which group you are in (#174). With nested grouping, each level's header stacks below the one outside it, the outermost on top. As the next group's header scrolls up, it pushes the pinned header out of the way instead of overlapping it.
+
+A pinned header works like the real one: tapping it (or its chevron) expands or collapses that group. Collapsing a pinned group scrolls the grid so the collapsed header stays where it was pinned, with the next group right below it, rather than jumping to whatever followed the group's rows. Keyboard navigation keeps the current row below the pinned headers.
+
+Sticky headers are on by default. To let group headers scroll away with their rows, turn them off on the grid's style (MAUI and Uno):
+
+```csharp
+kumiko.GridStyle.StickyGroupHeaders = false;
+```
+
 ---
 
 ## Σ Summaries

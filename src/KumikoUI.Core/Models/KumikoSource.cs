@@ -18,6 +18,14 @@ public class KumikoSource
     private IList _sourceItems = Array.Empty<object>();
     private List<int> _viewIndices = new();          // filtered + sorted mapping
     private List<FlatViewRow>? _flatView;            // null when no grouping; otherwise group headers + data rows
+
+    // The group structure of the flat view, rebuilt with it (sticky group headers, #174). For every group header in
+    // view order: its row, its level, the index (into these lists) of its enclosing group's header (-1 at level 0)
+    // and the row just after the group (the next header at the same or an outer level, or RowCount).
+    private readonly List<int> _groupHeaderRows = new();
+    private readonly List<int> _groupHeaderLevels = new();
+    private readonly List<int> _groupHeaderParents = new();
+    private readonly List<int> _groupHeaderEnds = new();
     private List<KumikoColumn> _columns = new();
     private Func<object, bool>? _filterPredicate;
 
@@ -672,6 +680,60 @@ public class KumikoSource
         if (visibleRow < 0 || visibleRow >= _flatView.Count) return null;
         var entry = _flatView[visibleRow];
         return entry.Kind == FlatRowKind.GroupHeader ? entry.GroupInfo : null;
+    }
+
+    /// <summary>
+    /// The group at <paramref name="level"/> that contains <paramref name="visibleRow"/> (the row itself when it is
+    /// that group's header): the group's header row and the row just after the group (the next header at the same or
+    /// an outer level, or <see cref="RowCount"/>). False when grouping is off, the row is out of range, or the row is
+    /// not inside a group at that level (a header of an outer level). A binary search over the group headers, so it
+    /// costs O(log groups) and allocates nothing.
+    /// </summary>
+    internal bool TryGetEnclosingGroup(int visibleRow, int level, out int headerRow, out int endRow)
+    {
+        headerRow = endRow = -1;
+        if (_flatView == null || visibleRow < 0 || visibleRow >= _flatView.Count || _groupHeaderRows.Count == 0)
+            return false;
+
+        // The last header at or before the row is the row's innermost group; walk out to the requested level.
+        int index = _groupHeaderRows.BinarySearch(visibleRow);
+        if (index < 0) index = ~index - 1;
+        while (index >= 0 && _groupHeaderLevels[index] > level)
+            index = _groupHeaderParents[index];
+        if (index < 0 || _groupHeaderLevels[index] != level || visibleRow >= _groupHeaderEnds[index])
+            return false;
+
+        headerRow = _groupHeaderRows[index];
+        endRow = _groupHeaderEnds[index];
+        return true;
+    }
+
+    /// <summary>Record the group structure of the flat view (see <see cref="TryGetEnclosingGroup"/>).</summary>
+    private void IndexGroupHeaders()
+    {
+        _groupHeaderRows.Clear();
+        _groupHeaderLevels.Clear();
+        _groupHeaderParents.Clear();
+        _groupHeaderEnds.Clear();
+        if (_flatView == null) return;
+
+        // Open groups, innermost last: a header closes every open group at its level or deeper.
+        var open = new Stack<int>();
+        for (int row = 0; row < _flatView.Count; row++)
+        {
+            var entry = _flatView[row];
+            if (entry.Kind != FlatRowKind.GroupHeader) continue;
+
+            int level = entry.GroupInfo!.Level;
+            while (open.Count > 0 && _groupHeaderLevels[open.Peek()] >= level)
+                _groupHeaderEnds[open.Pop()] = row;
+
+            _groupHeaderRows.Add(row);
+            _groupHeaderLevels.Add(level);
+            _groupHeaderParents.Add(open.Count > 0 ? open.Peek() : -1);
+            _groupHeaderEnds.Add(_flatView.Count);
+            open.Push(_groupHeaderRows.Count - 1);
+        }
     }
 
     /// <summary>
@@ -1497,6 +1559,7 @@ public class KumikoSource
             _computedGroupSummaries.Clear();
             _computedCaptionSummaries.Clear();
         }
+        IndexGroupHeaders();
 
         // Compute table-level summaries from all visible data rows
         ComputeTableSummaries();

@@ -35,6 +35,7 @@ KumikoRenderer.Render(IDrawingContext, width, height)
 │12. Draw table summaries                              │
 │13. Draw group headers (overlays)                     │
 │14. Draw group summaries (overlays)                   │
+│    Sticky group headers (pinned at the data top)     │
 │15. Draw row drag handle column                       │
 │16. Draw drag overlays                                │
 │17. Draw active editor                                │

@@ -134,6 +134,15 @@ public class KumikoStyle
     public float GroupChevronSize { get; set => Set(ref field, value); } = 14f;
     /// <summary>Height of the group-by panel at the top of the grid.</summary>
     public float GroupPanelHeight { get; set => Set(ref field, value); } = 40f;
+    /// <summary>
+    /// When true (default), the header of the group the top rows belong to stays pinned at the top of the data area
+    /// while its rows scroll beneath it; with nested grouping, each level's header stacks below the one outside it.
+    /// The next group's header pushes a pinned header up as it arrives. A pinned header works like the real one:
+    /// tapping it (or its chevron) expands or collapses that group, and keyboard navigation keeps the current row
+    /// below the pinned headers. Collapsing a pinned group scrolls so its header stays where it was pinned.
+    /// When false, group headers scroll away with their rows.
+    /// </summary>
+    public bool StickyGroupHeaders { get; set => Set(ref field, value); } = true;
     /// <summary>Background color of the group-by panel.</summary>
     public KumikoColor GroupPanelBackgroundColor { get; set => Set(ref field, value); } = new(248, 249, 252);
     /// <summary>Text color used in the group-by panel.</summary>
