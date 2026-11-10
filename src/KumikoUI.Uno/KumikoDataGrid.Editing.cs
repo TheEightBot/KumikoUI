@@ -3,6 +3,7 @@ using KumikoUI.Uno.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 
 namespace KumikoUI.Uno;
 
@@ -41,8 +42,10 @@ namespace KumikoUI.Uno;
 ///     → soft keyboard dismisses (WinUI has no Unfocus(); focusing another element is the idiom).</item>
 ///   <item>On <c>_inputProxy.KeyDown</c> (hardware keyboards): special/navigation keys are mapped and
 ///     forwarded, and <c>e.Handled=true</c> is set to prevent the TextBox from consuming Backspace,
-///     Enter, Tab, arrows, etc. This prevents Backspace from being double-handled (KeyDown handles it;
-///     the TextChanged path fires only for soft keyboards that bypass KeyDown).</item>
+///     arrows, etc. This prevents Backspace from being double-handled (KeyDown handles it;
+///     the TextChanged path fires only for soft keyboards that bypass KeyDown). Keys Core leaves
+///     unhandled are not swallowed: Tab moves focus out of the grid, and Enter/Escape/F2 reach the page
+///     (see <c>InputMapping.GetProxyKeyOutcome</c>).</item>
 ///   <item>On <c>_inputProxy.TextChanged</c> (soft keyboards): the sentinel-diff algorithm extracts
 ///     any newly typed characters or detects Backspace, forwards to Core, then resets the proxy.</item>
 /// </list>
@@ -217,9 +220,54 @@ public partial class KumikoDataGrid
             return; // a typed space inside an edit → let TextChanged type it
         }
 
-        HandleEditKey(key);
-        e.Handled = true;
+        var evt = HandleEditKey(key);
+        // Keys Core leaves unhandled must not be swallowed here, or the grid becomes a keyboard trap: an
+        // unhandled Tab (no current cell, or past the last/first tab stop) moves focus out of the grid, and an
+        // unhandled Enter/Escape/F2 reaches the page. Caret and text keys stay handled to protect the sentinel.
+        switch (InputMapping.GetProxyKeyOutcome(key, evt.Handled))
+        {
+            case InputMapping.ProxyKeyOutcome.MoveFocusOut:
+                MoveFocusOutOfGrid(backwards: evt.HasShift);
+                e.Handled = true;
+                break;
+            case InputMapping.ProxyKeyOutcome.PassToPage:
+                break;
+            default:
+                e.Handled = true;
+                break;
+        }
+        // Even when unhandled, a head may still echo the key's text form into the TextBox: drop it once.
         _keyHandledOnKeyDown = key is KumikoKey.Tab or KumikoKey.Enter ? key : KumikoKey.None;
+    }
+
+    /// <summary>
+    /// Moves keyboard focus to the next (previous when <paramref name="backwards"/>) tab stop outside this grid.
+    /// The grid and its hidden proxy <c>TextBox</c> are both tab stops, so focus is stepped until it leaves the
+    /// grid; the loop is bounded so a page whose only tab stops are the grid's can't spin.
+    /// </summary>
+    private void MoveFocusOutOfGrid(bool backwards)
+    {
+        var root = XamlRoot;
+        if (root?.Content is null) return;
+
+        var direction = backwards ? FocusNavigationDirection.Previous : FocusNavigationDirection.Next;
+        var options = new FindNextElementOptions { SearchRoot = root.Content };
+        for (int step = 0; step < 3; step++)
+        {
+            if (!FocusManager.TryMoveFocus(direction, options)) return;
+            if (FocusManager.GetFocusedElement(root) is not DependencyObject focused || !IsWithinGrid(focused))
+                return;
+        }
+    }
+
+    /// <summary>Whether <paramref name="element"/> is this grid or one of its descendants.</summary>
+    private bool IsWithinGrid(DependencyObject element)
+    {
+        for (DependencyObject? current = element; current != null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (ReferenceEquals(current, this)) return true;
+        }
+        return false;
     }
 
     // ── Core dispatch helpers ─────────────────────────────────────
@@ -237,8 +285,11 @@ public partial class KumikoDataGrid
         _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
     }
 
-    /// <summary>Dispatch a command key to Core's HandleKey (navigation / action path).</summary>
-    private void HandleEditKey(KumikoKey key)
+    /// <summary>
+    /// Dispatch a command key to Core's HandleKey (navigation / action path). Returns the event, whose
+    /// <see cref="KumikoKeyEventArgs.Handled"/> says whether Core used the key.
+    /// </summary>
+    private KumikoKeyEventArgs HandleEditKey(KumikoKey key)
     {
         var evt = new KumikoKeyEventArgs
         {
@@ -247,5 +298,6 @@ public partial class KumikoDataGrid
             IsKeyDown = true,
         };
         _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
+        return evt;
     }
 }

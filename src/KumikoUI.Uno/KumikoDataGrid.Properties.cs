@@ -184,6 +184,27 @@ public partial class KumikoDataGrid
         view.Invalidate();
     }
 
+    // ── ClearSelectionOnEmptyAreaTap ──────────────────────────────
+
+    /// <summary>Identifies the <see cref="ClearSelectionOnEmptyAreaTap"/> dependency property.</summary>
+    public static readonly DependencyProperty ClearSelectionOnEmptyAreaTapProperty =
+        DependencyProperty.Register(
+            nameof(ClearSelectionOnEmptyAreaTap), typeof(bool), typeof(KumikoDataGrid),
+            new PropertyMetadata(true, OnClearSelectionOnEmptyAreaTapChanged));
+
+    /// <summary>
+    /// When true (default), a tap on the empty part of the rows area — below the last row or right of the
+    /// last column — clears the selection and the current cell.
+    /// </summary>
+    public bool ClearSelectionOnEmptyAreaTap
+    {
+        get => (bool)GetValue(ClearSelectionOnEmptyAreaTapProperty);
+        set => SetValue(ClearSelectionOnEmptyAreaTapProperty, value);
+    }
+
+    private static void OnClearSelectionOnEmptyAreaTapChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((KumikoDataGrid)d)._selection.ClearSelectionOnEmptyAreaTap = (bool)e.NewValue;
+
     // ── RowHeight ─────────────────────────────────────────────────
 
     /// <summary>Identifies the <see cref="RowHeight"/> dependency property.</summary>

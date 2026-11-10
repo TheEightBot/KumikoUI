@@ -341,6 +341,23 @@ public class KumikoDataGrid : Grid
         set => SetValue(GridSelectionModeProperty, value);
     }
 
+    // ── ClearSelectionOnEmptyAreaTap ──
+
+    /// <summary>Identifies the <see cref="ClearSelectionOnEmptyAreaTap"/> bindable property.</summary>
+    public static readonly BindableProperty ClearSelectionOnEmptyAreaTapProperty = BindableProperty.Create(
+        nameof(ClearSelectionOnEmptyAreaTap), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) => ((KumikoDataGrid)b)._selection.ClearSelectionOnEmptyAreaTap = (bool)n);
+
+    /// <summary>
+    /// When true (default), a tap on the empty part of the rows area — below the last row or right of the
+    /// last column — clears the selection and the current cell.
+    /// </summary>
+    public bool ClearSelectionOnEmptyAreaTap
+    {
+        get => (bool)GetValue(ClearSelectionOnEmptyAreaTapProperty);
+        set => SetValue(ClearSelectionOnEmptyAreaTapProperty, value);
+    }
+
     // ── IsReadOnly ──
 
     /// <summary>Identifies the <see cref="IsReadOnly"/> bindable property.</summary>
@@ -1232,6 +1249,8 @@ public class KumikoDataGrid : Grid
             _nativeKeyInput.BackspaceDeleted += OnNativeBackspace;
             _nativeKeyInput.KeyPressed += OnNativeKeyPress;
             _nativeKeyInput.TabKeyReceived += OnNativeTabKey;
+            // Tab past the last (first) tab stop is left to UIKit so focus can leave the grid.
+            _nativeKeyInput.CanHandleTab = backwards => _inputController.WouldHandleTab(_selection, _dataSource, backwards);
             _nativeKeyInput.NavigationKeyReceived += OnNativeNavigationKey;
 
             platformView.AddSubview(_nativeKeyInput);
