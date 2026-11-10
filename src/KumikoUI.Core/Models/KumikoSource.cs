@@ -366,8 +366,9 @@ public class KumikoSource
 
         // Drop the display text of the previous items (and the references to them)
         InvalidateCellText();
-        foreach (var col in _columns)
-            if (ReferenceEquals(col.TextCache?.Owner, this)) col.TextCache = null;
+        // Cold path (items replaced), so LINQ is fine here.
+        foreach (var col in _columns.Where(c => ReferenceEquals(c.TextCache?.Owner, this)))
+            col.TextCache = null;
 
         RequestRebuild();
     }
