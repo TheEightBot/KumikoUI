@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using KumikoUI.Core.Models;
 using System.Windows.Input;
 
 namespace SampleApp.Maui;
@@ -46,10 +49,59 @@ public partial class MvvmActionsPage : ContentPage
 /// that raise events — the View (page code-behind) handles UI concerns such as
 /// showing confirmation dialogs and pushing modal pages.
 /// </summary>
-public class MvvmActionsViewModel
+public class MvvmActionsViewModel : INotifyPropertyChanged
 {
+    private Employee? _selectedEmployee;
+    private string _lastChange = "No selection change yet";
+
     /// <summary>The collection bound to the KumikoDataGrid.</summary>
     public ObservableCollection<Employee> Employees { get; } = new();
+
+    /// <summary>Two-way bound to the grid's <c>SelectedItem</c>.</summary>
+    public Employee? SelectedEmployee
+    {
+        get => _selectedEmployee;
+        set
+        {
+            if (ReferenceEquals(_selectedEmployee, value)) return;
+            _selectedEmployee = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectionSummary));
+        }
+    }
+
+    /// <summary>The grid's <c>SelectedItems</c>: the grid selects what is in it and keeps it up to date.</summary>
+    public ObservableCollection<Employee> SelectedEmployees { get; } = new();
+
+    /// <summary>Selected name and count, shown above the grid.</summary>
+    public string SelectionSummary =>
+        $"Selected: {SelectedEmployee?.Name ?? "none"}  ({SelectedEmployees.Count} selected)";
+
+    /// <summary>What the last <c>SelectionChanged</c> reported.</summary>
+    public string LastChange
+    {
+        get => _lastChange;
+        private set { _lastChange = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Bound to the grid's <c>SelectionChangedCommand</c>; receives the added and removed items.</summary>
+    public ICommand SelectionChangedCommand => new Command<KumikoSelectionChangedEventArgs>(e =>
+    {
+        LastChange = $"Last change: +{e.AddedItems.Count} / -{e.RemovedItems.Count}";
+        OnPropertyChanged(nameof(SelectionSummary));
+    });
+
+    /// <summary>Selects the first employee from code; the grid follows, even after a sort or filter.</summary>
+    public ICommand SelectFirstCommand => new Command(() => SelectedEmployee = Employees.FirstOrDefault());
+
+    /// <summary>Clears the selection from code.</summary>
+    public ICommand ClearSelectionCommand => new Command(() => SelectedEmployee = null);
+
+    /// <inheritdoc />
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
     /// <summary>Raised to request confirmation and removal of an employee.</summary>
     public event EventHandler<Employee>? DeleteRequested;

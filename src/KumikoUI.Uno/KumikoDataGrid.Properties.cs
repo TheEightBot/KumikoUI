@@ -202,6 +202,27 @@ public partial class KumikoDataGrid
         view.Invalidate();
     }
 
+    // ── ClearSelectionOnEmptyAreaTap ──────────────────────────────
+
+    /// <summary>Identifies the <see cref="ClearSelectionOnEmptyAreaTap"/> dependency property.</summary>
+    public static readonly DependencyProperty ClearSelectionOnEmptyAreaTapProperty =
+        DependencyProperty.Register(
+            nameof(ClearSelectionOnEmptyAreaTap), typeof(bool), typeof(KumikoDataGrid),
+            new PropertyMetadata(true, OnClearSelectionOnEmptyAreaTapChanged));
+
+    /// <summary>
+    /// When true (default), a tap on the empty part of the rows area — below the last row or right of the
+    /// last column — clears the selection and the current cell.
+    /// </summary>
+    public bool ClearSelectionOnEmptyAreaTap
+    {
+        get => (bool)GetValue(ClearSelectionOnEmptyAreaTapProperty);
+        set => SetValue(ClearSelectionOnEmptyAreaTapProperty, value);
+    }
+
+    private static void OnClearSelectionOnEmptyAreaTapChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((KumikoDataGrid)d)._selection.ClearSelectionOnEmptyAreaTap = (bool)e.NewValue;
+
     // ── RowHeight ─────────────────────────────────────────────────
 
     /// <summary>Identifies the <see cref="RowHeight"/> dependency property.</summary>
@@ -413,11 +434,4 @@ public partial class KumikoDataGrid
         var view = (KumikoDataGrid)d;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(view, (string)e.NewValue);
     }
-
-    /// <summary>
-    /// Shared entry point for property callbacks to request a single repaint.
-    /// Mirrors the MAUI control's <c>InvalidateSurface()</c> usage from each
-    /// <c>propertyChanged</c> handler.
-    /// </summary>
-    private void Invalidate() => _canvasView.Invalidate();
 }

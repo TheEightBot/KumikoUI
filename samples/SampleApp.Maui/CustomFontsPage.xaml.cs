@@ -239,22 +239,14 @@ internal sealed class IconFontCellRenderer : ICellRenderer
     }
 
     /// <inheritdoc />
-    public void Render(
-        IDrawingContext ctx,
-        KumikoRect cellRect,
-        object? value,
-        string displayText,
-        KumikoColumn column,
-        KumikoStyle style,
-        bool isSelected,
-        KumikoCellStyle? cellStyle = null)
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
     {
-        if (string.IsNullOrEmpty(displayText))
+        if (string.IsNullOrEmpty(cell.DisplayText))
             return;
 
-        _paint.Color = isSelected ? style.SelectionTextColor : style.CellTextColor;
+        _paint.Color = cell.IsSelected ? cell.Style.SelectionTextColor : cell.Style.CellTextColor;
 
-        ctx.DrawTextInRect(displayText, cellRect, _paint,
+        ctx.DrawTextInRect(cell.DisplayText, cell.Bounds, _paint,
             KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
     }
 }

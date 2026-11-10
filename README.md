@@ -49,6 +49,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 - [Keyboard Navigation](#-keyboard-navigation)
 - [Row Drag & Drop](#-row-drag--drop)
 - [Theming & Styling](#-theming--styling)
+- [Host Properties, Commands & Events](#-host-properties-commands--events)
 - [Custom Fonts](#-custom-fonts)
 - [Scrolling & Performance](#-scrolling--performance)
 - [Live Data](#-live-data)
@@ -151,6 +152,8 @@ builder
 
 ---
 
+> **iOS and Mac Catalyst:** current Apple OS versions (macOS 27 and iOS 27 with the Xcode 27 toolchain) terminate an app at launch if it has not adopted the UIScene lifecycle. New .NET MAUI templates already include it: a `UIApplicationSceneManifest` in `Platforms/iOS/Info.plist` and `Platforms/MacCatalyst/Info.plist`, and a `SceneDelegate` class deriving from `MauiUISceneDelegate`. If your app was created from an older template, copy these from a fresh `dotnet new maui`. See `samples/SampleApp.Maui/Platforms` for a working setup.
+
 ## 📋 Column Types
 
 Each column is a `KumikoColumn` with a `ColumnType` that controls both the read-only cell renderer and the inline editor.
@@ -196,6 +199,40 @@ Each column is a `KumikoColumn` with a `ColumnType` that controls both the read-
                      IsReadOnly="True"
                      AllowTabStop="False" />
 ```
+
+### Custom cell renderers
+
+Implement `ICellRenderer` to draw a column's cells yourself, and set it as the column's `CustomCellRenderer` (or register it for a column type with `KumikoRenderer.SetCellRenderer`). The grid calls `Render` for every visible cell on every frame, passing a `CellRenderContext` by reference:
+
+| Member | Meaning |
+|---|---|
+| `Bounds` | The rectangle to draw in (the cell minus its horizontal padding) |
+| `Row` | The visible row index |
+| `Value`, `DisplayText` | The raw value, and its text formatted with the column's `Format` in the source's culture |
+| `Column`, `Style` | The column and the grid style |
+| `CellStyle` | The cell's effective style overrides (column style merged with the resolvers'), or `null` |
+| `IsSelected` | Whether the row is selected |
+| `Paints` | The grid's shared `PaintCache` (cell text, checkbox, grid line, selection paints and more) |
+| `TextPaint`, `TextAlignment` | The paint and alignment for the cell's text, with the cell style's overrides applied |
+
+```csharp
+public sealed class StatusDotRenderer : ICellRenderer
+{
+    // Created once and reused: only the color changes per cell
+    private readonly KumikoPaint _dot = new() { IsAntiAlias = true };
+
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
+    {
+        _dot.Color = cell.Value is true ? new KumikoColor(40, 167, 70) : new KumikoColor(220, 53, 69);
+        var b = cell.Bounds;
+        ctx.FillRoundRect(new KumikoRect(b.X, b.Y + b.Height / 2 - 5, 10, 10), 5, _dot);
+        ctx.DrawTextInRect(cell.DisplayText, new KumikoRect(b.X + 16, b.Y, b.Width - 16, b.Height),
+            cell.TextPaint, cell.TextAlignment, KumikoVerticalAlignment.Center);
+    }
+}
+```
+
+Keep `Render` free of allocations, as the built-in renderers are: draw with `cell.Paints` and `cell.TextPaint`, or with paints and fonts the renderer creates once, and don't create a `KumikoPaint`, `KumikoFont` or string per call. The context's `CellStyle`, `TextPaint` and `Paints` may be reused for the next cell, so read them during the call and don't keep or modify them.
 
 ---
 
@@ -392,7 +429,20 @@ Filters are applied immediately on close and stacked across columns. Remove a fi
 
 ## 🗂️ Grouping
 
-Add one or more `GroupDescription` objects to enable a collapsible group hierarchy with an interactive drag-and-drop group panel above the header.
+Add one or more `GroupDescription` objects to enable a collapsible group hierarchy with an interactive drag-and-drop group panel above the header. In XAML (both hosts), declare them on `GroupDescriptions`; the collection is kept in sync with the data source and can be changed at runtime:
+
+```xml
+<dg:KumikoDataGrid.GroupDescriptions>
+    <core:GroupDescription PropertyName="Department" />
+    <core:GroupDescription PropertyName="Level" />
+</dg:KumikoDataGrid.GroupDescriptions>
+```
+
+or from code, either through the collection or the data source:
+
+```csharp
+kumiko.GroupDescriptions.Add(new GroupDescription("Department"));
+```
 
 ```csharp
 kumiko.DataSource.AddGroupDescription(new GroupDescription("Department"));
@@ -412,7 +462,7 @@ Remove grouping:
 kumiko.DataSource.ClearGroupDescriptions();
 ```
 
-Group summaries (aggregate values per group) are declared with `AddGroupSummaryRow()` — see [Summaries](#-summaries) below.
+Group summaries (aggregate values per group) are declared in the `GroupSummaryRows` collection (or with `AddGroupSummaryRow()`) — see [Summaries](#-summaries) below. `GroupDescriptions` and `GroupSummaryRows` replace whatever grouping was set on `DataSource` directly, so use one or the other.
 
 ---
 
@@ -521,6 +571,16 @@ Each column can override the grid-level `EditTriggers` independently via its own
 
 Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column without making it fully read-only via `IsReadOnly`.
 
+### Boolean cells
+
+A Boolean cell toggles in place instead of opening an editor:
+- a single tap on the check box toggles it; a tap elsewhere in the cell only selects, unless the column has the `SingleTap` trigger, in which case any tap in the cell toggles;
+- a double-tap toggles once: the second tap toggles with the `DoubleTap` trigger only when the first tap didn't;
+- a long press toggles with the `LongPress` trigger, and `Space` toggles the current Boolean cell;
+- a column that is read-only or has `EditTriggers="None"` never toggles.
+
+A toggle goes through the same validation as an edit (see [Validation](#validation)).
+
 ### Edit text selection
 
 ```xml
@@ -534,7 +594,7 @@ Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column
 ### Commit / cancel
 
 - **Enter** — commit and move to the next row
-- **Tab / Shift+Tab** — commit and move to the next/previous editable cell
+- **Tab / Shift+Tab** — commit and move to the next/previous editable cell; at the last (first) one, commit and let focus leave the grid
 - **Escape** — cancel and restore the original value
 
 An open edit belongs to its item and column, not to a row number. If the rows move underneath it (a background collection change, a programmatic sort or filter), the editor moves with the item and the commit writes to that item; if the item is filtered out, collapsed or removed, the edit is canceled. Tapping a header to sort, opening a filter, toggling a group or starting a drag commits the edit first; when the value is invalid the gesture is ignored and the editor stays open with the error. The editor follows its cell while the grid scrolls and is hidden while the cell is out of view.
@@ -652,6 +712,8 @@ source.Strings = KumikoStrings.Default with
 
 Selection is by row and tracks **items**, not row numbers: after a sort, filter, regroup or collection change the same items stay selected (items that are filtered out or removed leave the selection), and the current cell stays on its item and column. Group header and summary rows are never selected; Ctrl+A and Shift ranges skip them. Cell selection is planned for 1.x (#108).
 
+A tap on the empty part of the rows area (below the last row or right of the last column) commits an open edit and clears the selection and the current cell. Set `ClearSelectionOnEmptyAreaTap="False"` to keep the selection.
+
 ### Reading and changing selections (code)
 
 ```csharp
@@ -671,6 +733,29 @@ selection.SelectionChanged += (_, e) =>
 };
 ```
 
+### Selection in MVVM
+
+Both hosts (MAUI and Uno) expose the selection as bindable properties, so a view model never reads row indices:
+
+```xml
+<dg:KumikoDataGrid ItemsSource="{Binding Employees}"
+                   SelectedItem="{Binding SelectedEmployee, Mode=TwoWay}"
+                   SelectedItems="{Binding SelectedEmployees, Mode=OneWay}"
+                   SelectedIndex="{Binding SelectedRow, Mode=TwoWay}"
+                   SelectionChangedCommand="{Binding SelectionChangedCommand}" />
+```
+
+| Property / event | Meaning |
+|---|---|
+| `SelectedItem` (two-way) | The primary selected item: the current cell's item while it is selected, otherwise the item selected last; null when nothing is selected. Setting it selects only that item and moves the current cell to it. |
+| `SelectedItems` (`IList`) | The selected items. By default an `ObservableCollection<object>` the grid owns and keeps in sync. Bind your own list to have the grid select its items and keep it updated; if it implements `INotifyCollectionChanged`, adding or removing items selects and deselects in the grid. Set null to go back to the owned collection. |
+| `SelectedIndex` (two-way) | The visible row of `SelectedItem`, or -1; it follows the item through sort and filter. Setting it selects the item at that row. |
+| `CurrentCell` (two-way) | The keyboard-focus cell as a `CellPosition` (visible row and column). |
+| `SelectionChanged` | `KumikoSelectionChangedEventArgs` with `AddedItems` and `RemovedItems`; the properties above are already up to date. |
+| `SelectionChangedCommand` | Executed on every selection change with `SelectionChangedCommandParameter`, or the event arguments when that is null. |
+
+Selection is by item, so all of this keeps working after a sort, filter or regroup. Setting `SelectedItem` to an item that is not visible, or any value in `None` mode, leaves the selection empty. A change made on one side is applied to the other without echoing back, so two-way bindings do not loop. On Uno, set `Mode=TwoWay` explicitly (WinUI bindings default to one-way).
+
 ---
 
 ## ⌨️ Keyboard Navigation
@@ -679,15 +764,20 @@ Full keyboard navigation is supported on all platforms (iOS/macOS via `UIKeyComm
 
 | Key | Action |
 |---|---|
-| `Arrow keys` | Move selection one cell/row |
-| `Tab` | Move to next editable cell (wraps rows) |
-| `Shift+Tab` | Move to previous editable cell |
-| `Enter` | Commit edit / open edit on selected cell |
-| `Escape` | Cancel edit |
+| `Arrow keys` | Move the current cell one cell/row (`Shift` extends the row selection) |
+| `Tab` | Move to the next editable cell (wraps rows) and edit it; past the last one, focus leaves the grid |
+| `Shift+Tab` | Move to the previous editable cell and edit it; before the first one, focus leaves the grid |
+| `Enter` | Commit the edit and move down / open the editor on the current cell (if `F2Key` trigger enabled) |
+| `Escape` | Cancel the edit / clear the selection |
 | `F2` | Open inline editor (if `F2Key` trigger enabled) |
+| `Space` | Toggle the current Boolean cell / toggle the current row's selection |
 | `Home` / `End` | First / last cell in row |
 | `Ctrl+Home` / `Ctrl+End` | First / last cell in grid |
-| `Page Up` / `Page Down` | Scroll one viewport height |
+| `Page Up` / `Page Down` | Move one page of visible rows |
+| `Ctrl+A` | Select all rows |
+| Typing a character | Open the editor with that character (if `Typing` trigger enabled) |
+
+The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, and the pinned bottom summary footer. Tab stops are visible columns that are not read-only and allow tab stops (`AllowTabStop`); Tab moves to a column whose `EditTriggers` is `None` without opening its editor. When Tab or Shift+Tab has no further cell to go to, or nothing is current, the grid leaves the key unhandled and the host moves focus to the next control, so the grid is never a keyboard trap. Enter and Escape are also left to the page when the grid has nothing to do with them.
 
 ---
 
@@ -695,9 +785,15 @@ Full keyboard navigation is supported on all platforms (iOS/macOS via `UIKeyComm
 
 Rows can be reordered by the user via two modes.
 
+Both modes are bindable on the control (`ShowRowDragHandle`, `AllowRowDragDrop`) and `RowReordered` reports the move:
+
+```xml
+<dg:KumikoDataGrid ShowRowDragHandle="True" RowReordered="OnRowReordered" />
+```
+
 ### Drag handle column
 
-A dedicated grab-handle column appears as the first (or last) column:
+A dedicated grab-handle column appears as the first (or last) column; to change its side or size, use the style:
 
 ```csharp
 var style = kumiko.GridStyle;
@@ -778,6 +874,64 @@ Style resolution cascades: **per-cell resolver → column `KumikoCellStyle` → 
 
 ---
 
+## 🧰 Host Properties, Commands & Events
+
+Everything below exists on both hosts with the same name and default: `KumikoUI.Maui.KumikoDataGrid` (bindable properties) and `KumikoUI.Uno.KumikoDataGrid` (dependency properties). On Uno, set `Mode=TwoWay` explicitly where a binding should write back. Color properties use each host's color type (`Microsoft.Maui.Graphics.Color` on MAUI, `Windows.UI.Color` on Uno) and map to `KumikoColor`.
+
+### Properties
+
+| Property | Type | Default | Meaning |
+|---|---|---|---|
+| `ItemsSource` | `IEnumerable` | null | The rows; an `INotifyCollectionChanged` source is followed. |
+| `Columns` | `ObservableCollection<KumikoColumn>` | empty | Column definitions (the XAML content property). |
+| `TableSummaryRows` | `ObservableCollection<TableSummaryRow>` | empty | Pinned table summary rows. |
+| `GroupDescriptions` | `ObservableCollection<GroupDescription>` | empty | Grouping, outermost first; synced to `DataSource`. |
+| `GroupSummaryRows` | `ObservableCollection<GroupSummaryRow>` | empty | Summary rows after each group; synced to `DataSource`. |
+| `GridSelectionMode` | `KumikoSelectionMode` | `Extended` | None, Single, Multiple or Extended. |
+| `SelectedItem`, `SelectedItems`, `SelectedIndex`, `CurrentCell` | see [Selection in MVVM](#selection-in-mvvm) | | Two-way selection state. |
+| `FrozenRowCount` | `int` | 0 | Top rows frozen while scrolling. |
+| `RowHeight`, `HeaderHeight` | `double` | 36, 40 | Row and header heights. |
+| `IsReadOnly` | `bool` | false | Disables editing (not yet enforced by the host). |
+| `AllowSorting`, `AllowFiltering` | `bool` | true | Header sort and filter affordances (not yet enforced by the host). |
+| `EditTriggers` | `EditTrigger` | `Default` | Gestures that start editing. |
+| `EditTextSelectionMode` | `EditTextSelectionMode` | `SelectAll` | Text selection when editing starts. |
+| `DismissKeyboardOnEnter` | `bool` | true | Enter commits and dismisses the keyboard. |
+| `CellValidator` | `Func<int, int, object?, CellValidationResult>` | null | Validates a converted value before it is committed (row, column, value). |
+| `ShowHorizontalGridLines` | `bool?` | null (style: on) | Lines between rows. |
+| `ShowVerticalGridLines` | `bool?` | null (style: on) | Lines between columns. |
+| `AlternateRowBackground` | `Color?` | null (style) | Color of alternate rows; setting it also turns shading on. |
+| `AllowRowDragDrop` | `bool?` | null (style: off) | Drag a row from any cell to reorder. |
+| `ShowRowDragHandle` | `bool?` | null (style: off) | Drag handle on each row. |
+| `Theme` | `KumikoThemeMode` | `Light` | Built-in theme preset (a plain property, not bindable). |
+| `GridStyle` | `KumikoStyle` | a light style | The full style (a plain property, not bindable). |
+| `ScrollSettings` | `ScrollSettings` | defaults | Scroll and inertia settings (a plain property). |
+| `GridDescription` | `string` | "Data grid" | Accessible description. |
+
+### Commands
+
+Each command is executed with the event arguments as its parameter (`SelectionChangedCommand` also accepts `SelectionChangedCommandParameter`).
+
+| Command | Parameter | Executed |
+|---|---|---|
+| `RowTappedCommand` | `RowTappedEventArgs` | A row was tapped. |
+| `CellValueChangedCommand` | `CellValueChangedEventArgs` | An edit changed a cell value. |
+| `SortChangedCommand` | `SortColumnsChangedEventArgs` | The sort changed. |
+| `SelectionChangedCommand` | `KumikoSelectionChangedEventArgs` | The selection changed. |
+
+### Events
+
+`RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed` (`CellValidationEventArgs`), `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `ColumnReordered`, `ColumnResized` and `SelectionChanged`. They forward to the matching event on `DataSource`, `InputController` or `EditSession`, which stay available for anything not listed.
+
+### Precedence: explicit properties versus style and theme
+
+`ShowHorizontalGridLines`, `ShowVerticalGridLines`, `AlternateRowBackground`, `AllowRowDragDrop` and `ShowRowDragHandle` are nullable. Null leaves the value to `GridStyle` / `Theme`; a value overrides it. Setting one writes it into the current style immediately, and assigning `GridStyle` or `Theme` afterwards re-applies every explicit value to the new style, so an explicit property wins over the theme in either order. The values are written into the style instance you assign, and setting a property back to null stops overriding but does not restore the earlier value until the next style or theme assignment. Everything else in `KumikoStyle` (colors, fonts, line widths) is set on the style as shown in [Custom style](#custom-style).
+
+### Repainting
+
+`Invalidate()` repaints the grid from its current state without rebuilding the view; it is safe to call from any thread. Use it after changing something the grid cannot observe, such as a style object you hold. `DataSource.Refresh()` is only needed when the data itself changed behind the grid's back.
+
+---
+
 ## 🔤 Custom Fonts
 
 `SkiaFontRegistrar` (in `KumikoUI.SkiaSharp`) is a static registry for custom `SKTypeface` instances. Register any TrueType or OpenType font by a family name string, and `SkiaDrawingContext` will resolve it by that name whenever a `KumikoFont` requests that family — bypassing the system font manager entirely.
@@ -833,18 +987,16 @@ Store the Unicode code-point string as the cell value and render it with a custo
 // Renderer that draws cell text using a named icon-font typeface
 public class IconFontCellRenderer(string fontFamily, float fontSize) : ICellRenderer
 {
-    public void Render(IDrawingContext ctx, KumikoRect cellRect, object? value,
-        string displayText, KumikoColumn column,
-        KumikoStyle style, bool isSelected, KumikoCellStyle? cellStyle = null)
-    {
-        if (string.IsNullOrEmpty(displayText)) return;
+    // Created once and reused: only the color changes per cell
+    private readonly KumikoPaint _paint = new() { Font = new KumikoFont(fontFamily, fontSize), IsAntiAlias = true };
 
-        ctx.DrawTextInRect(displayText, cellRect, new KumikoPaint
-        {
-            Color       = isSelected ? style.SelectionTextColor : style.CellTextColor,
-            Font        = new KumikoFont(fontFamily, fontSize),
-            IsAntiAlias = true
-        }, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
+    {
+        if (string.IsNullOrEmpty(cell.DisplayText)) return;
+
+        _paint.Color = cell.IsSelected ? cell.Style.SelectionTextColor : cell.Style.CellTextColor;
+        ctx.DrawTextInRect(cell.DisplayText, cell.Bounds, _paint,
+            KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
     }
 }
 ```
@@ -892,9 +1044,15 @@ Column visibility is resolved by `KumikoLayoutEngine` walking cumulative widths 
 
 Touch-based scrolling uses **physics-based inertia** — a velocity tracker samples recent pointer deltas and the `InertialScroller` decelerates with configurable friction once the finger lifts. The deceleration is frame-normalized so it behaves consistently at any refresh rate.
 
-### PaintCache
+### Allocation-free frames
 
-~60 `KumikoPaint` objects are pre-computed once per frame from `KumikoStyle` so there are zero per-cell paint allocations during rendering.
+Once the visible data has been drawn, redrawing it allocates nothing in the managed render loop, which keeps the garbage collector out of scrolling and animation:
+
+- **PaintCache** — the `KumikoPaint` objects the grid draws with are built from `KumikoStyle` and rebuilt only when the style instance or its `Version` (incremented by every property change) changes.
+- **Display text cache** — each drawn cell's value and formatted text is cached per row and column, and read again only when the row shows another item, the item raises `PropertyChanged`, the view is rebuilt, or the culture or the column's format changes. Items that don't implement `INotifyPropertyChanged` need `KumikoSource.Refresh()` after a change (see [Live Data](#-live-data)).
+- **Cell renderers** draw with shared paints passed in `CellRenderContext` (see [Custom cell renderers](#custom-cell-renderers)).
+
+`bench/KumikoUI.Benchmarks` (`RenderBenchmarks`) measures a 30 × 10 visible grid at 0 bytes allocated per frame.
 
 ### SkiaDrawingContext caching
 
@@ -941,6 +1099,8 @@ public class Employee : INotifyPropertyChanged
 ```
 
 A change to a property that a sort, column filter, grouping or summary uses re-sorts, re-filters, regroups or recomputes; any other change only repaints. With a `SetFilter` predicate set, every change re-filters, since the predicate may read any property. A `null` or empty property name means every property changed. Items added to or removed from an `ObservableCollection` honor the active filters at once.
+
+The grid caches the text of the cells it draws and reads a cell again when its item raises `PropertyChanged`. If your items don't implement `INotifyPropertyChanged`, call `KumikoSource.Refresh()` after changing them; values written through the grid (editing, `SetCellValue`) always show.
 
 ### Nested property paths
 
@@ -1016,7 +1176,7 @@ KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 | `KumikoSource` | Data management: filtering, sorting, grouping, summaries, `INotifyCollectionChanged` observation |
 | `KumikoLayoutEngine` | Column width computation (Fixed / Auto / Star), visible row/column range |
 | `KumikoHitTester` | Resolves pointer coordinates to one of 14 `HitRegion` types across 3 column panes |
-| `PaintCache` | Pre-computes ~60 `KumikoPaint` objects per frame from `KumikoStyle` |
+| `PaintCache` | The `KumikoPaint` objects the grid draws with, rebuilt from `KumikoStyle` only when the style changes |
 | `KumikoInputController` | Routes pointer and keyboard events to selection, editing, resizing, drag handlers |
 | `KumikoSelectionModel` | Row/cell selection state, Single / Multiple / Extended modes |
 | `EditSession` | Cell edit lifecycle — begin, commit, cancel, validation, write-back |
@@ -1079,7 +1239,7 @@ All packages target **.NET 10** and **SkiaSharp 4.153.1**. Uno apps must also se
 |---|---|---|---|---|
 | KumikoUI.Core, KumikoUI.SkiaSharp | any .NET 10 runtime (`net10.0`) | — | any OS | unit tests in CI |
 | KumikoUI.Maui | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build |
-| KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; sample launch tracked in #121 |
+| KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; sample launch checked on macOS 27 (#121) |
 | KumikoUI.Maui | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build |
 | KumikoUI.Maui | Windows (`net10.0-windows10.0.19041.0`) | 10.0.19041 | Windows | CI build |
 | KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; sample run on macOS |

@@ -33,4 +33,23 @@ public class GroupHeaderInfo
     /// Example: "Department=Engineering" or "Department=Engineering|City=Seattle"
     /// </summary>
     public string GroupPath { get; init; } = "";
+
+    // The header row's text, composed once and reused every frame while the caption is the same.
+    private string? _label;
+    private string? _labelCaption;
+
+    /// <summary>
+    /// The text of the group header row: "Header: Display (count)", followed by the caption summary when there
+    /// is one. Composed on the first call and when <paramref name="captionText"/> changes, then reused.
+    /// </summary>
+    internal string GetLabel(string? captionText)
+    {
+        if (_label == null || !ReferenceEquals(captionText, _labelCaption))
+        {
+            string label = $"{HeaderText}: {DisplayText} ({ItemCount})";
+            _label = captionText != null ? $"{label}  —  {captionText}" : label;
+            _labelCaption = captionText;
+        }
+        return _label;
+    }
 }
