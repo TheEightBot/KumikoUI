@@ -77,7 +77,15 @@ internal sealed class KumikoValuePath
     /// says why: the conversion's message, the setter's exception message, or null when the path cannot be
     /// written at all (unknown or read-only property, null intermediate value, empty path).
     /// </summary>
-    public bool TrySetValue(object item, object? value, System.Globalization.CultureInfo culture, out string? error)
+    public bool TrySetValue(object item, object? value, System.Globalization.CultureInfo culture, out string? error) =>
+        TrySetValue(item, value, culture, KumikoUI.Core.Models.KumikoStrings.Default, out error);
+
+    /// <summary>
+    /// Writes <paramref name="value"/> at the path like
+    /// <see cref="TrySetValue(object, object?, System.Globalization.CultureInfo, out string?)"/>, with the
+    /// conversion's messages taken from <paramref name="strings"/>.
+    /// </summary>
+    public bool TrySetValue(object item, object? value, System.Globalization.CultureInfo culture, KumikoUI.Core.Models.KumikoStrings strings, out string? error)
     {
         error = null;
         if (_names.Length == 0) return false;
@@ -98,7 +106,7 @@ internal sealed class KumikoValuePath
         if (!(value is null ? !last.PropertyType.IsValueType || Nullable.GetUnderlyingType(last.PropertyType) != null
                             : last.PropertyType.IsInstanceOfType(value)))
         {
-            if (!KumikoValueConverter.TryConvert(value, last.PropertyType, culture, out value, out error))
+            if (!KumikoValueConverter.TryConvert(value, last.PropertyType, culture, strings, out value, out error))
                 return false;
         }
 
