@@ -33,6 +33,7 @@
                 <Button Content="Collapse All" Click="OnCollapseAllClicked" />
                 <Button x:Name="groupSummaryToggle" Content="Add Group Summary" Click="OnAddGroupSummaryClicked" />
                 <Button x:Name="filterToggle" Content="Filtering: ON" Click="OnToggleFilteringClicked" />
+                <Button Content="Toggle Grid Lines" Click="OnToggleGridLinesClicked" />
             </StackPanel>
         </ScrollViewer>
 
@@ -41,6 +42,9 @@
                              ItemsSource="{Binding Employees}"
                              RowHeight="34"
                              HeaderHeight="40"
+                             ShowHorizontalGridLines="True"
+                             ShowVerticalGridLines="False"
+                             AlternateRowBackground="#FFEEF4FF"
                              GridDescription="Grouped employee data grid"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">
@@ -55,6 +59,9 @@
                 <core:KumikoColumn Header="Active" PropertyName="IsActive"
                                      ColumnType="Boolean" AllowTabStop="False" />
                 <core:KumikoColumn Header="City" PropertyName="City" Width="140" />
+                <kumiko:KumikoDataGrid.GroupDescriptions>
+                    <core:GroupDescription PropertyName="Department" Header="Department" />
+                </kumiko:KumikoDataGrid.GroupDescriptions>
         </kumiko:KumikoDataGrid>
     </Grid>
 
