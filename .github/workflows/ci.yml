@@ -1,8 +1,10 @@
 name: CI
 
-# Runs on every push and pull request to main, including documentation-only changes, because the jobs
-# below are required status checks in the main-branch ruleset (.github/settings/): a path filter would
-# leave them unreported and block the pull request.
+# Runs on every push and pull request to main. The jobs below are required status checks in the main-branch
+# ruleset (.github/settings/), so the workflow itself has NO `paths` filter (a filtered-out workflow reports no
+# checks and blocks the pull request). Instead the `changes` job decides whether code changed, and every build
+# job is skipped when only documentation changed. A job skipped through its own `if` counts as passed for a
+# required check, so documentation-only pull requests stay mergeable under the same check names.
 on:
   push:
     branches: [ main ]
@@ -18,10 +20,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ─── Decide whether anything other than documentation changed ───
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read   # paths-filter lists a pull request's files through the API
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # `code` is true when any file outside the documentation patterns changed. Pushes to main compare with the
+      # previous commit; a push with no usable base (first push) counts as a code change.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!images/**'
+              - '!LICENSE'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/dependabot.yml'
+
+  # ─── Documentation-only change: nothing to build ───
+  docs-only:
+    name: Documentation-only change (no build needed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: changes
+    if: needs.changes.outputs.code != 'true'
+    steps:
+      - run: echo "Only documentation changed; the build jobs were skipped and count as passed."
+
   # ─── Build + test KumikoUI.Core and KumikoUI.SkiaSharp (platform-agnostic) ───
   build-core:
     name: Build & Test (Core + SkiaSharp)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,6 +73,8 @@ jobs:
 
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
+        with:
+          cache-nuget: 'true'
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
@@ -54,11 +99,11 @@ jobs:
 
       - name: Test
         run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
-          --no-restore -c Release --logger "trx" --results-directory TestResults
+          --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
 
       - name: Test — source generator
         run: dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
-          --no-restore -c Release --logger "trx" --results-directory TestResults
+          --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
 
       - name: Upload test results
         if: always()
@@ -80,7 +125,9 @@ jobs:
   build-maui:
     name: Build (KumikoUI.Maui — all TFMs)
     runs-on: windows-latest
-    needs: build-core
+    timeout-minutes: 45
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -91,6 +138,7 @@ jobs:
         uses: ./.github/actions/setup-dotnet
         with:
           workloads: maui
+          cache-nuget: 'true'
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Maui/KumikoUI.Maui.csproj
@@ -114,7 +162,9 @@ jobs:
   build-uno:
     name: Build & Test (KumikoUI.Uno — all heads)
     runs-on: windows-latest
-    needs: build-core
+    timeout-minutes: 45
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -125,6 +175,7 @@ jobs:
         uses: ./.github/actions/setup-dotnet
         with:
           restore-project: src/KumikoUI.Uno/KumikoUI.Uno.csproj
+          cache-nuget: 'true'
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
@@ -155,3 +206,166 @@ jobs:
         with:
           name: test-results-uno
           path: TestResults/
+
+  # ─── Core + SkiaSharp tests on the other operating systems ───
+  # Ubuntu runs in build-core above. SkiaSharp ships per-OS native binaries and text shaping/font fallback differs
+  # per platform, so the same test suite runs on Windows and macOS too.
+  test-core-os:
+    name: Test (Core + SkiaSharp — ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-15 ]   # macos-15: arm64, same image as the Apple build jobs below
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
+        with:
+          cache-nuget: 'true'
+
+      - name: Test
+        run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
+          -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-${{ matrix.os }}
+          path: TestResults/
+
+  # ─── Apple heads and samples (MAUI): iOS + Mac Catalyst need macOS and Xcode ───
+  # Runner and Xcode are pinned: macos-15 (arm64) ships Xcode 26.x, which the iOS / Mac Catalyst SDK of the pinned
+  # workload set (.github/actions/setup-dotnet) requires. Moving to macos-26 or a newer Xcode means updating both
+  # together. iOS builds target the simulator and Mac Catalyst builds skip code signing, so no certificates or
+  # provisioning profiles are needed.
+  build-apple-maui:
+    name: Build (MAUI — iOS + Mac Catalyst, library + sample)
+    runs-on: macos-15
+    timeout-minutes: 60
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+    env:
+      XCODE_VERSION: '26.0'   # Xcode_<version>.app under /Applications on the runner image
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+
+      - name: Setup .NET + MAUI workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          workloads: maui
+          cache-nuget: 'true'
+
+      - name: Build library — iOS
+        run: dotnet build src/KumikoUI.Maui/KumikoUI.Maui.csproj -f net10.0-ios -c Release
+
+      - name: Build library — Mac Catalyst
+        run: dotnet build src/KumikoUI.Maui/KumikoUI.Maui.csproj -f net10.0-maccatalyst -c Release
+
+      - name: Build sample — iOS (simulator)
+        run: dotnet build samples/SampleApp.Maui/SampleApp.Maui.csproj -f net10.0-ios -c Release
+          -p:RuntimeIdentifier=iossimulator-arm64
+
+      - name: Build sample — Mac Catalyst
+        run: dotnet build samples/SampleApp.Maui/SampleApp.Maui.csproj -f net10.0-maccatalyst -c Release
+          -p:RuntimeIdentifier=maccatalyst-arm64 -p:EnableCodeSigning=false
+
+      # Launch smoke check: starts the Mac Catalyst sample and requires it to still be running after 20 seconds.
+      # It is OFF by default because the sample only launches on current macOS once it adopts the UIScene lifecycle
+      # (#121, pull request #162); until that lands the app exits at startup and the step would fail every run.
+      # After #162 is merged, set the repository variable CATALYST_LAUNCH_SMOKE to 'true' (Settings > Secrets and
+      # variables > Actions > Variables) and, once it is stable, delete this condition.
+      - name: Launch smoke check — Mac Catalyst sample
+        if: vars.CATALYST_LAUNCH_SMOKE == 'true'
+        run: |
+          app="samples/SampleApp.Maui/bin/Release/net10.0-maccatalyst/maccatalyst-arm64/SampleApp.Maui.app"
+          "$app/Contents/MacOS/SampleApp.Maui" &
+          pid=$!
+          sleep 20
+          if kill -0 "$pid" 2>/dev/null; then
+            echo "Sample is still running after 20 seconds."
+            kill "$pid"
+          else
+            echo "::error::SampleApp.Maui exited during startup."
+            exit 1
+          fi
+
+  # ─── Apple heads and samples (Uno): iOS needs macOS and Xcode; the desktop (Skia) head is built here as well ───
+  build-apple-uno:
+    name: Build (Uno — iOS + desktop, library + sample)
+    runs-on: macos-15   # Xcode pinned below; see build-apple-maui
+    timeout-minutes: 60
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+    env:
+      XCODE_VERSION: '26.0'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+
+      - name: Setup .NET + Uno workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          restore-project: samples/SampleApp.Uno/SampleApp.Uno.csproj
+          cache-nuget: 'true'
+
+      - name: Build library — iOS
+        run: dotnet build src/KumikoUI.Uno/KumikoUI.Uno.csproj -f net10.0-ios -c Release
+
+      - name: Build library — desktop
+        run: dotnet build src/KumikoUI.Uno/KumikoUI.Uno.csproj -f net10.0-desktop -c Release
+
+      - name: Build sample — iOS (simulator)
+        run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-ios -c Release
+          -p:RuntimeIdentifier=iossimulator-arm64
+
+      - name: Build sample — desktop
+        run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-desktop -c Release
+
+  # ─── Android and WebAssembly sample heads (Linux runners have the Android SDK and the faster workload install) ───
+  build-samples-linux:
+    name: Build (Samples — Android + WebAssembly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Setup .NET + MAUI Android and Uno workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          workloads: maui-android
+          restore-project: samples/SampleApp.Uno/SampleApp.Uno.csproj
+          cache-nuget: 'true'
+
+      - name: Build sample — MAUI Android
+        run: dotnet build samples/SampleApp.Maui/SampleApp.Maui.csproj -f net10.0-android -c Release
+
+      - name: Build sample — Uno Android
+        run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-android -c Release
+
+      - name: Build sample — Uno WebAssembly
+        run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-browserwasm -c Release
