@@ -281,10 +281,14 @@ first-responder). On desktop/WASM it routes subsequent `KeyDown`/`TextChanged` e
 6. **No edit-state guard** — Core decides whether to start or continue an edit.
 
 **`OnProxyKeyDown`** (hardware keyboard path — navigation and command keys):
-Maps `e.Key` via `InputMapping.ToGridKey` and calls `HandleEditKey`; sets `e.Handled = true` for all
-mapped keys. This prevents the TextBox from also acting on Backspace (deleting sentinel), Enter
-(adding newline), Tab (moving focus), arrows (moving caret), etc., and prevents the mapped keys
-from bubbling to the grid's `OnKeyDown`.
+Maps `e.Key` via `InputMapping.ToGridKey` and calls `HandleEditKey`, then applies
+`InputMapping.GetProxyKeyOutcome(key, handledByCore)`: a key Core handled, and any caret or text key
+(Backspace, Delete, arrows, Home/End, Space, clipboard shortcuts), gets `e.Handled = true` so the TextBox
+never acts on it. A Tab that Core leaves unhandled (no current cell, or past the last/first tab stop)
+moves focus out of the grid (`MoveFocusOutOfGrid`, which steps past both the grid and the proxy, as both
+are tab stops), and an unhandled Enter, Escape or F2 is left unhandled so it reaches the page (default and
+cancel buttons) — the grid is never a keyboard trap (#45). The grid's own `OnKeyDown` ignores keys whose
+`OriginalSource` is the proxy, so a key that bubbles up is not sent to Core twice.
 
 **On `CellBeginEdit`:**
 ```csharp
@@ -313,6 +317,7 @@ else
 |---|---|
 | **Click a cell** | `OnPointerPressed` → `DispatchPointer` (Core selects cell) → `FocusKeyboardInput()` → proxy focused |
 | **Arrow / Tab / Home / End** | `OnProxyKeyDown` → `InputMapping.ToGridKey` → `HandleEditKey` → Core navigates; `e.Handled=true` blocks TextBox caret movement |
+| **Tab at the last (Shift+Tab at the first) tab stop** | Core leaves Tab unhandled → `MoveFocusOutOfGrid` → focus moves to the next (previous) control outside the grid |
 | **Type a character (type-to-edit)** | Char appears in proxy → `OnProxyTextChanged` → `HandleEditChar(ch)` → Core Typing trigger → `CellBeginEdit` → `FocusKeyboardInput()` (proxy already focused) → edit continues via same path |
 | **F2 (explicit edit start)** | `OnProxyKeyDown` → `HandleEditKey(KumikoKey.F2)` → Core → `CellBeginEdit` → `FocusKeyboardInput()` |
 | **Double-click (edit start)** | `DispatchPointer(ClickCount=2)` → Core → `CellBeginEdit` → `FocusKeyboardInput()` |

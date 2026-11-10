@@ -1,4 +1,5 @@
 using System.Globalization;
+using KumikoUI.Core.Models;
 
 namespace KumikoUI.Core.Data;
 
@@ -34,10 +35,25 @@ public static class KumikoValueConverter
     /// <param name="result">The converted value when the conversion succeeds.</param>
     /// <param name="error">A message for the user when it fails.</param>
     /// <returns>Whether the value converts.</returns>
-    public static bool TryConvert(object? value, Type targetType, CultureInfo culture, out object? result, out string? error)
+    public static bool TryConvert(object? value, Type targetType, CultureInfo culture, out object? result, out string? error) =>
+        TryConvert(value, targetType, culture, KumikoStrings.Default, out result, out error);
+
+    /// <summary>
+    /// Convert <paramref name="value"/> to <paramref name="targetType"/>, reporting failures with
+    /// <paramref name="strings"/>.
+    /// </summary>
+    /// <param name="value">The edited value: text from a text editor, or a typed value from another editor.</param>
+    /// <param name="targetType">The property type, nullable or not.</param>
+    /// <param name="culture">The culture to parse and format numbers and dates in.</param>
+    /// <param name="strings">The table the failure messages come from.</param>
+    /// <param name="result">The converted value when the conversion succeeds.</param>
+    /// <param name="error">A message for the user when it fails.</param>
+    /// <returns>Whether the value converts.</returns>
+    public static bool TryConvert(object? value, Type targetType, CultureInfo culture, KumikoStrings strings, out object? result, out string? error)
     {
         ArgumentNullException.ThrowIfNull(targetType);
         ArgumentNullException.ThrowIfNull(culture);
+        ArgumentNullException.ThrowIfNull(strings);
         result = null;
         error = null;
 
@@ -50,16 +66,16 @@ public static class KumikoValueConverter
             if (string.IsNullOrWhiteSpace(text))
             {
                 if (acceptsNull) return true;
-                error = Messages.Required;
+                error = strings.ValueRequired;
                 return false;
             }
-            return TryParse(text.Trim(), type, culture, out result, out error);
+            return TryParse(text.Trim(), type, culture, strings, out result, out error);
         }
 
         if (value is null)
         {
             if (acceptsNull) return true;
-            error = Messages.Required;
+            error = strings.ValueRequired;
             return false;
         }
 
@@ -75,29 +91,29 @@ public static class KumikoValueConverter
             return true;
         }
 
-        return TryConvertValue(value, type, culture, out result, out error);
+        return TryConvertValue(value, type, culture, strings, out result, out error);
     }
 
     // ── Text ─────────────────────────────────────────────────────
 
-    private static bool TryParse(string text, Type type, CultureInfo culture, out object? result, out string? error)
+    private static bool TryParse(string text, Type type, CultureInfo culture, KumikoStrings strings, out object? result, out string? error)
     {
         result = null;
         error = null;
 
         if (type.IsEnum)
-            return TryParseEnum(text, type, out result, out error);
+            return TryParseEnum(text, type, culture, strings, out result, out error);
 
         switch (Type.GetTypeCode(type))
         {
             case TypeCode.Boolean:
                 if (bool.TryParse(text, out var b)) { result = b; return true; }
-                error = Messages.Boolean;
+                error = strings.EnterBoolean;
                 return false;
 
             case TypeCode.Char:
                 if (text.Length == 1) { result = text[0]; return true; }
-                error = Messages.Character;
+                error = strings.EnterCharacter;
                 return false;
 
             case TypeCode.SByte:
@@ -110,20 +126,20 @@ public static class KumikoValueConverter
             case TypeCode.UInt64:
                 if (!decimal.TryParse(text, NumberStyles.Number, culture, out var whole))
                 {
-                    error = Messages.Number;
+                    error = strings.EnterNumber;
                     return false;
                 }
-                return TryToIntegral(whole, type, culture, out result, out error);
+                return TryToIntegral(whole, type, culture, strings, out result, out error);
 
             case TypeCode.Single:
                 if (double.TryParse(text, NumberStyles.Float | NumberStyles.AllowThousands, culture, out var single) &&
                     double.IsFinite(single))
                 {
-                    if (Math.Abs(single) > float.MaxValue) { error = Messages.OutOfRange; return false; }
+                    if (Math.Abs(single) > float.MaxValue) { error = strings.NumberOutOfRange; return false; }
                     result = (float)single;
                     return true;
                 }
-                error = Messages.Number;
+                error = strings.EnterNumber;
                 return false;
 
             case TypeCode.Double:
@@ -133,7 +149,7 @@ public static class KumikoValueConverter
                     result = d;
                     return true;
                 }
-                error = Messages.Number;
+                error = strings.EnterNumber;
                 return false;
 
             case TypeCode.Decimal:
@@ -142,7 +158,7 @@ public static class KumikoValueConverter
                     result = m;
                     return true;
                 }
-                error = Messages.Number;
+                error = strings.EnterNumber;
                 return false;
 
             case TypeCode.DateTime:
@@ -151,14 +167,14 @@ public static class KumikoValueConverter
                     result = dateTime;
                     return true;
                 }
-                error = Messages.Date;
+                error = strings.EnterDate;
                 return false;
         }
 
         if (type == typeof(Guid))
         {
             if (Guid.TryParse(text, out var guid)) { result = guid; return true; }
-            error = Messages.Identifier;
+            error = strings.EnterIdentifier;
             return false;
         }
 
@@ -174,7 +190,7 @@ public static class KumikoValueConverter
                 result = DateOnly.FromDateTime(withTime); // text with a time of day: keep the date
                 return true;
             }
-            error = Messages.Date;
+            error = strings.EnterDate;
             return false;
         }
 
@@ -190,7 +206,7 @@ public static class KumikoValueConverter
                 result = TimeOnly.FromTimeSpan(span);
                 return true;
             }
-            error = Messages.Time;
+            error = strings.EnterTime;
             return false;
         }
 
@@ -201,7 +217,7 @@ public static class KumikoValueConverter
                 result = offset;
                 return true;
             }
-            error = Messages.Date;
+            error = strings.EnterDate;
             return false;
         }
 
@@ -212,15 +228,15 @@ public static class KumikoValueConverter
                 result = duration;
                 return true;
             }
-            error = Messages.Duration;
+            error = strings.EnterDuration;
             return false;
         }
 
-        error = Messages.Invalid;
+        error = strings.EnterValidValue;
         return false;
     }
 
-    private static bool TryParseEnum(string text, Type type, out object? result, out string? error)
+    private static bool TryParseEnum(string text, Type type, CultureInfo culture, KumikoStrings strings, out object? result, out string? error)
     {
         if (Enum.TryParse(type, text, ignoreCase: true, out var parsed) && IsAcceptedEnumValue(type, parsed!))
         {
@@ -229,7 +245,7 @@ public static class KumikoValueConverter
             return true;
         }
         result = null;
-        error = string.Format(CultureInfo.CurrentCulture, Messages.OneOf, string.Join(", ", Enum.GetNames(type)));
+        error = string.Format(culture, strings.EnterOneOf, string.Join(", ", Enum.GetNames(type)));
         return false;
     }
 
@@ -238,20 +254,20 @@ public static class KumikoValueConverter
 
     // ── Typed values ─────────────────────────────────────────────
 
-    private static bool TryConvertValue(object value, Type type, CultureInfo culture, out object? result, out string? error)
+    private static bool TryConvertValue(object value, Type type, CultureInfo culture, KumikoStrings strings, out object? result, out string? error)
     {
         result = null;
         error = null;
 
         if (type.IsEnum)
         {
-            if (value is string name) return TryParseEnum(name, type, out result, out error);
+            if (value is string name) return TryParseEnum(name, type, culture, strings, out result, out error);
             if (Type.GetTypeCode(value.GetType()) is >= TypeCode.SByte and <= TypeCode.UInt64)
             {
                 var candidate = Enum.ToObject(type, value);
                 if (IsAcceptedEnumValue(type, candidate)) { result = candidate; return true; }
             }
-            error = string.Format(CultureInfo.CurrentCulture, Messages.OneOf, string.Join(", ", Enum.GetNames(type)));
+            error = string.Format(culture, strings.EnterOneOf, string.Join(", ", Enum.GetNames(type)));
             return false;
         }
 
@@ -267,7 +283,7 @@ public static class KumikoValueConverter
             case DateOnly date when type == typeof(DateTimeOffset): result = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue)); return true;
             case TimeSpan span when type == typeof(TimeOnly):
                 if (span >= TimeSpan.Zero && span < TimeSpan.FromDays(1)) { result = TimeOnly.FromTimeSpan(span); return true; }
-                error = Messages.Time;
+                error = strings.EnterTime;
                 return false;
             case TimeOnly time when type == typeof(TimeSpan): result = time.ToTimeSpan(); return true;
         }
@@ -282,10 +298,10 @@ public static class KumikoValueConverter
             }
             catch (OverflowException)
             {
-                error = Messages.OutOfRange;
+                error = strings.NumberOutOfRange;
                 return false;
             }
-            return TryToIntegral(number, type, culture, out result, out error);
+            return TryToIntegral(number, type, culture, strings, out result, out error);
         }
 
         if (value is IConvertible && targetCode is not (TypeCode.Object or TypeCode.Empty or TypeCode.DBNull))
@@ -296,33 +312,33 @@ public static class KumikoValueConverter
                 if (result is float f && float.IsInfinity(f) || result is double d && double.IsInfinity(d))
                 {
                     result = null;
-                    error = Messages.OutOfRange;
+                    error = strings.NumberOutOfRange;
                     return false;
                 }
                 return true;
             }
             catch (OverflowException)
             {
-                error = Messages.OutOfRange;
+                error = strings.NumberOutOfRange;
                 return false;
             }
             catch (Exception ex) when (ex is InvalidCastException or FormatException)
             {
-                error = Messages.Invalid;
+                error = strings.EnterValidValue;
                 return false;
             }
         }
 
-        error = Messages.Invalid;
+        error = strings.EnterValidValue;
         return false;
     }
 
-    private static bool TryToIntegral(decimal number, Type type, CultureInfo culture, out object? result, out string? error)
+    private static bool TryToIntegral(decimal number, Type type, CultureInfo culture, KumikoStrings strings, out object? result, out string? error)
     {
         result = null;
         if (number != decimal.Truncate(number))
         {
-            error = Messages.WholeNumber;
+            error = strings.EnterWholeNumber;
             return false;
         }
 
@@ -334,25 +350,8 @@ public static class KumikoValueConverter
         }
         catch (OverflowException)
         {
-            error = Messages.OutOfRange;
+            error = strings.NumberOutOfRange;
             return false;
         }
-    }
-
-    /// <summary>The messages shown for values that don't convert.</summary>
-    internal static class Messages
-    {
-        public const string Required = "A value is required.";
-        public const string Number = "Enter a number.";
-        public const string WholeNumber = "Enter a whole number.";
-        public const string OutOfRange = "The number is out of range.";
-        public const string Boolean = "Enter true or false.";
-        public const string Character = "Enter a single character.";
-        public const string Date = "Enter a valid date.";
-        public const string Time = "Enter a valid time.";
-        public const string Duration = "Enter a valid duration.";
-        public const string Identifier = "Enter a valid identifier.";
-        public const string OneOf = "Enter one of: {0}.";
-        public const string Invalid = "Enter a valid value.";
     }
 }
