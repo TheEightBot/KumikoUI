@@ -153,12 +153,10 @@ public class InertialScrollerTests
         scroller.TrackVelocity(100_000f, 0f, 1000L);
         scroller.TrackVelocity(100_000f, 0f, 1001L);
         scroller.StartFling();
-        if (scroller.IsActive)
-        {
-            var (dx, _) = scroller.Update(16f);
-            // At 100 px/s for 16ms = 1.6px max
-            Assert.True(Math.Abs(dx) <= 3f);
-        }
+        Assert.True(scroller.IsActive);
+        var (dx, _) = scroller.Update(16f);
+        // At 100 px/s for 16ms = 1.6px max, and it does move
+        Assert.InRange(Math.Abs(dx), 0.5f, 3f);
     }
 }
 
