@@ -124,6 +124,7 @@ public class KumikoSource
         {
             _culture = value;
             _comparer = new KumikoComparer(_culture, _stringCompareOptions);
+            InvalidateCellText();
             RequestRebuild();
         }
     }
@@ -363,6 +364,12 @@ public class KumikoSource
         // Subscribe to INotifyPropertyChanged on each item
         SubscribeToItemPropertyChanged();
 
+        // Drop the display text of the previous items (and the references to them)
+        InvalidateCellText();
+        // Cold path (items replaced), so LINQ is fine here.
+        foreach (var col in _columns.Where(c => ReferenceEquals(c.TextCache?.Owner, this)))
+            col.TextCache = null;
+
         RequestRebuild();
     }
 
@@ -436,6 +443,7 @@ public class KumikoSource
             case NotifyCollectionChangedAction.Reset:
                 UnsubscribeFromItemPropertyChanged();
                 SubscribeToItemPropertyChanged();
+                InvalidateCellText(); // the same items may now hold anything
                 break;
         }
 
@@ -508,6 +516,8 @@ public class KumikoSource
     /// </summary>
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (sender != null)
+            InvalidateCellText(sender, e.PropertyName);
         if (ItemPropertyAffectsView(e.PropertyName))
             RequestRebuild();
         else
@@ -1142,10 +1152,13 @@ public class KumikoSource
     }
 
     /// <summary>
-    /// Force a full rebuild of the sorted/filtered view.
+    /// Force a full rebuild of the sorted/filtered view, and read every drawn cell again. The grid caches each
+    /// drawn cell's display text until the item raises <see cref="INotifyPropertyChanged.PropertyChanged"/> or the
+    /// view changes, so call this after changing items that do not raise it.
     /// </summary>
     public void Refresh()
     {
+        InvalidateCellText();
         RequestRebuild();
     }
 
@@ -1196,7 +1209,10 @@ public class KumikoSource
             }
 
             if (written)
+            {
+                InvalidateCellText(item, null);
                 NotifyRedraw();
+            }
             return written;
         }
         finally
@@ -1267,6 +1283,98 @@ public class KumikoSource
     /// <see cref="Culture"/> for formattable values, otherwise <see cref="object.ToString"/>; empty for null.
     /// </summary>
     public string FormatCellValue(object? value, KumikoColumn column) => _comparer.Format(value, column.Format);
+
+    // ── Display text cache (#68) ─────────────────────────────────
+    //
+    // The renderer reads cells through GetCachedCellText, which keeps each drawn cell's value and display text
+    // (CellTextCache, one per column) so a frame that shows the same data reads, boxes and formats nothing.
+    // An entry is valid while its row still shows the same item and its stamp is current. The stamp moves on
+    // whatever can change the text of an unchanged item: a rebuild, Refresh, a collection reset, a culture
+    // change. An item's PropertyChanged and SetCellValue invalidate just that item's entries. Like the view
+    // rebuilds, the invalidation runs on the thread that raises the change, which should be the UI thread.
+
+    private int _textStamp = 1;           // 0 marks an entry stale
+    private int _textFrozenRows;          // slots 0..n-1: the frozen rows
+    private int _textRingSize = 64;       // then a ring for the scrolling rows
+    private int _textLayoutVersion;       // bumped when the slot layout changes; caches built for another are replaced
+    private CultureInfo? _textCulture;    // the culture the entries were formatted in
+
+    /// <summary>
+    /// Prepare the display text cache for a frame that draws <paramref name="frozenRows"/> frozen rows and up to
+    /// <paramref name="scrollingRows"/> scrolling rows. Call once per frame before <see cref="GetCachedCellText"/>.
+    /// </summary>
+    internal void PrepareCellTextCache(int frozenRows, int scrollingRows)
+    {
+        // Culture null means the current culture at the time of use, which may change between frames.
+        var culture = _comparer.Culture;
+        if (!ReferenceEquals(culture, _textCulture))
+        {
+            _textCulture = culture;
+            InvalidateCellText();
+        }
+
+        int ring = _textRingSize;
+        while (ring < scrollingRows * 2) ring *= 2;
+        if (frozenRows != _textFrozenRows || ring != _textRingSize)
+        {
+            _textFrozenRows = frozenRows;
+            _textRingSize = ring;
+            _textLayoutVersion++;
+        }
+    }
+
+    /// <summary>
+    /// The display text of a data cell, and its value in <paramref name="value"/>, from the display text cache:
+    /// read and formatted only when the row shows another item than when it was cached, or the entry is stale.
+    /// <paramref name="item"/> is the row's item (<see cref="GetItem"/>).
+    /// </summary>
+    internal string GetCachedCellText(int visibleRow, object item, KumikoColumn column, out object? value)
+    {
+        var cache = column.TextCache;
+        if (cache == null || !cache.IsCurrentFor(this, column, _textLayoutVersion))
+            column.TextCache = cache = new CellTextCache(this, column, _textLayoutVersion, _textFrozenRows + _textRingSize);
+
+        int slot = visibleRow < _textFrozenRows
+            ? visibleRow
+            : _textFrozenRows + (visibleRow - _textFrozenRows) % _textRingSize;
+        ref var entry = ref cache.Entries[slot];
+        if (entry.Stamp == _textStamp && ReferenceEquals(entry.Item, item))
+        {
+            value = entry.Value;
+            return entry.Text!;
+        }
+
+        value = ReadColumnValue(item, column);
+        string text = FormatCellValue(value, column);
+        entry.Item = item;
+        entry.Value = value;
+        entry.Text = text;
+        entry.Stamp = _textStamp;
+        return text;
+    }
+
+    /// <summary>Mark every cached display text stale.</summary>
+    private void InvalidateCellText()
+    {
+        if (++_textStamp == 0) _textStamp = 1;
+    }
+
+    /// <summary>
+    /// Mark the cached display text of <paramref name="item"/> stale in the columns a change of
+    /// <paramref name="propertyName"/> (null or empty: every property) can affect.
+    /// </summary>
+    private void InvalidateCellText(object item, string? propertyName)
+    {
+        foreach (var col in _columns)
+        {
+            var cache = col.TextCache;
+            if (cache == null || !ReferenceEquals(cache.Owner, this)) continue;
+            // A value accessor or the item itself (empty path) may depend on any property.
+            if (string.IsNullOrEmpty(propertyName) || col.ValueAccessor != null
+                || string.IsNullOrEmpty(col.PropertyName) || PropertyPathAffected(col.PropertyName, propertyName))
+                cache.Invalidate(item);
+        }
+    }
 
     /// <summary>
     /// Attempts an incremental update of <c>_viewIndices</c> for a single-item Add or Remove event when no
@@ -1368,6 +1476,7 @@ public class KumikoSource
     /// <summary>Rebuild the visible rows from the source items and the current state. Raises nothing.</summary>
     private void RebuildCore()
     {
+        InvalidateCellText();
         _viewIndices.Clear();
         var filters = PrepareFilters();
 

@@ -296,8 +296,7 @@ public class EditOrderingTests
     {
         public CellEditorContext? Seen { get; private set; }
 
-        public void Render(IDrawingContext ctx, KumikoRect cellRect, object? value, string displayText, KumikoColumn column,
-            KumikoStyle style, bool isSelected, KumikoCellStyle? cellStyle = null) { }
+        public void Render(IDrawingContext ctx, in CellRenderContext cell) { }
 
         public DrawnComponent? CreateEditor(object? value, KumikoRect bounds) => new DrawnTextBox { Bounds = bounds };
 
@@ -312,8 +311,7 @@ public class EditOrderingTests
     {
         public bool Called { get; private set; }
 
-        public void Render(IDrawingContext ctx, KumikoRect cellRect, object? value, string displayText, KumikoColumn column,
-            KumikoStyle style, bool isSelected, KumikoCellStyle? cellStyle = null) { }
+        public void Render(IDrawingContext ctx, in CellRenderContext cell) { }
 
         public DrawnComponent? CreateEditor(object? value, KumikoRect bounds)
         {
