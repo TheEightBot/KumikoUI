@@ -35,7 +35,7 @@ namespace KumikoUI.Maui;
 /// private: it has no layout API, and its XAML content is <see cref="Columns"/>.
 /// </remarks>
 [ContentProperty(nameof(Columns))]
-public class KumikoDataGrid : ContentView
+public partial class KumikoDataGrid : ContentView
 {
     private readonly Grid _root = new();
     private readonly SKCanvasView _canvasView = new();
@@ -91,6 +91,7 @@ public class KumikoDataGrid : ContentView
     {
         // The selection follows the source's view changes by itself (item-based, #30).
         _selection = new KumikoSelectionModel(_dataSource);
+        InitializeSelectionBinding();
 
         // Accessibility: set semantic description for screen readers
         SemanticProperties.SetDescription(this, "Data grid");

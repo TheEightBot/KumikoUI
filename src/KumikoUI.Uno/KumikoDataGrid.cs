@@ -53,6 +53,7 @@ public partial class KumikoDataGrid : UserControl
     {
         // The selection follows the source's view changes by itself (item-based, #30).
         _selection = new KumikoSelectionModel(_dataSource);
+        InitializeSelectionBinding();
 
         // Layout: the canvas fills the grid (mirrors MAUI's LayoutOptions.Fill).
         _canvasView.HorizontalAlignment = HorizontalAlignment.Stretch;

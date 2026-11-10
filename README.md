@@ -44,6 +44,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 - [Grouping](#-grouping)
 - [Summaries](#-summaries)
 - [Editing](#-editing)
+- [Localization](#-localization)
 - [Selection](#-selection)
 - [Keyboard Navigation](#-keyboard-navigation)
 - [Row Drag & Drop](#-row-drag--drop)
@@ -149,6 +150,8 @@ builder
 ```
 
 ---
+
+> **iOS and Mac Catalyst:** current Apple OS versions (macOS 27 and iOS 27 with the Xcode 27 toolchain) terminate an app at launch if it has not adopted the UIScene lifecycle. New .NET MAUI templates already include it: a `UIApplicationSceneManifest` in `Platforms/iOS/Info.plist` and `Platforms/MacCatalyst/Info.plist`, and a `SceneDelegate` class deriving from `MauiUISceneDelegate`. If your app was created from an older template, copy these from a fresh `dotnet new maui`. See `samples/SampleApp.Maui/Platforms` for a working setup.
 
 ## 📋 Column Types
 
@@ -609,6 +612,36 @@ To create the editor yourself, set `EditorFactory`. Its `CellEditorContext` carr
 
 ---
 
+## 🌍 Localization
+
+Two settings on the data source localize the grid: `Culture` and `Strings`.
+
+```csharp
+using System.Globalization;
+using KumikoUI.Core.Models;
+
+var source = kumiko.DataSource;
+
+// Numbers, dates, text order and the date picker's month names, day names and AM/PM
+source.Culture = CultureInfo.GetCultureInfo("de-DE");
+
+// Every other piece of text the grid draws or reports
+source.Strings = KumikoStrings.Default with
+{
+    GroupPanelLabel = "Gruppiert nach:",
+    BlankGroupText = "(Leer)",
+    SummarySum = "Summe: ",
+    FilterSelectAll = "Alle auswählen",
+    FilterOk = "Übernehmen",
+    FilterCancel = "Abbrechen",
+    SortTextAscending = "A bis Z sortieren",
+    SortNumericAscending = "Aufsteigend sortieren",
+    EnterNumber = "Geben Sie eine Zahl ein.",
+};
+```
+
+`KumikoStrings` is a record: start from `KumikoStrings.Default` (English) and replace what you need. It covers the group panel label and the group for empty values, the default summary labels, the filter popup (including type-aware sort labels: A to Z for text, smallest to largest for numbers, oldest to newest for dates) and the validation messages for edits that do not convert. A message with `{0}` is a format string; keep the placeholder. Setting `Strings` (or `Culture`) rebuilds the view, so group headers and summaries follow. Summary values are formatted in `Culture`, and `DrawnDatePicker.Culture` does the same for a standalone date picker.
+
 ## ☑️ Selection
 
 ### Selection mode
@@ -645,6 +678,29 @@ selection.SelectionChanged += (_, e) =>
     // e.AddedItems, e.RemovedItems, e.SelectedRows, e.CurrentCell
 };
 ```
+
+### Selection in MVVM
+
+Both hosts (MAUI and Uno) expose the selection as bindable properties, so a view model never reads row indices:
+
+```xml
+<dg:KumikoDataGrid ItemsSource="{Binding Employees}"
+                   SelectedItem="{Binding SelectedEmployee, Mode=TwoWay}"
+                   SelectedItems="{Binding SelectedEmployees, Mode=OneWay}"
+                   SelectedIndex="{Binding SelectedRow, Mode=TwoWay}"
+                   SelectionChangedCommand="{Binding SelectionChangedCommand}" />
+```
+
+| Property / event | Meaning |
+|---|---|
+| `SelectedItem` (two-way) | The primary selected item: the current cell's item while it is selected, otherwise the item selected last; null when nothing is selected. Setting it selects only that item and moves the current cell to it. |
+| `SelectedItems` (`IList`) | The selected items. By default an `ObservableCollection<object>` the grid owns and keeps in sync. Bind your own list to have the grid select its items and keep it updated; if it implements `INotifyCollectionChanged`, adding or removing items selects and deselects in the grid. Set null to go back to the owned collection. |
+| `SelectedIndex` (two-way) | The visible row of `SelectedItem`, or -1; it follows the item through sort and filter. Setting it selects the item at that row. |
+| `CurrentCell` (two-way) | The keyboard-focus cell as a `CellPosition` (visible row and column). |
+| `SelectionChanged` | `KumikoSelectionChangedEventArgs` with `AddedItems` and `RemovedItems`; the properties above are already up to date. |
+| `SelectionChangedCommand` | Executed on every selection change with `SelectionChangedCommandParameter`, or the event arguments when that is null. |
+
+Selection is by item, so all of this keeps working after a sort, filter or regroup. Setting `SelectedItem` to an item that is not visible, or any value in `None` mode, leaves the selection empty. A change made on one side is applied to the other without echoing back, so two-way bindings do not loop. On Uno, set `Mode=TwoWay` explicitly (WinUI bindings default to one-way).
 
 ---
 
@@ -1059,7 +1115,7 @@ All packages target **.NET 10** and **SkiaSharp 4.153.1**. Uno apps must also se
 |---|---|---|---|---|
 | KumikoUI.Core, KumikoUI.SkiaSharp | any .NET 10 runtime (`net10.0`) | — | any OS | unit tests in CI |
 | KumikoUI.Maui | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build |
-| KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; sample launch tracked in #121 |
+| KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; sample launch checked on macOS 27 (#121) |
 | KumikoUI.Maui | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build |
 | KumikoUI.Maui | Windows (`net10.0-windows10.0.19041.0`) | 10.0.19041 | Windows | CI build |
 | KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; sample run on macOS |

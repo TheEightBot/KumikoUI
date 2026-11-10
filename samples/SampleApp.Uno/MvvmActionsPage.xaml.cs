@@ -1,5 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Models;
@@ -137,6 +139,12 @@ public sealed partial class MvvmActionsPage : Page
         });
     }
 
+    private void OnSelectFirstClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) =>
+        _viewModel.SelectedEmployee = _viewModel.Employees.FirstOrDefault();
+
+    private void OnClearSelectionClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) =>
+        _viewModel.SelectedEmployee = null;
+
     private async void OnDeleteRequested(object? sender, Employee employee)
     {
         var dialog = new ContentDialog
@@ -183,10 +191,49 @@ public sealed partial class MvvmActionsPage : Page
 /// ViewModel for the MVVM actions demo. Exposes employee data and two commands that raise events —
 /// the View (page code-behind) handles UI concerns such as showing confirmation dialogs.
 /// </summary>
-public class MvvmActionsViewModel
+public class MvvmActionsViewModel : INotifyPropertyChanged
 {
+    private Employee? _selectedEmployee;
+    private string _lastChange = "No selection change yet";
+
     /// <summary>The collection bound to the KumikoDataGrid.</summary>
     public ObservableCollection<Employee> Employees { get; } = new();
+
+    /// <summary>Two-way bound to the grid's <c>SelectedItem</c>.</summary>
+    public Employee? SelectedEmployee
+    {
+        get => _selectedEmployee;
+        set
+        {
+            if (ReferenceEquals(_selectedEmployee, value)) return;
+            _selectedEmployee = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectionSummary));
+        }
+    }
+
+    /// <summary>The grid's <c>SelectedItems</c>: the grid selects what is in it and keeps it up to date.</summary>
+    public ObservableCollection<Employee> SelectedEmployees { get; } = new();
+
+    /// <summary>Selected name and count, shown above the grid.</summary>
+    public string SelectionSummary =>
+        $"Selected: {SelectedEmployee?.Name ?? "none"}  ({SelectedEmployees.Count} selected)";
+
+    /// <summary>What the last <c>SelectionChanged</c> reported.</summary>
+    public string LastChange
+    {
+        get => _lastChange;
+        private set { _lastChange = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Bound to the grid's <c>SelectionChangedCommand</c>; receives the added and removed items.</summary>
+    public ICommand SelectionChangedCommand { get; }
+
+    /// <inheritdoc />
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
     /// <summary>Raised to request confirmation and removal of an employee.</summary>
     public event EventHandler<Employee>? DeleteRequested;
@@ -204,6 +251,11 @@ public class MvvmActionsViewModel
     {
         DeleteCommand = new RelayCommand<Employee>(e => DeleteRequested?.Invoke(this, e));
         ViewDetailsCommand = new RelayCommand<Employee>(e => ViewDetailsRequested?.Invoke(this, e));
+        SelectionChangedCommand = new RelayCommand<KumikoSelectionChangedEventArgs>(e =>
+        {
+            LastChange = $"Last change: +{e.AddedItems.Count} / -{e.RemovedItems.Count}";
+            OnPropertyChanged(nameof(SelectionSummary));
+        });
     }
 
     /// <summary>Populates <see cref="Employees"/> with deterministic sample data.</summary>

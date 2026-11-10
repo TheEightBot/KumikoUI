@@ -34,7 +34,7 @@ public class KumikoRendererPaneTests
 
         var name = ctx.SingleText("P00");
         Assert.Equal(8, name.Rect.X);
-        Assert.Equal(new KumikoRect(0, 0, 150, 400), name.Clip);
+        Assert.Equal(new KumikoRect(0, 40, 150, 360), name.Clip);
         Assert.Equal(8, ctx.SingleText("Name").Rect.X);
     }
 
@@ -47,7 +47,7 @@ public class KumikoRendererPaneTests
 
         var age = ctx.SingleText("20", row: 0, h);
         Assert.Equal(150 - 50 + 8, age.Rect.X);
-        Assert.Equal(new KumikoRect(150, 0, 150, 400), age.Clip);
+        Assert.Equal(new KumikoRect(150, 40, 150, 360), age.Clip);
         Assert.Equal(150, age.Visible!.Value.Left);
     }
 
@@ -85,7 +85,7 @@ public class KumikoRendererPaneTests
         var border = Assert.Single(h.Render().Ops, o => o.Kind == DrawOpKind.DrawRect && o.Color == h.Style.CurrentCellBorderColor);
 
         Assert.Equal(new KumikoRect(0, h.RowTop(1), 150, 36), border.Rect);
-        Assert.Equal(new KumikoRect(0, 0, 150, 400), border.Clip);
+        Assert.Equal(new KumikoRect(0, 40, 150, 360), border.Clip);
     }
 
     [Fact]
@@ -99,10 +99,10 @@ public class KumikoRendererPaneTests
 
         var name = ctx.SingleText("P00");
         Assert.Equal(32 + 8, name.Rect.X);
-        Assert.Equal(new KumikoRect(32, 0, 150, 400), name.Clip);
+        Assert.Equal(new KumikoRect(32, 40, 150, 360), name.Clip);
         var age = ctx.SingleText("20", row: 0, h);
         Assert.Equal(32 + 150 + 8, age.Rect.X);
-        Assert.Equal(new KumikoRect(182, 0, 418, 400), age.Clip);
+        Assert.Equal(new KumikoRect(182, 40, 418, 360), age.Clip);
         Assert.Contains(ctx.Lines, l => l.Color == h.Style.FrozenColumnDividerColor && Near(l.X1, 182));
     }
 
@@ -126,7 +126,7 @@ public class KumikoRendererPaneTests
 
         var salary = ctx.SingleText("1000");
         Assert.Equal(358, salary.Rect.X);
-        Assert.Equal(new KumikoRect(350, 0, 150, 400), salary.Clip);
+        Assert.Equal(new KumikoRect(350, 40, 150, 360), salary.Clip);
         Assert.Equal(358, ctx.SingleText("Salary").Rect.X);
     }
 
@@ -139,7 +139,7 @@ public class KumikoRendererPaneTests
 
         var cells = ctx.Texts.Where(o => ScrollableCellTexts.Contains(o.Text)).ToList();
         Assert.NotEmpty(cells);
-        Assert.All(cells, o => Assert.Equal(new KumikoRect(0, 0, 350, 400), o.Clip));
+        Assert.All(cells, o => Assert.Equal(new KumikoRect(0, 40, 350, 360), o.Clip));
         Assert.Equal(250 - 50 + 8, ctx.SingleText("Oslo", row: 0, h).Rect.X);
     }
 
@@ -207,17 +207,17 @@ public class KumikoRendererPaneTests
     }
 
     [Fact]
-    public void FrozenRows_AreDrawnAfterTheScrollableRows_SoScrolledRowsPassUnderThem()
+    public void FrozenRows_ScrolledRowsAboveTheirBottomEdgeAreNotDrawn()
     {
         var h = FrozenRows();
 
         var ctx = h.Render();
 
-        // Row 4 has scrolled up to y = 4, under the header and the frozen band.
-        var scrolledUnder = ctx.SingleText("P04");
-        Assert.Equal(4, scrolledUnder.Rect.Y);
-        int frozenBackground = RowBackgrounds(ctx, 40, 600).Single(f => f.Color == h.Style.FrozenRowBackgroundColor).Index;
-        Assert.True(frozenBackground > scrolledUnder.Index, "scrolled rows are painted over the frozen rows");
+        // The first scrollable row to intersect the data area is row 7 (y = 112); rows 5 and 6 would
+        // sit under the header and the frozen band, so they are skipped rather than drawn and covered.
+        Assert.Empty(ctx.TextsEqual("P05"));
+        Assert.Empty(ctx.TextsEqual("P06"));
+        Assert.Equal(112, ctx.SingleText("P07").Rect.Y);
     }
 
     [Fact]
@@ -300,7 +300,7 @@ public class KumikoRendererPaneTests
 
         var name = ctx.SingleText("P00");
         Assert.Equal(32 + 8, name.Rect.X);
-        Assert.Equal(new KumikoRect(32, 0, 568, 400), name.Clip);
+        Assert.Equal(new KumikoRect(32, 40, 568, 360), name.Clip);
         Assert.Equal(40, ctx.SingleText("Name").Rect.X);
         Assert.Equal(550 + 32, h.Scroll.ContentWidth);
     }
@@ -335,7 +335,7 @@ public class KumikoRendererPaneTests
         var ctx = h.Render();
 
         Assert.Equal(8, ctx.SingleText("P00").Rect.X);
-        Assert.Equal(new KumikoRect(0, 0, 568, 400), ctx.SingleText("P00").Clip);
+        Assert.Equal(new KumikoRect(0, 40, 568, 360), ctx.SingleText("P00").Clip);
         Assert.Contains(ctx.Fills, f => f.Color == h.Style.RowDragHandleHeaderBackgroundColor && f.Rect.Equals(new KumikoRect(568, 0, 32, 40)));
         Assert.All(ctx.Fills.Where(f => f.Color == h.Style.RowDragHandleColor), g => Assert.True(g.Rect.Left >= 568));
     }
