@@ -219,7 +219,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ windows-latest, macos-15 ]   # macos-15: arm64, same image as the Apple build jobs below
+        os: [ windows-latest, macos-15 ]   # macos-15: arm64
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -243,18 +243,18 @@ jobs:
           path: TestResults/
 
   # ─── Apple heads and samples (MAUI): iOS + Mac Catalyst need macOS and Xcode ───
-  # Runner and Xcode are pinned: macos-15 (arm64) ships Xcode 26.x, which the iOS / Mac Catalyst SDK of the pinned
-  # workload set (.github/actions/setup-dotnet) requires. Moving to macos-26 or a newer Xcode means updating both
-  # together. iOS builds target the simulator and Mac Catalyst builds skip code signing, so no certificates or
+  # Runner and Xcode are pinned: the iOS / Mac Catalyst SDK of the pinned workload set (.github/actions/setup-dotnet)
+  # requires Xcode 27.1 to build apps, which only the xcode-27 image has (macos-15 and macos-26 stop at Xcode 26.x).
+  # Changing the workload set or the Xcode version means updating both together. iOS builds target the simulator and Mac Catalyst builds skip code signing, so no certificates or
   # provisioning profiles are needed.
   build-apple-maui:
     name: Build (MAUI — iOS + Mac Catalyst, library + sample)
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 60
     needs: [changes, build-core]
     if: needs.changes.outputs.code == 'true'
     env:
-      XCODE_VERSION: '26.0'   # Xcode_<version>.app under /Applications on the runner image
+      XCODE_VERSION: '27.1'   # Xcode_<version>.app under /Applications on the runner image
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -307,12 +307,12 @@ jobs:
   # ─── Apple heads and samples (Uno): iOS needs macOS and Xcode; the desktop (Skia) head is built here as well ───
   build-apple-uno:
     name: Build (Uno — iOS + desktop, library + sample)
-    runs-on: macos-15   # Xcode pinned below; see build-apple-maui
+    runs-on: xcode-27   # Xcode pinned below; see build-apple-maui
     timeout-minutes: 60
     needs: [changes, build-core]
     if: needs.changes.outputs.code == 'true'
     env:
-      XCODE_VERSION: '26.0'
+      XCODE_VERSION: '27.1'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -341,10 +341,12 @@ jobs:
       - name: Build sample — desktop
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-desktop -c Release
 
-  # ─── Android and WebAssembly sample heads (Linux runners have the Android SDK and the faster workload install) ───
-  build-samples-linux:
+  # ─── Android and WebAssembly sample heads ───
+  # Windows, not Linux: the samples (and KumikoUI.Maui) also target iOS, and restore needs the iOS workload packs,
+  # which the MAUI workload installs on Windows but does not exist on Linux.
+  build-samples-android-wasm:
     name: Build (Samples — Android + WebAssembly)
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 45
     needs: [changes, build-core]
     if: needs.changes.outputs.code == 'true'
@@ -354,10 +356,10 @@ jobs:
         with:
           fetch-depth: 0   # MinVer computes the version from git tags
 
-      - name: Setup .NET + MAUI Android and Uno workloads (pinned)
+      - name: Setup .NET + MAUI and Uno workloads (pinned)
         uses: ./.github/actions/setup-dotnet
         with:
-          workloads: maui-android
+          workloads: maui
           restore-project: samples/SampleApp.Uno/SampleApp.Uno.csproj
           cache-nuget: 'true'
 
