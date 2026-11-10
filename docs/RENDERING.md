@@ -153,13 +153,26 @@ Per-row and per-cell overrides (resolver backgrounds, cell style text color or f
 
 ## SkiaDrawingContext Caching
 
-`SkiaDrawingContext` maintains 3 tiers of native object caches:
+`SkiaDrawingContext` is a thin per-frame wrapper over the `SKCanvas`. The native objects it draws with
+live in a `SkiaResourceCache` that the host control owns for its lifetime (the MAUI and Uno grids create
+one per control, pass it to `new SkiaDrawingContext(canvas, cache)` every frame, and dispose it when the
+MAUI handler disconnects or the Uno control unloads). The cache has 3 tiers:
 
-1. **SKTypeface cache** — Keyed by `(familyName, bold, italic)`. Created on first use, disposed at context disposal.
-2. **SKFont cache** — Keyed by `(typeface, size)`. Created per frame, disposed at frame end.
-3. **SKPaint cache** — Keyed by `(color, strokeWidth, style, isAntialias)`. Created per frame, disposed at frame end.
+1. **SKTypeface cache** — Keyed by `(family, bold, italic)`. Resolved from `SkiaFontRegistrar` first, then the font manager (falling back to the default family in the same style). Font-manager typefaces are reference counted across caches; `SKTypeface.Default` and registered typefaces are never disposed by the cache.
+2. **SKFont cache** — Keyed by `(family, size, bold, italic)`; each font belongs to its typeface entry and is dropped with it.
+3. **SKPaint cache** — Keyed by `(color, strokeWidth, style, isAntialias)`.
 
-Each `IDrawingContext` method (e.g., `FillRect`, `DrawText`) resolves its `KumikoPaint` to an `SKPaint` via the cache, avoiding per-call native allocations.
+Each `IDrawingContext` method (e.g., `FillRect`, `DrawText`) resolves its `KumikoPaint` to an `SKPaint`
+and `SKFont` via the cache, so steady-state frames create no native objects. Each tier is a
+least-recently-used map with a capacity (defaults 512 paints, 128 fonts, 32 typefaces), so a renderer that
+keeps producing new colors or font sizes cannot grow it without bound. Objects evicted during a frame are
+disposed when the frame ends (`SkiaDrawingContext.Dispose`), never in the middle of it.
+
+`SkiaFontRegistrar` keeps every live cache (weakly). Registering, replacing, unregistering or clearing a
+family increments `SkiaFontRegistrar.Version` and makes each cache drop that family's typefaces and fonts
+*before* the registrar disposes anything it owned, so a cache never holds a disposed typeface and the next
+frame resolves the family again. `new SkiaDrawingContext(canvas)` (no cache) still works: it uses a private
+cache that is disposed with the context, which recreates everything every frame.
 
 ## Scroll & Viewport
 

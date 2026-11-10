@@ -32,8 +32,8 @@ strict dependency rules, full namespace map, and repo-wide C# code style rules (
 
 Everything about drawing. Covers: all `IDrawingContext` methods, `KumikoPaint`/`KumikoColor`/`KumikoRect`
 usage, `ICellRenderer` interface + how to attach custom renderers to columns, `KumikoRenderer`
-render-loop structure and z-order, `PaintCache`, `SkiaDrawingContext` internals (per-frame
-paint/font cache, SkiaSharp 3.x API), `KumikoLayoutEngine` layout methods, and performance rules
+render-loop structure and z-order, `PaintCache`, `SkiaDrawingContext` internals (long-lived
+`SkiaResourceCache` of paints/fonts/typefaces, SkiaSharp 3.x API), `KumikoLayoutEngine` layout methods, and performance rules
 (no allocation, no LINQ, virtual scrolling).
 
 ---
