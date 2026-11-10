@@ -518,7 +518,7 @@ Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column
 A Boolean cell toggles in place instead of opening an editor:
 - a single tap on the check box toggles it; a tap elsewhere in the cell only selects, unless the column has the `SingleTap` trigger, in which case any tap in the cell toggles;
 - a double-tap toggles once: the second tap toggles with the `DoubleTap` trigger only when the first tap didn't;
-- a long press toggles with the `LongPress` trigger, and `Space` toggles the current Boolean cell;
+- a long press toggles with the `LongPress` trigger, and `Space`, `Enter` or `F2` toggles the current Boolean cell (a check box has no editor to open);
 - a column that is read-only or has `EditTriggers="None"` never toggles.
 
 A toggle goes through the same validation as an edit (see [Validation](#validation)).
@@ -660,6 +660,7 @@ Full keyboard navigation is supported on all platforms (iOS/macOS via `UIKeyComm
 | `Escape` | Cancel the edit / clear the selection |
 | `F2` | Open inline editor (if `F2Key` trigger enabled) |
 | `Space` | Toggle the current Boolean cell / toggle the current row's selection |
+| `Enter` / `F2` on a Boolean cell | Toggle it |
 | `Home` / `End` | First / last cell in row |
 | `Ctrl+Home` / `Ctrl+End` | First / last cell in grid |
 | `Page Up` / `Page Down` | Move one page of visible rows |
