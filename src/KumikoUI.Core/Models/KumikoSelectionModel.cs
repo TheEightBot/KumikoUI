@@ -36,6 +36,13 @@ public class KumikoSelectionModel
     /// <summary>Active selection mode controlling click behavior.</summary>
     public KumikoSelectionMode Mode { get; set; } = KumikoSelectionMode.Extended;
 
+    /// <summary>
+    /// Whether a tap on the empty part of the rows area — below the last row or right of the last column —
+    /// clears the selection and the current cell (committing an open edit first), as list views do. Default
+    /// <c>true</c>; set <c>false</c> to keep the selection.
+    /// </summary>
+    public bool ClearSelectionOnEmptyAreaTap { get; set; } = true;
+
     /// <summary>The selected data items.</summary>
     public IReadOnlySet<object> SelectedItems { get; }
 
@@ -60,6 +67,12 @@ public class KumikoSelectionModel
 
     // ── Events ──
 
+    /// <summary>
+    /// Raised when the current cell moves, or follows its item through a view change. It is raised without a
+    /// selection change when only the current cell differs.
+    /// </summary>
+    public event EventHandler? CurrentCellChanged;
+
     /// <summary>Raised when items are added to or removed from the selection.</summary>
     public event EventHandler<KumikoSelectionChangedEventArgs>? SelectionChanged;
 
@@ -71,16 +84,20 @@ public class KumikoSelectionModel
     /// </summary>
     public void SetCurrentCell(int row, int column)
     {
+        var previous = _currentCell;
         _currentKey = row >= 0 ? Source.GetRowKey(row) : null;
         if (_currentKey == null)
         {
             _currentColumn = null;
             _currentCell = CellPosition.Invalid;
-            return;
+        }
+        else
+        {
+            _currentColumn = column >= 0 && column < Source.Columns.Count ? Source.Columns[column] : null;
+            _currentCell = new CellPosition(row, column);
         }
 
-        _currentColumn = column >= 0 && column < Source.Columns.Count ? Source.Columns[column] : null;
-        _currentCell = new CellPosition(row, column);
+        if (!previous.Equals(_currentCell)) CurrentCellChanged?.Invoke(this, EventArgs.Empty);
     }
 
     // ── Selection ──
@@ -107,6 +124,31 @@ public class KumikoSelectionModel
         {
             if (Mode == KumikoSelectionMode.Single) ClearItems();
             AddRow(row);
+        });
+    }
+
+    /// <summary>
+    /// Replace the selection with <paramref name="items"/> in one change, raising one
+    /// <see cref="SelectionChanged"/> with the delta. Items that are not visible data rows are ignored; in
+    /// <see cref="KumikoSelectionMode.Single"/> mode only the last visible item is kept, and in
+    /// <see cref="KumikoSelectionMode.None"/> mode the selection is emptied. The current cell does not move.
+    /// </summary>
+    public void SetSelectedItems(IEnumerable<object> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        var rows = new List<int>();
+        if (Mode != KumikoSelectionMode.None)
+        {
+            rows.AddRange(items
+                .Select(item => item == null ? -1 : Source.IndexOfRowKey(item))
+                .Where(IsDataRow));
+            if (Mode == KumikoSelectionMode.Single && rows.Count > 1) rows.RemoveRange(0, rows.Count - 1);
+        }
+
+        Change(() =>
+        {
+            ClearItems();
+            foreach (int row in rows) AddRow(row);
         });
     }
 
@@ -148,9 +190,7 @@ public class KumikoSelectionModel
     public void Clear()
     {
         Change(ClearItems);
-        _currentKey = null;
-        _currentColumn = null;
-        _currentCell = CellPosition.Invalid;
+        SetCurrentCell(-1, -1);
         _anchorKey = null;
         _anchorRow = -1;
         IsEditing = false;
@@ -300,12 +340,14 @@ public class KumikoSelectionModel
         }
 
         if (_currentKey == null) return;
+        var previousCell = _currentCell;
         int currentRow = e.IsStructural ? e.GetViewRow(_currentKey) : _currentCell.Row;
         if (currentRow < 0)
         {
             _currentKey = null;
             _currentColumn = null;
             _currentCell = CellPosition.Invalid;
+            CurrentCellChanged?.Invoke(this, EventArgs.Empty);
             return;
         }
 
@@ -317,6 +359,7 @@ public class KumikoSelectionModel
             _currentColumn = column < Source.Columns.Count ? Source.Columns[column] : null;
         }
         _currentCell = new CellPosition(currentRow, column);
+        if (!previousCell.Equals(_currentCell)) CurrentCellChanged?.Invoke(this, EventArgs.Empty);
     }
 
     // ── Internals ──

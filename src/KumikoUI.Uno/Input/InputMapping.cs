@@ -124,6 +124,37 @@ public static class InputMapping
         }
     }
 
+    /// <summary>
+    /// What the hidden proxy <c>TextBox</c>'s <c>KeyDown</c> does with a command key after Core has seen it.
+    /// </summary>
+    internal enum ProxyKeyOutcome
+    {
+        /// <summary>Mark the key handled: Core used it, or the TextBox would act on it (caret, text, clipboard).</summary>
+        Handled,
+        /// <summary>Leave the key unhandled so it reaches the page (default and cancel buttons, accelerators).</summary>
+        PassToPage,
+        /// <summary>Move keyboard focus out of the grid (Tab or Shift+Tab that Core left unhandled).</summary>
+        MoveFocusOut,
+    }
+
+    /// <summary>
+    /// Decides <see cref="ProxyKeyOutcome"/> for <paramref name="key"/> given whether Core handled it, so the
+    /// grid is never a keyboard trap: an unhandled Tab moves focus out of the grid (the grid and its proxy are
+    /// both tab stops, so the host steps past both), and an unhandled Enter, Escape or F2 — keys the TextBox
+    /// itself ignores — reaches the page. Every other key stays handled so the TextBox never moves its caret
+    /// or changes the sentinel text.
+    /// </summary>
+    internal static ProxyKeyOutcome GetProxyKeyOutcome(KumikoKey key, bool handledByCore)
+    {
+        if (handledByCore) return ProxyKeyOutcome.Handled;
+        return key switch
+        {
+            KumikoKey.Tab => ProxyKeyOutcome.MoveFocusOut,
+            KumikoKey.Enter or KumikoKey.Escape or KumikoKey.F2 => ProxyKeyOutcome.PassToPage,
+            _ => ProxyKeyOutcome.Handled,
+        };
+    }
+
     private static bool IsDown(VirtualKey key) =>
         (InputKeyboardSource.GetKeyStateForCurrentThread(key) & CoreVirtualKeyStates.Down)
             == CoreVirtualKeyStates.Down;
