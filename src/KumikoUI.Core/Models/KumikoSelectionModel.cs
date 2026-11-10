@@ -132,11 +132,9 @@ public class KumikoSelectionModel
         var rows = new List<int>();
         if (Mode != KumikoSelectionMode.None)
         {
-            foreach (var item in items)
-            {
-                int row = item == null ? -1 : Source.IndexOfRowKey(item);
-                if (IsDataRow(row)) rows.Add(row);
-            }
+            rows.AddRange(items
+                .Select(item => item == null ? -1 : Source.IndexOfRowKey(item))
+                .Where(IsDataRow));
             if (Mode == KumikoSelectionMode.Single && rows.Count > 1) rows.RemoveRange(0, rows.Count - 1);
         }
 

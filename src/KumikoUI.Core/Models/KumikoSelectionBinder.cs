@@ -136,10 +136,8 @@ public sealed class KumikoSelectionBinder
                 if (!_list.IsReadOnly && !_list.IsFixedSize)
                 {
                     foreach (var item in e.RemovedItems) _list.Remove(item);
-                    foreach (var item in e.AddedItems)
-                    {
-                        if (!_list.Contains(item)) _list.Add(item);
-                    }
+                    foreach (var item in e.AddedItems.Where(added => !_list.Contains(added)))
+                        _list.Add(item);
                 }
             }
             finally { _syncing = false; }
