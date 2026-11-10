@@ -587,7 +587,7 @@ What each result does:
 | Warning, same value committed again | closes | written | raised, `Committed = true` |
 | Info | closes | written | raised, `Committed = true` |
 
-`CellValueChanged` is raised only for a value that was written. Changing the value in the editor clears the message. Gestures that commit first, such as sorting or filtering, are ignored while the value is refused.
+`CellValueChanged` is raised only for a value that was written, after `CellEndEdit`. Changing the value in the editor clears the message. Gestures that commit first are ignored while the value is refused: sorting, filtering, grouping, a tap or long press on another cell, Tab, Enter, and the navigation keys. The selection stays and the editor stays open and focused. `EditSession.BeginEdit` while an edit is open commits it first and returns false when that is refused. Toggling a boolean cell goes through the same validation.
 
 The editor shows numbers and dates in the grid's culture (`3,5` under `de-DE`), so the text parses back to the same value.
 
@@ -606,6 +606,8 @@ var column = new KumikoColumn
     EditorDescriptor = new NumericUpDownEditorDescriptor { Min = 0, Max = 10, Step = 1 }
 };
 ```
+
+To create the editor yourself, set `EditorFactory`. Its `CellEditorContext` carries the value, the cell bounds, the grid's culture and the character typed to open the edit (`InitialCharacter`, null for a double-tap or F2). `EditorDescriptor.CreateEditor(CellEditorContext)` and `ICellEditorProvider.CreateEditor(CellEditorContext)` receive the same context; the older `(value, bounds)` forms keep working but never see the character.
 
 ---
 
