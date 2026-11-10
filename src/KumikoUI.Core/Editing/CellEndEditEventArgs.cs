@@ -26,6 +26,13 @@ public class CellEndEditEventArgs : EventArgs
     /// <summary>True if the edit was committed; false if cancelled.</summary>
     public bool Committed { get; }
 
+    /// <summary>Initializes the event data.</summary>
+    /// <param name="row">Zero-based row index of the cell.</param>
+    /// <param name="col">Zero-based column index of the cell.</param>
+    /// <param name="column">Column definition for the cell.</param>
+    /// <param name="oldValue">Cell value before editing.</param>
+    /// <param name="newValue">Cell value after editing.</param>
+    /// <param name="committed">True if the edit was committed; false if canceled.</param>
     public CellEndEditEventArgs(int row, int col, KumikoColumn column,
         object? oldValue, object? newValue, bool committed)
     {

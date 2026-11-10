@@ -21,6 +21,10 @@ public readonly struct KumikoFontMetrics
     /// <summary>Text height without leading (Descent - Ascent).</summary>
     public float TextHeight => Descent - Ascent;
 
+    /// <summary>Creates font metrics.</summary>
+    /// <param name="ascent">Distance from baseline to top of text (negative).</param>
+    /// <param name="descent">Distance from baseline to bottom of text (positive).</param>
+    /// <param name="leading">Inter-line spacing.</param>
     public KumikoFontMetrics(float ascent, float descent, float leading = 0)
     {
         Ascent = ascent;

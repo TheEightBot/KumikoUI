@@ -29,8 +29,13 @@ public class SummaryColumnDescription
     /// </summary>
     public Func<IReadOnlyList<object?>, object?>? CustomAggregate { get; set; }
 
+    /// <summary>Creates an empty description; set <see cref="PropertyName"/> before use.</summary>
     public SummaryColumnDescription() { }
 
+    /// <summary>Creates a summary for a column property.</summary>
+    /// <param name="propertyName">The column property name to aggregate.</param>
+    /// <param name="summaryType">Built-in aggregate type.</param>
+    /// <param name="format">Optional display format string.</param>
     public SummaryColumnDescription(string propertyName, SummaryType summaryType, string? format = null)
     {
         PropertyName = propertyName;

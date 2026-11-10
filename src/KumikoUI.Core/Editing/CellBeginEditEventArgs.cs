@@ -23,6 +23,11 @@ public class CellBeginEditEventArgs : EventArgs
     /// <summary>Set to true to cancel the edit operation.</summary>
     public bool Cancel { get; set; }
 
+    /// <summary>Initializes the event data.</summary>
+    /// <param name="row">Zero-based row index of the cell.</param>
+    /// <param name="col">Zero-based column index of the cell.</param>
+    /// <param name="column">Column definition for the cell.</param>
+    /// <param name="value">Current value of the cell before editing.</param>
     public CellBeginEditEventArgs(int row, int col, KumikoColumn column, object? value)
     {
         RowIndex = row;

@@ -138,7 +138,7 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 ### Code
 
 - Follow the conventions in [`.github/instructions/`](.github/instructions) and the surrounding code: nullable enabled, `float` coordinates, `KumikoColor` for colors, no LINQ or allocations in the render loop.
-- Every public member gets an XML doc comment.
+- Every public member gets an XML doc comment (summary, plus `<param>`/`<returns>` where they add information; `<inheritdoc/>` for overrides and interface implementations; document each enum member). The build enforces it: in the four shipped libraries a missing comment (CS1591) or a malformed or unresolvable one (CS1570-CS1734, see `Directory.Build.targets`) is a compile error, not a warning.
 - One public type per file, in a file named after the type (`KumikoStyle` lives in `KumikoStyle.cs`). Small enums and event-args types get their own file too.
 - Public type names follow the rules in [Public type names](#public-type-names).
 - KumikoUI.Core must stay free of UI-framework and SkiaSharp references; host-specific code belongs in KumikoUI.Maui or KumikoUI.Uno.

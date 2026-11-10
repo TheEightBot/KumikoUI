@@ -11,6 +11,9 @@ public readonly struct KumikoSize
     /// <summary>Height component.</summary>
     public float Height { get; }
 
+    /// <summary>Creates a size.</summary>
+    /// <param name="width">Width component.</param>
+    /// <param name="height">Height component.</param>
     public KumikoSize(float width, float height)
     {
         Width = width;

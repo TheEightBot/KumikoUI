@@ -20,6 +20,11 @@ public readonly struct KumikoColor : IEquatable<KumikoColor>
     /// <summary>Alpha component (0 = transparent, 255 = opaque).</summary>
     public byte A { get; }
 
+    /// <summary>Creates a color from RGBA components.</summary>
+    /// <param name="r">Red component (0–255).</param>
+    /// <param name="g">Green component (0–255).</param>
+    /// <param name="b">Blue component (0–255).</param>
+    /// <param name="a">Alpha component (0 = transparent, 255 = opaque).</param>
     public KumikoColor(byte r, byte g, byte b, byte a = 255)
     {
         R = r;
@@ -80,11 +85,21 @@ public readonly struct KumikoColor : IEquatable<KumikoColor>
     /// <summary>Dark blue (#00008B).</summary>
     public static KumikoColor DarkBlue => new(0, 0, 139);
 
+    /// <inheritdoc/>
     public bool Equals(KumikoColor other) => R == other.R && G == other.G && B == other.B && A == other.A;
+    /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is KumikoColor c && Equals(c);
+    /// <inheritdoc/>
     public override int GetHashCode() => HashCode.Combine(R, G, B, A);
+    /// <summary>Returns true when all four components are equal.</summary>
+    /// <param name="left">First color.</param>
+    /// <param name="right">Second color.</param>
     public static bool operator ==(KumikoColor left, KumikoColor right) => left.Equals(right);
+    /// <summary>Returns true when any component differs.</summary>
+    /// <param name="left">First color.</param>
+    /// <param name="right">Second color.</param>
     public static bool operator !=(KumikoColor left, KumikoColor right) => !left.Equals(right);
+    /// <inheritdoc/>
     public override string ToString() => $"KumikoColor({R}, {G}, {B}, {A})";
 
     /// <summary>Pack ARGB into a single uint for use as a cache key.</summary>

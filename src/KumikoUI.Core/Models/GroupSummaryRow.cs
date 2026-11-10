@@ -25,8 +25,11 @@ public class GroupSummaryRow
     /// </summary>
     public GroupSummaryLevels Levels { get; set; } = GroupSummaryLevels.Innermost;
 
+    /// <summary>Creates an empty group summary row.</summary>
     public GroupSummaryRow() { }
 
+    /// <summary>Creates a group summary row with a name.</summary>
+    /// <param name="name">Unique name for identification.</param>
     public GroupSummaryRow(string name)
     {
         Name = name;

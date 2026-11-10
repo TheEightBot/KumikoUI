@@ -23,6 +23,12 @@ public class CellValueChangedEventArgs : EventArgs
     /// <summary>New cell value.</summary>
     public object? NewValue { get; }
 
+    /// <summary>Initializes the event data.</summary>
+    /// <param name="row">Zero-based row index of the changed cell.</param>
+    /// <param name="col">Zero-based column index of the changed cell.</param>
+    /// <param name="column">Column definition for the changed cell.</param>
+    /// <param name="oldValue">Previous cell value.</param>
+    /// <param name="newValue">New cell value.</param>
     public CellValueChangedEventArgs(int row, int col, KumikoColumn column,
         object? oldValue, object? newValue)
     {

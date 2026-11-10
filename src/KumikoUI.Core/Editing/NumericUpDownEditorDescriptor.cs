@@ -34,6 +34,7 @@ public class NumericUpDownEditorDescriptor : EditorDescriptor
     /// <summary>Is the control read-only?</summary>
     public bool IsReadOnly { get; set; }
 
+    /// <inheritdoc/>
     public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
     {
         double value = 0;

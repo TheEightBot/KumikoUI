@@ -11,6 +11,9 @@ public readonly struct KumikoPoint
     /// <summary>Y-coordinate.</summary>
     public float Y { get; }
 
+    /// <summary>Creates a point.</summary>
+    /// <param name="x">X-coordinate.</param>
+    /// <param name="y">Y-coordinate.</param>
     public KumikoPoint(float x, float y)
     {
         X = x;
