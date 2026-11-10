@@ -44,6 +44,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 - [Grouping](#-grouping)
 - [Summaries](#-summaries)
 - [Editing](#-editing)
+- [Localization](#-localization)
 - [Selection](#-selection)
 - [Keyboard Navigation](#-keyboard-navigation)
 - [Row Drag & Drop](#-row-drag--drop)
@@ -150,6 +151,8 @@ builder
 ```
 
 ---
+
+> **iOS and Mac Catalyst:** current Apple OS versions (macOS 27 and iOS 27 with the Xcode 27 toolchain) terminate an app at launch if it has not adopted the UIScene lifecycle. New .NET MAUI templates already include it: a `UIApplicationSceneManifest` in `Platforms/iOS/Info.plist` and `Platforms/MacCatalyst/Info.plist`, and a `SceneDelegate` class deriving from `MauiUISceneDelegate`. If your app was created from an older template, copy these from a fresh `dotnet new maui`. See `samples/SampleApp.Maui/Platforms` for a working setup.
 
 ## 📋 Column Types
 
@@ -526,6 +529,16 @@ Each column can override the grid-level `EditTriggers` independently via its own
 
 Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column without making it fully read-only via `IsReadOnly`.
 
+### Boolean cells
+
+A Boolean cell toggles in place instead of opening an editor:
+- a single tap on the check box toggles it; a tap elsewhere in the cell only selects, unless the column has the `SingleTap` trigger, in which case any tap in the cell toggles;
+- a double-tap toggles once: the second tap toggles with the `DoubleTap` trigger only when the first tap didn't;
+- a long press toggles with the `LongPress` trigger, and `Space` toggles the current Boolean cell;
+- a column that is read-only or has `EditTriggers="None"` never toggles.
+
+A toggle goes through the same validation as an edit (see [Validation](#validation)).
+
 ### Edit text selection
 
 ```xml
@@ -539,7 +552,7 @@ Set `EditTriggers="None"` to suppress all gesture/keyboard triggers for a column
 ### Commit / cancel
 
 - **Enter** — commit and move to the next row
-- **Tab / Shift+Tab** — commit and move to the next/previous editable cell
+- **Tab / Shift+Tab** — commit and move to the next/previous editable cell; at the last (first) one, commit and let focus leave the grid
 - **Escape** — cancel and restore the original value
 
 An open edit belongs to its item and column, not to a row number. If the rows move underneath it (a background collection change, a programmatic sort or filter), the editor moves with the item and the commit writes to that item; if the item is filtered out, collapsed or removed, the edit is canceled. Tapping a header to sort, opening a filter, toggling a group or starting a drag commits the edit first; when the value is invalid the gesture is ignored and the editor stays open with the error. The editor follows its cell while the grid scrolls and is hidden while the cell is out of view.
@@ -611,6 +624,36 @@ To create the editor yourself, set `EditorFactory`. Its `CellEditorContext` carr
 
 ---
 
+## 🌍 Localization
+
+Two settings on the data source localize the grid: `Culture` and `Strings`.
+
+```csharp
+using System.Globalization;
+using KumikoUI.Core.Models;
+
+var source = kumiko.DataSource;
+
+// Numbers, dates, text order and the date picker's month names, day names and AM/PM
+source.Culture = CultureInfo.GetCultureInfo("de-DE");
+
+// Every other piece of text the grid draws or reports
+source.Strings = KumikoStrings.Default with
+{
+    GroupPanelLabel = "Gruppiert nach:",
+    BlankGroupText = "(Leer)",
+    SummarySum = "Summe: ",
+    FilterSelectAll = "Alle auswählen",
+    FilterOk = "Übernehmen",
+    FilterCancel = "Abbrechen",
+    SortTextAscending = "A bis Z sortieren",
+    SortNumericAscending = "Aufsteigend sortieren",
+    EnterNumber = "Geben Sie eine Zahl ein.",
+};
+```
+
+`KumikoStrings` is a record: start from `KumikoStrings.Default` (English) and replace what you need. It covers the group panel label and the group for empty values, the default summary labels, the filter popup (including type-aware sort labels: A to Z for text, smallest to largest for numbers, oldest to newest for dates) and the validation messages for edits that do not convert. A message with `{0}` is a format string; keep the placeholder. Setting `Strings` (or `Culture`) rebuilds the view, so group headers and summaries follow. Summary values are formatted in `Culture`, and `DrawnDatePicker.Culture` does the same for a standalone date picker.
+
 ## ☑️ Selection
 
 ### Selection mode
@@ -626,6 +669,8 @@ To create the editor yourself, set `EditorFactory`. Its `CellEditorContext` carr
 | `Extended` | Click + Shift/Ctrl range/toggle (desktop-style) |
 
 Selection is by row and tracks **items**, not row numbers: after a sort, filter, regroup or collection change the same items stay selected (items that are filtered out or removed leave the selection), and the current cell stays on its item and column. Group header and summary rows are never selected; Ctrl+A and Shift ranges skip them. Cell selection is planned for 1.x (#108).
+
+A tap on the empty part of the rows area (below the last row or right of the last column) commits an open edit and clears the selection and the current cell. Set `ClearSelectionOnEmptyAreaTap="False"` to keep the selection.
 
 ### Reading and changing selections (code)
 
@@ -677,15 +722,20 @@ Full keyboard navigation is supported on all platforms (iOS/macOS via `UIKeyComm
 
 | Key | Action |
 |---|---|
-| `Arrow keys` | Move selection one cell/row |
-| `Tab` | Move to next editable cell (wraps rows) |
-| `Shift+Tab` | Move to previous editable cell |
-| `Enter` | Commit edit / open edit on selected cell |
-| `Escape` | Cancel edit |
+| `Arrow keys` | Move the current cell one cell/row (`Shift` extends the row selection) |
+| `Tab` | Move to the next editable cell (wraps rows) and edit it; past the last one, focus leaves the grid |
+| `Shift+Tab` | Move to the previous editable cell and edit it; before the first one, focus leaves the grid |
+| `Enter` | Commit the edit and move down / open the editor on the current cell (if `F2Key` trigger enabled) |
+| `Escape` | Cancel the edit / clear the selection |
 | `F2` | Open inline editor (if `F2Key` trigger enabled) |
+| `Space` | Toggle the current Boolean cell / toggle the current row's selection |
 | `Home` / `End` | First / last cell in row |
 | `Ctrl+Home` / `Ctrl+End` | First / last cell in grid |
-| `Page Up` / `Page Down` | Scroll one viewport height |
+| `Page Up` / `Page Down` | Move one page of visible rows |
+| `Ctrl+A` | Select all rows |
+| Typing a character | Open the editor with that character (if `Typing` trigger enabled) |
+
+The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, and the pinned bottom summary footer. Tab stops are visible columns that are not read-only and allow tab stops (`AllowTabStop`); Tab moves to a column whose `EditTriggers` is `None` without opening its editor. When Tab or Shift+Tab has no further cell to go to, or nothing is current, the grid leaves the key unhandled and the host moves focus to the next control, so the grid is never a keyboard trap. Enter and Escape are also left to the page when the grid has nothing to do with them.
 
 ---
 
@@ -1141,7 +1191,7 @@ All packages target **.NET 10** and **SkiaSharp 4.153.1**. Uno apps must also se
 |---|---|---|---|---|
 | KumikoUI.Core, KumikoUI.SkiaSharp | any .NET 10 runtime (`net10.0`) | — | any OS | unit tests in CI |
 | KumikoUI.Maui | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build |
-| KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; sample launch tracked in #121 |
+| KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; sample launch checked on macOS 27 (#121) |
 | KumikoUI.Maui | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build |
 | KumikoUI.Maui | Windows (`net10.0-windows10.0.19041.0`) | 10.0.19041 | Windows | CI build |
 | KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; sample run on macOS |

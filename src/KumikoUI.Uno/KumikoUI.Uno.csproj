@@ -16,8 +16,11 @@
 
     <UnoSingleProject>true</UnoSingleProject>
     <OutputType>Library</OutputType>
-    <!-- Ensures the .xr.xml files are generated in a proper layout folder (needed for packaged fonts/assets) -->
-    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+    <!--
+      The library ships no fonts or assets, so no GenerateLibraryLayout (it makes the multi-head pack sweep
+      the Android resource pipeline's AndroidX files into the package). IncludeContentInPack=false keeps
+      any content item out of the nupkg for good; eng/check-uno-package.sh asserts it in CI (#66).
+    -->
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -46,8 +49,8 @@
     -->
     <IsPackable>true</IsPackable>
     <PackageId>KumikoUI.Uno</PackageId>
-    <Description>A high-performance, fully custom-drawn KumikoUI DataGrid control for the Uno Platform. Renders via SkiaSharp (SKXamlCanvas) across Windows, desktop (Windows, macOS, Linux), WebAssembly, Android and iOS — reusing the same engine as KumikoUI.Maui.</Description>
-    <PackageTags>uno;unoplatform;winui;datagrid;grid;table;skiasharp;dotnet;cross-platform</PackageTags>
+    <Description>A high-performance, fully custom-drawn KumikoUI DataGrid control for the Uno Platform. Renders via SkiaSharp (SKXamlCanvas) on Windows (WinUI), desktop (Windows, macOS, Linux), WebAssembly, Android and iOS, reusing the same engine as KumikoUI.Maui.</Description>
+    <PackageTags>uno;unoplatform;winui;datagrid;grid;table;skiasharp;dotnet;cross-platform;wasm;webassembly;desktop;android;ios</PackageTags>
   </PropertyGroup>
 
   <!--
@@ -120,6 +123,31 @@
     <!-- <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" RuntimeFrameworkVersion="10.0.22621.28" />
     <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" TargetingPackVersion="10.0.22621.28" /> -->
   </ItemGroup>
+
+  <!--
+    The Uno.Sdk adds implicit packages on every head that a library must not hand on to its consumers:
+    Uno.WinUI.Lottie and Uno.WinUI.Graphics2DSK (added by the SkiaRenderer feature; an app head requests them
+    itself through its own UnoFeatures) and the DevServer packages. Mark them PrivateAssets="all" so they stay
+    out of the nuspec's dependency groups (Uno.Resizetizer, Uno.Sdk.Extras and Uno.Settings.DevServer are
+    already private). The Uno SDK creates these references in its UnoImplicitPackages target, so this runs
+    right after it, before restore and pack read the PackageReference items.
+  -->
+  <Target Name="KumikoPrivatizeUnoImplicitPackages" AfterTargets="UnoImplicitPackages">
+    <ItemGroup>
+      <PackageReference Condition="'%(Identity)' == 'Uno.WinUI.Lottie'">
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
+      <PackageReference Condition="'%(Identity)' == 'Uno.WinUI.Graphics2DSK'">
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
+      <PackageReference Condition="'%(Identity)' == 'Uno.WinUI.DevServer'">
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
+      <PackageReference Condition="'%(Identity)' == 'Uno.Wasm.Bootstrap.DevServer'">
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
+    </ItemGroup>
+  </Target>
 
   <!--
     Uno.Resizetizer (implicit in Uno.Sdk) ships a source generator that emits a public

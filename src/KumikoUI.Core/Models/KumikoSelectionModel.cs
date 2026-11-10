@@ -36,6 +36,13 @@ public class KumikoSelectionModel
     /// <summary>Active selection mode controlling click behavior.</summary>
     public KumikoSelectionMode Mode { get; set; } = KumikoSelectionMode.Extended;
 
+    /// <summary>
+    /// Whether a tap on the empty part of the rows area — below the last row or right of the last column —
+    /// clears the selection and the current cell (committing an open edit first), as list views do. Default
+    /// <c>true</c>; set <c>false</c> to keep the selection.
+    /// </summary>
+    public bool ClearSelectionOnEmptyAreaTap { get; set; } = true;
+
     /// <summary>The selected data items.</summary>
     public IReadOnlySet<object> SelectedItems { get; }
 
@@ -132,11 +139,9 @@ public class KumikoSelectionModel
         var rows = new List<int>();
         if (Mode != KumikoSelectionMode.None)
         {
-            foreach (var item in items)
-            {
-                int row = item == null ? -1 : Source.IndexOfRowKey(item);
-                if (IsDataRow(row)) rows.Add(row);
-            }
+            rows.AddRange(items
+                .Select(item => item == null ? -1 : Source.IndexOfRowKey(item))
+                .Where(IsDataRow));
             if (Mode == KumikoSelectionMode.Single && rows.Count > 1) rows.RemoveRange(0, rows.Count - 1);
         }
 

@@ -140,7 +140,7 @@ public class KumikoSelectionBinderTests
     public void OwnedList_ChangedByTheViewModel_SelectsInTheGrid()
     {
         var f = new Fixture();
-        var list = (ObservableCollection<object>)f.Binder.SelectedItems;
+        var list = Assert.IsType<ObservableCollection<object>>(f.Binder.SelectedItems);
 
         list.Add(f.P("Alice"));
         list.Add(f.P("Eve"));
