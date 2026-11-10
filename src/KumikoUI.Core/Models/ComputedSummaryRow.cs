@@ -12,13 +12,35 @@ public class ComputedSummaryRow
     public string? Title { get; init; }
 
     /// <summary>
-    /// Computed values keyed by column property name.
-    /// Value is the formatted display string for each column.
+    /// Computed values keyed by column property name (case-insensitive). The value is the formatted display
+    /// string for the column; when several aggregates share a property they are joined in declaration order.
     /// </summary>
     public Dictionary<string, string> Values { get; init; } = new();
 
     /// <summary>
-    /// Raw computed values keyed by column property name (before formatting).
+    /// Raw computed values keyed by column property name (case-insensitive, before formatting). When several
+    /// aggregates share a property this holds the first; use <see cref="Aggregates"/> for all of them.
     /// </summary>
     public Dictionary<string, object?> RawValues { get; init; } = new();
+
+    /// <summary>
+    /// Every computed aggregate in declaration order, keyed by property and summary type or label
+    /// (several can share one property).
+    /// </summary>
+    public IReadOnlyList<ComputedSummaryValue> Aggregates { get; init; } = Array.Empty<ComputedSummaryValue>();
+
+    /// <summary>
+    /// The raw result of the first aggregate of <paramref name="propertyName"/> (case-insensitive) with
+    /// <paramref name="summaryType"/>, or null when there is none.
+    /// </summary>
+    public object? GetRawValue(string propertyName, SummaryType summaryType)
+    {
+        foreach (var a in Aggregates)
+        {
+            if (a.SummaryType == summaryType &&
+                string.Equals(a.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase))
+                return a.Value;
+        }
+        return null;
+    }
 }

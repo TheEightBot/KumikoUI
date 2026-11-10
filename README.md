@@ -438,11 +438,15 @@ Summaries appear as pinned rows at the top or bottom of the grid (table summarie
 </dg:KumikoDataGrid.TableSummaryRows>
 ```
 
+Several aggregates of one property appear together in that property's cell, in declaration order (`Sum: $1,300  |  Avg: $163`); the summary row keeps its one-line height, so make the column wide enough for them. A property that has no column, or a hidden one, can still be aggregated, and property names match case-insensitively.
+
 ### Group summaries (code)
 
 ```csharp
-kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
+kumiko.DataSource.AddGroupSummaryRow(new GroupSummaryRow("Totals")
 {
+    Title = "Total",
+    Levels = GroupSummaryLevels.All, // after every group level; Innermost (the default) only after the innermost
     Columns =
     {
         new SummaryColumnDescription { PropertyName = "Salary", SummaryType = SummaryType.Sum,   Format = "C0" },
@@ -451,9 +455,13 @@ kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
 });
 ```
 
+With `Levels = All` each group, outer or inner, gets a summary of all the rows beneath it. Read computed values with `GetGroupSummaries(groupPath)` or `ComputedBottomSummaries`: `Values` (display text) and `RawValues` are keyed by property, and `Aggregates` / `GetRawValue(property, type)` give each aggregate when a property has several.
+
 ### Available summary types
 
-`Sum` · `Average` · `Count` · `Min` · `Max`
+`Sum` · `Average` · `Count` · `Min` · `Max` · `Custom`
+
+`Sum` and `Average` of `decimal` values are exact (a `decimal` result); integers and floating-point numbers give a `double`. Values that are not numbers (text, dates, booleans, nulls) are skipped. `Min` and `Max` use the grid's comparer, so mixed types never throw.
 
 ---
 
