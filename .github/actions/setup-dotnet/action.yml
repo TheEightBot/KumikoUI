@@ -13,9 +13,24 @@ inputs:
     required: false
     default: ''
 
+  cache-nuget:
+    description: Cache the NuGet global packages folder, keyed on the package and project files. Use in CI only, not in release builds.
+    required: false
+    default: 'false'
+
 runs:
   using: composite
   steps:
+    # Restored packages (Uno, MAUI and SkiaSharp native assets are large) are reused between runs; the key changes
+    # whenever a package version or project file does, and restore-keys fall back to the closest older cache.
+    - name: Cache NuGet packages
+      if: inputs.cache-nuget == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'Directory.Packages.props', 'Directory.Build.props', '**/*.csproj') }}
+        restore-keys: nuget-${{ runner.os }}-
+
     - name: Setup .NET (version from global.json)
       uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       with:

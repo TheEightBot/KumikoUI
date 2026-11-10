@@ -6,11 +6,11 @@
              xmlns:render="clr-namespace:KumikoUI.Core.Rendering;assembly=KumikoUI.Core"
              xmlns:editing="clr-namespace:KumikoUI.Core.Editing;assembly=KumikoUI.Core"
              x:Class="SampleApp.Maui.MvvmActionsPage"
-             Title="MVVM + Column EditTriggers">
+             Title="MVVM selection + EditTriggers">
 
-    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="0">
 
-        <Label Text="Column-Level EditTriggers"
+        <Label Text="MVVM selection and column-level EditTriggers"
                FontSize="18"
                FontAttributes="Bold"
                Padding="16,12,16,2"
@@ -46,6 +46,20 @@
         </VerticalStackLayout>
 
         <!--
+            Selection from the view model: SelectedItem is two-way, SelectedItems is the VM's own
+            collection (kept in sync by the grid), and SelectionChangedCommand gets the added and
+            removed items. Sort or filter the grid and the selection stays on the same employees.
+        -->
+        <VerticalStackLayout Grid.Row="2" Padding="16,0,16,8" Spacing="2">
+            <Label Text="{Binding SelectionSummary}" FontSize="13" FontAttributes="Bold" />
+            <Label Text="{Binding LastChange}" FontSize="12" TextColor="Gray" />
+            <HorizontalStackLayout Spacing="8">
+                <Button Text="Select first" Command="{Binding SelectFirstCommand}" />
+                <Button Text="Clear" Command="{Binding ClearSelectionCommand}" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+
+        <!--
             Grid-level EditTriggers = Default (DoubleTap | F2Key | Typing).
             Each column below overrides this with its own EditTriggers value,
             demonstrating the full range of per-column trigger configurations.
@@ -54,8 +68,11 @@
             BindingContext = MvvmActionsViewModel (set in code-behind).
         -->
         <dg:KumikoDataGrid x:Name="actionsGrid"
-                         Grid.Row="2"
+                         Grid.Row="3"
                          ItemsSource="{Binding Employees}"
+                         SelectedItem="{Binding SelectedEmployee, Mode=TwoWay}"
+                         SelectedItems="{Binding SelectedEmployees, Mode=OneWay}"
+                         SelectionChangedCommand="{Binding SelectionChangedCommand}"
                          EditTriggers="DoubleTap, F2Key, Typing"
                          RowHeight="44"
                          HeaderHeight="40">

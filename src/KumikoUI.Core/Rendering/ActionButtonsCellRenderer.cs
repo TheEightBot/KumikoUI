@@ -64,33 +64,38 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider, IIn
     /// <inheritdoc />
     public event Action? RedrawRequested;
 
-    /// <inheritdoc />
-    public void Render(
-        IDrawingContext ctx, KumikoRect cellRect, object? value,
-        string displayText, KumikoColumn column,
-        KumikoStyle style, bool isSelected,
-        KumikoCellStyle? cellStyle = null)
-    {
-        if (Buttons.Count == 0) return;
-        var rects = ActionButtonLayout.ComputeButtonRects(cellRect, Buttons.Count, CellPadding, ButtonSpacing);
+    // Reused for every button (only the colors vary), so drawing the buttons allocates nothing.
+    private readonly KumikoPaint _buttonPaint = new() { IsAntiAlias = true };
+    private readonly KumikoPaint _labelPaint = new() { Font = new KumikoFont("Default", 11, bold: true), IsAntiAlias = true };
 
-        for (int i = 0; i < Buttons.Count; i++)
+    /// <inheritdoc />
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
+    {
+        var buttons = Buttons;
+        int count = buttons.Count;
+        var cellRect = cell.Bounds;
+        if (count == 0 || cellRect.Width <= 0 || cellRect.Height <= 0) return;
+
+        for (int i = 0; i < count; i++)
         {
-            var btn = Buttons[i];
+            var btn = buttons[i];
             Listen(btn.Command);
-            ActionButtonPainter.Draw(ctx, rects[i], btn, CornerRadius,
-                enabled: ActionButtonPainter.IsEnabled(btn, value), pressed: false,
-                style.ActionButtonDisabledBackgroundColor, style.ActionButtonDisabledTextColor);
+            bool enabled = ActionButtonPainter.IsEnabled(btn, cell.Value);
+            var rect = ActionButtonLayout.ComputeButtonRect(cellRect, count, i, CellPadding, ButtonSpacing);
+            _buttonPaint.Color = enabled ? btn.BackgroundColor : cell.Style.ActionButtonDisabledBackgroundColor;
+            ctx.FillRoundRect(rect, CornerRadius, _buttonPaint);
+            _labelPaint.Color = enabled ? btn.TextColor : cell.Style.ActionButtonDisabledTextColor;
+            ctx.DrawTextInRect(btn.Label, rect, _labelPaint, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
         }
     }
 
     /// <inheritdoc />
     public bool OnCellTap(KumikoRect cellRect, float x, float y, object? value)
     {
-        var rects = ActionButtonLayout.ComputeButtonRects(cellRect, Buttons.Count, CellPadding, ButtonSpacing);
-        for (int i = 0; i < rects.Count; i++)
+        int count = Buttons.Count;
+        for (int i = 0; i < count; i++)
         {
-            if (!rects[i].Contains(x, y)) continue;
+            if (!ActionButtonLayout.ComputeButtonRect(cellRect, count, i, CellPadding, ButtonSpacing).Contains(x, y)) continue;
             // The button may remove the row: nothing else is read after it runs
             return ActionButtonPainter.TryInvoke(Buttons[i], value);
         }
