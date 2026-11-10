@@ -42,6 +42,9 @@ public class EditSession
     /// <summary>The active editor component (null if not editing).</summary>
     public DrawnComponent? ActiveEditor => _activeEditor;
 
+    /// <summary>The focus manager holding the active editor: exactly one editor while editing, none otherwise.</summary>
+    internal DrawnFocusManager FocusManager => _focusManager;
+
     /// <summary>
     /// The active editor's text-input surface for a host's native text-input adapter, or null when not
     /// editing or the editor takes no text (a check box, a picker).
@@ -124,13 +127,24 @@ public class EditSession
     /// <summary>
     /// Try to begin editing a cell.
     /// </summary>
+    /// <remarks>
+    /// An edit that is already open is committed first (<see cref="CommitEdit"/>). When that commit is
+    /// refused, nothing else happens: the open editor stays, with its message, and this returns false. When
+    /// it succeeds, the old editor is ended (and unregistered from focus) before the new one is created, so
+    /// at most one editor exists at a time.
+    /// </remarks>
+    /// <returns>True if the cell is now being edited.</returns>
     public bool BeginEdit(
         int rowIndex, int columnIndex,
         KumikoColumn column, KumikoSource dataSource,
         KumikoRect cellBounds, char? initialCharacter = null)
     {
+        if (_isEditing && !CommitEdit(_editDataSource ?? dataSource))
+            return false;
+
+        // A CellEndEdit handler may have started another edit while the commit finished: it ends here
         if (_isEditing)
-            CommitEdit(dataSource);
+            CancelEdit();
 
         if (column.IsReadOnly) return false;
         if (rowIndex < 0 || rowIndex >= dataSource.RowCount || dataSource.IsNonDataRow(rowIndex)) return false;
@@ -272,16 +286,18 @@ public class EditSession
             _isCommitting = false;
         }
 
-        var endArgs = new CellEndEditEventArgs(
-            editedCell.Row, editedCell.Column, column,
-            _originalValue, newValue, committed: true);
+        var oldValue = _originalValue;
 
-        // Raise value changed if different
-        if (!Equals(_originalValue, newValue))
+        // The edit ends first, so handlers see a session that is no longer editing (and may start the next
+        // edit): CellEndEdit, then CellValueChanged, then a message that goes with the value.
+        EndEdit();
+        CellEndEdit?.Invoke(this, new CellEndEditEventArgs(
+            editedCell.Row, editedCell.Column, column, oldValue, newValue, committed: true));
+
+        if (!Equals(oldValue, newValue))
         {
             CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(
-                editedCell.Row, editedCell.Column, column,
-                _originalValue, newValue));
+                editedCell.Row, editedCell.Column, column, oldValue, newValue));
         }
 
         // A warning (accepted) or an informational message goes with the committed value
@@ -289,8 +305,6 @@ public class EditSession
             ValidationFailed?.Invoke(this, new CellValidationEventArgs(
                 editedCell.Row, editedCell.Column, column, item, newValue, result, committed: true));
 
-        EndEdit();
-        CellEndEdit?.Invoke(this, endArgs);
         return true;
     }
 
@@ -359,13 +373,25 @@ public class EditSession
     }
 
     /// <summary>
-    /// Toggle a boolean cell directly (no editor needed).
+    /// Toggle a boolean cell directly (no editor needed). The new value goes through the same pipeline as
+    /// <see cref="CommitEdit"/>: <see cref="CellValidator"/>, the write, then the item's own validation,
+    /// rolling the value back on an error and reporting it through <see cref="ValidationFailed"/>. Events
+    /// follow a successful write in the order <see cref="CellEndEdit"/>, <see cref="CellValueChanged"/>; a
+    /// refused toggle raises <see cref="CellEndEdit"/> with <c>Committed</c> false and no
+    /// <see cref="CellValueChanged"/>. A warning does not block (there is no editor to keep open): it is
+    /// reported and the value kept. An edit that is open is committed first, and the toggle is skipped when
+    /// that commit is refused.
     /// </summary>
     public void ToggleBooleanCell(int row, int col, KumikoColumn column, KumikoSource dataSource)
     {
         if (column.IsReadOnly) return;
         if (row < 0 || row >= dataSource.RowCount || dataSource.IsNonDataRow(row)) return;
 
+        if (_isEditing && !CommitEdit(_editDataSource ?? dataSource)) return;
+        // The commit may have moved rows (sort, grouping): the row is checked again
+        if (row >= dataSource.RowCount || dataSource.IsNonDataRow(row)) return;
+
+        var item = dataSource.GetItem(row);
         var currentValue = dataSource.GetCellValue(row, column);
         bool current = currentValue is true;
         var newValue = (object)!current;
@@ -375,14 +401,46 @@ public class EditSession
         CellBeginEdit?.Invoke(this, beginArgs);
         if (beginArgs.Cancel) return;
 
-        if (!dataSource.SetCellValue(row, column, newValue))
-            return; // the value could not be written: nothing changed
+        CellValidationResult? result = CellValidator?.Invoke(row, col, newValue);
+        if (result is { IsValid: false })
+        {
+            RefuseToggle(row, col, column, item, currentValue, newValue, result);
+            return;
+        }
 
-        CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(
-            row, col, column, currentValue, newValue));
+        if (!dataSource.TrySetItemValue(item, column, newValue, out var writeError))
+        {
+            RefuseToggle(row, col, column, item, currentValue, newValue,
+                CellValidationResult.Error(writeError ?? "The value could not be saved."));
+            return;
+        }
+
+        var modelResult = ValidateItem(item, column);
+        if (modelResult is { IsValid: false })
+        {
+            dataSource.TrySetItemValue(item, column, currentValue, out _);
+            RefuseToggle(row, col, column, item, currentValue, newValue, modelResult);
+            return;
+        }
+        result = MoreSevere(result, modelResult);
+
+        NeedsRedraw?.Invoke();
         CellEndEdit?.Invoke(this, new CellEndEditEventArgs(
             row, col, column, currentValue, newValue, committed: true));
+        CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(
+            row, col, column, currentValue, newValue));
+        if (result is { ErrorMessage: { Length: > 0 } })
+            ValidationFailed?.Invoke(this, new CellValidationEventArgs(
+                row, col, column, item, newValue, result, committed: true));
+    }
 
+    private void RefuseToggle(int row, int col, KumikoColumn column, object item, object? oldValue, object? attempted,
+        CellValidationResult result)
+    {
+        ValidationFailed?.Invoke(this, new CellValidationEventArgs(
+            row, col, column, item, attempted, result, committed: false));
+        CellEndEdit?.Invoke(this, new CellEndEditEventArgs(
+            row, col, column, oldValue, oldValue, committed: false));
         NeedsRedraw?.Invoke();
     }
 
@@ -611,8 +669,9 @@ public class EditSession
                 textBox.CopyRequested -= OnEditorCopyRequested;
                 textBox.PasteRequested -= OnEditorPasteRequested;
             }
-            _focusManager.Unregister(_activeEditor);
+            // Blur first, then unregister: the editor loses focus properly and the manager keeps none
             _focusManager.ClearFocus();
+            _focusManager.Unregister(_activeEditor);
             _activeEditor = null;
         }
         _isEditing = false;
