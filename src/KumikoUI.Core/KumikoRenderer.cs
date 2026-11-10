@@ -1152,17 +1152,17 @@ public class KumikoRenderer
             float bottom = iconCenterY + iconSize / 2;
             float mid = top + iconSize * 0.45f;
 
-            // Top wide part of funnel
-            ctx.DrawLine(iconX, top, iconX + iconSize, top, paint);
-            // Left slope
-            ctx.DrawLine(iconX, top, iconX + iconSize * 0.35f, mid, paint);
-            // Right slope
-            ctx.DrawLine(iconX + iconSize, top, iconX + iconSize * 0.65f, mid, paint);
-            // Stem
-            ctx.DrawLine(iconX + iconSize * 0.35f, mid, iconX + iconSize * 0.35f, bottom, paint);
-            ctx.DrawLine(iconX + iconSize * 0.65f, mid, iconX + iconSize * 0.65f, bottom, paint);
-            // Bottom
-            ctx.DrawLine(iconX + iconSize * 0.35f, bottom, iconX + iconSize * 0.65f, bottom, paint);
+            // One closed outline (top edge, right slope, right stem, bottom, left stem, left slope), joined at
+            // every corner: the last point repeats the first.
+            Span<KumikoPoint> outline = stackalloc KumikoPoint[7];
+            outline[0] = new KumikoPoint(iconX, top);
+            outline[1] = new KumikoPoint(iconX + iconSize, top);
+            outline[2] = new KumikoPoint(iconX + iconSize * 0.65f, mid);
+            outline[3] = new KumikoPoint(iconX + iconSize * 0.65f, bottom);
+            outline[4] = new KumikoPoint(iconX + iconSize * 0.35f, bottom);
+            outline[5] = new KumikoPoint(iconX + iconSize * 0.35f, mid);
+            outline[6] = outline[0];
+            ctx.DrawPolyline(outline, paint);
 
             // Fill the funnel if filter is active
             if (hasActiveFilter)

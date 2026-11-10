@@ -405,8 +405,8 @@ public class DrawnFilterPopup : DrawnComponent
         float cbIY = selectAllRect.Y + (ButtonRowHeight - 12) / 2;
         ctx.DrawRect(new KumikoRect(cbIX, cbIY, 12, 12), new KumikoPaint { Color = AccentColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true });
         ctx.FillRect(new KumikoRect(cbIX + 2, cbIY + 2, 8, 8), new KumikoPaint { Color = AccentColor, Style = PaintStyle.Fill });
-        ctx.DrawLine(cbIX + 2.5f, cbIY + 6, cbIX + 5, cbIY + 9, new KumikoPaint { Color = ButtonTextColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true });
-        ctx.DrawLine(cbIX + 5, cbIY + 9, cbIX + 9.5f, cbIY + 3, new KumikoPaint { Color = ButtonTextColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true });
+        GlyphDrawing.Chevron(ctx, cbIX + 2.5f, cbIY + 6, cbIX + 5, cbIY + 9, cbIX + 9.5f, cbIY + 3,
+            new KumikoPaint { Color = ButtonTextColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true });
         ctx.DrawTextInRect("Select All", new KumikoRect(selectAllRect.X + 24, selectAllRect.Y, selectAllRect.Width - 24, ButtonRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
 
@@ -460,8 +460,10 @@ public class DrawnFilterPopup : DrawnComponent
             {
                 fillPaint.Color = CheckmarkColor;
                 ctx.FillRect(new KumikoRect(cbX + 2, cbY + 2, CheckboxSize - 4, CheckboxSize - 4), fillPaint);
-                ctx.DrawLine(cbX + 3, cbY + CheckboxSize / 2f, cbX + CheckboxSize * 0.4f, cbY + CheckboxSize - 4, checkPaint);
-                ctx.DrawLine(cbX + CheckboxSize * 0.4f, cbY + CheckboxSize - 4, cbX + CheckboxSize - 3, cbY + 3, checkPaint);
+                GlyphDrawing.Chevron(ctx,
+                    cbX + 3, cbY + CheckboxSize / 2f,
+                    cbX + CheckboxSize * 0.4f, cbY + CheckboxSize - 4,
+                    cbX + CheckboxSize - 3, cbY + 3, checkPaint);
             }
 
             // Text

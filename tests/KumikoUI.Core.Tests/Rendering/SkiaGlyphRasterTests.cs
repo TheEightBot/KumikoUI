@@ -60,6 +60,24 @@ public class SkiaGlyphRasterTests
         Assert.Equal(255, bitmap.GetPixel((int)(12.8f * scale), 10 * scale).Alpha);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Checkmark_VertexIsCoveredAtEveryScale(int scale)
+    {
+        var tick = new[] { new KumikoPoint(4, 10), new KumikoPoint(8, 15), new KumikoPoint(16, 5) };
+        using var bitmap = Render(scale, 20, 20, ctx =>
+            ctx.DrawPolyline(tick, new KumikoPaint { Color = Ink, Style = PaintStyle.Stroke, StrokeWidth = 2f, IsAntiAlias = true }));
+
+        // The bottom vertex and the pixel just below it (the outer side of the corner) are solid: no notch.
+        Assert.InRange((int)bitmap.GetPixel(8 * scale, 15 * scale).Alpha, 150, 255);
+        Assert.InRange((int)bitmap.GetPixel(8 * scale, (int)(15.7f * scale)).Alpha, 150, 255); // round join, partly covered
+        // Mid-stroke on both arms.
+        Assert.InRange((int)bitmap.GetPixel(6 * scale, (int)(12.5f * scale)).Alpha, 90, 255);
+        Assert.InRange((int)bitmap.GetPixel(12 * scale, 10 * scale).Alpha, 90, 255);
+    }
+
     [Fact]
     public void RepeatedPolygonCalls_ReuseOnePath()
     {

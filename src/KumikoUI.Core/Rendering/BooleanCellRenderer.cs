@@ -25,11 +25,8 @@ public class BooleanCellRenderer : ICellRenderer
         {
             var checkPaint = cell.Paints.CheckMark;
             float pad = boxSize * 0.2f;
-            ctx.DrawLine(
+            GlyphDrawing.Chevron(ctx,
                 boxRect.X + pad, boxRect.Y + boxSize * 0.5f,
-                boxRect.X + boxSize * 0.4f, boxRect.Bottom - pad,
-                checkPaint);
-            ctx.DrawLine(
                 boxRect.X + boxSize * 0.4f, boxRect.Bottom - pad,
                 boxRect.Right - pad, boxRect.Y + pad,
                 checkPaint);

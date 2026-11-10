@@ -397,8 +397,10 @@ public class KumikoRendererTests
         Assert.Equal(2, boxes.Count);
         // 16 px box centred in the padded cell (8..92 x row).
         Assert.Equal(new KumikoRect(8 + (84 - 16) / 2f, h.RowTop(0) + 10, 16, 16), boxes[0].Rect);
-        var checkmarks = ctx.Lines.Where(l => l.Color == h.Style.AccentColor).ToList();
-        Assert.Equal(2, checkmarks.Count); // row 0 is Active, row 1 is not
+        Assert.DoesNotContain(ctx.Lines, l => l.Color == h.Style.AccentColor);
+        var checkmarks = ctx.Polylines.Where(l => l.Color == h.Style.AccentColor).ToList();
+        Assert.Single(checkmarks); // row 0 is Active, row 1 is not
+        Assert.Equal(3, checkmarks[0].Points!.Length);
         Assert.All(checkmarks, l => Assert.True(l.Rect.Y >= h.RowTop(0) && l.Rect.Bottom <= h.RowTop(1)));
     }
 
@@ -518,10 +520,11 @@ public class KumikoRendererTests
         var h = Create();
         h.Column("Age").AllowFiltering = false;
 
-        var funnel = h.Render().Lines.Where(l => l.Color == h.Style.FilterIconColor).ToList();
+        var funnel = h.Render().Polylines.Where(l => l.Color == h.Style.FilterIconColor).ToList();
 
-        // Six strokes per funnel, three filterable columns; none inside Age (150–250).
-        Assert.Equal(18, funnel.Count);
+        // One closed outline per funnel, three filterable columns; none inside Age (150–250).
+        Assert.Equal(3, funnel.Count);
+        Assert.All(funnel, f => Assert.Equal(f.Points![0], f.Points[^1]));
         Assert.DoesNotContain(funnel, l => l.Rect.Left >= 150 && l.Rect.Right <= 250);
         // Name is not sorted, so its funnel sits at the right edge: 150 − 8 − 10 = 132.
         Assert.Equal(132, funnel.Where(l => l.Rect.Right <= 150).Min(l => l.Rect.Left));
@@ -533,7 +536,7 @@ public class KumikoRendererTests
         var h = Create();
         h.Source.ToggleSort(h.Column("Name"));
 
-        var funnel = h.Render().Lines.Where(l => l.Color == h.Style.FilterIconColor && l.Rect.Right <= 150).ToList();
+        var funnel = h.Render().Polylines.Where(l => l.Color == h.Style.FilterIconColor && l.Rect.Right <= 150).ToList();
 
         // The sort arrow takes the right 12 px: 150 − 8 − 12 − 10 = 120.
         Assert.Equal(120, funnel.Min(l => l.Rect.Left));
@@ -548,7 +551,8 @@ public class KumikoRendererTests
 
         var ctx = h.Render();
 
-        Assert.Equal(6, ctx.Lines.Count(l => l.Color == h.Style.FilterActiveIconColor));
+        Assert.Single(ctx.Polylines, l => l.Color == h.Style.FilterActiveIconColor);
+        Assert.DoesNotContain(ctx.Lines, l => l.Color == h.Style.FilterActiveIconColor);
         var dot = Assert.Single(ctx.Fills, f => f.Color == h.Style.FilterActiveIconColor);
         Assert.Equal(5, dot.Rect.Width);
         Assert.True(dot.Rect.Left >= 250 && dot.Rect.Right <= 400);

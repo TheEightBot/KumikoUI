@@ -167,13 +167,14 @@ public class DrawnCheckBoxTests
         var ctx = Draw(box);
 
         Assert.Equal(box.CheckedBoxFillColor, Assert.Single(ctx.Fills).Color);
-        var ticks = ctx.Lines.ToList();
-        Assert.Equal(2, ticks.Count);
-        Assert.All(ticks, t => Assert.Equal(box.CheckMarkColor, t.Color));
-        // The tick's two strokes meet at its lowest point
-        Assert.Equal(ticks[0].X2, ticks[1].X1);
-        Assert.Equal(ticks[0].Y2, ticks[1].Y1);
-        Assert.True(ticks[1].Y2 < ticks[1].Y1);
+        // One joined polyline: the tick's two strokes meet at its lowest point
+        Assert.Empty(ctx.Lines);
+        var tick = Assert.Single(ctx.Polylines);
+        Assert.Equal(box.CheckMarkColor, tick.Color);
+        var pts = tick.Points!;
+        Assert.Equal(3, pts.Length);
+        Assert.True(pts[1].Y > pts[0].Y && pts[1].Y > pts[2].Y);
+        Assert.True(pts[2].Y < pts[1].Y);
     }
 
     [Fact]
