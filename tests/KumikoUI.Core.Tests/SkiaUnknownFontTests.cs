@@ -44,12 +44,13 @@ public class SkiaUnknownFontTests : IDisposable
         using var bitmap = new SKBitmap(100, 40);
         using var canvas = new SKCanvas(bitmap);
 
-        var ctx = new SkiaDrawingContext(canvas);
-        var paint = Paint(Unknown);
-        ctx.DrawText("Hello", 4, 20, paint);
-        Assert.True(ctx.MeasureText("Hello", paint).Width > 0);
-        ctx.Dispose();
-        ctx.Dispose();
+        using (var ctx = new SkiaDrawingContext(canvas))
+        {
+            var paint = Paint(Unknown);
+            ctx.DrawText("Hello", 4, 20, paint);
+            Assert.True(ctx.MeasureText("Hello", paint).Width > 0);
+            ctx.Dispose(); // disposed again by the using: disposing twice must be safe
+        }
 
         // The shared default typeface must still be alive for later frames.
         Assert.True(SKTypeface.Default.GlyphCount > 0);

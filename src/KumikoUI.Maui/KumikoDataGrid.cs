@@ -35,7 +35,7 @@ namespace KumikoUI.Maui;
 /// private: it has no layout API, and its XAML content is <see cref="Columns"/>.
 /// </remarks>
 [ContentProperty(nameof(Columns))]
-public class KumikoDataGrid : ContentView
+public partial class KumikoDataGrid : ContentView
 {
     private readonly Grid _root = new();
     private readonly SKCanvasView _canvasView = new();
@@ -97,6 +97,7 @@ public class KumikoDataGrid : ContentView
     {
         // The selection follows the source's view changes by itself (item-based, #30).
         _selection = new KumikoSelectionModel(_dataSource);
+        InitializeSelectionBinding();
 
         // Accessibility: set semantic description for screen readers
         SemanticProperties.SetDescription(this, "Data grid");
@@ -360,6 +361,23 @@ public class KumikoDataGrid : ContentView
     {
         get => (KumikoUI.Core.Models.KumikoSelectionMode)GetValue(GridSelectionModeProperty);
         set => SetValue(GridSelectionModeProperty, value);
+    }
+
+    // ── ClearSelectionOnEmptyAreaTap ──
+
+    /// <summary>Identifies the <see cref="ClearSelectionOnEmptyAreaTap"/> bindable property.</summary>
+    public static readonly BindableProperty ClearSelectionOnEmptyAreaTapProperty = BindableProperty.Create(
+        nameof(ClearSelectionOnEmptyAreaTap), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) => ((KumikoDataGrid)b)._selection.ClearSelectionOnEmptyAreaTap = (bool)n);
+
+    /// <summary>
+    /// When true (default), a tap on the empty part of the rows area — below the last row or right of the
+    /// last column — clears the selection and the current cell.
+    /// </summary>
+    public bool ClearSelectionOnEmptyAreaTap
+    {
+        get => (bool)GetValue(ClearSelectionOnEmptyAreaTapProperty);
+        set => SetValue(ClearSelectionOnEmptyAreaTapProperty, value);
     }
 
     // ── IsReadOnly ──
@@ -1257,6 +1275,8 @@ public class KumikoDataGrid : ContentView
             _nativeKeyInput.BackspaceDeleted += OnNativeBackspace;
             _nativeKeyInput.KeyPressed += OnNativeKeyPress;
             _nativeKeyInput.TabKeyReceived += OnNativeTabKey;
+            // Tab past the last (first) tab stop is left to UIKit so focus can leave the grid.
+            _nativeKeyInput.CanHandleTab = backwards => _inputController.WouldHandleTab(_selection, _dataSource, backwards);
             _nativeKeyInput.NavigationKeyReceived += OnNativeNavigationKey;
 
             platformView.AddSubview(_nativeKeyInput);
