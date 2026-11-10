@@ -413,11 +413,4 @@ public partial class KumikoDataGrid
         var view = (KumikoDataGrid)d;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(view, (string)e.NewValue);
     }
-
-    /// <summary>
-    /// Shared entry point for property callbacks to request a single repaint.
-    /// Mirrors the MAUI control's <c>InvalidateSurface()</c> usage from each
-    /// <c>propertyChanged</c> handler.
-    /// </summary>
-    private void Invalidate() => _canvasView.Invalidate();
 }

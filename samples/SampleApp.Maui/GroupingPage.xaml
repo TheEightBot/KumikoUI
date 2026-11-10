@@ -22,6 +22,7 @@
             <Button Text="Collapse All" Clicked="OnCollapseAllClicked" Margin="4,0,0,4" />
             <Button Text="Add Group Summary" Clicked="OnAddGroupSummaryClicked" Margin="4,0,0,4" />
             <Button Text="Toggle Filtering" Clicked="OnToggleFilteringClicked" Margin="4,0,0,4" />
+            <Button Text="Toggle Grid Lines" Clicked="OnToggleGridLinesClicked" Margin="4,0,0,4" />
         </FlexLayout>
 
         <dg:KumikoDataGrid x:Name="kumiko"
@@ -31,6 +32,9 @@
                          AllowSorting="True"
                          RowHeight="36"
                          HeaderHeight="40"
+                         ShowHorizontalGridLines="True"
+                         ShowVerticalGridLines="False"
+                         AlternateRowBackground="#EEF4FF"
                          GridDescription="Employee data grid demonstrating grouping and filtering"
                          HorizontalOptions="Fill"
                          VerticalOptions="Fill">
@@ -73,6 +77,10 @@
                 <core:KumikoColumn Header="City"
                                      PropertyName="City"
                                      Width="130" />
+
+            <dg:KumikoDataGrid.GroupDescriptions>
+                <core:GroupDescription PropertyName="Department" Header="Department" />
+            </dg:KumikoDataGrid.GroupDescriptions>
 
             <dg:KumikoDataGrid.TableSummaryRows>
                 <core:TableSummaryRow Name="Totals" Position="Bottom" Title="Totals">

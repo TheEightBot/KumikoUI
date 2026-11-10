@@ -748,6 +748,40 @@ public class KumikoSource
     }
 
     /// <summary>
+    /// Replace all group descriptions with <paramref name="groups"/> (in order) as one change: a single
+    /// rebuild and one <see cref="ViewChanged"/> notification. Hosts use it to mirror a bindable collection.
+    /// </summary>
+    public void SetGroupDescriptions(IEnumerable<GroupDescription>? groups)
+    {
+        BeginUpdate();
+        try
+        {
+            ClearGroupDescriptions();
+            if (groups != null)
+                foreach (var group in groups)
+                    AddGroupDescription(group);
+        }
+        finally { EndUpdate(); }
+    }
+
+    /// <summary>
+    /// Replace all group summary rows with <paramref name="rows"/> as one change: a single rebuild and one
+    /// <see cref="ViewChanged"/> notification. Hosts use it to mirror a bindable collection.
+    /// </summary>
+    public void SetGroupSummaryRows(IEnumerable<GroupSummaryRow>? rows)
+    {
+        BeginUpdate();
+        try
+        {
+            ClearGroupSummaryRows();
+            if (rows != null)
+                foreach (var row in rows)
+                    AddGroupSummaryRow(row);
+        }
+        finally { EndUpdate(); }
+    }
+
+    /// <summary>
     /// Get a cell value for a visible row and column.
     /// Returns null for group header rows.
     /// </summary>
