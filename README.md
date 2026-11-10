@@ -49,6 +49,7 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 - [Keyboard Navigation](#-keyboard-navigation)
 - [Row Drag & Drop](#-row-drag--drop)
 - [Theming & Styling](#-theming--styling)
+- [Host Properties, Commands & Events](#-host-properties-commands--events)
 - [Custom Fonts](#-custom-fonts)
 - [Scrolling & Performance](#-scrolling--performance)
 - [Live Data](#-live-data)
@@ -394,7 +395,20 @@ Filters are applied immediately on close and stacked across columns. Remove a fi
 
 ## 🗂️ Grouping
 
-Add one or more `GroupDescription` objects to enable a collapsible group hierarchy with an interactive drag-and-drop group panel above the header.
+Add one or more `GroupDescription` objects to enable a collapsible group hierarchy with an interactive drag-and-drop group panel above the header. In XAML (both hosts), declare them on `GroupDescriptions`; the collection is kept in sync with the data source and can be changed at runtime:
+
+```xml
+<dg:KumikoDataGrid.GroupDescriptions>
+    <core:GroupDescription PropertyName="Department" />
+    <core:GroupDescription PropertyName="Level" />
+</dg:KumikoDataGrid.GroupDescriptions>
+```
+
+or from code, either through the collection or the data source:
+
+```csharp
+kumiko.GroupDescriptions.Add(new GroupDescription("Department"));
+```
 
 ```csharp
 kumiko.DataSource.AddGroupDescription(new GroupDescription("Department"));
@@ -414,7 +428,7 @@ Remove grouping:
 kumiko.DataSource.ClearGroupDescriptions();
 ```
 
-Group summaries (aggregate values per group) are declared with `AddGroupSummaryRow()` — see [Summaries](#-summaries) below.
+Group summaries (aggregate values per group) are declared in the `GroupSummaryRows` collection (or with `AddGroupSummaryRow()`) — see [Summaries](#-summaries) below. `GroupDescriptions` and `GroupSummaryRows` replace whatever grouping was set on `DataSource` directly, so use one or the other.
 
 ---
 
@@ -729,9 +743,15 @@ The current cell is always scrolled fully into view, clear of the grouping panel
 
 Rows can be reordered by the user via two modes.
 
+Both modes are bindable on the control (`ShowRowDragHandle`, `AllowRowDragDrop`) and `RowReordered` reports the move:
+
+```xml
+<dg:KumikoDataGrid ShowRowDragHandle="True" RowReordered="OnRowReordered" />
+```
+
 ### Drag handle column
 
-A dedicated grab-handle column appears as the first (or last) column:
+A dedicated grab-handle column appears as the first (or last) column; to change its side or size, use the style:
 
 ```csharp
 var style = kumiko.GridStyle;
@@ -809,6 +829,64 @@ kumiko.GridStyle = style;
 ```
 
 Style resolution cascades: **per-cell resolver → column `KumikoCellStyle` → grid `KumikoStyle`**.
+
+---
+
+## 🧰 Host Properties, Commands & Events
+
+Everything below exists on both hosts with the same name and default: `KumikoUI.Maui.KumikoDataGrid` (bindable properties) and `KumikoUI.Uno.KumikoDataGrid` (dependency properties). On Uno, set `Mode=TwoWay` explicitly where a binding should write back. Color properties use each host's color type (`Microsoft.Maui.Graphics.Color` on MAUI, `Windows.UI.Color` on Uno) and map to `KumikoColor`.
+
+### Properties
+
+| Property | Type | Default | Meaning |
+|---|---|---|---|
+| `ItemsSource` | `IEnumerable` | null | The rows; an `INotifyCollectionChanged` source is followed. |
+| `Columns` | `ObservableCollection<KumikoColumn>` | empty | Column definitions (the XAML content property). |
+| `TableSummaryRows` | `ObservableCollection<TableSummaryRow>` | empty | Pinned table summary rows. |
+| `GroupDescriptions` | `ObservableCollection<GroupDescription>` | empty | Grouping, outermost first; synced to `DataSource`. |
+| `GroupSummaryRows` | `ObservableCollection<GroupSummaryRow>` | empty | Summary rows after each group; synced to `DataSource`. |
+| `GridSelectionMode` | `KumikoSelectionMode` | `Extended` | None, Single, Multiple or Extended. |
+| `SelectedItem`, `SelectedItems`, `SelectedIndex`, `CurrentCell` | see [Selection in MVVM](#selection-in-mvvm) | | Two-way selection state. |
+| `FrozenRowCount` | `int` | 0 | Top rows frozen while scrolling. |
+| `RowHeight`, `HeaderHeight` | `double` | 36, 40 | Row and header heights. |
+| `IsReadOnly` | `bool` | false | Disables editing (not yet enforced by the host). |
+| `AllowSorting`, `AllowFiltering` | `bool` | true | Header sort and filter affordances (not yet enforced by the host). |
+| `EditTriggers` | `EditTrigger` | `Default` | Gestures that start editing. |
+| `EditTextSelectionMode` | `EditTextSelectionMode` | `SelectAll` | Text selection when editing starts. |
+| `DismissKeyboardOnEnter` | `bool` | true | Enter commits and dismisses the keyboard. |
+| `CellValidator` | `Func<int, int, object?, CellValidationResult>` | null | Validates a converted value before it is committed (row, column, value). |
+| `ShowHorizontalGridLines` | `bool?` | null (style: on) | Lines between rows. |
+| `ShowVerticalGridLines` | `bool?` | null (style: on) | Lines between columns. |
+| `AlternateRowBackground` | `Color?` | null (style) | Color of alternate rows; setting it also turns shading on. |
+| `AllowRowDragDrop` | `bool?` | null (style: off) | Drag a row from any cell to reorder. |
+| `ShowRowDragHandle` | `bool?` | null (style: off) | Drag handle on each row. |
+| `Theme` | `KumikoThemeMode` | `Light` | Built-in theme preset (a plain property, not bindable). |
+| `GridStyle` | `KumikoStyle` | a light style | The full style (a plain property, not bindable). |
+| `ScrollSettings` | `ScrollSettings` | defaults | Scroll and inertia settings (a plain property). |
+| `GridDescription` | `string` | "Data grid" | Accessible description. |
+
+### Commands
+
+Each command is executed with the event arguments as its parameter (`SelectionChangedCommand` also accepts `SelectionChangedCommandParameter`).
+
+| Command | Parameter | Executed |
+|---|---|---|
+| `RowTappedCommand` | `RowTappedEventArgs` | A row was tapped. |
+| `CellValueChangedCommand` | `CellValueChangedEventArgs` | An edit changed a cell value. |
+| `SortChangedCommand` | `SortColumnsChangedEventArgs` | The sort changed. |
+| `SelectionChangedCommand` | `KumikoSelectionChangedEventArgs` | The selection changed. |
+
+### Events
+
+`RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed` (`CellValidationEventArgs`), `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `ColumnReordered`, `ColumnResized` and `SelectionChanged`. They forward to the matching event on `DataSource`, `InputController` or `EditSession`, which stay available for anything not listed.
+
+### Precedence: explicit properties versus style and theme
+
+`ShowHorizontalGridLines`, `ShowVerticalGridLines`, `AlternateRowBackground`, `AllowRowDragDrop` and `ShowRowDragHandle` are nullable. Null leaves the value to `GridStyle` / `Theme`; a value overrides it. Setting one writes it into the current style immediately, and assigning `GridStyle` or `Theme` afterwards re-applies every explicit value to the new style, so an explicit property wins over the theme in either order. The values are written into the style instance you assign, and setting a property back to null stops overriding but does not restore the earlier value until the next style or theme assignment. Everything else in `KumikoStyle` (colors, fonts, line widths) is set on the style as shown in [Custom style](#custom-style).
+
+### Repainting
+
+`Invalidate()` repaints the grid from its current state without rebuilding the view; it is safe to call from any thread. Use it after changing something the grid cannot observe, such as a style object you hold. `DataSource.Refresh()` is only needed when the data itself changed behind the grid's back.
 
 ---
 
