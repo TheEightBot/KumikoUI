@@ -38,7 +38,7 @@ public sealed partial class MvvmActionsPage : Page
     private void BuildColumns()
     {
         // Id — read-only.
-        actionsGrid.Columns!.Add(new KumikoColumn
+        actionsGrid.Columns.Add(new KumikoColumn
         {
             Header = "Id",
             PropertyName = "Id",
@@ -49,7 +49,7 @@ public sealed partial class MvvmActionsPage : Page
         });
 
         // Name — single-tap, F2, OR typing starts editing (most accessible).
-        actionsGrid.Columns!.Add(new KumikoColumn
+        actionsGrid.Columns.Add(new KumikoColumn
         {
             Header = "Name",
             PropertyName = "Name",
@@ -58,7 +58,7 @@ public sealed partial class MvvmActionsPage : Page
         });
 
         // Department — double-tap or F2 only (typing excluded for a ComboBox).
-        actionsGrid.Columns!.Add(new KumikoColumn
+        actionsGrid.Columns.Add(new KumikoColumn
         {
             Header = "Department",
             PropertyName = "Department",
@@ -69,7 +69,7 @@ public sealed partial class MvvmActionsPage : Page
         });
 
         // Level — double-tap ONLY.
-        actionsGrid.Columns!.Add(new KumikoColumn
+        actionsGrid.Columns.Add(new KumikoColumn
         {
             Header = "Level",
             PropertyName = "Level",
@@ -80,7 +80,7 @@ public sealed partial class MvvmActionsPage : Page
         });
 
         // Salary — F2 key ONLY (protects financial data from pointer gestures).
-        actionsGrid.Columns!.Add(new KumikoColumn
+        actionsGrid.Columns.Add(new KumikoColumn
         {
             Header = "Salary",
             PropertyName = "Salary",
@@ -92,7 +92,7 @@ public sealed partial class MvvmActionsPage : Page
         });
 
         // Active — Boolean; toggles on tap.
-        actionsGrid.Columns!.Add(new KumikoColumn
+        actionsGrid.Columns.Add(new KumikoColumn
         {
             Header = "Active",
             PropertyName = "IsActive",
@@ -104,7 +104,7 @@ public sealed partial class MvvmActionsPage : Page
         // ActionButtonsCellRenderer is an interactive cell: a tap runs the button without opening an editor,
         // so no EditTriggers / IsReadOnly setting is needed. PropertyName="" passes the full Employee as
         // the cell value, so the Command parameter is the row's Employee.
-        actionsGrid.Columns!.Add(new KumikoColumn
+        actionsGrid.Columns.Add(new KumikoColumn
         {
             Header = "Actions",
             PropertyName = "",
