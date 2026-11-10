@@ -73,6 +73,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno is built with Uno.Sdk 6.7.30 (was 6.5.31).
 
 ### Fixed
+- `SampleApp.Maui` no longer crashes at launch on Mac Catalyst (macOS 27) and iOS 27: it adopts the UIScene lifecycle with a `UIApplicationSceneManifest` in both `Info.plist` files and a `SceneDelegate` (`MauiUISceneDelegate`), as current .NET MAUI templates do (#121). README notes this for apps hosting KumikoUI.
 - Editors never commit a value the user didn't choose (#33). Before, opening an editor and leaving it (a tap elsewhere, Tab, Enter) overwrote the cell and raised `CellValueChanged`:
   - a combo box whose value wasn't in its list wrote null;
   - a scroll picker wrote its first item;
