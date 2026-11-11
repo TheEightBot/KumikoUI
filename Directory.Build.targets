@@ -21,4 +21,11 @@
   <PropertyGroup Condition="'$(GenerateDocumentationFile)' == 'true'">
     <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1570;CS1571;CS1572;CS1573;CS1574;CS1580;CS1581;CS1584;CS1587;CS1589;CS1590;CS1592;CS1658;CS1710;CS1711;CS1712;CS1723;CS1734</WarningsAsErrors>
   </PropertyGroup>
+  <!--
+    Apps in this repository (samples, eng/AotSmoke) reference KumikoUI.Core by project, so the targets the
+    NuGet package delivers through buildTransitive are not applied to them. Import the same file so a
+    PublishAot or TrimMode=full publish switches the reflection fallback off, as it does for package consumers (#76).
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)src/KumikoUI.Core/buildTransitive/KumikoUI.Core.targets"
+          Condition="'$(OutputType)' == 'Exe' and '$(IsPackable)' != 'true'" />
 </Project>

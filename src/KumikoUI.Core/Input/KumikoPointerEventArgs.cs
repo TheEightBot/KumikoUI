@@ -20,11 +20,31 @@ public class KumikoPointerEventArgs
     /// <summary>Active modifier keys.</summary>
     public InputModifiers Modifiers { get; init; }
 
-    /// <summary>Scroll delta (for wheel events).</summary>
+    /// <summary>
+    /// Identifies the pointer (a finger, the mouse, a pen) that raised the event. While a press is in progress
+    /// the controller follows only the pointer that pressed: the presses, moves and releases of a second finger
+    /// are ignored, so it cannot restart or end a drag. Hosts that see one pointer at a time can leave it 0.
+    /// </summary>
+    public long PointerId { get; init; }
+
+    /// <summary>
+    /// Horizontal wheel delta (for <see cref="InputAction.Scroll"/>), in <see cref="ScrollUnit"/>. Positive scrolls
+    /// toward the first column (left), negative toward the last.
+    /// </summary>
     public float ScrollDeltaX { get; init; }
 
-    /// <summary>Vertical scroll delta (for wheel events).</summary>
+    /// <summary>
+    /// Vertical wheel delta (for <see cref="InputAction.Scroll"/>), in <see cref="ScrollUnit"/>. Positive scrolls
+    /// toward the first row (up: a wheel rolled away from the user), negative toward the last. With Shift held and
+    /// no <see cref="ScrollDeltaX"/>, the grid scrolls horizontally instead.
+    /// </summary>
     public float ScrollDeltaY { get; init; }
+
+    /// <summary>
+    /// The unit of <see cref="ScrollDeltaX"/> and <see cref="ScrollDeltaY"/>: wheel notches (the default) or
+    /// device-independent pixels from a precise device such as a trackpad.
+    /// </summary>
+    public KumikoScrollUnit ScrollUnit { get; init; }
 
     /// <summary>Number of clicks (1 = single, 2 = double).</summary>
     public int ClickCount { get; init; } = 1;
@@ -34,4 +54,22 @@ public class KumikoPointerEventArgs
 
     /// <summary>Set to true to indicate the event was handled.</summary>
     public bool Handled { get; set; }
+
+    /// <summary>
+    /// <see cref="ScrollDeltaX"/> in device-independent pixels: as is for <see cref="KumikoScrollUnit.Pixels"/>,
+    /// else multiplied by <paramref name="pixelsPerNotch"/>.
+    /// </summary>
+    /// <param name="pixelsPerNotch">How far one wheel notch scrolls the receiver, in pixels.</param>
+    /// <returns>The horizontal distance to scroll; positive is toward the start.</returns>
+    public float GetScrollPixelsX(float pixelsPerNotch) =>
+        ScrollUnit == KumikoScrollUnit.Pixels ? ScrollDeltaX : ScrollDeltaX * pixelsPerNotch;
+
+    /// <summary>
+    /// <see cref="ScrollDeltaY"/> in device-independent pixels: as is for <see cref="KumikoScrollUnit.Pixels"/>,
+    /// else multiplied by <paramref name="pixelsPerNotch"/>.
+    /// </summary>
+    /// <param name="pixelsPerNotch">How far one wheel notch scrolls the receiver, in pixels.</param>
+    /// <returns>The vertical distance to scroll; positive is toward the start.</returns>
+    public float GetScrollPixelsY(float pixelsPerNotch) =>
+        ScrollUnit == KumikoScrollUnit.Pixels ? ScrollDeltaY : ScrollDeltaY * pixelsPerNotch;
 }

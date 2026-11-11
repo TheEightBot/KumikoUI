@@ -61,12 +61,10 @@ space the renderer was fed in [03 §4](03-kumikodatagrid-host.md#4-dpi--scaling)
           X = (float)point.Position.X,
           Y = (float)point.Position.Y,
           Action = action,
-          Button = props.IsRightButtonPressed ? PointerButton.Secondary
-                 : props.IsMiddleButtonPressed ? PointerButton.Middle
-                 : PointerButton.Primary,
-          ScrollDeltaY = action == InputAction.Scroll ? props.MouseWheelDelta / WheelNotch : 0f,   // WheelNotch = 120f
-          ScrollDeltaX = action == InputAction.Scroll && props.IsHorizontalMouseWheel
-                       ? props.MouseWheelDelta / WheelNotch : 0f,
+          Button = PointerMapping.ToPointerButton(action, props.PointerUpdateKind,
+                       props.IsRightButtonPressed, props.IsMiddleButtonPressed),
+          PointerId = e.Pointer.PointerId,
+          ScrollDeltaX = scrollX, ScrollDeltaY = scrollY, ScrollUnit = scrollUnit, // PointerMapping.ToScrollDelta
           Modifiers = InputMapping.ToInputModifiers(e.KeyModifiers),
           TimestampMs = (long)(point.Timestamp / 1000),   // WinUI timestamp is microseconds
           ClickCount = clickCount,
@@ -91,11 +89,25 @@ space the renderer was fed in [03 §4](03-kumikodatagrid-host.md#4-dpi--scaling)
   `PointerReleased→Released` (+ `ReleasePointerCapture`), `PointerCanceled`/`PointerCaptureLost→Cancelled`,
   `PointerWheelChanged→Scroll`. The fling timer is (re)started after `Released`/`Cancelled`/
   `CaptureLost` when `_inputController.IsInertialScrolling`.
-- [x] **Wheel magnitude:** WinUI `MouseWheelDelta` is in 120-unit notches. We divide by **`WheelNotch =
-  120f`** so one notch ⇒ `ScrollDeltaY = 1.0`; Core's `HandleScroll` then multiplies by
-  `RowHeight * ScrollSettings.WheelScrollMultiplier`, i.e. **one notch scrolls
-  `WheelScrollMultiplier` rows** — matching the MAUI feel (where `SKTouch.WheelDelta` is already a
-  small per-notch value fed straight in). The factor lives in one place and is easy to retune.
+- [x] **Wheel magnitude and sign (#60):** `MouseWheelDelta` means different things per Uno head, so
+  `PointerMapping.ToScrollDelta` (pure, unit-tested) normalizes it. Win32, X11 and the Windows App SDK
+  report 120ths of a notch (precision touchpads in fractions): divided by 120, sent as
+  `KumikoScrollUnit.Notches`, and Core scrolls `RowHeight × WheelScrollMultiplier` per notch. The macOS
+  head reports points (trackpad deltas as they are, mouse-wheel lines × 10) and the browser head CSS
+  pixels: sent as `KumikoScrollUnit.Pixels`, which Core applies as is, so a trackpad follows the
+  fingers. Core's sign is positive toward the start (up, left); WinUI's horizontal delta is positive to
+  the right on Windows and in the browser but to the left on macOS and X11, so it is negated per head.
+  Shift+wheel is turned horizontal by Core. Core marks the wheel handled only when the grid moved, so
+  at the end of its content the event bubbles on and the page scrolls.
+- [x] **Pointer identity (#60):** `PointerId` is set from `e.Pointer.PointerId`; Core follows only the
+  pointer that pressed, so a second finger neither resets a drag nor taps on release. The host keeps
+  the second finger out of its click-count and focus bookkeeping too, and a release reports the button
+  from `PointerUpdateKind` (nothing is pressed any more at that point). The `PointerCaptureLost` raised
+  by `ReleasePointerCapture` after every release reaches Core as a `Cancelled` with no press in
+  progress, which Core ignores.
+- [x] **`IsEnabled` (#60):** `IsEnabledChanged` mirrors into `KumikoInputController.IsEnabled`; a
+  disabled grid ignores pointer, wheel and key input (left unhandled for the page) and ends any drag,
+  fling, popup or edit in progress.
 - [x] **Double-tap / click-count:** WinUI does not surface a click count on pointer args. We use the
   **press-timing heuristic** (`< 400 ms` and `< 20 px` from the previous press → `ClickCount = 2`),
   stamped on `Pressed` and carried to the matching `Released` — byte-for-byte the MAUI approach.
@@ -347,6 +359,13 @@ else
   from triggering another `TextChanged` round-trip.
 
 ## 5. Inertial scroll timer
+
+> **Update (#65):** both `DispatcherTimer`s are gone. A fling now starts the frame loop in
+> `KumikoDataGrid.Rendering.cs`, which steps `UpdateInertialScroll` from `CompositionTarget.Rendering` by the
+> measured time between frames and unsubscribes on the first idle frame. The caret blink uses one reusable
+> one-shot `DispatcherTimer` that fires just after each blink transition (`KumikoCaretBlink`), so an open
+> editor costs two redraws per blink cycle. Pointer positions are measured against the drawing surface
+> (`GetCurrentPoint(PointerOrigin)`). The checklist below records the original Phase 04 implementation.
 
 - [x] A `Microsoft.UI.Xaml.DispatcherTimer` (~16 ms) pumps Core's physics and stops when it returns
   `false` (mirrors MAUI's `_scrollTimer`):

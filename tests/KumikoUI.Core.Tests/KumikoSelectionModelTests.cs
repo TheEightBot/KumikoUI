@@ -276,9 +276,8 @@ public class KumikoSelectionModelTests
     {
         var model = NewModel(KumikoSelectionMode.Single);
         model.HandleRowSelection(0, false, false);
-        model.NavigateRight(1, false);
-        // With 1 column (index 0 only), should stay at 0
-        Assert.Equal(0, model.CurrentCell.Column);
+        for (int i = 0; i < 5; i++) model.NavigateRight(1, false); // the source's three columns decide, not the argument
+        Assert.Equal(2, model.CurrentCell.Column);
     }
 
     [Fact]
@@ -312,7 +311,7 @@ public class KumikoSelectionModelTests
         model.HandleRowSelection(3, false, false);
         model.NavigateEnd(true, 10, 5, false);
         Assert.Equal(9, model.CurrentCell.Row);
-        Assert.Equal(4, model.CurrentCell.Column);
+        Assert.Equal(2, model.CurrentCell.Column); // the last of the source's three visible columns
     }
 
     [Fact]
