@@ -21,7 +21,7 @@ public class HeaderFitWidthTests
     private const float LongHeaderFit = 23 * 8 + 16 + 12 + 14 + 4; // 230
 
     private static DrawOp HeaderText(RecordingDrawingContext ctx, string header) =>
-        Assert.Single(ctx.Ops, o => o.Kind == DrawOpKind.TextInRect && o.Text == header && o.Rect.Y == 0);
+        Assert.Single(ctx.Ops, o => o.Kind == DrawOpKind.TextInRect && o.Text == header && Math.Abs(o.Rect.Y) < 0.01f);
 
     private static RenderHarness GridWith(float width, params KumikoColumn[] columns) =>
         RenderHarness.Create(width: width, configure: h => h.Source.SetColumns(columns));
@@ -221,7 +221,7 @@ public class HeaderFitWidthTests
         h.Renderer.Render(ctx, h.Source, h.Scroll, h.Selection, h.Style);
 
         Assert.Equal(1, ctx.HeaderMeasures(LongHeader));
-        Assert.Equal(LongHeader.Length * 10 + 46, column.Width);
+        Assert.Equal(LongHeader.Length * 10f + 46f, column.Width);
     }
 
     [Fact]
@@ -270,7 +270,7 @@ public class HeaderFitWidthTests
         h.Renderer.Render(new CountingContext(), h.Source, h.Scroll, h.Selection, h.Style);
 
         // 28 px font: 20 px per character; 2 px padding on each side.
-        Assert.Equal(LongHeader.Length * 20 + 4 + 12 + 14 + 4, column.Width);
+        Assert.Equal(LongHeader.Length * 20f + 4 + 12 + 14 + 4, column.Width);
     }
 
     /// <summary>Measures text at (font size × 5/7) px per character and counts measurements of each text.</summary>

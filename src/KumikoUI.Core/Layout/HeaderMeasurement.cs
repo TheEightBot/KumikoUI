@@ -28,7 +28,7 @@ internal sealed class HeaderMeasurement
         && string.Equals(_text, text, StringComparison.Ordinal)
         && ReferenceEquals(_font, font)
         && string.Equals(_family, font.Family, StringComparison.Ordinal)
-        && _size == font.Size
+        && _size.Equals(font.Size) // exact: cache change detection
         && _bold == font.IsBold
         && _italic == font.IsItalic;
 

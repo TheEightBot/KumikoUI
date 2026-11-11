@@ -129,7 +129,7 @@ public class KumikoLayoutEngine
                 violation += Clamp(share, EffectiveMinWidth(col), col.MaxWidth) - share;
             }
 
-            if (violation == 0f)
+            if (Math.Abs(violation) < 0.01f) // nothing (beyond sub-pixel rounding) to hold at a bound
             {
                 for (int i = 0; i < count; i++)
                 {
