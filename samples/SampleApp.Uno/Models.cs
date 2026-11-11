@@ -16,6 +16,7 @@ public class Employee : INotifyPropertyChanged
     private decimal _salary;
     private System.DateTime _hireDate;
     private bool _isActive;
+    private bool? _approved;
     private string _city = string.Empty;
     private string _level = string.Empty;
     private double _performance;
@@ -59,6 +60,13 @@ public class Employee : INotifyPropertyChanged
         set { _isActive = value; OnPropertyChanged(); }
     }
 
+    /// <summary>Tri-state Boolean column: unchecked, checked, or indeterminate (null).</summary>
+    public bool? Approved
+    {
+        get => _approved;
+        set { _approved = value; OnPropertyChanged(); }
+    }
+
     public string City
     {
         get => _city;
@@ -72,7 +80,7 @@ public class Employee : INotifyPropertyChanged
         set { _level = value; OnPropertyChanged(); }
     }
 
-    /// <summary>Template column — rendered as a progress bar (0-100).</summary>
+    /// <summary>ProgressBar column — drawn as a bar (0-100).</summary>
     public double Performance
     {
         get => _performance;

@@ -31,7 +31,7 @@ public class FilterCondition
         {
             KumikoColumnType.Text or KumikoColumnType.ComboBox or KumikoColumnType.Picker
                 => EvaluateText(cellValue, comparer),
-            KumikoColumnType.Numeric => EvaluateNumeric(cellValue, comparer),
+            KumikoColumnType.Numeric or KumikoColumnType.ProgressBar => EvaluateNumeric(cellValue, comparer),
             KumikoColumnType.Date => EvaluateDate(cellValue, comparer),
             KumikoColumnType.Boolean => EvaluateBoolean(cellValue),
             _ => true // Template/Image columns pass through

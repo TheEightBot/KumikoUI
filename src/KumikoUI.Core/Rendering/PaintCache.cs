@@ -113,6 +113,9 @@ public class PaintCache
     /// <summary>Paint for the checkmark of a checked Boolean cell.</summary>
     public KumikoPaint CheckMark { get; private set; } = new();
 
+    /// <summary>Fill paint for the dash of an indeterminate (null) value in a three-state Boolean cell.</summary>
+    public KumikoPaint CheckIndeterminate { get; private set; } = new();
+
     // ── Grid chrome (drawn by KumikoRenderer only) ───────────────
     internal KumikoPaint SortOrderBadge { get; private set; } = new();
     internal KumikoPaint GroupPanelLabel { get; private set; } = new();
@@ -324,6 +327,7 @@ public class PaintCache
         // Cell content
         CheckBoxBorder = Stroke(style.GridLineColor, 1.5f);
         CheckMark = Stroke(style.AccentColor, 2f);
+        CheckIndeterminate = new KumikoPaint { Color = style.AccentColor, Style = PaintStyle.Fill, IsAntiAlias = true };
 
         // Multi-sort order badge; its font is derived from the header font in UpdateSortOrderBadgeFont
         SortOrderBadge = new KumikoPaint { Color = style.SortIndicatorColor, IsAntiAlias = true };

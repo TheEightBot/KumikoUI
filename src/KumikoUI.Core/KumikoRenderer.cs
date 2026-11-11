@@ -85,6 +85,7 @@ public class KumikoRenderer : IDisposable
         _cellRenderers[KumikoColumnType.Picker] = textRenderer;
         _cellRenderers[KumikoColumnType.Boolean] = new BooleanCellRenderer();
         _cellRenderers[KumikoColumnType.Image] = new ImageCellRenderer();
+        _cellRenderers[KumikoColumnType.ProgressBar] = new ProgressBarCellRenderer { UsesColumnOptions = true };
     }
 
     /// <summary>Stops listening to the interactive cell renderers it has drawn.</summary>

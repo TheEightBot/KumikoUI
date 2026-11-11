@@ -36,7 +36,7 @@ public class RenderAllocationTests
         public decimal Price { get; set; }
         public double Ratio { get; set; }
         public DateTime Date { get; set; }
-        public bool Active { get; set; }
+        public bool? Active { get; set; }
         public string City { get; set; } = "";
         public long Code { get; set; }
         public float Score { get; set; }
@@ -258,7 +258,7 @@ public class RenderAllocationTests
                 Price = 10m + i % 50,
                 Ratio = i / 7.0,
                 Date = new DateTime(2026, 1, 1).AddDays(i % 365),
-                Active = i % 3 == 0,
+                Active = (i % 3) switch { 0 => true, 1 => false, _ => null },
                 City = (i % 4) switch { 0 => "Oslo", 1 => "Rome", 2 => "Lima", _ => "Kyiv" },
                 Code = 1_000_000L + i,
                 Score = i % 100 / 3f,
@@ -272,6 +272,9 @@ public class RenderAllocationTests
             columns[9].IsFrozenRight = true;
             columns[2].CellStyle = new KumikoCellStyle { BackgroundColor = new KumikoColor(250, 240, 230), TextColor = new KumikoColor(20, 20, 20) };
             columns[6].HeaderCellStyle = new KumikoCellStyle { BackgroundColor = new KumikoColor(200, 220, 240), TextColor = new KumikoColor(10, 10, 80) };
+            columns[3].ColumnType = KumikoColumnType.ProgressBar;
+            columns[3].ProgressMaximum = 300;
+            columns[5].IsThreeState = true;
             columns[7].CustomCellRenderer = new ProgressBarCellRenderer { Minimum = 1_000_000, Maximum = 1_002_000 };
             columns[8].CustomCellRenderer = new ActionButtonsCellRenderer
             {

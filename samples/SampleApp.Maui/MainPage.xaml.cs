@@ -40,6 +40,7 @@ public partial class MainPage : ContentPage
 				Salary = _random.Next(45000, 180000),
 				HireDate = DateTime.Today.AddDays(-_random.Next(100, 3000)),
 				IsActive = _random.NextDouble() > 0.15,
+				Approved = _random.Next(3) switch { 0 => true, 1 => false, _ => null },
 				City = Cities[_random.Next(Cities.Length)],
 				Level = Levels[_random.Next(Levels.Length)],
 				Performance = Math.Round(_random.NextDouble() * 100, 1),
@@ -219,6 +220,7 @@ public class Employee : INotifyPropertyChanged
 	private decimal _salary;
 	private DateTime _hireDate;
 	private bool _isActive;
+	private bool? _approved;
 	private string _city = string.Empty;
 	private string _level = string.Empty;
 	private double _performance;
@@ -262,6 +264,13 @@ public class Employee : INotifyPropertyChanged
 		set { _isActive = value; OnPropertyChanged(); }
 	}
 
+	/// <summary>Tri-state Boolean column: unchecked, checked, or indeterminate (null).</summary>
+	public bool? Approved
+	{
+		get => _approved;
+		set { _approved = value; OnPropertyChanged(); }
+	}
+
 	public string City
 	{
 		get => _city;
@@ -275,7 +284,7 @@ public class Employee : INotifyPropertyChanged
 		set { _level = value; OnPropertyChanged(); }
 	}
 
-	/// <summary>Template column — rendered as a progress bar (0-100).</summary>
+	/// <summary>ProgressBar column — drawn as a bar (0-100).</summary>
 	public double Performance
 	{
 		get => _performance;

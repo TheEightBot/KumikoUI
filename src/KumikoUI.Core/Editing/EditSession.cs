@@ -341,7 +341,7 @@ public class EditSession
             return originalValue.GetType();
         return column.ColumnType switch
         {
-            KumikoColumnType.Numeric => typeof(decimal?),
+            KumikoColumnType.Numeric or KumikoColumnType.ProgressBar => typeof(decimal?),
             KumikoColumnType.Date => typeof(DateTime?),
             KumikoColumnType.Boolean => typeof(bool?),
             _ => null,
@@ -393,8 +393,7 @@ public class EditSession
 
         var item = dataSource.GetItem(row);
         var currentValue = dataSource.GetCellValue(row, column);
-        bool current = currentValue is true;
-        var newValue = (object)!current;
+        var newValue = NextBooleanValue(currentValue, column.IsThreeState);
 
         // Raise begin-edit (cancelable)
         var beginArgs = new CellBeginEditEventArgs(row, col, column, currentValue);
@@ -432,6 +431,21 @@ public class EditSession
         if (result is { ErrorMessage: { Length: > 0 } })
             ValidationFailed?.Invoke(this, new CellValidationEventArgs(
                 row, col, column, item, newValue, result, committed: true));
+    }
+
+    /// <summary>
+    /// The value a toggle writes: the opposite of the current one, or for a three-state column the next of
+    /// unchecked, checked, indeterminate (<c>null</c>).
+    /// </summary>
+    internal static object? NextBooleanValue(object? current, bool isThreeState)
+    {
+        if (!isThreeState) return current is not true;
+        return current switch
+        {
+            true => null,
+            false => true,
+            _ => false,
+        };
     }
 
     private void RefuseToggle(int row, int col, KumikoColumn column, object item, object? oldValue, object? attempted,

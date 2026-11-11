@@ -38,6 +38,7 @@ public static class CellEditorFactory
             KumikoColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds),
             KumikoColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
             KumikoColumnType.Image => null, // Not editable
+            KumikoColumnType.ProgressBar => null, // Read-only display
             KumikoColumnType.Template => CreateTemplateEditor(column, currentValue, cellBounds, initialCharacter, culture),
             _ => null
         };

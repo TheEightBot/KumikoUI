@@ -141,14 +141,14 @@ public sealed record KumikoStrings
     internal string SortLabel(KumikoColumnType type, KumikoSortDirection direction) => direction == KumikoSortDirection.Descending
         ? type switch
         {
-            KumikoColumnType.Numeric => SortNumericDescending,
+            KumikoColumnType.Numeric or KumikoColumnType.ProgressBar => SortNumericDescending,
             KumikoColumnType.Date => SortDateDescending,
             KumikoColumnType.Boolean => SortBooleanCheckedFirst,
             _ => SortTextDescending
         }
         : type switch
         {
-            KumikoColumnType.Numeric => SortNumericAscending,
+            KumikoColumnType.Numeric or KumikoColumnType.ProgressBar => SortNumericAscending,
             KumikoColumnType.Date => SortDateAscending,
             KumikoColumnType.Boolean => SortBooleanUncheckedFirst,
             _ => SortTextAscending

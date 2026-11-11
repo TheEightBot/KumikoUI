@@ -94,21 +94,20 @@
                                      ColumnType="Picker"
                                      EditorItemsString="Junior,Mid,Senior,Staff,Principal,Director" />
 
-                <!-- TEMPLATE column — progress bar display for Performance (fully declarative) -->
+                <!-- BOOLEAN column, three states — Space/Enter/tap cycles unchecked, checked, indeterminate -->
+                <core:KumikoColumn Header="Approved"
+                                     PropertyName="Approved"
+                                     IsThreeState="True"
+                                     ColumnType="Boolean" />
+
+                <!-- PROGRESSBAR column — read-only bar with the value as text -->
                 <core:KumikoColumn Header="Performance"
                                      PropertyName="Performance"
                                      Width="140"
-                                     ColumnType="Template"
-                                     IsReadOnly="True">
-                    <core:KumikoColumn.CustomCellRenderer>
-                        <render:ProgressBarCellRenderer Minimum="0"
-                                                        Maximum="100"
-                                                        TrackHeight="12"
-                                                        CornerRadius="6"
-                                                        ShowText="True"
-                                                        TextFormat="N0" />
-                    </core:KumikoColumn.CustomCellRenderer>
-                </core:KumikoColumn>
+                                     ColumnType="ProgressBar"
+                                     ProgressMinimum="0"
+                                     ProgressMaximum="100"
+                                     Format="N0" />
 
                 <!-- TEMPLATE column — numeric up/down for Rating (fully declarative) -->
                 <core:KumikoColumn Header="Rating"
