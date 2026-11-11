@@ -110,6 +110,39 @@ public static class SkiaFontRegistrar
     }
 
     /// <summary>
+    /// Creates one <see cref="SKTypeface"/> from <paramref name="stream"/> and registers it under every
+    /// name in <paramref name="families"/> (for example a MAUI font alias and its file name), replacing
+    /// whatever is registered under those names. The registrar owns the typeface and disposes it once
+    /// it is no longer registered under any family. Null, empty and duplicate names are ignored.
+    /// </summary>
+    /// <param name="stream">A readable stream containing a valid TrueType (.ttf) or OpenType (.otf) font.</param>
+    /// <param name="families">The family names to register the font under.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> or <paramref name="families"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="families"/> has no usable name.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the stream cannot be decoded as a valid font.</exception>
+    public static void RegisterTypefaceFamiliesFromStream(Stream stream, IEnumerable<string?> families)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        ArgumentNullException.ThrowIfNull(families);
+
+        var names = new List<string>();
+        foreach (var name in families)
+        {
+            if (!string.IsNullOrWhiteSpace(name) && !names.Contains(name, StringComparer.OrdinalIgnoreCase))
+                names.Add(name);
+        }
+        if (names.Count == 0)
+            throw new ArgumentException("At least one family name is required.", nameof(families));
+
+        var typeface = SKTypeface.FromStream(stream)
+            ?? throw new InvalidOperationException(
+                $"Could not create a typeface from the provided stream for family '{names[0]}'.");
+
+        foreach (var name in names)
+            Register(name, typeface, owned: true);
+    }
+
+    /// <summary>
     /// Removes the typeface registered under <paramref name="family"/>. Every <see cref="SkiaResourceCache"/>
     /// drops it first; then, if the registrar owns it (it came from <see cref="RegisterTypefaceFromStream"/>)
     /// and it is not registered under another family, it is disposed. Later frames resolve the family
