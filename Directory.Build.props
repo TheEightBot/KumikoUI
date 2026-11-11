@@ -29,8 +29,11 @@
     <RepositoryUrl>https://github.com/TheEightBot/KumikoUI</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
 
-    <!-- Embed the README in every package (path relative to each project) -->
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!--
+      Each project sets PackageReadmeFile and packs its own docs/nuget/README.<PackageId>.md as README.md
+      (see the project files). The GitHub README.md is not packed: it is raw HTML with relative images,
+      which nuget.org does not render.
+    -->
 
     <!-- NuGet package icon -->
     <PackageIcon>logo.png</PackageIcon>
@@ -68,9 +71,8 @@
     <TargetPlatformMinVersion Condition="'$(_KumikoPlatform)' == 'windows'">$(KumikoMinWindowsVersion)</TargetPlatformMinVersion>
   </PropertyGroup>
 
-  <!-- Include README and icon in every package -->
+  <!-- Include the icon in every package -->
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\"/>
     <None Include="$(MSBuildThisFileDirectory)images/logo.png" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
