@@ -99,6 +99,7 @@ public partial class KumikoDataGrid : UserControl
 
         // Wire edit session to input controller and style (mirrors MAUI).
         _inputController.EditSession = _editSession;
+        InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
 

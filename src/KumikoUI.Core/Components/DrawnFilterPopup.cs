@@ -129,6 +129,24 @@ public class DrawnFilterPopup : DrawnComponent
         Bounds = new KumikoRect(0, 0, PopupWidth, ComputePopupHeight());
     }
 
+    /// <summary>Raised when the search box copies or cuts text (Ctrl/Cmd+C, Ctrl/Cmd+X): the host takes the text.</summary>
+    public event EventHandler<ClipboardTextEventArgs>? SearchCopyRequested
+    {
+        add => _search.CopyRequested += value;
+        remove => _search.CopyRequested -= value;
+    }
+
+    /// <summary>Raised when the search box pastes (Ctrl/Cmd+V): the host supplies the text.</summary>
+    public event EventHandler<ClipboardRequestEventArgs>? SearchPasteRequested
+    {
+        add => _search.PasteRequested += value;
+        remove => _search.PasteRequested -= value;
+    }
+
+    /// <summary>Pastes <paramref name="text"/> into the search box (see <see cref="ClipboardRequestEventArgs.IsPending"/>).</summary>
+    /// <param name="text">The text to paste.</param>
+    public void PasteSearchText(string? text) => _search.PasteText(text);
+
     /// <summary>The search box's text-input surface, for a host's native text-input adapter.</summary>
     public ITextInputSession SearchTextInput => _search;
 

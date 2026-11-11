@@ -11,7 +11,7 @@ namespace KumikoUI.Core.Input;
 /// pointer and keyboard events, dispatching to selection, sorting,
 /// column resize/reorder, and scrolling subsystems.
 /// </summary>
-public class KumikoInputController
+public partial class KumikoInputController
 {
     private readonly KumikoHitTester _hitTester = new();
     private readonly InertialScroller _inertialScroller = new();
@@ -65,7 +65,13 @@ public class KumikoInputController
     public EditSession? EditSession
     {
         get => _editSession;
-        set => _editSession = value;
+        set
+        {
+            if (ReferenceEquals(_editSession, value)) return;
+            UnwireEditorClipboard(_editSession);
+            _editSession = value;
+            WireEditorClipboard(value);
+        }
     }
 
     // ── Events ──
@@ -462,6 +468,11 @@ public class KumikoInputController
                     Redraw();
                     e.Handled = true;
                 }
+                break;
+            case KumikoKey.C when e.HasCommand:
+                // Ctrl/Cmd+C copies the selected rows; with nothing selected the key is left to the host.
+                if (CopySelection(selection, dataSource))
+                    e.Handled = true;
                 break;
             case KumikoKey.Escape:
                 // Clears the selection and the current cell; with nothing to clear the key is left to the host.
@@ -1431,6 +1442,7 @@ public class KumikoInputController
 
         popup.RedrawRequested += Redraw;
         popup.KeyboardFocusRequested += () => KeyboardFocusRequested?.Invoke();
+        WireSearchClipboard(popup);
 
         _popupManager.Show(popup, Anchor, PopupPlacement.Below);
         _activeFilterPopup = popup;

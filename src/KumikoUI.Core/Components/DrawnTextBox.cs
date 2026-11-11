@@ -1109,8 +1109,10 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     private void HandleCut()
     {
         if (!HasSelection) return;
-        CopyRequested?.Invoke(this, new ClipboardTextEventArgs(SelectedText));
-        if (IsReadOnly) return;
+        // Nothing is deleted unless a host took the text: cutting must never destroy it
+        var copy = new ClipboardTextEventArgs(SelectedText);
+        CopyRequested?.Invoke(this, copy);
+        if (!copy.Handled || IsReadOnly) return;
         var snap = Capture();
         DeleteRange(Selection.Start, Selection.Length, EditKind.Other);
         Finish(snap);
@@ -1121,11 +1123,24 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         if (IsReadOnly) return;
         var args = new ClipboardRequestEventArgs();
         PasteRequested?.Invoke(this, args);
-        if (string.IsNullOrEmpty(args.Text)) return;
+        if (args.IsPending) return;
+        PasteText(args.Text);
+    }
+
+    /// <summary>
+    /// Replaces the selection with <paramref name="text"/> as one undo step, applying the box's input rules
+    /// (single line, numeric only, maximum length). For a host that reads the clipboard asynchronously (see
+    /// <see cref="ClipboardRequestEventArgs.IsPending"/>). Does nothing when the box is read-only or the text
+    /// is empty.
+    /// </summary>
+    /// <param name="text">The text to paste.</param>
+    public void PasteText(string? text)
+    {
+        if (IsReadOnly || string.IsNullOrEmpty(text)) return;
 
         CommitComposition();
         var snap = Capture();
-        TryReplaceSelection(args.Text, EditKind.Other, forceNewStep: true);
+        TryReplaceSelection(text, EditKind.Other, forceNewStep: true);
         Finish(snap);
     }
 

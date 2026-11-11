@@ -151,6 +151,7 @@ public partial class KumikoDataGrid : ContentView
 
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
+        InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
 

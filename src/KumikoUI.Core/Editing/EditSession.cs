@@ -123,6 +123,13 @@ public class EditSession
     /// </summary>
     public event EventHandler<ClipboardRequestEventArgs>? ClipboardPasteRequested;
 
+    /// <summary>
+    /// Pastes <paramref name="text"/> into the active text editor (see <see cref="ClipboardRequestEventArgs.IsPending"/>).
+    /// Does nothing when no text editor is open.
+    /// </summary>
+    /// <param name="text">The text to paste.</param>
+    public void PasteText(string? text) => (_activeEditor as DrawnTextBox)?.PasteText(text);
+
     // ── Edit lifecycle ──────────────────────────────────────────
 
     /// <summary>
