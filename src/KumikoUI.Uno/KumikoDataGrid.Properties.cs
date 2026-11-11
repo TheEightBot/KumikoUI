@@ -48,7 +48,12 @@ public partial class KumikoDataGrid
         {
             view._dataSource.SetItems(newValue);
 
-            if (newValue is INotifyCollectionChanged incc)
+            if (!view.IsObservingCollections)
+            {
+                // Set while unloaded: SetItems subscribed, so release it; OnLoaded re-attaches
+                view._dataSource.Detach();
+            }
+            else if (newValue is INotifyCollectionChanged incc)
             {
                 view._boundCollectionChangedSource = incc;
                 view._boundCollectionChangedSource.CollectionChanged += view.OnBoundItemsCollectionChanged;
@@ -107,7 +112,8 @@ public partial class KumikoDataGrid
 
         if (e.NewValue is ObservableCollection<KumikoColumn> newCollection)
         {
-            newCollection.CollectionChanged += view.OnColumnsCollectionChanged;
+            if (view.IsObservingCollections)
+                newCollection.CollectionChanged += view.OnColumnsCollectionChanged;
             view._dataSource.SetColumns(newCollection);
         }
         else
@@ -158,7 +164,8 @@ public partial class KumikoDataGrid
 
         if (e.NewValue is ObservableCollection<TableSummaryRow> newCollection)
         {
-            newCollection.CollectionChanged += view.OnTableSummaryRowsCollectionChanged;
+            if (view.IsObservingCollections)
+                newCollection.CollectionChanged += view.OnTableSummaryRowsCollectionChanged;
             view.SyncTableSummaryRows(newCollection);
         }
         else
