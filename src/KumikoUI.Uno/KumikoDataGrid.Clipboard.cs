@@ -49,7 +49,7 @@ public partial class KumikoDataGrid
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
                 return true;
             }
-            catch
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException or TaskCanceledException)
             {
                 return false;
             }
@@ -62,7 +62,7 @@ public partial class KumikoDataGrid
                 var view = Windows.ApplicationModel.DataTransfer.Clipboard.GetContent();
                 return view.Contains(StandardDataFormats.Text) ? await view.GetTextAsync() : null;
             }
-            catch
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException or TaskCanceledException)
             {
                 return null;
             }

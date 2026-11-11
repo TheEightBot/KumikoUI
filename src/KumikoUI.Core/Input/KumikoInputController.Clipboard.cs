@@ -93,7 +93,7 @@ public partial class KumikoInputController
 
         Task<string?> read;
         try { read = clipboard.GetTextAsync(); }
-        catch { return; }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException or TaskCanceledException) { return; }
 
         if (read.IsCompletedSuccessfully)
         {
@@ -112,7 +112,7 @@ public partial class KumikoInputController
             },
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
-            SynchronizationContext.Current is { } context
+            SynchronizationContext.Current is not null
                 ? TaskScheduler.FromCurrentSynchronizationContext()
                 : TaskScheduler.Current);
     }

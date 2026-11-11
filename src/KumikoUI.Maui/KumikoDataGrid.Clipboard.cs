@@ -63,7 +63,7 @@ public partial class KumikoDataGrid
                 var task = MauiClipboard.Default.SetTextAsync(text);
                 return task.IsCompletedSuccessfully;
             }
-            catch
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Maui.ApplicationModel.FeatureNotSupportedException or NotSupportedException or TaskCanceledException)
             {
                 return false;
             }
@@ -75,7 +75,7 @@ public partial class KumikoDataGrid
             {
                 return MauiClipboard.Default.HasText ? await MauiClipboard.Default.GetTextAsync() : null;
             }
-            catch
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Maui.ApplicationModel.FeatureNotSupportedException or NotSupportedException or TaskCanceledException)
             {
                 return null;
             }

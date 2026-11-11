@@ -59,9 +59,9 @@ public static class KumikoTsvFormatter
 
         int last = -1;
         int written = 0;
-        foreach (int row in ordered)
+        foreach (int row in ordered.Where(r => r >= 0 && r < source.RowCount && !source.IsNonDataRow(r)))
         {
-            if (row == last || row < 0 || row >= source.RowCount || source.IsNonDataRow(row)) continue;
+            if (row == last) continue;
             last = row;
             written++;
             for (int c = 0; c < columns.Count; c++)
