@@ -1,6 +1,7 @@
 using System.Collections;
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Editing;
+using KumikoUI.Core.Rendering;
 
 namespace KumikoUI.Core.Models;
 
@@ -155,6 +156,32 @@ public class KumikoColumn
 
     /// <summary>Is the column visible?</summary>
     public bool IsVisible { get; set; } = true;
+
+    /// <summary>
+    /// Whether a <see cref="KumikoColumnType.Boolean"/> column has three states. When true, a toggle (tap, Space,
+    /// Enter) cycles unchecked, checked, indeterminate (the value <c>null</c>) and back to unchecked, and a null
+    /// value is drawn as a filled dash; the column's property must be a <c>bool?</c> to hold the indeterminate
+    /// state. When false (the default) a toggle flips between unchecked and checked, and null is drawn unchecked.
+    /// </summary>
+    public bool IsThreeState { get; set; }
+
+    /// <summary>The value at the empty end of a <see cref="KumikoColumnType.ProgressBar"/> column's bar. Default: 0.</summary>
+    public double ProgressMinimum { get; set; }
+
+    /// <summary>The value at the full end of a <see cref="KumikoColumnType.ProgressBar"/> column's bar. Default: 100.</summary>
+    public double ProgressMaximum { get; set; } = 100;
+
+    /// <summary>
+    /// Whether a <see cref="KumikoColumnType.ProgressBar"/> column draws its value as text over the bar,
+    /// formatted with <see cref="Format"/> ("N0" when that is not set). Default: true.
+    /// </summary>
+    public bool ProgressShowText { get; set; } = true;
+
+    /// <summary>
+    /// The fill color of a <see cref="KumikoColumnType.ProgressBar"/> column's bar, or null (the default) for the
+    /// style's <see cref="KumikoStyle.AccentColor"/>.
+    /// </summary>
+    public KumikoColor? ProgressFillColor { get; set; }
 
     /// <summary>Is the column read-only?</summary>
     public bool IsReadOnly { get; set; }

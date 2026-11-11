@@ -44,8 +44,16 @@ public class BooleanCellRenderer : ICellRenderer
         // Checkbox border
         ctx.DrawRect(boxRect, cell.Paints.CheckBoxBorder);
 
+        // Indeterminate: a three-state column's null is a filled dash, the other columns' null is unchecked
+        if (cell.Value is null && cell.Column.IsThreeState)
+        {
+            float dashW = boxSize * 0.5f;
+            float dashH = Math.Max(2f, boxSize * 0.18f);
+            GlyphDrawing.FillDash(ctx, boxRect.X + (boxSize - dashW) / 2, boxRect.Y + (boxSize - dashH) / 2,
+                dashW, dashH, cell.Paints.CheckIndeterminate);
+        }
         // Checkmark
-        if (isChecked)
+        else if (isChecked)
         {
             var checkPaint = cell.Paints.CheckMark;
             float pad = boxSize * 0.2f;
