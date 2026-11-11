@@ -252,6 +252,18 @@ public class KumikoColumn
     }
     private string? _editorItemsString;
 
+    /// <summary>
+    /// The earliest date a <see cref="KumikoColumnType.Date"/> column's editor accepts, or null for none.
+    /// Earlier days are drawn disabled in the calendar and cannot be picked or typed.
+    /// </summary>
+    public DateTime? EditorMinDate { get; set; }
+
+    /// <summary>
+    /// The latest date a <see cref="KumikoColumnType.Date"/> column's editor accepts, or null for none.
+    /// Later days are drawn disabled in the calendar and cannot be picked or typed.
+    /// </summary>
+    public DateTime? EditorMaxDate { get; set; }
+
     /// <summary>Property path for display text in ComboBox and Picker editor items.</summary>
     public string? EditorDisplayMemberPath { get; set; }
 

@@ -10,6 +10,27 @@ namespace KumikoUI.Core.Components;
 /// Fully custom-drawn date picker with a calendar popup.
 /// Renders month grid, navigation arrows, and day selection.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The picker is culture-aware (<see cref="Culture"/>): month and day names, the first day of the week
+/// (<see cref="FirstDayOfWeek"/> overrides it), the order of month and year in the header, the AM/PM
+/// designators and the date text, which follows <see cref="DateFormat"/> or else the culture's short date
+/// pattern, so a German picker reads 15.03.2024 and starts its weeks on Monday.
+/// </para>
+/// <para>
+/// A date can be typed into the field: typing (digits, separators, month names) starts typed entry in a
+/// <see cref="DrawnTextBox"/>, and Enter, a tap elsewhere or losing focus applies the text parsed in the
+/// culture. Text that is not a date, or a date outside <see cref="MinDate"/> and <see cref="MaxDate"/>, is
+/// not applied: the field is drawn with an error border and <see cref="IValueEditor.Value"/> reports
+/// something the edit session refuses through its ordinary validation path. Days outside the range are drawn
+/// disabled and cannot be selected by tap, keyboard or typing.
+/// </para>
+/// <para>
+/// In the open calendar the arrow keys move the selection by a day or a week, Page Up and Page Down by a
+/// month (with Shift, a year), and Home and End to the first and last day of the week. While typed text is
+/// pending, Left, Right, Home and End edit the text instead.
+/// </para>
+/// </remarks>
 public class DrawnDatePicker : DrawnComponent, IValueEditor
 {
     private DateTime _selectedDate = DateTime.Today; // the selection, or where the keyboard starts when there is none
@@ -23,6 +44,23 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private int _highlightedMonthIndex = -1;
     private int _highlightedYearIndex = -1;
     private float _yearScrollOffset;
+    private DateTime? _minDate;
+    private DateTime? _maxDate;
+    private string? _dateFormat;
+    private DayOfWeek? _firstDayOfWeek;
+
+    // Year list drag: a press waits for its release so a drag can scroll the list instead of picking a year
+    private bool _yearPressed;
+    private bool _yearDragged;
+    private float _yearPressY;
+    private float _yearPressOffset;
+    private int _yearPressedYear;
+
+    // Typed entry
+    private readonly DrawnTextBox _box;
+    private bool _typing;
+    private bool _textDirty;
+    private bool _invalidText;
 
     // Calendar layout constants
     private const int DaysPerWeek = 7;
@@ -34,15 +72,47 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private const float MonthDropdownWidth = 110f;
     private const float YearDropdownWidth = 70f;
     private const float YearDropdownMaxHeight = 200f;
+    private const float YearDragThreshold = 4f;
 
-    // Year range for dropdown
-    private const int YearRangeBefore = 50;
-    private const int YearRangeAfter = 10;
+    // The year list covers these years unless MinDate/MaxDate narrow or the displayed year lies outside
+    private const int DefaultFirstYear = 1900;
+    private const int DefaultLastYear = 2100;
+
+    private static readonly string[] DayNumbers =
+        Enumerable.Range(0, 32).Select(i => i.ToString(CultureInfo.InvariantCulture)).ToArray();
+
+    /// <summary>What the field text shows; the text is rebuilt only when one of these changes.</summary>
+    private readonly record struct FieldKey(
+        bool HasSelection, DateTime Date, string? Format, CultureInfo? Culture, bool ShowTime, bool H24,
+        int Hour, int Minute, bool Range, DateTime? RangeEnd);
+
+    private FieldKey _fieldKey;
+    private bool _fieldKeyValid;
+    private string _fieldText = string.Empty;
+
+    private int _yearTextYear = -1;
+    private string _yearText = string.Empty;
+    private readonly Dictionary<int, string> _yearStrings = new();
+
+    // Paints reused by every draw
+    private readonly KumikoPaint _fillPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _strokePaint = new() { Style = PaintStyle.Stroke };
+    private readonly KumikoPaint _arrowPaint = new() { Style = PaintStyle.Stroke, IsAntiAlias = true };
+    private readonly KumikoPaint _textPaint = new() { Style = PaintStyle.Fill };
 
     /// <summary>Creates a date picker showing the current month with no date selected.</summary>
     public DrawnDatePicker()
     {
         _displayMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        _box = new DrawnTextBox
+        {
+            BorderWidth = 0,
+            MaxLength = 48,
+            BackgroundColor = BackgroundColor,
+            EditingBackgroundColor = BackgroundColor,
+        };
+        _box.TextChanged += (_, _) => OnTextEdited();
+        _box.RedrawRequested += InvalidateVisual;
     }
 
     // ── Style ───────────────────────────────────────────────────
@@ -59,6 +129,8 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     public KumikoColor BorderColor { get; set; } = new(180, 180, 180);
     /// <summary>Border color applied when the date picker has input focus.</summary>
     public KumikoColor FocusedBorderColor { get; set; } = new(0, 120, 215);
+    /// <summary>Border color of the display field while the typed text is not an acceptable date.</summary>
+    public KumikoColor ErrorBorderColor { get; set; } = new(220, 50, 50);
     /// <summary>Background fill color of the calendar popup.</summary>
     public KumikoColor CalendarBackgroundColor { get; set; } = KumikoColor.White;
     /// <summary>Highlight color drawn behind today’s date in the calendar.</summary>
@@ -71,21 +143,52 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     public KumikoColor WeekendColor { get; set; } = new(200, 60, 60);
     /// <summary>Text color for days that belong to the previous or next month.</summary>
     public KumikoColor OtherMonthColor { get; set; } = new(180, 180, 180);
+    /// <summary>Text color of days outside <see cref="MinDate"/> and <see cref="MaxDate"/>, which cannot be selected.</summary>
+    public KumikoColor DisabledDayColor { get; set; } = new(200, 200, 200);
     /// <summary>Color of the month navigation arrows.</summary>
     public KumikoColor ArrowColor { get; set; } = new(80, 80, 80);
     /// <summary>Horizontal padding inside the display field.</summary>
     public float Padding { get; set; } = 6f;
-    /// <summary>Date format string used to display the selected date.</summary>
-    public string DateFormat { get; set; } = "yyyy-MM-dd";
 
     /// <summary>
-    /// The culture for month and day names, the AM/PM designators and the displayed date, or null (the
-    /// default) for the current culture. The grid sets it to its <see cref="KumikoSource.Culture"/> when it
-    /// creates a date editor.
+    /// Date format string used to display and parse the selected date, or null (the default) for the
+    /// culture's short date pattern, which puts day, month and year in the order of <see cref="Culture"/>.
+    /// The grid sets it to the column's <see cref="KumikoColumn.Format"/>.
+    /// </summary>
+    public string? DateFormat
+    {
+        get => _dateFormat;
+        set
+        {
+            _dateFormat = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>
+    /// The culture for month and day names, the first day of the week, the AM/PM designators and the
+    /// displayed and typed date, or null (the default) for the current culture. The grid sets it to its
+    /// <see cref="KumikoSource.Culture"/> when it creates a date editor.
     /// </summary>
     public CultureInfo? Culture { get; set; }
 
     private CultureInfo EffectiveCulture => Culture ?? CultureInfo.CurrentCulture;
+
+    /// <summary>
+    /// The first column of the calendar's week, or null (the default) for the culture's first day of the
+    /// week: Monday for de-DE, Sunday for en-US.
+    /// </summary>
+    public DayOfWeek? FirstDayOfWeek
+    {
+        get => _firstDayOfWeek;
+        set
+        {
+            _firstDayOfWeek = value;
+            InvalidateVisual();
+        }
+    }
+
+    private DayOfWeek EffectiveFirstDay => _firstDayOfWeek ?? EffectiveCulture.DateTimeFormat.FirstDayOfWeek;
 
     /// <summary>The designator after a 12-hour time (with its leading space), or "" when the culture has none.</summary>
     private string AmPmSuffix(int hour)
@@ -107,6 +210,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     {
         Font = font;
         DayFont = new KumikoFont(font.Family, Math.Max(1f, font.Size - 1f), font.IsBold, font.IsItalic);
+        _box.Font = font;
         InvalidateVisual();
     }
 
@@ -142,8 +246,18 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
             (byte)((txt.G + bg.G) / 2),
             (byte)((txt.B + bg.B) / 2));
 
+        // Disabled days: fainter than the other month's
+        DisabledDayColor = new KumikoColor(
+            (byte)((txt.R + bg.R * 3) / 4),
+            (byte)((txt.G + bg.G * 3) / 4),
+            (byte)((txt.B + bg.B * 3) / 4));
+
         // Arrow: same as other month (secondary tone)
         ArrowColor = OtherMonthColor;
+
+        _box.ApplyTheme(style);
+        _box.BackgroundColor = bg;
+        _box.EditingBackgroundColor = bg;
     }
 
     // ── Properties ──────────────────────────────────────────────
@@ -199,11 +313,38 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         }
     }
 
-    /// <summary>Minimum selectable date.</summary>
-    public DateTime? MinDate { get; set; }
+    /// <summary>
+    /// Minimum selectable date (compared by day), or null for none. Earlier days are drawn disabled and
+    /// cannot be picked, stepped to with the keyboard or typed. Setting it after <see cref="MaxDate"/> and
+    /// later than it moves <see cref="MaxDate"/> to the same day, so the minimum never exceeds the maximum.
+    /// </summary>
+    public DateTime? MinDate
+    {
+        get => _minDate;
+        set
+        {
+            _minDate = value?.Date;
+            if (_minDate is { } min && _maxDate is { } max && min > max) _maxDate = min;
+            InvalidateVisual();
+        }
+    }
 
-    /// <summary>Maximum selectable date.</summary>
-    public DateTime? MaxDate { get; set; }
+    /// <summary>
+    /// Maximum selectable date (compared by day), or null for none. Later days are drawn disabled and
+    /// cannot be picked, stepped to with the keyboard or typed. Setting it earlier than
+    /// <see cref="MinDate"/> moves <see cref="MinDate"/> to the same day, so the minimum never exceeds the
+    /// maximum.
+    /// </summary>
+    public DateTime? MaxDate
+    {
+        get => _maxDate;
+        set
+        {
+            _maxDate = value?.Date;
+            if (_maxDate is { } max && _minDate is { } min && max < min) _minDate = max;
+            InvalidateVisual();
+        }
+    }
 
     /// <summary>Is the calendar popup currently open?</summary>
     public bool IsCalendarOpen => _isCalendarOpen;
@@ -237,6 +378,168 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     /// <summary>Raised when the time portion changes.</summary>
     public event EventHandler<KumikoTimeChangedEventArgs>? TimeChanged;
 
+    // ── Dates ───────────────────────────────────────────────────
+
+    private bool IsDisabled(DateTime date) =>
+        (_minDate is { } min && date.Date < min) || (_maxDate is { } max && date.Date > max);
+
+    private DateTime ClampToRange(DateTime date)
+    {
+        if (_minDate is { } min && date.Date < min) return min;
+        if (_maxDate is { } max && date.Date > max) return max;
+        return date;
+    }
+
+    private static DateTime AddDaysSafe(DateTime date, int days)
+    {
+        long ticks = date.Ticks + (long)days * TimeSpan.TicksPerDay;
+        if (ticks < DateTime.MinValue.Ticks) return DateTime.MinValue;
+        if (ticks > DateTime.MaxValue.Ticks) return DateTime.MaxValue;
+        return new DateTime(ticks, date.Kind);
+    }
+
+    private static bool TryAddMonths(DateTime date, int months, out DateTime result)
+    {
+        long total = date.Year * 12L + (date.Month - 1) + months;
+        long year = total / 12;
+        if (total < 0 || year < 1 || year > 9999)
+        {
+            result = date;
+            return false;
+        }
+        result = date.AddMonths(months);
+        return true;
+    }
+
+    /// <summary>How many columns the first of the displayed month sits to the right of the week's first column.</summary>
+    private int LeadingDays(DateTime firstOfMonth) =>
+        ((int)firstOfMonth.DayOfWeek - (int)EffectiveFirstDay + DaysPerWeek) % DaysPerWeek;
+
+    private DateTime CellDate(int row, int column) =>
+        AddDaysSafe(_displayMonth, row * DaysPerWeek + column - LeadingDays(_displayMonth));
+
+    /// <summary>The month name comes before the year in the header, in the culture's year-month pattern.</summary>
+    private bool MonthFirst
+    {
+        get
+        {
+            string pattern = EffectiveCulture.DateTimeFormat.YearMonthPattern;
+            int year = pattern.IndexOf('y');
+            int month = pattern.IndexOf('M');
+            return year < 0 || month < 0 || month < year;
+        }
+    }
+
+    private string YearText(int year)
+    {
+        if (year != _yearTextYear)
+        {
+            _yearText = YearString(year);
+            _yearTextYear = year;
+        }
+        return _yearText;
+    }
+
+    private string YearString(int year)
+    {
+        if (!_yearStrings.TryGetValue(year, out var text))
+        {
+            text = year.ToString(CultureInfo.InvariantCulture);
+            _yearStrings[year] = text;
+        }
+        return text;
+    }
+
+    private int FirstYear => Math.Clamp(_minDate?.Year ?? Math.Min(DefaultFirstYear, _displayMonth.Year), 1, 9999);
+
+    private int LastYear => Math.Clamp(_maxDate?.Year ?? Math.Max(DefaultLastYear, _displayMonth.Year), FirstYear, 9999);
+
+    // ── Field text ──────────────────────────────────────────────
+
+    private string EffectiveFormat => string.IsNullOrEmpty(_dateFormat) ? "d" : _dateFormat;
+
+    private string FormatDate(DateTime date)
+    {
+        try
+        {
+            return date.ToString(EffectiveFormat, EffectiveCulture);
+        }
+        catch (FormatException)
+        {
+            return date.ToString("d", EffectiveCulture); // a format that is not a date format: the culture's
+        }
+    }
+
+    private int _timeTextHour = -1, _timeTextMinute = -1;
+    private bool _timeText24;
+    private CultureInfo? _timeTextCulture;
+    private string _timeText = string.Empty;
+
+    private string TimeText()
+    {
+        var culture = EffectiveCulture;
+        if (_timeTextHour != SelectedHour || _timeTextMinute != SelectedMinute || _timeText24 != Use24HourFormat
+            || !ReferenceEquals(_timeTextCulture, culture))
+        {
+            int displayHour = SelectedHour;
+            string amPm = "";
+            if (!Use24HourFormat)
+            {
+                amPm = AmPmSuffix(displayHour);
+                displayHour = displayHour % 12;
+                if (displayHour == 0) displayHour = 12;
+            }
+            _timeText = $"{displayHour:D2}:{SelectedMinute:D2}{amPm}";
+            _timeTextHour = SelectedHour;
+            _timeTextMinute = SelectedMinute;
+            _timeText24 = Use24HourFormat;
+            _timeTextCulture = culture;
+        }
+        return _timeText;
+    }
+
+    /// <summary>The text of the field: the date, the time, and the end of a range.</summary>
+    private string FieldText
+    {
+        get
+        {
+            var key = new FieldKey(_hasSelection, _selectedDate, _dateFormat, Culture, ShowTimePicker,
+                Use24HourFormat, SelectedHour, SelectedMinute, IsRangeMode, _rangeEndDate);
+            if (!_fieldKeyValid || !_fieldKey.Equals(key))
+            {
+                string text = _hasSelection ? FormatDate(_selectedDate) : string.Empty;
+                if (ShowTimePicker) text += " " + TimeText();
+                if (IsRangeMode && _rangeEndDate.HasValue) text += " — " + FormatDate(_rangeEndDate.Value);
+                _fieldText = text;
+                _fieldKey = key;
+                _fieldKeyValid = true;
+            }
+            return _fieldText;
+        }
+    }
+
+    // ── Paint helpers ───────────────────────────────────────────
+
+    private KumikoPaint Fill(KumikoColor color)
+    {
+        _fillPaint.Color = color;
+        return _fillPaint;
+    }
+
+    private KumikoPaint Stroke(KumikoColor color, float width)
+    {
+        _strokePaint.Color = color;
+        _strokePaint.StrokeWidth = width;
+        return _strokePaint;
+    }
+
+    private KumikoPaint Text(KumikoColor color, KumikoFont font)
+    {
+        _textPaint.Color = color;
+        _textPaint.Font = font;
+        return _textPaint;
+    }
+
     // ── Drawing ─────────────────────────────────────────────────
 
     /// <inheritdoc />
@@ -251,48 +554,40 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private void DrawDisplayField(IDrawingContext ctx)
     {
         var b = Bounds;
+        ctx.FillRect(b, Fill(BackgroundColor));
 
-        ctx.FillRect(b, new KumikoPaint { Color = BackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(b, new KumikoPaint
-        {
-            Color = IsFocused ? FocusedBorderColor : BorderColor,
-            Style = PaintStyle.Stroke,
-            StrokeWidth = 1
-        });
-
-        // Date text
-        string dateText = _hasSelection ? _selectedDate.ToString(DateFormat, EffectiveCulture) : string.Empty;
-        if (ShowTimePicker)
-        {
-            int displayHour = SelectedHour;
-            string amPm = "";
-            if (!Use24HourFormat)
-            {
-                amPm = AmPmSuffix(displayHour);
-                displayHour = displayHour % 12;
-                if (displayHour == 0) displayHour = 12;
-            }
-            dateText += $" {displayHour:D2}:{SelectedMinute:D2}{amPm}";
-        }
-        if (IsRangeMode && _rangeEndDate.HasValue)
-        {
-            dateText += $" — {_rangeEndDate.Value.ToString(DateFormat, EffectiveCulture)}";
-        }
-        float textX = b.X + Padding;
-        float textY = b.Y + b.Height / 2;
-        ctx.DrawText(dateText, textX, textY,
-            new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font });
-
-        // Calendar icon (simple grid/lines)
         float iconSize = 16f;
         float iconX = b.X + b.Width - iconSize - Padding;
-        float iconY = b.Y + (b.Height - iconSize) / 2;
-        DrawCalendarIcon(ctx, iconX, iconY, iconSize);
+
+        if (_typing)
+        {
+            // Typed entry: the text box draws the text, the caret and the selection
+            _box.Bounds = new KumikoRect(b.X, b.Y, Math.Max(0f, iconX - b.X), b.Height);
+            _box.Padding = Padding;
+            _box.Font = Font;
+            _box.TextColor = TextColor;
+            _box.BackgroundColor = BackgroundColor;
+            _box.EditingBackgroundColor = BackgroundColor;
+            _box.BorderColor = BackgroundColor;
+            _box.FocusedBorderColor = BackgroundColor;
+            _box.OnDraw(ctx);
+        }
+        else
+        {
+            float textY = b.Y + b.Height / 2;
+            ctx.DrawText(FieldText, b.X + Padding, textY, Text(TextColor, Font));
+        }
+
+        bool error = _typing && _invalidText;
+        ctx.DrawRect(b, Stroke(error ? ErrorBorderColor : IsFocused ? FocusedBorderColor : BorderColor, error ? 2 : 1));
+
+        // Calendar icon (simple grid/lines)
+        DrawCalendarIcon(ctx, iconX, b.Y + (b.Height - iconSize) / 2, iconSize);
     }
 
-    private static void DrawCalendarIcon(IDrawingContext ctx, float x, float y, float size)
+    private void DrawCalendarIcon(IDrawingContext ctx, float x, float y, float size)
     {
-        var paint = new KumikoPaint { Color = new KumikoColor(100, 100, 100), Style = PaintStyle.Stroke, StrokeWidth = 1 };
+        var paint = Stroke(new KumikoColor(100, 100, 100), 1);
         ctx.DrawRect(new KumikoRect(x, y + 3, size, size - 3), paint);
         ctx.DrawLine(x, y + 7, x + size, y + 7, paint);
         // Top "tabs"
@@ -307,9 +602,9 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
 
         // Shadow + background
         ctx.FillRect(new KumikoRect(calRect.X + 2, calRect.Y + 2, calRect.Width, calRect.Height),
-            new KumikoPaint { Color = new KumikoColor(0, 0, 0, 30), Style = PaintStyle.Fill });
-        ctx.FillRect(calRect, new KumikoPaint { Color = CalendarBackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(calRect, new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
+            Fill(new KumikoColor(0, 0, 0, 30)));
+        ctx.FillRect(calRect, Fill(CalendarBackgroundColor));
+        ctx.DrawRect(calRect, Stroke(BorderColor, 1));
 
         float contentX = calRect.X + 4;
         float contentY = calRect.Y + 4;
@@ -345,55 +640,54 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private void DrawNavRow(IDrawingContext ctx, float x, float y, float width)
     {
         // Left arrow
-        var arrowPaint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true };
+        _arrowPaint.Color = ArrowColor;
+        _arrowPaint.StrokeWidth = 1.5f;
         float arrowY = y + NavRowHeight / 2;
-        GlyphDrawing.Chevron(ctx, x + 8, arrowY - 4, x + 5, arrowY, x + 8, arrowY + 4, arrowPaint);
+        GlyphDrawing.Chevron(ctx, x + 8, arrowY - 4, x + 5, arrowY, x + 8, arrowY + 4, _arrowPaint);
 
         // Right arrow
         float rx = x + width - 10;
-        GlyphDrawing.Chevron(ctx, rx - 3, arrowY - 4, rx, arrowY, rx - 3, arrowY + 4, arrowPaint);
+        GlyphDrawing.Chevron(ctx, rx - 3, arrowY - 4, rx, arrowY, rx - 3, arrowY + 4, _arrowPaint);
 
-        // Month text (clickable for dropdown)
+        // Month and year (each clickable for its dropdown), in the order of the culture
         string monthText = EffectiveCulture.DateTimeFormat.GetMonthName(_displayMonth.Month);
-        string yearText = _displayMonth.Year.ToString();
-        var textPaint = new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
-        var underlinePaint = new KumikoPaint { Color = FocusedBorderColor, Style = PaintStyle.Fill, Font = Font };
+        string yearText = YearText(_displayMonth.Year);
+        bool monthFirst = MonthFirst;
+        string first = monthFirst ? monthText : yearText;
+        string second = monthFirst ? yearText : monthText;
+        bool firstActive = monthFirst ? _isMonthDropdownOpen : _isYearDropdownOpen;
+        bool secondActive = monthFirst ? _isYearDropdownOpen : _isMonthDropdownOpen;
 
-        float monthWidth = ctx.MeasureText(monthText, textPaint).Width;
-        float yearWidth = ctx.MeasureText(yearText, textPaint).Width;
+        float firstWidth = ctx.MeasureText(first, Text(TextColor, Font)).Width;
+        float secondWidth = ctx.MeasureText(second, Text(TextColor, Font)).Width;
         float gap = 6f;
-        float totalTextWidth = monthWidth + gap + yearWidth;
-        float startX = x + (width - totalTextWidth) / 2;
+        float startX = x + (width - (firstWidth + gap + secondWidth)) / 2;
 
-        // Month (with underline hint if dropdown is available)
-        ctx.DrawText(monthText, startX, arrowY, _isMonthDropdownOpen ? underlinePaint : textPaint);
-
-        // Year
-        float yearX = startX + monthWidth + gap;
-        ctx.DrawText(yearText, yearX, arrowY, _isYearDropdownOpen ? underlinePaint : textPaint);
+        // The label whose dropdown is open is drawn in the accent color
+        ctx.DrawText(first, startX, arrowY, Text(firstActive ? FocusedBorderColor : TextColor, Font));
+        ctx.DrawText(second, startX + firstWidth + gap, arrowY, Text(secondActive ? FocusedBorderColor : TextColor, Font));
     }
 
     private void DrawDayHeaders(IDrawingContext ctx, float x, float y)
     {
-        // Sunday first, the layout of the day grid (the first day of the week is not configurable yet)
-        string[] dayNames = EffectiveCulture.DateTimeFormat.ShortestDayNames;
+        var names = EffectiveCulture.DateTimeFormat;
+        int first = (int)EffectiveFirstDay;
+        var headerColor = new KumikoColor(100, 100, 100);
 
         for (int d = 0; d < DaysPerWeek; d++)
         {
+            string name = names.GetShortestDayName((DayOfWeek)((first + d) % DaysPerWeek));
             float cx = x + d * DayCellSize + DayCellSize / 2;
             float cy = y + HeaderHeight / 2;
-            var dayHeaderPaint = new KumikoPaint { Color = new KumikoColor(100, 100, 100), Style = PaintStyle.Fill, Font = DayFont };
-            float tw = ctx.MeasureText(dayNames[d], dayHeaderPaint).Width;
-            ctx.DrawText(dayNames[d], cx - tw / 2, cy, dayHeaderPaint);
+            var paint = Text(headerColor, DayFont);
+            float tw = ctx.MeasureText(name, paint).Width;
+            ctx.DrawText(name, cx - tw / 2, cy, paint);
         }
     }
 
     private void DrawDayGrid(IDrawingContext ctx, float x, float y)
     {
         var firstOfMonth = _displayMonth;
-        int startDayOfWeek = (int)firstOfMonth.DayOfWeek;
-        int daysInMonth = DateTime.DaysInMonth(firstOfMonth.Year, firstOfMonth.Month);
-
         var today = DateTime.Today;
 
         // Determine range for highlighting
@@ -408,8 +702,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         {
             for (int dow = 0; dow < DaysPerWeek; dow++)
             {
-                int dayOffset = week * DaysPerWeek + dow - startDayOfWeek;
-                var date = firstOfMonth.AddDays(dayOffset);
+                var date = CellDate(week, dow);
 
                 float cellX = x + dow * DayCellSize;
                 float cellY = y + week * DayCellSize;
@@ -421,40 +714,31 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
                 bool isRangeEnd = IsRangeMode && _rangeEndDate.HasValue && date.Date == _rangeEndDate.Value.Date;
                 bool isInRange = rangeStart.HasValue && rangeEnd.HasValue &&
                                  date.Date >= rangeStart.Value.Date && date.Date <= rangeEnd.Value.Date;
-                bool isWeekend = dow == 0 || dow == 6;
-                bool isDisabled = (MinDate.HasValue && date < MinDate.Value) ||
-                                  (MaxDate.HasValue && date > MaxDate.Value);
+                bool isWeekend = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+                bool isDisabled = IsDisabled(date);
 
                 // Range background
                 if (isInRange && !isSelected && !isRangeEnd)
-                {
-                    ctx.FillRect(cellRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 25), Style = PaintStyle.Fill });
-                }
+                    ctx.FillRect(cellRect, Fill(new KumikoColor(0, 120, 215, 25)));
 
                 // Background highlights
                 if (isSelected || isRangeEnd)
-                {
-                    ctx.FillRoundRect(cellRect, 4, new KumikoPaint { Color = SelectedDayColor, Style = PaintStyle.Fill });
-                }
+                    ctx.FillRoundRect(cellRect, 4, Fill(SelectedDayColor));
                 else if (isToday)
-                {
-                    ctx.FillRoundRect(cellRect, 4, new KumikoPaint { Color = TodayHighlightColor, Style = PaintStyle.Fill });
-                }
+                    ctx.FillRoundRect(cellRect, 4, Fill(TodayHighlightColor));
 
                 // Day number text
-                string dayText = date.Day.ToString();
+                string dayText = DayNumbers[date.Day];
                 KumikoColor textColor;
                 if (isSelected || isRangeEnd) textColor = SelectedDayTextColor;
-                else if (isDisabled) textColor = new KumikoColor(200, 200, 200);
+                else if (isDisabled) textColor = DisabledDayColor;
                 else if (!isCurrentMonth) textColor = OtherMonthColor;
                 else if (isWeekend) textColor = WeekendColor;
                 else textColor = TextColor;
 
-                var dayPaint = new KumikoPaint { Color = textColor, Style = PaintStyle.Fill, Font = DayFont };
+                var dayPaint = Text(textColor, DayFont);
                 float tw = ctx.MeasureText(dayText, dayPaint).Width;
-                float textX = cellX + (DayCellSize - tw) / 2;
-                float textY = cellY + DayCellSize / 2;
-                ctx.DrawText(dayText, textX, textY, dayPaint);
+                ctx.DrawText(dayText, cellX + (DayCellSize - tw) / 2, cellY + DayCellSize / 2, dayPaint);
             }
         }
     }
@@ -490,6 +774,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         if (!IsEnabled) return false;
 
         _pressedDate = null;
+        _yearPressed = false;
 
         if (_isCalendarOpen)
         {
@@ -505,7 +790,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
             // Check year dropdown
             if (_isYearDropdownOpen)
             {
-                if (HandleYearDropdownClick(e.X, e.Y)) return true;
+                if (HandleYearDropdownPress(e.X, e.Y)) return true;
                 _isYearDropdownOpen = false;
                 InvalidateVisual();
                 return true;
@@ -527,8 +812,35 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     }
 
     /// <inheritdoc />
+    public override bool OnPointerMove(KumikoPointerEventArgs e)
+    {
+        if (!_yearPressed) return false;
+
+        float moved = e.Y - _yearPressY;
+        if (!_yearDragged && Math.Abs(moved) < YearDragThreshold) return true;
+
+        _yearDragged = true;
+        _yearScrollOffset = ClampYearScroll(_yearPressOffset - moved);
+        InvalidateVisual();
+        return true;
+    }
+
+    /// <inheritdoc />
     public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
+        if (_yearPressed)
+        {
+            _yearPressed = false;
+            if (!_yearDragged && _isYearDropdownOpen)
+            {
+                _displayMonth = new DateTime(_yearPressedYear, _displayMonth.Month, 1);
+                _isYearDropdownOpen = false;
+                InvalidateVisual();
+            }
+            _yearDragged = false;
+            return true;
+        }
+
         if (_isCalendarOpen && _pressedDate.HasValue)
         {
             var calBounds = GetCalendarBounds();
@@ -542,6 +854,35 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         }
 
         _pressedDate = null;
+        return true;
+    }
+
+    /// <inheritdoc />
+    public override void OnPointerCancel(KumikoPointerEventArgs e)
+    {
+        _pressedDate = null;
+        _yearPressed = false;
+        _yearDragged = false;
+    }
+
+    /// <summary>
+    /// The mouse wheel scrolls the year list while it is open, and otherwise moves the calendar a month
+    /// (wheel up: earlier).
+    /// </summary>
+    public override bool OnScroll(KumikoPointerEventArgs e)
+    {
+        if (!_isCalendarOpen || e.ScrollDeltaY == 0) return false;
+
+        if (_isYearDropdownOpen)
+        {
+            _yearScrollOffset = ClampYearScroll(_yearScrollOffset - e.ScrollDeltaY * DropdownItemHeight * 2);
+            InvalidateVisual();
+            return true;
+        }
+
+        if (_isMonthDropdownOpen) return true;
+
+        if (e.ScrollDeltaY > 0) PreviousMonth(); else NextMonth();
         return true;
     }
 
@@ -561,14 +902,8 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         int row = (int)((py - contentY) / DayCellSize);
         if (col < 0 || col >= DaysPerWeek || row < 0 || row >= MaxWeeks) return null;
 
-        int startDayOfWeek = (int)_displayMonth.DayOfWeek;
-        int dayOffset = row * DaysPerWeek + col - startDayOfWeek;
-        var date = _displayMonth.AddDays(dayOffset);
-
-        if (MinDate.HasValue && date < MinDate.Value) return null;
-        if (MaxDate.HasValue && date > MaxDate.Value) return null;
-
-        return date;
+        var date = CellDate(row, col);
+        return IsDisabled(date) ? null : date;
     }
 
     /// <summary>
@@ -596,9 +931,10 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
             }
             else
             {
-                // Click on month/year text — determine which one
+                // Click on the month or the year label: the one on the left of the middle is the first
                 float midX = contentX + (calBounds.Width - 8) / 2;
-                if (clickX < midX)
+                bool month = (clickX < midX) == MonthFirst;
+                if (month)
                 {
                     _isMonthDropdownOpen = !_isMonthDropdownOpen;
                     _isYearDropdownOpen = false;
@@ -609,9 +945,9 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
                     _isYearDropdownOpen = !_isYearDropdownOpen;
                     _isMonthDropdownOpen = false;
                     _highlightedYearIndex = -1;
-                    // Scroll to show current year
-                    int currentYearIndex = _displayMonth.Year - (DateTime.Today.Year - YearRangeBefore);
-                    _yearScrollOffset = Math.Max(0, currentYearIndex * DropdownItemHeight - YearDropdownMaxHeight / 2);
+                    // Scroll to show the current year in the middle of the list
+                    int currentYearIndex = _displayMonth.Year - FirstYear;
+                    _yearScrollOffset = ClampYearScroll(currentYearIndex * DropdownItemHeight - YearDropdownMaxHeight / 2);
                 }
                 InvalidateVisual();
             }
@@ -647,6 +983,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     /// </summary>
     private void ApplyDateSelection(DateTime date)
     {
+        EndTyping();
         if (IsRangeMode)
         {
             // Range mode: first click = start, second click = end
@@ -674,9 +1011,37 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         }
     }
 
+    // ── Keyboard input ──────────────────────────────────────────
+
     /// <inheritdoc />
     public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
+        // A typed date waiting to be applied has its own keys
+        if (_typing && _textDirty)
+        {
+            switch (e.Key)
+            {
+                case KumikoKey.Enter:
+                    ConfirmTypedDate();
+                    return true;
+                case KumikoKey.Escape:
+                    EndTyping();
+                    return true;
+                case KumikoKey.Tab:
+                    return false;
+                case KumikoKey.Up:
+                case KumikoKey.Down:
+                case KumikoKey.PageUp:
+                case KumikoKey.PageDown:
+                    // Moving through the calendar takes the typed date along if it is one, else drops it
+                    if (TryParseTyped(_box.Text, out var typedDate)) ApplyTyped(typedDate);
+                    EndTyping();
+                    break;
+                default:
+                    return _box.OnKeyDown(e);
+            }
+        }
+
         if (!_isCalendarOpen)
         {
             if (e.Key == KumikoKey.Space || e.Key == KumikoKey.Enter || e.Key == KumikoKey.Down)
@@ -684,22 +1049,38 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
                 OpenCalendar();
                 return true;
             }
-            return false;
+            return IsTextKey(e) && StartTyping(e);
         }
 
         switch (e.Key)
         {
             case KumikoKey.Left:
-                Step(-1);
+                if (_typing) return _box.OnKeyDown(e);
+                Move(-1);
                 return true;
             case KumikoKey.Right:
-                Step(1);
+                if (_typing) return _box.OnKeyDown(e);
+                Move(1);
                 return true;
             case KumikoKey.Up:
-                Step(-7);
+                Move(-7);
                 return true;
             case KumikoKey.Down:
-                Step(7);
+                Move(7);
+                return true;
+            case KumikoKey.PageUp:
+                MoveMonths(e.HasShift ? -12 : -1);
+                return true;
+            case KumikoKey.PageDown:
+                MoveMonths(e.HasShift ? 12 : 1);
+                return true;
+            case KumikoKey.Home:
+                if (_typing) return _box.OnKeyDown(e);
+                MoveToWeekEdge(end: false);
+                return true;
+            case KumikoKey.End:
+                if (_typing) return _box.OnKeyDown(e);
+                MoveToWeekEdge(end: true);
                 return true;
             case KumikoKey.Enter:
                 CloseCalendar();
@@ -709,7 +1090,46 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
                 CloseCalendar();
                 return true;
         }
-        return false;
+
+        return IsTextKey(e) && StartTyping(e);
+    }
+
+    private static bool IsTextKey(KumikoKeyEventArgs e) =>
+        e.Key is KumikoKey.Backspace or KumikoKey.Delete || e.EnteredText != null
+        || e.HasCommand && e.Key is KumikoKey.A or KumikoKey.C or KumikoKey.V or KumikoKey.X or KumikoKey.Z or KumikoKey.Y;
+
+    /// <summary>Starts typed entry with <paramref name="e"/>, which replaces the text as it selects it.</summary>
+    private bool StartTyping(KumikoKeyEventArgs e)
+    {
+        if (IsRangeMode) return false; // a range has no single date to type
+        BeginTyping();
+        return _box.OnKeyDown(e);
+    }
+
+    /// <summary>Move the selection by <paramref name="days"/>, staying inside the allowed dates; with nothing selected, select the starting date first.</summary>
+    private void Move(int days)
+    {
+        if (!_hasSelection)
+        {
+            SelectedDate = ClampToRange(_selectedDate);
+            return;
+        }
+        SelectedDate = ClampToRange(AddDaysSafe(_selectedDate, days));
+    }
+
+    private void MoveMonths(int months)
+    {
+        if (!TryAddMonths(_selectedDate, months, out var target)) return;
+        if (!_hasSelection) target = _selectedDate;
+        SelectedDate = ClampToRange(target);
+    }
+
+    private void MoveToWeekEdge(bool end)
+    {
+        int firstColumn = (int)EffectiveFirstDay;
+        int column = ((int)_selectedDate.DayOfWeek - firstColumn + DaysPerWeek) % DaysPerWeek;
+        int days = end ? DaysPerWeek - 1 - column : -column;
+        SelectedDate = ClampToRange(AddDaysSafe(_selectedDate, days));
     }
 
     // ── Calendar management ─────────────────────────────────────
@@ -733,63 +1153,166 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         InvalidateVisual();
     }
 
-    /// <summary>Navigate the calendar to the previous month.</summary>
+    /// <summary>
+    /// Navigate the calendar to the previous month (not past the month of <see cref="MinDate"/>, nor before year 1).
+    /// </summary>
     public void PreviousMonth()
     {
-        _displayMonth = _displayMonth.AddMonths(-1);
+        if (!TryAddMonths(_displayMonth, -1, out var previous)) return;
+        if (_minDate is { } min && previous.AddMonths(1).AddDays(-1) < min) return;
+        _displayMonth = previous;
         InvalidateVisual();
     }
 
-    /// <summary>Navigate the calendar to the next month.</summary>
+    /// <summary>
+    /// Navigate the calendar to the next month (not past the month of <see cref="MaxDate"/>, nor after year 9999).
+    /// </summary>
     public void NextMonth()
     {
-        _displayMonth = _displayMonth.AddMonths(1);
+        if (!TryAddMonths(_displayMonth, 1, out var next)) return;
+        if (_maxDate is { } max && next > max) return;
+        _displayMonth = next;
         InvalidateVisual();
+    }
+
+    // ── Typed entry ─────────────────────────────────────────────
+
+    /// <summary>The date text as the user edits it: what the field shows.</summary>
+    private string EditText()
+    {
+        string text = _hasSelection ? FormatDate(_selectedDate) : string.Empty;
+        return ShowTimePicker && _hasSelection ? text + " " + TimeText() : text;
+    }
+
+    private void BeginTyping()
+    {
+        if (_typing) return;
+        _typing = true;
+        _textDirty = false;
+        _invalidText = false;
+        _box.Text = EditText();
+        _box.IsFocused = true;
+        _box.SelectAll();
+        InvalidateVisual();
+    }
+
+    private void EndTyping()
+    {
+        if (!_typing) return;
+        _typing = false;
+        _textDirty = false;
+        _invalidText = false;
+        _box.IsFocused = false;
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Parses typed text in the culture: the picker's format first, then every pattern of the culture.
+    /// A time of day in the text is returned too, when it has one.
+    /// </summary>
+    private bool TryParseTyped(string text, out DateTime date)
+    {
+        text = text.Trim();
+        var culture = EffectiveCulture;
+        var styles = DateTimeStyles.AllowWhiteSpaces;
+        if (text.Length > 0 &&
+            (DateTime.TryParseExact(text, EffectiveFormat, culture, styles, out date) ||
+             DateTime.TryParse(text, culture, styles, out date)))
+            return true;
+        date = default;
+        return false;
+    }
+
+    private bool IsTypedAcceptable(string text, out DateTime date) =>
+        TryParseTyped(text, out date) && !IsDisabled(date);
+
+    private void OnTextEdited()
+    {
+        if (!_typing) return;
+        _textDirty = true;
+        _invalidText = !IsTypedAcceptable(_box.Text, out var date);
+        if (!_invalidText)
+            _displayMonth = new DateTime(date.Year, date.Month, 1); // show the month of the date being typed
+        InvalidateVisual();
+    }
+
+    /// <summary>Selects the typed date (and its time, with a time picker) and tells the editor's host.</summary>
+    private void ApplyTyped(DateTime typed)
+    {
+        if (ShowTimePicker && typed.TimeOfDay != TimeSpan.Zero)
+        {
+            int oldHour = SelectedHour, oldMinute = SelectedMinute;
+            SelectedHour = typed.Hour;
+            SelectedMinute = typed.Minute;
+            if (oldHour != SelectedHour || oldMinute != SelectedMinute)
+                TimeChanged?.Invoke(this, new KumikoTimeChangedEventArgs(oldHour, oldMinute, SelectedHour, SelectedMinute));
+        }
+        SelectedDate = typed.Date;
+    }
+
+    /// <summary>
+    /// Enter on typed text: a date is selected and confirmed like a click on a day; anything else is
+    /// reported complete too, so the edit session refuses it with its validation message and keeps editing.
+    /// </summary>
+    private void ConfirmTypedDate()
+    {
+        if (IsTypedAcceptable(_box.Text, out var typed))
+        {
+            ApplyTyped(typed);
+            EndTyping();
+            CloseCalendar();
+        }
+        RaiseEditCompleted();
     }
 
     // ── Month dropdown ──────────────────────────────────────────
 
+    private KumikoRect MonthDropdownRect(KumikoRect calRect)
+    {
+        float shift = MonthFirst ? -20 : 20;
+        return new KumikoRect(calRect.X + (calRect.Width - MonthDropdownWidth) / 2 + shift,
+            calRect.Y + 4 + NavRowHeight, MonthDropdownWidth, 12 * DropdownItemHeight);
+    }
+
+    private KumikoRect YearDropdownRect(KumikoRect calRect)
+    {
+        float shift = MonthFirst ? 20 : -20;
+        int totalYears = LastYear - FirstYear + 1;
+        return new KumikoRect(calRect.X + (calRect.Width - YearDropdownWidth) / 2 + shift,
+            calRect.Y + 4 + NavRowHeight, YearDropdownWidth, Math.Min(totalYears * DropdownItemHeight, YearDropdownMaxHeight));
+    }
+
     private void DrawMonthDropdown(IDrawingContext ctx, KumikoRect calRect)
     {
-        float dropX = calRect.X + (calRect.Width - MonthDropdownWidth) / 2 - 20;
-        float dropY = calRect.Y + 4 + NavRowHeight;
-        float dropH = 12 * DropdownItemHeight;
+        var dropRect = MonthDropdownRect(calRect);
 
-        var dropRect = new KumikoRect(dropX, dropY, MonthDropdownWidth, dropH);
-
-        ctx.FillRect(new KumikoRect(dropX + 2, dropY + 2, MonthDropdownWidth, dropH),
-            new KumikoPaint { Color = new KumikoColor(0, 0, 0, 30), Style = PaintStyle.Fill });
-        ctx.FillRect(dropRect, new KumikoPaint { Color = CalendarBackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(dropRect, new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
+        ctx.FillRect(new KumikoRect(dropRect.X + 2, dropRect.Y + 2, dropRect.Width, dropRect.Height),
+            Fill(new KumikoColor(0, 0, 0, 30)));
+        ctx.FillRect(dropRect, Fill(CalendarBackgroundColor));
+        ctx.DrawRect(dropRect, Stroke(BorderColor, 1));
 
         for (int m = 0; m < 12; m++)
         {
-            float itemY = dropY + m * DropdownItemHeight;
-            var itemRect = new KumikoRect(dropX, itemY, MonthDropdownWidth, DropdownItemHeight);
+            float itemY = dropRect.Y + m * DropdownItemHeight;
+            var itemRect = new KumikoRect(dropRect.X, itemY, MonthDropdownWidth, DropdownItemHeight);
 
             if (m == _highlightedMonthIndex)
-                ctx.FillRect(itemRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 40), Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, Fill(new KumikoColor(0, 120, 215, 40)));
 
             if (m == _displayMonth.Month - 1)
-                ctx.FillRect(itemRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 20), Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, Fill(new KumikoColor(0, 120, 215, 20)));
 
             string monthName = EffectiveCulture.DateTimeFormat.GetMonthName(m + 1);
-            ctx.DrawText(monthName, dropX + 8, itemY + DropdownItemHeight / 2,
-                new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = DayFont });
+            ctx.DrawText(monthName, dropRect.X + 8, itemY + DropdownItemHeight / 2, Text(TextColor, DayFont));
         }
     }
 
     private bool HandleMonthDropdownClick(float clickX, float clickY)
     {
-        var calBounds = GetCalendarBounds();
-        float dropX = calBounds.X + (calBounds.Width - MonthDropdownWidth) / 2 - 20;
-        float dropY = calBounds.Y + 4 + NavRowHeight;
-        float dropH = 12 * DropdownItemHeight;
-
-        var dropRect = new KumikoRect(dropX, dropY, MonthDropdownWidth, dropH);
+        var dropRect = MonthDropdownRect(GetCalendarBounds());
         if (!dropRect.Contains(clickX, clickY)) return false;
 
-        int monthIndex = (int)((clickY - dropY) / DropdownItemHeight);
+        int monthIndex = (int)((clickY - dropRect.Y) / DropdownItemHeight);
         if (monthIndex >= 0 && monthIndex < 12)
         {
             _displayMonth = new DateTime(_displayMonth.Year, monthIndex + 1, 1);
@@ -802,69 +1325,64 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
 
     // ── Year dropdown ───────────────────────────────────────────
 
+    private float ClampYearScroll(float offset)
+    {
+        float content = (LastYear - FirstYear + 1) * DropdownItemHeight;
+        float visible = Math.Min(content, YearDropdownMaxHeight);
+        return Math.Clamp(offset, 0f, Math.Max(0f, content - visible));
+    }
+
     private void DrawYearDropdown(IDrawingContext ctx, KumikoRect calRect)
     {
-        float dropX = calRect.X + (calRect.Width - YearDropdownWidth) / 2 + 20;
-        float dropY = calRect.Y + 4 + NavRowHeight;
-        int totalYears = YearRangeBefore + YearRangeAfter + 1;
-        float dropH = Math.Min(totalYears * DropdownItemHeight, YearDropdownMaxHeight);
+        var dropRect = YearDropdownRect(calRect);
+        int firstYear = FirstYear;
+        int totalYears = LastYear - firstYear + 1;
 
-        var dropRect = new KumikoRect(dropX, dropY, YearDropdownWidth, dropH);
-
-        ctx.FillRect(new KumikoRect(dropX + 2, dropY + 2, YearDropdownWidth, dropH),
-            new KumikoPaint { Color = new KumikoColor(0, 0, 0, 30), Style = PaintStyle.Fill });
-        ctx.FillRect(dropRect, new KumikoPaint { Color = CalendarBackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(dropRect, new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
+        ctx.FillRect(new KumikoRect(dropRect.X + 2, dropRect.Y + 2, dropRect.Width, dropRect.Height),
+            Fill(new KumikoColor(0, 0, 0, 30)));
+        ctx.FillRect(dropRect, Fill(CalendarBackgroundColor));
+        ctx.DrawRect(dropRect, Stroke(BorderColor, 1));
 
         ctx.Save();
         ctx.ClipRect(dropRect);
 
-        int startYear = DateTime.Today.Year - YearRangeBefore;
-        for (int i = 0; i < totalYears; i++)
+        // Only the rows in view
+        int from = Math.Max(0, (int)(_yearScrollOffset / DropdownItemHeight));
+        int to = Math.Min(totalYears - 1, (int)((_yearScrollOffset + dropRect.Height) / DropdownItemHeight));
+        for (int i = from; i <= to; i++)
         {
-            float itemY = dropY + i * DropdownItemHeight - _yearScrollOffset;
-            if (itemY + DropdownItemHeight < dropY) continue;
-            if (itemY > dropY + dropH) break;
-
-            int year = startYear + i;
-            var itemRect = new KumikoRect(dropX, itemY, YearDropdownWidth, DropdownItemHeight);
+            float itemY = dropRect.Y + i * DropdownItemHeight - _yearScrollOffset;
+            int year = firstYear + i;
+            var itemRect = new KumikoRect(dropRect.X, itemY, YearDropdownWidth, DropdownItemHeight);
 
             if (i == _highlightedYearIndex)
-                ctx.FillRect(itemRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 40), Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, Fill(new KumikoColor(0, 120, 215, 40)));
 
             if (year == _displayMonth.Year)
-                ctx.FillRect(itemRect, new KumikoPaint { Color = new KumikoColor(0, 120, 215, 20), Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, Fill(new KumikoColor(0, 120, 215, 20)));
 
-            ctx.DrawText(year.ToString(), dropX + 8, itemY + DropdownItemHeight / 2,
-                new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = DayFont });
+            ctx.DrawText(YearString(year), dropRect.X + 8, itemY + DropdownItemHeight / 2, Text(TextColor, DayFont));
         }
 
         ctx.Restore();
     }
 
-    private bool HandleYearDropdownClick(float clickX, float clickY)
+    /// <summary>A press in the year list: the year under it is picked when the press is released without a drag.</summary>
+    private bool HandleYearDropdownPress(float clickX, float clickY)
     {
-        var calBounds = GetCalendarBounds();
-        float dropX = calBounds.X + (calBounds.Width - YearDropdownWidth) / 2 + 20;
-        float dropY = calBounds.Y + 4 + NavRowHeight;
-        int totalYears = YearRangeBefore + YearRangeAfter + 1;
-        float dropH = Math.Min(totalYears * DropdownItemHeight, YearDropdownMaxHeight);
-
-        var dropRect = new KumikoRect(dropX, dropY, YearDropdownWidth, dropH);
+        var dropRect = YearDropdownRect(GetCalendarBounds());
         if (!dropRect.Contains(clickX, clickY)) return false;
 
-        int index = (int)((clickY - dropY + _yearScrollOffset) / DropdownItemHeight);
-        int startYear = DateTime.Today.Year - YearRangeBefore;
-        int year = startYear + index;
+        int index = (int)((clickY - dropRect.Y + _yearScrollOffset) / DropdownItemHeight);
+        int year = FirstYear + index;
+        if (year < FirstYear || year > LastYear) return false;
 
-        if (index >= 0 && index < totalYears)
-        {
-            _displayMonth = new DateTime(year, _displayMonth.Month, 1);
-            _isYearDropdownOpen = false;
-            InvalidateVisual();
-            return true;
-        }
-        return false;
+        _yearPressed = true;
+        _yearDragged = false;
+        _yearPressY = clickY;
+        _yearPressOffset = _yearScrollOffset;
+        _yearPressedYear = year;
+        return true;
     }
 
     // ── Time picker ─────────────────────────────────────────────
@@ -872,24 +1390,13 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private void DrawTimePicker(IDrawingContext ctx, float x, float y, float width)
     {
         // Separator line
-        ctx.DrawLine(x, y - 2, x + width, y - 2,
-            new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 0.5f });
+        ctx.DrawLine(x, y - 2, x + width, y - 2, Stroke(BorderColor, 0.5f));
 
-        var textPaint = new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
+        var textPaint = Text(TextColor, Font);
         float centerX = x + width / 2;
         float centerY = y + NavRowHeight / 2;
 
-        // Format time display
-        int displayHour = SelectedHour;
-        string amPm = "";
-        if (!Use24HourFormat)
-        {
-            amPm = AmPmSuffix(displayHour);
-            displayHour = displayHour % 12;
-            if (displayHour == 0) displayHour = 12;
-        }
-
-        string timeText = $"{displayHour:D2}:{SelectedMinute:D2}{amPm}";
+        string timeText = TimeText();
         float textWidth = ctx.MeasureText(timeText, textPaint).Width;
 
         // Draw time text centered
@@ -897,19 +1404,20 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
 
         // Draw up/down arrows for hour
         float hourX = centerX - textWidth / 2;
-        var arrowPaint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Stroke, StrokeWidth = 1.2f, IsAntiAlias = true };
+        _arrowPaint.Color = ArrowColor;
+        _arrowPaint.StrokeWidth = 1.2f;
 
         // Hour up
-        GlyphDrawing.Chevron(ctx, hourX + 8, y + 2, hourX + 4, y + 6, hourX, y + 2, arrowPaint);
+        GlyphDrawing.Chevron(ctx, hourX + 8, y + 2, hourX + 4, y + 6, hourX, y + 2, _arrowPaint);
         // Hour down
-        GlyphDrawing.Chevron(ctx, hourX, y + NavRowHeight - 2, hourX + 4, y + NavRowHeight - 6, hourX + 8, y + NavRowHeight - 2, arrowPaint);
+        GlyphDrawing.Chevron(ctx, hourX, y + NavRowHeight - 2, hourX + 4, y + NavRowHeight - 6, hourX + 8, y + NavRowHeight - 2, _arrowPaint);
 
         // Minute arrows
         float minX = centerX + 4;
         // Minute up
-        GlyphDrawing.Chevron(ctx, minX + 8, y + 2, minX + 4, y + 6, minX, y + 2, arrowPaint);
+        GlyphDrawing.Chevron(ctx, minX + 8, y + 2, minX + 4, y + 6, minX, y + 2, _arrowPaint);
         // Minute down
-        GlyphDrawing.Chevron(ctx, minX, y + NavRowHeight - 2, minX + 4, y + NavRowHeight - 6, minX + 8, y + NavRowHeight - 2, arrowPaint);
+        GlyphDrawing.Chevron(ctx, minX, y + NavRowHeight - 2, minX + 4, y + NavRowHeight - 6, minX + 8, y + NavRowHeight - 2, _arrowPaint);
     }
 
     private void HandleTimePickerClick(float clickX, float clickY, float x, float y, float width)
@@ -950,23 +1458,54 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         }
     }
 
-    /// <summary>Closes the calendar popup when the picker loses focus.</summary>
+    /// <summary>
+    /// Applies typed text that is a date, drops any other, and closes the calendar popup when the picker
+    /// loses focus.
+    /// </summary>
     protected override void OnLostFocus()
     {
+        if (_typing && _textDirty && IsTypedAcceptable(_box.Text, out var typed))
+            ApplyTyped(typed);
+        EndTyping();
         CloseCalendar();
         base.OnLostFocus();
     }
 
-    /// <summary>Move the selection by <paramref name="days"/>; with nothing selected, select the starting date first.</summary>
-    private void Step(int days) => SelectedDate = _hasSelection ? _selectedDate.AddDays(days) : _selectedDate;
-
     // ── IValueEditor ────────────────────────────────────────────
 
-    object? IValueEditor.Value => !_hasSelection ? null
-        : ShowTimePicker ? SelectedDateTime
-        : _selectedDate.Date + TimeOfDay;
+    /// <summary>What an edit session is given for typed text that is a date but not an allowed one: not convertible to anything.</summary>
+    private sealed class RejectedDate(string text)
+    {
+        public override string ToString() => text;
+    }
 
-    bool IValueEditor.HasValue => _hasSelection;
+    /// <summary>
+    /// The value to commit: the selected date and time, or, while typed text is pending, that text parsed.
+    /// Text that is not a date is returned as the text itself and a date outside <see cref="MinDate"/> and
+    /// <see cref="MaxDate"/> as an object nothing converts from; the edit session refuses both with its
+    /// validation message.
+    /// </summary>
+    object? IValueEditor.Value
+    {
+        get
+        {
+            if (_typing && _textDirty)
+            {
+                if (!TryParseTyped(_box.Text, out var typed)) return _box.Text;
+                if (IsDisabled(typed)) return new RejectedDate(_box.Text);
 
-    bool IValueEditor.IsDirty => HasChangedSinceTracking;
+                if (ShowTimePicker)
+                    return typed.TimeOfDay != TimeSpan.Zero ? typed : typed.Date.AddHours(SelectedHour).AddMinutes(SelectedMinute);
+                return typed.Date + TimeOfDay;
+            }
+
+            return !_hasSelection ? null
+                : ShowTimePicker ? SelectedDateTime
+                : _selectedDate.Date + TimeOfDay;
+        }
+    }
+
+    bool IValueEditor.HasValue => _hasSelection || _typing && _textDirty;
+
+    bool IValueEditor.IsDirty => HasChangedSinceTracking || _typing && _textDirty;
 }

@@ -384,6 +384,7 @@ public class LocalizationTests
         {
             Bounds = new KumikoRect(0, 0, 200, 30),
             Culture = culture,
+            DateFormat = "yyyy-MM-dd",
             SelectedDate = new DateTime(2024, 3, 15),
             ShowTimePicker = true,
             SelectedHour = 15,

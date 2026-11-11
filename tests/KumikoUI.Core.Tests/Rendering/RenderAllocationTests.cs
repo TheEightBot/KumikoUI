@@ -150,6 +150,49 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void ANumericUpDown_ShowingAndTypingANumber_AllocatesNothing()
+    {
+        var spin = new KumikoUI.Core.Components.DrawnNumericUpDown
+        {
+            Bounds = new KumikoRect(0, 0, 200, 30),
+            Culture = System.Globalization.CultureInfo.GetCultureInfo("de-DE"),
+            Step = 0.1,
+            Value = 12.3,
+        };
+        spin.IsFocused = true;
+        Assert.Equal(0, MeasureSteadyState(spin.OnDraw));
+
+        // Typed entry draws its text box
+        spin.OnKeyDown(new KumikoUI.Core.Input.KumikoKeyEventArgs { Key = KumikoUI.Core.Input.KumikoKey.Character, Character = '7' });
+        Assert.Equal(0, MeasureSteadyState(spin.OnDraw));
+    }
+
+    [Fact]
+    public void ADatePicker_WithAnOpenCalendar_AllocatesNothing()
+    {
+        var picker = new KumikoUI.Core.Components.DrawnDatePicker
+        {
+            Bounds = new KumikoRect(0, 0, 200, 30),
+            Culture = System.Globalization.CultureInfo.GetCultureInfo("de-DE"),
+            ShowTimePicker = true,
+            MinDate = new DateTime(2000, 1, 1),
+            MaxDate = new DateTime(2100, 1, 1),
+        };
+        picker.SelectedDate = new DateTime(2024, 3, 15);
+        picker.OpenCalendar();
+        Assert.Equal(0, MeasureSteadyState(picker.OnDraw));
+
+        // The year list, then typed entry in the field
+        picker.OnPointerDown(new KumikoUI.Core.Input.KumikoPointerEventArgs { X = 150, Y = 50, Action = KumikoUI.Core.Input.InputAction.Pressed });
+        Assert.Equal(0, MeasureSteadyState(picker.OnDraw));
+        picker.OnPointerDown(new KumikoUI.Core.Input.KumikoPointerEventArgs { X = 500, Y = 500, Action = KumikoUI.Core.Input.InputAction.Pressed }); // closes the dropdown
+        picker.IsFocused = true;
+        picker.OpenCalendar();
+        picker.OnKeyDown(new KumikoUI.Core.Input.KumikoKeyEventArgs { Key = KumikoUI.Core.Input.KumikoKey.Character, Character = '2' });
+        Assert.Equal(0, MeasureSteadyState(picker.OnDraw));
+    }
+
+    [Fact]
     public void ChangingTheStyle_RebuildsThePaintsOnce_ThenAllocatesNothingAgain()
     {
         var grid = CreateGrid(featured: false);
