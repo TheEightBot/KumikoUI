@@ -23,8 +23,9 @@ internal sealed class KumikoFontRegistrar : IFontRegistrar
     public void Register(string filename, string? alias)
     {
         _inner.Register(filename, alias);
-        // Fonts added with AddFont ship in the app package.
-        Bridge(filename, alias, () => FileSystem.OpenAppPackageFileAsync(filename).GetAwaiter().GetResult());
+        // Fonts added with AddFont ship in the app package. The async open runs on the thread pool so blocking
+        // on it cannot deadlock a UI synchronization context (Windows completes it asynchronously).
+        Bridge(filename, alias, () => Task.Run(() => FileSystem.OpenAppPackageFileAsync(filename)).GetAwaiter().GetResult());
     }
 
     public string? GetFont(string font) => _inner.GetFont(font);
@@ -33,8 +34,6 @@ internal sealed class KumikoFontRegistrar : IFontRegistrar
     {
         try
         {
-            // Runs while the app is built, before the UI message loop starts, so blocking on file
-            // I/O cannot deadlock.
             using var stream = open();
             if (stream is null)
             {
