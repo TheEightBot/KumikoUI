@@ -69,6 +69,13 @@ public partial class KumikoDataGrid : ContentView
     private const long LongPressThresholdMs = 500;
     private const float LongPressMoveTolerance = 15f;
 
+    // The pointer (SKTouchEventArgs.Id) whose press is in progress, and when it was last heard from. Core ignores
+    // other pointers by id; the host keeps them out of its click-count and long-press bookkeeping too. A press
+    // after the pressed pointer has been silent for a second takes over, in case its release was lost (as Core).
+    private long? _pressedPointerId;
+    private long _pressedPointerLastMs;
+    private const long StalePointerMs = 1000;
+
     // Track if we are suppressing TextChanged because we set the text programmatically
     private bool _suppressTextChanged;
 
@@ -161,6 +168,9 @@ public partial class KumikoDataGrid : ContentView
         // Wire canvas events
         _canvasView.PaintSurface += OnPaintSurface;
         _canvasView.Touch += OnCanvasTouch;
+#if ANDROID
+        _canvasView.HandlerChanged += OnCanvasHandlerChanged_Pointer;
+#endif
 
         // Wire keyboard proxy events (used on Android/Windows, or as fallback)
         _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
@@ -186,6 +196,8 @@ public partial class KumikoDataGrid : ContentView
     protected override void OnPropertyChanged(string? propertyName = null)
     {
         base.OnPropertyChanged(propertyName);
+        if (propertyName == IsEnabledProperty.PropertyName)
+            SyncIsEnabled();
         if (_contentSealed && propertyName == ContentProperty.PropertyName && !ReferenceEquals(Content, _root))
         {
             Content = _root;
@@ -225,6 +237,9 @@ public partial class KumikoDataGrid : ContentView
             _wasCleanedUp = false;
             Reconnect();
         }
+#if WINDOWS
+        if (Handler != null) AttachNativeWheel();
+#endif
     }
 
     // ── Public API ────────────────────────────────────────────────
@@ -697,6 +712,7 @@ public partial class KumikoDataGrid : ContentView
 
         float canvasWidth = _canvasView.Width > 0 ? (float)_canvasView.Width : 1;
         float scale = (float)(info.Width / canvasWidth);
+        if (_canvasView.Width > 0) RememberTouchScale(scale);
         _scroll.ViewportWidth = info.Width / scale;
         _scroll.ViewportHeight = info.Height / scale;
 
@@ -721,7 +737,40 @@ public partial class KumikoDataGrid : ContentView
         // nothing to act on.
         if (e.ActionType == SKTouchAction.Entered && e.InContact)
             return;
+#if WINDOWS
+        // The wheel is read from WinUI directly (KumikoDataGrid.Pointer.cs), which knows its axis.
+        if (e.ActionType == SKTouchAction.WheelChanged && _nativeWheelView != null)
+            return;
+#endif
+        // A disabled grid takes no input (and leaves the event to the page).
+        if (!_inputController.IsEnabled)
+            return;
+
+        // Before the first layout and paint the touch has no grid position (MAUI-26).
+        if (!TryGetTouchScale(out float scale))
+            return;
+
         var action = MapAction(e.ActionType, e.InContact);
+        float x = e.Location.X / scale;
+        float y = e.Location.Y / scale;
+
+        // A second finger while one is down: Core ignores it by id (and marks it handled). It must not restart the
+        // click count or the long-press timer, or take the keyboard focus.
+        long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        bool fromPressedPointer = _pressedPointerId == null || _pressedPointerId == e.Id ||
+            (e.ActionType == SKTouchAction.Pressed && nowMs - _pressedPointerLastMs > StalePointerMs);
+        if (!fromPressedPointer && action is InputAction.Pressed or InputAction.Moved or InputAction.Released or InputAction.Cancelled)
+        {
+            var ignored = new KumikoPointerEventArgs { X = x, Y = y, Action = action, PointerId = e.Id, TimestampMs = nowMs };
+            _inputController.HandlePointer(ignored, _scroll, _selection, _style, _dataSource);
+            e.Handled = ignored.Handled;
+            return;
+        }
+        if (e.ActionType == SKTouchAction.Pressed)
+            _pressedPointerId = e.Id;
+        else if (e.ActionType is SKTouchAction.Released or SKTouchAction.Cancelled)
+            _pressedPointerId = null;
+        if (action != InputAction.Hover) _pressedPointerLastMs = nowMs;
 
         // On desktop platforms, focus keyboard input on press so we can capture
         // key events for grid navigation (arrow keys, Tab, etc.).
@@ -735,16 +784,10 @@ public partial class KumikoDataGrid : ContentView
 #endif
         }
 
-        float canvasWidth = _canvasView.Width > 0 ? (float)_canvasView.Width : 1;
-        float scale = (float)(CanvasSize.Width / canvasWidth);
-        float x = e.Location.X / scale;
-        float y = e.Location.Y / scale;
-
         // Detect double-tap — store on Pressed so Released also gets ClickCount=2
         int clickCount = 1;
         if (e.ActionType == SKTouchAction.Pressed)
         {
-            long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             float dx = x - _lastTapX;
             float dy = y - _lastTapY;
             float dist = MathF.Sqrt(dx * dx + dy * dy);
@@ -789,10 +832,17 @@ public partial class KumikoDataGrid : ContentView
             CancelLongPressTimer();
         }
 
-        // If long press already fired, suppress the Released event to avoid double-triggering
+        // If long press already fired, the release must not also tap: Core is told the press was canceled, which
+        // ends it without acting on it.
         if (_longPressFired && e.ActionType == SKTouchAction.Released)
         {
             _longPressFired = false;
+            var cancel = new KumikoPointerEventArgs
+            {
+                X = x, Y = y, Action = InputAction.Cancelled, PointerId = e.Id,
+                TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            };
+            _inputController.HandlePointer(cancel, _scroll, _selection, _style, _dataSource);
             e.Handled = true;
             return;
         }
@@ -808,8 +858,11 @@ public partial class KumikoDataGrid : ContentView
                 SKMouseButton.Middle => PointerButton.Middle,
                 _ => PointerButton.Primary
             },
-            ScrollDeltaY = e.ActionType == SKTouchAction.WheelChanged ? e.WheelDelta : 0,
-            TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Modifiers = GetPointerModifiers(),
+            PointerId = e.Id,
+            // Only Windows reports the wheel here (when the native hook is missing): 120ths of a notch
+            ScrollDeltaY = e.ActionType == SKTouchAction.WheelChanged ? e.WheelDelta / 120f : 0,
+            TimestampMs = nowMs,
             ClickCount = clickCount
         };
 
@@ -864,11 +917,10 @@ public partial class KumikoDataGrid : ContentView
     private void OnLongPressTimerTick(object? sender, EventArgs e)
     {
         CancelLongPressTimer();
-        _longPressFired = true;
 
-        // Synthesize a LongPress event for the input controller
-        float canvasWidth = _canvasView.Width > 0 ? (float)_canvasView.Width : 1;
-        float scale = (float)(CanvasSize.Width / canvasWidth);
+        // Synthesize a LongPress event for the input controller, from the press in progress
+        if (_pressedPointerId is not { } pointerId) return;
+        _longPressFired = true;
 
         var gridEvent = new KumikoPointerEventArgs
         {
@@ -876,6 +928,7 @@ public partial class KumikoDataGrid : ContentView
             Y = _longPressY,
             Action = InputAction.LongPress,
             Button = PointerButton.Primary,
+            PointerId = pointerId,
             TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             ClickCount = 1
         };
@@ -1032,6 +1085,14 @@ public partial class KumikoDataGrid : ContentView
         // Unsubscribe canvas events
         _canvasView.PaintSurface -= OnPaintSurface;
         _canvasView.Touch -= OnCanvasTouch;
+#if ANDROID
+        _canvasView.HandlerChanged -= OnCanvasHandlerChanged_Pointer;
+        DetachNativePointer();
+#elif WINDOWS
+        DetachNativeWheel();
+#endif
+        CancelLongPressTimer();
+        _pressedPointerId = null;
 
         // Release the cached native Skia objects; the next frame after Reconnect creates a new cache.
         _resourceCache?.Dispose();
@@ -1103,6 +1164,10 @@ public partial class KumikoDataGrid : ContentView
 
         _canvasView.PaintSurface += OnPaintSurface;
         _canvasView.Touch += OnCanvasTouch;
+#if ANDROID
+        _canvasView.HandlerChanged += OnCanvasHandlerChanged_Pointer;
+        AttachNativePointer();
+#endif
 
         _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed += OnKeyboardProxyCompleted;
@@ -1371,21 +1436,6 @@ public partial class KumikoDataGrid : ContentView
             _nativeScrollGesture.MaximumNumberOfTouches = 0; // Only indirect (trackpad/mouse wheel)
             platformView.AddGestureRecognizer(_nativeScrollGesture);
         }
-    }
-
-    private void HandleNativeScrollGesture(UIPanGestureRecognizer recognizer)
-    {
-        var translation = recognizer.TranslationInView(recognizer.View);
-
-        // Apply scroll — translation is in points, negate for natural scrolling direction
-        float dx = -(float)translation.X;
-        float dy = -(float)translation.Y;
-
-        _scroll.ScrollBy(dx, dy);
-        _canvasView.InvalidateSurface();
-
-        // Reset translation so we get deltas, not cumulative values
-        recognizer.SetTranslation(CGPoint.Empty, recognizer.View);
     }
 
     private void OnNativeTextInserted(string text)

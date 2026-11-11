@@ -47,12 +47,13 @@ public partial class KumikoDataGrid
     // and dismisses the soft keyboard when editing ends).
     private bool _lastPointerWasTouch;
 
-    // ── Wheel scaling ──
-    // WinUI MouseWheelDelta is in 120-unit notches; Core's HandleScroll multiplies ScrollDeltaY
-    // by (RowHeight * WheelScrollMultiplier). Normalizing one notch (120) to 1.0 makes a single
-    // wheel notch scroll WheelScrollMultiplier rows — matching the MAUI feel, where SKTouch.WheelDelta
-    // is already a small per-notch value fed straight in.
-    private const float WheelNotch = 120f;
+    // ── Pointer identity (UNO-19) ──
+    // The pointer whose press is in progress, and when it was last heard from. Core ignores a second finger by
+    // PointerId; the host also keeps it out of its own press bookkeeping (click count, keyboard focus). A press
+    // after the pressed pointer has been silent for a second takes over, in case its release was lost (as Core).
+    private uint? _pressedPointerId;
+    private long _pressedPointerLastMs;
+    private const long StalePointerMs = 1000;
 
     /// <summary>
     /// Attaches pointer + keyboard handlers and enables focusability. Called from
@@ -116,20 +117,45 @@ public partial class KumikoDataGrid
         TeardownInputProxy();
     }
 
+    /// <summary>
+    /// Mirrors <c>IsEnabled</c> into Core: a disabled grid does not select, sort, scroll, drag or
+    /// edit, leaves pointer, wheel and key events unhandled for the page, and ends what was in progress.
+    /// </summary>
+    private void OnIsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        _inputController.IsEnabled = IsEnabled;
+        if (!IsEnabled) _pressedPointerId = null;
+        InvalidateSurface();
+    }
+
     // ── Pointer event handlers ───────────────────────────────────
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        // A disabled grid takes no input: no capture, no focus, nothing for Core.
+        if (!_inputController.IsEnabled) return;
+
+        var point = e.GetCurrentPoint(PointerOrigin);
+
+        // A second finger while one is down: Core ignores it (and marks it handled); it must not touch the click
+        // count or the focus of the press in progress.
+        long nowMs = ToMillis(point.Timestamp);
+        if (_pressedPointerId is { } pressed && pressed != e.Pointer.PointerId &&
+            nowMs - _pressedPointerLastMs <= StalePointerMs)
+        {
+            DispatchPointer(e, point, InputAction.Pressed);
+            return;
+        }
+        _pressedPointerId = e.Pointer.PointerId;
+        _pressedPointerLastMs = nowMs;
+
         // Capture so drags (resize / reorder / pan / selection) keep tracking outside our bounds.
         CapturePointer(e.Pointer);
         _lastPointerWasTouch = e.Pointer.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Touch;
 
-        var point = e.GetCurrentPoint(PointerOrigin);
-
         // Double-tap heuristic: detect on Pressed (time + distance from the previous tap) and carry
         // the count to the matching Released so both report ClickCount=2 (mirrors MAUI's OnCanvasTouch).
         int clickCount = 1;
-        long nowMs = ToMillis(point.Timestamp);
         float x = (float)point.Position.X;
         float y = (float)point.Position.Y;
         float dx = x - _lastTapX;
@@ -176,17 +202,29 @@ public partial class KumikoDataGrid
         }
         var props = point.Properties;
         if (props.IsRightButtonPressed || props.IsMiddleButtonPressed) return;
+        if (_pressedPointerId == e.Pointer.PointerId) _pressedPointerLastMs = ToMillis(point.Timestamp);
         DispatchPointer(e, point, InputAction.Moved);
     }
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(PointerOrigin);
+        if (_pressedPointerId != e.Pointer.PointerId)
+        {
+            // Another finger lifting: Core ignores it by id. Not the end of the press in progress.
+            DispatchPointer(e, point, InputAction.Released);
+            ReleasePointerCapture(e.Pointer);
+            return;
+        }
+        _pressedPointerId = null;
+
         // Carry the click count from the preceding Pressed so a double-click commits on the up.
         int clickCount = _pendingClickCount;
         _pendingClickCount = 1;
 
         DispatchPointer(e, point, InputAction.Released, clickCount);
+        // Releasing the capture raises PointerCaptureLost, which reaches Core as a Cancelled with no press in
+        // progress: Core ignores it.
         ReleasePointerCapture(e.Pointer);
 
         // Touch fling: Core started the inertial scroller on release; the frame loop steps it once per frame.
@@ -196,6 +234,7 @@ public partial class KumikoDataGrid
 
     private void OnPointerCanceled(object sender, PointerRoutedEventArgs e)
     {
+        if (_pressedPointerId == e.Pointer.PointerId) _pressedPointerId = null;
         DispatchPointer(e, e.GetCurrentPoint(PointerOrigin), InputAction.Cancelled);
         if (_inputController.IsInertialScrolling)
             StartInertialScroll();
@@ -205,6 +244,7 @@ public partial class KumikoDataGrid
     {
         // Losing capture mid-drag is equivalent to a cancel — preserve scroll momentum (Core's
         // HandlePointerCancelled starts a fling if we were panning).
+        if (_pressedPointerId == e.Pointer.PointerId) _pressedPointerId = null;
         DispatchPointer(e, e.GetCurrentPoint(PointerOrigin), InputAction.Cancelled);
         if (_inputController.IsInertialScrolling)
             StartInertialScroll();
@@ -240,6 +280,8 @@ public partial class KumikoDataGrid
 
     private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
+        // Core handles the wheel only when the grid moved: at the end of its content (or while disabled) the event
+        // stays unhandled and bubbles on, so a page around the grid scrolls (UNO-14).
         var point = e.GetCurrentPoint(PointerOrigin);
         DispatchPointer(e, point, InputAction.Scroll);
     }
@@ -253,24 +295,25 @@ public partial class KumikoDataGrid
     {
         var props = point.Properties;
 
+        // Wheel: 120ths of a notch on Windows/X11, pixels on macOS and in the browser, one axis per event, the
+        // horizontal sign normalized per head (PointerMapping). Shift+wheel is turned horizontal by Core.
+        var (scrollX, scrollY, scrollUnit) = action == InputAction.Scroll
+            ? PointerMapping.ToScrollDelta(props.MouseWheelDelta, props.IsHorizontalMouseWheel,
+                PointerMapping.WheelDeltaIsPixels, PointerMapping.HorizontalWheelPositiveIsLeft)
+            : (0f, 0f, KumikoScrollUnit.Notches);
+
         var evt = new KumikoPointerEventArgs
         {
             X = (float)point.Position.X,
             Y = (float)point.Position.Y,
             Action = action,
-            Button = props.IsRightButtonPressed  ? PointerButton.Secondary
-                   : props.IsMiddleButtonPressed ? PointerButton.Middle
-                   : props.IsLeftButtonPressed   ? PointerButton.Primary
-                   : PointerButton.None,
-            // 120-unit notches → notch count; Core scales by RowHeight * WheelScrollMultiplier.
-            // A horizontal wheel (Shift+wheel, or a tilt/trackpad horizontal scroll) reports
-            // IsHorizontalMouseWheel — route it to X only; a vertical wheel routes to Y only.
-            // (Previously ScrollDeltaY was set unconditionally, so a horizontal wheel scrolled
-            // both axes and appeared to scroll vertically.)
-            ScrollDeltaY = action == InputAction.Scroll && !props.IsHorizontalMouseWheel
-                ? props.MouseWheelDelta / WheelNotch : 0f,
-            ScrollDeltaX = action == InputAction.Scroll && props.IsHorizontalMouseWheel
-                ? props.MouseWheelDelta / WheelNotch : 0f,
+            // On a release no button is pressed any more: the update kind names the one that went up (UNO-19).
+            Button = PointerMapping.ToPointerButton(action, props.PointerUpdateKind,
+                props.IsRightButtonPressed, props.IsMiddleButtonPressed),
+            PointerId = e.Pointer.PointerId,
+            ScrollDeltaX = scrollX,
+            ScrollDeltaY = scrollY,
+            ScrollUnit = scrollUnit,
             Modifiers = InputMapping.ToInputModifiers(e.KeyModifiers),
             TimestampMs = ToMillis(point.Timestamp), // WinUI timestamp is microseconds
             ClickCount = clickCount,
@@ -289,6 +332,7 @@ public partial class KumikoDataGrid
     {
         if (e.PointerDeviceType != PointerDeviceType.Touch) return;
         if (e.HoldingState != HoldingState.Started) return;
+        if (_pressedPointerId is not { } pointerId) return; // the press already ended (or was disabled)
 
         var pos = e.GetPosition(PointerOrigin);
         var evt = new KumikoPointerEventArgs
@@ -297,6 +341,7 @@ public partial class KumikoDataGrid
             Y = (float)pos.Y,
             Action = InputAction.LongPress,
             Button = PointerButton.Primary,
+            PointerId = pointerId, // Holding carries no pointer: it belongs to the press in progress
             TimestampMs = ToMillis(GetCurrentTimestampMicros()),
             ClickCount = 1,
         };
