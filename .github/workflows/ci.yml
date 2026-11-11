@@ -30,6 +30,7 @@ jobs:
       pull-requests: read   # paths-filter lists a pull request's files through the API
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      snippets: ${{ steps.filter.outputs.snippets }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -47,6 +48,12 @@ jobs:
               - '!LICENSE'
               - '!.github/ISSUE_TEMPLATE/**'
               - '!.github/dependabot.yml'
+            # Markdown that holds compiled code snippets: a change to it must run the snippet build even though
+            # `code` ignores documentation (eng/DocsSnippets; see CONTRIBUTING.md).
+            snippets:
+              - 'README.md'
+              - 'docs/nuget/**'
+              - '.github/instructions/**'
 
   # ─── Documentation-only change: nothing to build ───
   docs-only:
@@ -57,6 +64,45 @@ jobs:
     if: needs.changes.outputs.code != 'true'
     steps:
       - run: echo "Only documentation changed; the build jobs were skipped and count as passed."
+
+  # ─── Documentation snippets: every C# and XAML block of README.md compiles against both hosts (#87) ───
+  # eng/DocsSnippets extracts the blocks; the MAUI project builds on Mac Catalyst in Release (XamlC validates the
+  # XAML) and the Uno project on the desktop head (Uno's XAML generator validates it). Runs for documentation-only
+  # changes too (the `snippets` filter above). Runner and Xcode are pinned as in build-apple-maui.
+  docs-snippets:
+    name: Build (Documentation snippets — MAUI + Uno)
+    runs-on: xcode-27
+    timeout-minutes: 45
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.snippets == 'true'
+    env:
+      XCODE_VERSION: '27.1'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+
+      - name: Setup .NET + MAUI and Uno workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          workloads: maui
+          restore-project: tests/KumikoUI.Docs.Snippets.Uno/KumikoUI.Docs.Snippets.Uno.csproj
+          cache-nuget: 'true'
+
+      - name: Extract snippets
+        run: dotnet run --project eng/DocsSnippets/DocsSnippets.csproj -c Release
+
+      - name: Build snippets — MAUI (Mac Catalyst)
+        run: dotnet build tests/KumikoUI.Docs.Snippets.Maui/KumikoUI.Docs.Snippets.Maui.csproj
+          -f net10.0-maccatalyst -c Release -p:EnableCodeSigning=false
+
+      - name: Build snippets — Uno (desktop)
+        run: dotnet build tests/KumikoUI.Docs.Snippets.Uno/KumikoUI.Docs.Snippets.Uno.csproj
+          -f net10.0-desktop -c Release
 
   # ─── Build + test KumikoUI.Core and KumikoUI.SkiaSharp (platform-agnostic) ───
   build-core:
