@@ -291,7 +291,7 @@ public class SkiaFontFallbackTests : IDisposable
     [SystemFontFact(ThumbsUp)]
     public void Disposing_the_cache_gives_back_fallback_typefaces()
     {
-        var cache = new SkiaResourceCache();
+        using var cache = new SkiaResourceCache();
         var released = new List<object>();
         cache.ResourceReleased = released.Add;
         cache.MeasureTextWidth("👍", Font(), out _, out var runs);

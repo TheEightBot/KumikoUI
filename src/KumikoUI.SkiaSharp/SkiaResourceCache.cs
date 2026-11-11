@@ -602,8 +602,23 @@ public sealed class SkiaResourceCache : IDisposable
         }
 
         index = _fallbackFaces.Count;
-        _fallbackFaces.Add(new FallbackFace(typeface, source, new SKFont(typeface, 12f), weight, slant));
-        _fallbackFaceIndex.Add(typeface, index);
+
+        // The probe font is owned by the fallback table (disposed with it when the table is emptied); it is
+        // disposed here only when the entry could not be stored.
+        var probe = new SKFont(typeface, 12f);
+        try
+        {
+            _fallbackFaces.Add(new FallbackFace(typeface, source, probe, weight, slant));
+            _fallbackFaceIndex.Add(typeface, index);
+        }
+        catch
+        {
+            _fallbackFaceIndex.Remove(typeface);
+            if (_fallbackFaces.Count > index)
+                _fallbackFaces.RemoveAt(index);
+            probe.Dispose();
+            throw;
+        }
         return index;
     }
 

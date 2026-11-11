@@ -228,7 +228,7 @@ public static class SkiaFontRegistrar
     {
         ArgumentNullException.ThrowIfNull(family);
 
-        var retired = new List<SKTypeface>();
+        using var retired = new RetiredTypefaces();
         SkiaResourceCache[] caches;
         lock (_lock)
         {
@@ -240,16 +240,9 @@ public static class SkiaFontRegistrar
             caches = LiveCaches();
         }
 
-        // Disposed after the caches dropped them, even if an invalidation throws
-        try
-        {
-            Invalidate(caches, family);
-        }
-        finally
-        {
-            foreach (var typeface in retired)
-                typeface.Dispose();
-        }
+        // The retired typefaces are disposed when the method exits, after the caches dropped them,
+        // even if an invalidation throws.
+        Invalidate(caches, family);
         return true;
     }
 
@@ -469,21 +462,21 @@ public static class SkiaFontRegistrar
     /// </summary>
     private static void Register(string family, SKTypeface typeface, bool owned, FaceStyle? style)
     {
-        var retired = new List<SKTypeface>();
+        using var retired = new RetiredTypefaces();
         SkiaResourceCache[] caches;
         lock (_lock)
         {
             _registry.TryGetValue(family, out var faces);
-            bool unchanged = style is null
-                ? faces is { Count: 1 } && ReferenceEquals(faces[0].Typeface, typeface)
-                : faces?.Exists(f => f.Style == style.Value && ReferenceEquals(f.Typeface, typeface)) == true;
+            bool unchanged = style is { } requested
+                ? faces?.Exists(f => f.Style == requested && ReferenceEquals(f.Typeface, typeface)) == true
+                : faces is { Count: 1 } && ReferenceEquals(faces[0].Typeface, typeface);
             if (owned) _ownedTypefaces.Add(typeface);
             if (unchanged)
                 return;   // Same instance again: only the ownership can change.
 
             // Counted before the replaced faces are dropped, so a typeface that replaces itself is never retired.
             _registrations[typeface] = _registrations.TryGetValue(typeface, out var count) ? count + 1 : 1;
-            if (style is null)
+            if (style is not { } wanted)
             {
                 if (faces is not null)
                 {
@@ -497,16 +490,15 @@ public static class SkiaFontRegistrar
             else
             {
                 faces ??= _registry[family] = [];
-                var wanted = style.Value;
                 int existing = faces.FindIndex(f => f.Style == wanted);
                 if (existing >= 0)
                 {
                     RemoveRegistration(faces[existing].Typeface, retired);
-                    faces[existing] = new RegisteredFace(typeface, style.Value);
+                    faces[existing] = new RegisteredFace(typeface, wanted);
                 }
                 else
                 {
-                    faces.Add(new RegisteredFace(typeface, style.Value));
+                    faces.Add(new RegisteredFace(typeface, wanted));
                 }
             }
 
@@ -515,16 +507,18 @@ public static class SkiaFontRegistrar
         }
 
         // Caches drop what they resolved for this family (the replaced typeface, or a system fallback
-        // cached before the family was registered) before the replaced typeface is disposed.
-        // Disposed after the caches dropped it, even if an invalidation throws
-        try
+        // cached before the family was registered) before the replaced typeface is disposed, which happens
+        // when the method exits, even if an invalidation throws.
+        Invalidate(caches, family);
+    }
+
+    /// <summary>Typefaces retired by a registry change; disposes them when the scope that owns it ends.</summary>
+    private sealed class RetiredTypefaces : List<SKTypeface>, IDisposable
+    {
+        public void Dispose()
         {
-            Invalidate(caches, family);
-        }
-        finally
-        {
-            foreach (var old in retired)
-                old.Dispose();
+            foreach (var typeface in this)
+                typeface.Dispose();
         }
     }
 
