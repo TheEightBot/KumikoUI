@@ -43,7 +43,7 @@ public class KumikoSource : IDisposable
 
     // ── Grouping state ───────────────────────────────────────────
     private readonly List<GroupDescription> _groupDescriptions = new();
-    private readonly Dictionary<string, bool> _groupExpandedState = new();
+    private readonly Dictionary<GroupKeyPath, bool> _groupExpandedState = new();
     private bool _defaultGroupExpanded = true;
 
     // ── Summary state ────────────────────────────────────────────
@@ -832,7 +832,7 @@ public class KumikoSource : IDisposable
         if (expandingArgs.Cancel) return;
 
         // Toggle state
-        _groupExpandedState[info.GroupPath] = isExpanding;
+        _groupExpandedState[info.KeyPath!] = isExpanding;
         RequestRebuild();
 
         var rebuilt = _flatView?.FirstOrDefault(r => r.Kind == FlatRowKind.GroupHeader && r.GroupInfo!.GroupPath == info.GroupPath)?.GroupInfo;
@@ -875,37 +875,37 @@ public class KumikoSource : IDisposable
             inView = RowKeyComparer.Instance.Equals(_sourceItems[_viewIndices[i]], item);
         if (!inView) return -1;
 
-        string parentPath = "";
+        GroupKeyPath? parentPath = null;
+        var keyComparer = new GroupKeyComparer(_comparer.TextComparer);
         for (int level = 0; level < _groupDescriptions.Count; level++)
         {
             var desc = _groupDescriptions[level];
             var column = _columns.FirstOrDefault(c =>
                 string.Equals(c.PropertyName, desc.PropertyName, StringComparison.OrdinalIgnoreCase));
-            string text = ComputeGroupKey(desc, column, item).DisplayText;
+            object? key = ComputeGroupKey(desc, column, item).Key;
 
-            int header = FindGroupHeaderRow(level, parentPath, text);
+            int header = FindGroupHeaderRow(level, parentPath, key, keyComparer);
             if (header < 0) return -1;
             if (!_flatView![header].GroupInfo!.IsExpanded)
             {
                 ToggleGroupExpansion(header);
-                header = FindGroupHeaderRow(level, parentPath, text);
+                header = FindGroupHeaderRow(level, parentPath, key, keyComparer);
                 if (header < 0 || _flatView == null || !_flatView[header].GroupInfo!.IsExpanded) return -1;
             }
-            parentPath = _flatView![header].GroupInfo!.GroupPath;
+            parentPath = _flatView![header].GroupInfo!.KeyPath;
         }
         return IndexOfItem(item);
     }
 
-    private int FindGroupHeaderRow(int level, string parentPath, string displayText)
+    private int FindGroupHeaderRow(int level, GroupKeyPath? parentPath, object? key, GroupKeyComparer keyComparer)
     {
         if (_flatView == null) return -1;
-        string prefix = parentPath + "|";
         for (int i = 0; i < _flatView.Count; i++)
         {
             var info = _flatView[i].GroupInfo;
             if (_flatView[i].Kind != FlatRowKind.GroupHeader || info == null || info.Level != level) continue;
-            if (level > 0 && !info.GroupPath.StartsWith(prefix, StringComparison.Ordinal)) continue;
-            if (_comparer.TextComparer.Equals(info.DisplayText, displayText)) return i;
+            if (!Equals(info.KeyPath?.Parent, parentPath)) continue;
+            if (key is null ? info.Key is null : info.Key is not null && keyComparer.Equals(info.Key, key)) return i;
         }
         return -1;
     }
@@ -931,11 +931,25 @@ public class KumikoSource : IDisposable
     }
 
     /// <summary>
+    /// Drop the expand/collapse state of groups the current descriptions can no longer contain (a path whose
+    /// property differs from the description at its level, or that is deeper than the description list), and
+    /// keep the rest.
+    /// </summary>
+    private void PruneGroupExpandedState()
+    {
+        if (_groupExpandedState.Count == 0) return;
+        // Runs only when the group descriptions change, so the LINQ allocation is fine here.
+        var stale = _groupExpandedState.Keys.Where(path => !path.IsValidFor(_groupDescriptions)).ToList();
+        foreach (var path in stale) _groupExpandedState.Remove(path);
+    }
+
+    /// <summary>
     /// Add a group description. Groups are applied in order (multi-level).
     /// </summary>
     public void AddGroupDescription(GroupDescription group)
     {
         _groupDescriptions.Add(group);
+        PruneGroupExpandedState();
         RequestRebuild();
     }
 
@@ -945,6 +959,7 @@ public class KumikoSource : IDisposable
     public void InsertGroupDescription(int index, GroupDescription group)
     {
         _groupDescriptions.Insert(index, group);
+        PruneGroupExpandedState();
         RequestRebuild();
     }
 
@@ -954,7 +969,7 @@ public class KumikoSource : IDisposable
     public void RemoveGroupDescription(string propertyName)
     {
         _groupDescriptions.RemoveAll(g => g.PropertyName == propertyName);
-        _groupExpandedState.Clear();
+        PruneGroupExpandedState();
         RequestRebuild();
     }
 
@@ -964,7 +979,7 @@ public class KumikoSource : IDisposable
     public void ClearGroupDescriptions()
     {
         _groupDescriptions.Clear();
-        _groupExpandedState.Clear();
+        PruneGroupExpandedState();
         _flatView = null;
         RequestRebuild();
     }
@@ -1761,7 +1776,7 @@ public class KumikoSource : IDisposable
             _flatView = new List<FlatViewRow>();
             _computedGroupSummaries.Clear();
             _computedCaptionSummaries.Clear();
-            BuildGroupedFlatView(_viewIndices, 0, "");
+            BuildGroupedFlatView(_viewIndices, 0, "", null);
         }
         else
         {
@@ -1791,7 +1806,7 @@ public class KumikoSource : IDisposable
     /// <summary>
     /// Recursively build the flat view by grouping source indices at the given level.
     /// </summary>
-    private void BuildGroupedFlatView(List<int> sourceIndices, int level, string parentPath)
+    private void BuildGroupedFlatView(List<int> sourceIndices, int level, string parentPath, GroupKeyPath? parentKeyPath)
     {
         if (level >= _groupDescriptions.Count)
         {
@@ -1809,8 +1824,11 @@ public class KumikoSource : IDisposable
 
         // Group the indices by key
         var groups = new List<(object? Key, string DisplayText, List<int> Indices)>();
-        // displayKey → index in groups list; display texts that compare equal under the text rules are one group
-        var groupMap = new Dictionary<string, int>(_comparer.TextComparer);
+        // raw key → index in groups list: groups are the distinct keys (strings by the text rules, other keys by
+        // Equals/GetHashCode), whatever their display text; a null key is a group of its own
+        var groupMap = new Dictionary<object, int>(new GroupKeyComparer(_comparer.TextComparer));
+        int nullGroupIdx = -1;
+        var usedPaths = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var sourceIdx in sourceIndices)
         {
@@ -1818,11 +1836,20 @@ public class KumikoSource : IDisposable
                 continue; // the view holds no null items; stay safe regardless
             var (groupKey, displayText) = ComputeGroupKey(groupDesc, column, item);
 
-            // Use display text as dictionary key for grouping
-            if (!groupMap.TryGetValue(displayText, out int groupIdx))
+            int groupIdx;
+            if (groupKey is null)
+            {
+                if (nullGroupIdx < 0)
+                {
+                    nullGroupIdx = groups.Count;
+                    groups.Add((groupKey, displayText, new List<int>()));
+                }
+                groupIdx = nullGroupIdx;
+            }
+            else if (!groupMap.TryGetValue(groupKey, out groupIdx))
             {
                 groupIdx = groups.Count;
-                groupMap[displayText] = groupIdx;
+                groupMap[groupKey] = groupIdx;
                 groups.Add((groupKey, displayText, new List<int>()));
             }
             groups[groupIdx].Indices.Add(sourceIdx);
@@ -1851,7 +1878,16 @@ public class KumikoSource : IDisposable
                 ? $"{groupDesc.PropertyName}={displayText}"
                 : $"{parentPath}|{groupDesc.PropertyName}={displayText}";
 
-            bool isExpanded = _groupExpandedState.TryGetValue(groupPath, out bool state)
+            // Distinct keys can share display text; the path string stays unique per group for lookups by path.
+            if (!usedPaths.Add(groupPath))
+            {
+                int n = 2;
+                while (!usedPaths.Add($"{groupPath}#{n}")) n++;
+                groupPath = $"{groupPath}#{n}";
+            }
+            var keyPath = new GroupKeyPath(parentKeyPath, groupDesc.PropertyName, key);
+
+            bool isExpanded = _groupExpandedState.TryGetValue(keyPath, out bool state)
                 ? state
                 : _defaultGroupExpanded;
 
@@ -1864,7 +1900,8 @@ public class KumikoSource : IDisposable
                 HeaderText = headerText,
                 ItemCount = indices.Count,
                 IsExpanded = isExpanded,
-                GroupPath = groupPath
+                GroupPath = groupPath,
+                KeyPath = keyPath
             };
 
             // Compute caption summary for this group header
@@ -1882,7 +1919,7 @@ public class KumikoSource : IDisposable
 
             if (isExpanded)
             {
-                BuildGroupedFlatView(indices, level + 1, groupPath);
+                BuildGroupedFlatView(indices, level + 1, groupPath, keyPath);
 
                 // Emit group summary rows after the group's data: at every level for rows set to All,
                 // at the innermost level for rows set to Innermost
