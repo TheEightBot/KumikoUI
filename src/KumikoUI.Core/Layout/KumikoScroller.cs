@@ -69,13 +69,7 @@ public static class KumikoScroller
 
         var column = columns[columnIndex];
         var (leftHandle, rightHandle) = GetHandleWidths(style);
-        float frozenWidth = 0, rightFrozenWidth = 0;
-        foreach (var c in columns)
-        {
-            if (!c.IsVisible) continue;
-            if (c.IsFrozen) frozenWidth += c.Width;
-            if (c.IsFrozenRight) rightFrozenWidth += c.Width;
-        }
+        var (frozenWidth, rightFrozenWidth) = GetFrozenWidths(columns);
 
         float x = 0;
         if (column.IsFrozen)
@@ -160,13 +154,7 @@ public static class KumikoScroller
         var column = columns[columnIndex];
         if (!column.IsVisible || column.IsFrozen || column.IsFrozenRight) return scroll.OffsetX;
 
-        float frozenWidth = 0, rightFrozenWidth = 0;
-        foreach (var c in columns)
-        {
-            if (!c.IsVisible) continue;
-            if (c.IsFrozen) frozenWidth += c.Width;
-            if (c.IsFrozenRight) rightFrozenWidth += c.Width;
-        }
+        var (frozenWidth, rightFrozenWidth) = GetFrozenWidths(columns);
 
         float colLeft = frozenWidth;
         for (int i = 0; i < columnIndex; i++)
@@ -309,6 +297,20 @@ public static class KumikoScroller
     {
         float groupPanel = source.IsGroupingActive ? style.GroupPanelHeight : 0;
         return groupPanel + style.HeaderHeight + source.TopSummaryCount * style.SummaryRowHeight;
+    }
+
+    /// <summary>The total width of the visible left-frozen and right-frozen columns.</summary>
+    private static (float Left, float Right) GetFrozenWidths(IReadOnlyList<KumikoColumn> columns)
+    {
+        // Indexed loop over the visible columns: no enumerator or LINQ on the keyboard-navigation path.
+        float left = 0, right = 0;
+        for (int i = 0; i < columns.Count; i++)
+        {
+            var c = columns[i];
+            if (c.IsVisible && c.IsFrozen) left += c.Width;
+            if (c.IsVisible && c.IsFrozenRight) right += c.Width;
+        }
+        return (left, right);
     }
 
     private static (float Left, float Right) GetHandleWidths(KumikoStyle style)
