@@ -26,6 +26,11 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/TheEightBot/KumikoUI</PackageProjectUrl>
     <PackageReleaseNotes>Release notes for every version: https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <!--
+      The publish workflow extracts the released version's CHANGELOG section (eng/changelog-section.sh) and passes
+      -p:KumikoReleaseNotesFile=<path>; its text then replaces the link above as the package release notes.
+    -->
+    <PackageReleaseNotes Condition="'$(KumikoReleaseNotesFile)' != '' And Exists('$(KumikoReleaseNotesFile)')">$([System.IO.File]::ReadAllText('$(KumikoReleaseNotesFile)'))</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/TheEightBot/KumikoUI</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
 

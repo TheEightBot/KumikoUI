@@ -5,9 +5,23 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'          # e.g. v1.2.3
       - 'v[0-9]+.[0-9]+.[0-9]+-*'         # e.g. v1.2.3-beta.1
-  # Manual runs are allowed only against a version tag (choose the tag in "Use workflow from"),
-  # e.g. to retry a failed publish. The version always comes from the tag, never from free input.
+  # Manual runs follow exactly the same resolve, test, pack and validate path as a tag push.
+  #  - dry_run on (default): runs on any ref, packs and validates everything, but never pushes to NuGet.org
+  #    or creates a GitHub Release.
+  #  - dry_run off: allowed only against a version tag (choose the tag in "Use workflow from"), e.g. to retry
+  #    a failed publish. The version always comes from the tag, never from free input.
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Pack and validate only; do not push to NuGet.org or create a GitHub Release
+        type: boolean
+        default: true
+
+# One publish at a time per ref, so a tag push and a manual retry cannot push the same version twice.
+# Never cancel a run that may already be mid-push.
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 # Least privilege: jobs only read the repository; the publish job alone may write (GitHub Release).
 permissions:
@@ -16,10 +30,13 @@ permissions:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # "true" for a manual run with dry_run on; otherwise not "true". Dry runs never publish.
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   # 1. Resolve and validate the version: must be a v* tag on main, and MinVer must agree
+  #    (a dry run skips only the tag and main checks; it still computes the version and the release notes)
   # ─────────────────────────────────────────────────────────────────────────────
   resolve-version:
     name: Resolve version
@@ -30,6 +47,7 @@ jobs:
 
     steps:
       - name: Require a version tag
+        if: env.DRY_RUN != 'true'
         run: |
           if [ "${GITHUB_REF_TYPE}" != "tag" ] || ! printf '%s' "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "::error::Publishing runs only from a version tag (vX.Y.Z or vX.Y.Z-suffix); got ${GITHUB_REF_TYPE} '${GITHUB_REF_NAME}'."
@@ -41,6 +59,7 @@ jobs:
           fetch-depth: 0   # MinVer and the main-branch check need full history and tags
 
       - name: Require the tagged commit to be on main
+        if: env.DRY_RUN != 'true'
         run: |
           git fetch origin main --quiet
           if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
@@ -54,8 +73,13 @@ jobs:
       - name: Resolve version with MinVer and compare with the tag
         id: ver
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
           MINVER_VERSION=$(dotnet msbuild src/KumikoUI.Core/KumikoUI.Core.csproj -t:MinVer -getProperty:MinVerVersion -p:Configuration=Release | tail -n 1 | tr -d '[:space:]')
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry run: MinVer computed $MINVER_VERSION for ${GITHUB_REF_NAME}"
+            echo "version=$MINVER_VERSION" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
           echo "Tag: $TAG_VERSION  MinVer: $MINVER_VERSION"
           if [ "$TAG_VERSION" != "$MINVER_VERSION" ]; then
             echo "::error::MinVer computed $MINVER_VERSION but the tag says $TAG_VERSION."
@@ -63,11 +87,14 @@ jobs:
           fi
           echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
 
-      # Release notes come from CHANGELOG.md. A stable release must have its own dated section;
-      # a prerelease uses its section if present, otherwise the Unreleased section.
+      # Release notes come from CHANGELOG.md and feed both the GitHub Release body and PackageReleaseNotes
+      # (the pack jobs download release-notes.md). A stable release must have its own dated section;
+      # a prerelease (or a dry run, whose version is a computed prerelease) uses its section if present,
+      # otherwise the Unreleased section.
       - name: Extract release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           if eng/changelog-section.sh "$VERSION" > release-notes.md; then
             echo "Using the [$VERSION] section of CHANGELOG.md"
           elif [[ "$VERSION" == *-* ]]; then
@@ -105,6 +132,12 @@ jobs:
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
 
+      - name: Download release notes
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/notes
+
       - name: Restore
         run: |
           dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
@@ -115,6 +148,7 @@ jobs:
           dotnet pack src/KumikoUI.Core/KumikoUI.Core.csproj \
             --no-restore \
             -c Release \
+            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/release-notes.md" \
             -o ./artifacts
 
       - name: Pack — KumikoUI.SkiaSharp
@@ -122,6 +156,7 @@ jobs:
           dotnet pack src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj \
             --no-restore \
             -c Release \
+            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/release-notes.md" \
             -o ./artifacts
 
       - name: Verify package versions
@@ -166,6 +201,12 @@ jobs:
         with:
           workloads: maui
 
+      - name: Download release notes
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/notes
+
       - name: Restore
         run: dotnet restore src/KumikoUI.Maui/KumikoUI.Maui.csproj
 
@@ -174,6 +215,7 @@ jobs:
           dotnet pack src/KumikoUI.Maui/KumikoUI.Maui.csproj `
             --no-restore `
             -c Release `
+            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/release-notes.md" `
             -o ./artifacts
 
       - name: Verify package version
@@ -216,6 +258,12 @@ jobs:
         with:
           restore-project: src/KumikoUI.Uno/KumikoUI.Uno.csproj
 
+      - name: Download release notes
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/notes
+
       - name: Restore
         run: dotnet restore src/KumikoUI.Uno/KumikoUI.Uno.csproj
 
@@ -224,6 +272,7 @@ jobs:
           dotnet pack src/KumikoUI.Uno/KumikoUI.Uno.csproj `
             --no-restore `
             -c Release `
+            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/release-notes.md" `
             -o ./artifacts
 
       - name: Verify package version
@@ -294,15 +343,81 @@ jobs:
         run: dotnet test tests/KumikoUI.Uno.Tests/KumikoUI.Uno.Tests.csproj -c Release --logger "trx" --results-directory TestResults
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # 5. Publish all packages to NuGet.org and create a GitHub Release
+  # 5. Validate the complete package set (runs for dry runs too)
+  # ─────────────────────────────────────────────────────────────────────────────
+  validate-packages:
+    name: Validate packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ resolve-version, pack-core, pack-maui, pack-uno, test, test-uno ]
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+
+    steps:
+      - name: Download all package and symbol artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: '{nuget,snupkg}-*'
+          path: ./publish
+          merge-multiple: true
+
+      # Every package must ship at the release version with a matching symbol package.
+      - name: Require four packages, each with a symbol package
+        run: |
+          ls -lh publish/
+          failed=0
+          for id in KumikoUI.Core KumikoUI.SkiaSharp KumikoUI.Maui KumikoUI.Uno; do
+            for ext in nupkg snupkg; do
+              if [ ! -f "publish/${id}.${VERSION}.${ext}" ]; then
+                echo "::error::publish/${id}.${VERSION}.${ext} is missing"
+                failed=1
+              fi
+            done
+          done
+          for f in publish/*.nupkg; do
+            if [ ! -f "${f%.nupkg}.snupkg" ]; then
+              echo "::error::${f} has no matching .snupkg symbol package"
+              failed=1
+            fi
+          done
+          if [ "$(find publish -maxdepth 1 -name '*.nupkg' | wc -l)" -ne 4 ]; then
+            echo "::error::Expected exactly four .nupkg files"
+            failed=1
+          fi
+          exit $failed
+
+      - name: Require the CHANGELOG release notes in every package
+        run: |
+          for f in publish/*.nupkg; do
+            if ! unzip -p "$f" '*.nuspec' | grep -q '<releaseNotes>'; then
+              echo "::error::$f has no releaseNotes in its nuspec"
+              exit 1
+            fi
+            if unzip -p "$f" '*.nuspec' | grep -q 'Release notes for every version'; then
+              echo "::error::$f still carries the placeholder release notes instead of the CHANGELOG section"
+              exit 1
+            fi
+          done
+
+      - name: Dry run summary
+        if: env.DRY_RUN == 'true'
+        run: |
+          echo "Dry run: $VERSION packed and validated; nothing was pushed to NuGet.org." >> "$GITHUB_STEP_SUMMARY"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 6. Publish all packages to NuGet.org (never for a dry run)
+  #    Authenticates with NuGet Trusted Publishing: a short-lived API key from a GitHub OIDC token.
+  #    No long-lived secret is stored. The one-time nuget.org setup is in CONTRIBUTING.md.
   # ─────────────────────────────────────────────────────────────────────────────
   publish:
     name: Publish to NuGet.org
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.dry_run }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [ pack-core, pack-maui, pack-uno, test, test-uno ]
+    needs: [ validate-packages ]
     permissions:
-      contents: write   # create the GitHub Release
+      contents: read
+      id-token: write   # request the OIDC token NuGet/login exchanges for a short-lived API key (this job only)
     environment: nuget-publish      # required reviewer + v* tags only (see .github/settings/README.md)
 
     steps:
@@ -311,50 +426,73 @@ jobs:
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
 
-      - name: Download all package artifacts
+      - name: Download all package and symbol artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: nuget-*
-          path: ./publish
-          merge-multiple: true
-
-      - name: Download all symbol artifacts
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: snupkg-*
+          pattern: '{nuget,snupkg}-*'
           path: ./publish
           merge-multiple: true
 
       - name: List packages to publish
         run: ls -lh publish/
 
+      - name: Log in to NuGet.org (Trusted Publishing)
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}    # nuget.org profile name that owns the trusted-publisher policy
+
+      # --skip-duplicate lets a retry after a partial failure finish the remaining packages.
       - name: Push .nupkg packages to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
           for f in publish/*.nupkg; do
             echo "Pushing $f …"
             dotnet nuget push "$f" \
-              --api-key ${{ secrets.EIGHTBOT_NUGET_APIKEY }} \
+              --api-key "$NUGET_API_KEY" \
               --source https://api.nuget.org/v3/index.json \
               --skip-duplicate
           done
 
       - name: Push .snupkg symbol packages to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
           for f in publish/*.snupkg; do
-            [ -f "$f" ] || continue
             echo "Pushing symbol package $f …"
             dotnet nuget push "$f" \
-              --api-key ${{ secrets.EIGHTBOT_NUGET_APIKEY }} \
+              --api-key "$NUGET_API_KEY" \
               --source https://api.nuget.org/v3/index.json \
               --skip-duplicate
           done
 
-      # ── GitHub Release ─────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 7. GitHub Release with the CHANGELOG section as the body (never for a dry run)
+  #    A separate job so only this one holds contents: write and only publish holds id-token: write.
+  # ─────────────────────────────────────────────────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ publish ]
+    permissions:
+      contents: write   # create the GitHub Release
+
+    steps:
       - name: Download release notes
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-notes
           path: notes
+
+      - name: Download all package artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: nuget-*
+          path: ./publish
+          merge-multiple: true
 
       # Runs for tag pushes and for manual runs against a tag (the only refs resolve-version accepts).
       - name: Create GitHub Release

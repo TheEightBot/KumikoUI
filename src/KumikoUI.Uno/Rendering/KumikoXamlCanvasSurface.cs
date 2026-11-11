@@ -21,6 +21,8 @@ internal sealed class KumikoXamlCanvasSurface : IKumikoSurface
     {
         HorizontalAlignment = HorizontalAlignment.Stretch,
         VerticalAlignment = VerticalAlignment.Stretch,
+        // The grid draws left-to-right whatever its ancestors' direction (RTL is unsupported in 1.0, #80, #228).
+        FlowDirection = FlowDirection.LeftToRight,
     };
 
     private KumikoSurfaceRenderer? _renderer;

@@ -43,7 +43,7 @@ public class KumikoSource : IDisposable
 
     // ── Grouping state ───────────────────────────────────────────
     private readonly List<GroupDescription> _groupDescriptions = new();
-    private readonly Dictionary<string, bool> _groupExpandedState = new();
+    private readonly Dictionary<GroupKeyPath, bool> _groupExpandedState = new();
     private bool _defaultGroupExpanded = true;
 
     // ── Summary state ────────────────────────────────────────────
@@ -68,6 +68,13 @@ public class KumikoSource : IDisposable
     private object?[]? _rowKeys;      // the rows as last notified; maintained only while ViewChanged has listeners
     private EventHandler<KumikoViewChangedEventArgs>? _viewChanged;
     private bool _isMultiSortActive;
+
+    // ── Display column order and row-key index ───────────────────
+    private KumikoColumn[] _displayColumns = Array.Empty<KumikoColumn>();
+    private int[] _displayColumnIndices = Array.Empty<int>();
+    private IReadOnlyList<KumikoColumn> _displayColumnsView = Array.Empty<KumikoColumn>();
+    private int _columnLayoutVersion;
+    private Dictionary<object, int>? _rowKeyIndex;   // visible row of each row key; built on first use, dropped when the view changes
 
     // ── Comparison ───────────────────────────────────────────────
     private CultureInfo? _culture;
@@ -319,6 +326,133 @@ public class KumikoSource : IDisposable
     public IReadOnlyList<KumikoColumn> Columns => _columns;
 
     /// <summary>
+    /// The visible columns in on-screen order: left-frozen columns, then scrolling columns, then right-frozen
+    /// columns, each group in <see cref="Columns"/> order. Hidden columns are left out. Keyboard navigation
+    /// moves through this order. The list is cached and rebuilt only when the order changes; it is a snapshot,
+    /// so read it again after changing the columns.
+    /// </summary>
+    public IReadOnlyList<KumikoColumn> DisplayColumns
+    {
+        get
+        {
+            EnsureDisplayColumns();
+            return _displayColumnsView;
+        }
+    }
+
+    /// <summary>
+    /// Incremented whenever <see cref="DisplayColumns"/> changes: a column was hidden, shown, frozen,
+    /// unfrozen or reordered, or the columns were replaced. Compare it to a stored value to find out whether
+    /// anything derived from the on-screen order is stale.
+    /// </summary>
+    public int ColumnLayoutVersion
+    {
+        get
+        {
+            EnsureDisplayColumns();
+            return _columnLayoutVersion;
+        }
+    }
+
+    /// <summary>
+    /// The position of <paramref name="column"/> in <see cref="DisplayColumns"/>, or -1 when it is hidden or
+    /// not one of this source's columns.
+    /// </summary>
+    /// <param name="column">The column to find.</param>
+    public int GetDisplayIndex(KumikoColumn column)
+    {
+        EnsureDisplayColumns();
+        for (int i = 0; i < _displayColumns.Length; i++)
+        {
+            if (ReferenceEquals(_displayColumns[i], column)) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// The position in <see cref="DisplayColumns"/> of <c>Columns[columnIndex]</c>, or -1 when the index is
+    /// out of range or the column is hidden.
+    /// </summary>
+    /// <param name="columnIndex">An index into <see cref="Columns"/>.</param>
+    public int ToDisplayIndex(int columnIndex)
+    {
+        EnsureDisplayColumns();
+        for (int i = 0; i < _displayColumnIndices.Length; i++)
+        {
+            if (_displayColumnIndices[i] == columnIndex) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// The index into <see cref="Columns"/> of the column at <paramref name="displayIndex"/> in
+    /// <see cref="DisplayColumns"/>, or -1 when the position is out of range.
+    /// </summary>
+    /// <param name="displayIndex">A position in <see cref="DisplayColumns"/>.</param>
+    public int ToColumnIndex(int displayIndex)
+    {
+        EnsureDisplayColumns();
+        return displayIndex >= 0 && displayIndex < _displayColumnIndices.Length
+            ? _displayColumnIndices[displayIndex]
+            : -1;
+    }
+
+    /// <summary>
+    /// Keep the cached display order current. A pass over the columns compares them with the cache and
+    /// allocates only when the order differs, so calling this on every read is cheap in steady state.
+    /// </summary>
+    private void EnsureDisplayColumns()
+    {
+        if (DisplayOrderMatchesCache()) return;
+
+        var columns = new List<KumikoColumn>(_columns.Count);
+        var indices = new List<int>(_columns.Count);
+        for (int pass = 0; pass < 3; pass++)
+        {
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                if (_columns[i].IsVisible && PaneOf(_columns[i]) == pass)
+                {
+                    columns.Add(_columns[i]);
+                    indices.Add(i);
+                }
+            }
+        }
+
+        _displayColumns = columns.ToArray();
+        _displayColumnIndices = indices.ToArray();
+        _displayColumnsView = Array.AsReadOnly(_displayColumns);
+        _columnLayoutVersion++;
+    }
+
+    /// <summary>Whether the visible columns, in pane order, are exactly the cached display columns.</summary>
+    private bool DisplayOrderMatchesCache()
+    {
+        int n = 0;
+        for (int pass = 0; pass < 3; pass++)
+        {
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                var column = _columns[i];
+                if (!column.IsVisible || PaneOf(column) != pass) continue;
+                if (n >= _displayColumns.Length || !ReferenceEquals(_displayColumns[n], column) ||
+                    _displayColumnIndices[n] != i)
+                    return false;
+                n++;
+            }
+        }
+        return n == _displayColumns.Length;
+    }
+
+    /// <summary>The pane a column draws in: 0 left-frozen, 1 scrolling, 2 right-frozen.</summary>
+    private static int PaneOf(KumikoColumn column) => column.FreezeMode switch
+    {
+        ColumnFreezeMode.Left => 0,
+        ColumnFreezeMode.Right => 2,
+        _ => 1,
+    };
+
+    /// <summary>
     /// Get all columns that are actively sorted, ordered by SortOrder.
     /// </summary>
     public IReadOnlyList<KumikoColumn> ActiveSortColumns =>
@@ -457,6 +591,7 @@ public class KumikoSource : IDisposable
     private void OnSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (_disposed || _detached) return;
+        ContentVersion++;
         // During ReorderRow we do RemoveAt+Insert on the source list;
         // skip the intermediate rebuilds; ReorderRow rebuilds once afterwards.
         if (_isReordering)
@@ -524,6 +659,7 @@ public class KumikoSource : IDisposable
         // The collection has already changed, so the old rows come from the record kept since the last
         // notification, not from the (now stale) view.
         var oldRowKeys = _rowKeys;
+        _rowKeyIndex = null; // the rows move; the index is rebuilt on the next lookup
         bool incremental = TryIncrementalUpdate(e, out int viewIndex, out bool rowsChanged);
         if (!incremental)
             RebuildCore();
@@ -831,11 +967,82 @@ public class KumikoSource : IDisposable
         if (expandingArgs.Cancel) return;
 
         // Toggle state
-        _groupExpandedState[info.GroupPath] = isExpanding;
+        _groupExpandedState[info.KeyPath!] = isExpanding;
         RequestRebuild();
 
         var rebuilt = _flatView?.FirstOrDefault(r => r.Kind == FlatRowKind.GroupHeader && r.GroupInfo!.GroupPath == info.GroupPath)?.GroupInfo;
         GroupExpandedChanged?.Invoke(this, new GroupExpandedChangedEventArgs(rebuilt ?? info, isExpanding));
+    }
+
+
+    /// <summary>
+    /// The visible row that shows <paramref name="item"/> in the current sorted, filtered and grouped view, or -1
+    /// when it has none: it is not in the source, a filter hides it, or it sits in a collapsed group (see
+    /// <see cref="ExpandToItem"/>). Items are matched like selection does (by reference, or by value for value
+    /// types and records). Scans the view.
+    /// </summary>
+    /// <param name="item">The item to find.</param>
+    /// <returns>The row, or -1.</returns>
+    public int IndexOfItem(object item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return IndexOfRowKey(item);
+    }
+
+    /// <summary>
+    /// The visible row of <paramref name="item"/>, first expanding the collapsed groups that contain it, outermost
+    /// first, so a row exists for it. Expanding goes through <see cref="ToggleGroupExpansion"/>, so
+    /// <see cref="GroupExpanding"/> and <see cref="GroupExpandedChanged"/> are raised as for a tap and a handler can
+    /// cancel it. Returns -1 when the item has no row even so: it is not in the source, a filter hides it, or a
+    /// handler canceled an expansion. Nothing is expanded for an item a filter hides.
+    /// </summary>
+    /// <param name="item">The item to reveal.</param>
+    /// <returns>The row, or -1.</returns>
+    public int ExpandToItem(object item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        int row = IndexOfItem(item);
+        if (row >= 0 || _flatView == null) return row;
+
+        // Hidden by a filter: no group holds it, so there is nothing to expand.
+        bool inView = false;
+        for (int i = 0; i < _viewIndices.Count && !inView; i++)
+            inView = RowKeyComparer.Instance.Equals(_sourceItems[_viewIndices[i]], item);
+        if (!inView) return -1;
+
+        GroupKeyPath? parentPath = null;
+        var keyComparer = new GroupKeyComparer(_comparer.TextComparer);
+        for (int level = 0; level < _groupDescriptions.Count; level++)
+        {
+            var desc = _groupDescriptions[level];
+            var column = _columns.FirstOrDefault(c =>
+                string.Equals(c.PropertyName, desc.PropertyName, StringComparison.OrdinalIgnoreCase));
+            object? key = ComputeGroupKey(desc, column, item).Key;
+
+            int header = FindGroupHeaderRow(level, parentPath, key, keyComparer);
+            if (header < 0) return -1;
+            if (!_flatView![header].GroupInfo!.IsExpanded)
+            {
+                ToggleGroupExpansion(header);
+                header = FindGroupHeaderRow(level, parentPath, key, keyComparer);
+                if (header < 0 || _flatView == null || !_flatView[header].GroupInfo!.IsExpanded) return -1;
+            }
+            parentPath = _flatView![header].GroupInfo!.KeyPath;
+        }
+        return IndexOfItem(item);
+    }
+
+    private int FindGroupHeaderRow(int level, GroupKeyPath? parentPath, object? key, GroupKeyComparer keyComparer)
+    {
+        if (_flatView == null) return -1;
+        for (int i = 0; i < _flatView.Count; i++)
+        {
+            var info = _flatView[i].GroupInfo;
+            if (_flatView[i].Kind != FlatRowKind.GroupHeader || info == null || info.Level != level) continue;
+            if (!Equals(info.KeyPath?.Parent, parentPath)) continue;
+            if (key is null ? info.Key is null : info.Key is not null && keyComparer.Equals(info.Key, key)) return i;
+        }
+        return -1;
     }
 
     /// <summary>
@@ -859,11 +1066,25 @@ public class KumikoSource : IDisposable
     }
 
     /// <summary>
+    /// Drop the expand/collapse state of groups the current descriptions can no longer contain (a path whose
+    /// property differs from the description at its level, or that is deeper than the description list), and
+    /// keep the rest.
+    /// </summary>
+    private void PruneGroupExpandedState()
+    {
+        if (_groupExpandedState.Count == 0) return;
+        // Runs only when the group descriptions change, so the LINQ allocation is fine here.
+        var stale = _groupExpandedState.Keys.Where(path => !path.IsValidFor(_groupDescriptions)).ToList();
+        foreach (var path in stale) _groupExpandedState.Remove(path);
+    }
+
+    /// <summary>
     /// Add a group description. Groups are applied in order (multi-level).
     /// </summary>
     public void AddGroupDescription(GroupDescription group)
     {
         _groupDescriptions.Add(group);
+        PruneGroupExpandedState();
         RequestRebuild();
     }
 
@@ -873,6 +1094,7 @@ public class KumikoSource : IDisposable
     public void InsertGroupDescription(int index, GroupDescription group)
     {
         _groupDescriptions.Insert(index, group);
+        PruneGroupExpandedState();
         RequestRebuild();
     }
 
@@ -882,7 +1104,7 @@ public class KumikoSource : IDisposable
     public void RemoveGroupDescription(string propertyName)
     {
         _groupDescriptions.RemoveAll(g => g.PropertyName == propertyName);
-        _groupExpandedState.Clear();
+        PruneGroupExpandedState();
         RequestRebuild();
     }
 
@@ -892,8 +1114,9 @@ public class KumikoSource : IDisposable
     public void ClearGroupDescriptions()
     {
         _groupDescriptions.Clear();
-        _groupExpandedState.Clear();
+        PruneGroupExpandedState();
         _flatView = null;
+        _rowKeyIndex = null;
         RequestRebuild();
     }
 
@@ -1210,6 +1433,7 @@ public class KumikoSource : IDisposable
     /// <summary>Raise <see cref="KumikoViewChangeKind.Redraw"/>, or note it for the end of a batch.</summary>
     private void NotifyRedraw()
     {
+        ContentVersion++;
         if (_updateDepth > 0)
             _pendingRedraw = true;
         else if (_viewChanged != null && _rowKeys != null)
@@ -1240,16 +1464,24 @@ public class KumikoSource : IDisposable
         };
     }
 
-    /// <summary>The visible row whose key matches <paramref name="key"/>, or -1. Scans the view.</summary>
+    /// <summary>
+    /// The visible row whose key matches <paramref name="key"/> (an item by reference, a group row by value),
+    /// or -1. Constant time: it reads a dictionary that is built on first use after the view changes.
+    /// </summary>
     internal int IndexOfRowKey(object key)
     {
-        int count = RowCount;
-        for (int i = 0; i < count; i++)
+        var index = _rowKeyIndex;
+        if (index == null)
         {
-            if (GetRowKey(i) is { } candidate && RowKeyComparer.Instance.Equals(candidate, key))
-                return i;
+            int count = RowCount;
+            index = new Dictionary<object, int>(count, RowKeyComparer.Instance);
+            for (int i = 0; i < count; i++)
+            {
+                if (GetRowKey(i) is { } candidate) index.TryAdd(candidate, i);
+            }
+            _rowKeyIndex = index;
         }
-        return -1;
+        return index.TryGetValue(key, out int row) ? row : -1;
     }
 
     /// <summary>
@@ -1434,13 +1666,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     internal void PrepareCellTextCache(int frozenRows, int scrollingRows)
     {
-        // Culture null means the current culture at the time of use, which may change between frames.
-        var culture = _comparer.Culture;
-        if (!ReferenceEquals(culture, _textCulture))
-        {
-            _textCulture = culture;
-            InvalidateCellText();
-        }
+        SyncCellTextCulture();
 
         int ring = _textRingSize;
         while (ring < scrollingRows * 2) ring *= 2;
@@ -1449,6 +1675,21 @@ public class KumikoSource : IDisposable
             _textFrozenRows = frozenRows;
             _textRingSize = ring;
             _textLayoutVersion++;
+        }
+    }
+
+    /// <summary>
+    /// Marks the cached display text stale when the formatting culture changed since the last frame. The renderer
+    /// calls it before laying out columns, so Auto columns measure text formatted in the culture the frame draws.
+    /// </summary>
+    internal void SyncCellTextCulture()
+    {
+        // Culture null means the current culture at the time of use, which may change between frames.
+        var culture = _comparer.Culture;
+        if (!ReferenceEquals(culture, _textCulture))
+        {
+            _textCulture = culture;
+            InvalidateCellText();
         }
     }
 
@@ -1482,9 +1723,17 @@ public class KumikoSource : IDisposable
         return text;
     }
 
+    /// <summary>
+    /// Moves on whenever the rows or what a cell may show can have changed: a rebuild, a collection change, a cell or
+    /// item property change, a redraw request. Layout compares it with the version an Auto column was measured at
+    /// (#24), so a frame of unchanged data measures nothing. It is not raised as an event and may wrap around.
+    /// </summary>
+    internal int ContentVersion { get; private set; }
+
     /// <summary>Mark every cached display text stale.</summary>
     private void InvalidateCellText()
     {
+        ContentVersion++;
         if (++_textStamp == 0) _textStamp = 1;
     }
 
@@ -1494,6 +1743,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     private void InvalidateCellText(object item, string? propertyName)
     {
+        ContentVersion++;
         foreach (var col in _columns)
         {
             var cache = col.TextCache;
@@ -1605,6 +1855,7 @@ public class KumikoSource : IDisposable
     /// <summary>Rebuild the visible rows from the source items and the current state. Raises nothing.</summary>
     private void RebuildCore()
     {
+        _rowKeyIndex = null;
         InvalidateCellText();
         _viewIndices.Clear();
         var filters = PrepareFilters();
@@ -1670,7 +1921,7 @@ public class KumikoSource : IDisposable
             _flatView = new List<FlatViewRow>();
             _computedGroupSummaries.Clear();
             _computedCaptionSummaries.Clear();
-            BuildGroupedFlatView(_viewIndices, 0, "");
+            BuildGroupedFlatView(_viewIndices, 0, "", null);
         }
         else
         {
@@ -1684,10 +1935,23 @@ public class KumikoSource : IDisposable
         ComputeTableSummaries();
     }
 
+    /// <summary>The group key and display text <paramref name="item"/> falls under for one group description.</summary>
+    private (object? Key, string DisplayText) ComputeGroupKey(GroupDescription groupDesc, KumikoColumn? column, object item)
+    {
+        object? rawValue = column != null ? ReadColumnValue(item, column) : null;
+        object? groupKey = groupDesc.KeySelector != null ? groupDesc.KeySelector(rawValue) : rawValue;
+        string displayText = groupDesc.DisplayTextSelector != null
+            ? groupDesc.DisplayTextSelector(groupKey)
+            : groupKey is null
+                ? _strings.BlankGroupText
+                : _comparer.Format(groupKey, groupDesc.KeySelector == null ? column?.Format : null);
+        return (groupKey, displayText);
+    }
+
     /// <summary>
     /// Recursively build the flat view by grouping source indices at the given level.
     /// </summary>
-    private void BuildGroupedFlatView(List<int> sourceIndices, int level, string parentPath)
+    private void BuildGroupedFlatView(List<int> sourceIndices, int level, string parentPath, GroupKeyPath? parentKeyPath)
     {
         if (level >= _groupDescriptions.Count)
         {
@@ -1705,35 +1969,32 @@ public class KumikoSource : IDisposable
 
         // Group the indices by key
         var groups = new List<(object? Key, string DisplayText, List<int> Indices)>();
-        // displayKey → index in groups list; display texts that compare equal under the text rules are one group
-        var groupMap = new Dictionary<string, int>(_comparer.TextComparer);
+        // raw key → index in groups list: groups are the distinct keys (strings by the text rules, other keys by
+        // Equals/GetHashCode), whatever their display text; a null key is a group of its own
+        var groupMap = new Dictionary<object, int>(new GroupKeyComparer(_comparer.TextComparer));
+        int nullGroupIdx = -1;
+        var usedPaths = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var sourceIdx in sourceIndices)
         {
             if (_sourceItems[sourceIdx] is not { } item)
                 continue; // the view holds no null items; stay safe regardless
-            object? rawValue;
-            if (column != null)
-            {
-                rawValue = ReadColumnValue(item, column);
-            }
-            else
-            {
-                rawValue = null;
-            }
+            var (groupKey, displayText) = ComputeGroupKey(groupDesc, column, item);
 
-            object? groupKey = groupDesc.KeySelector != null ? groupDesc.KeySelector(rawValue) : rawValue;
-            string displayText = groupDesc.DisplayTextSelector != null
-                ? groupDesc.DisplayTextSelector(groupKey)
-                : groupKey is null
-                    ? _strings.BlankGroupText
-                    : _comparer.Format(groupKey, groupDesc.KeySelector == null ? column?.Format : null);
-
-            // Use display text as dictionary key for grouping
-            if (!groupMap.TryGetValue(displayText, out int groupIdx))
+            int groupIdx;
+            if (groupKey is null)
+            {
+                if (nullGroupIdx < 0)
+                {
+                    nullGroupIdx = groups.Count;
+                    groups.Add((groupKey, displayText, new List<int>()));
+                }
+                groupIdx = nullGroupIdx;
+            }
+            else if (!groupMap.TryGetValue(groupKey, out groupIdx))
             {
                 groupIdx = groups.Count;
-                groupMap[displayText] = groupIdx;
+                groupMap[groupKey] = groupIdx;
                 groups.Add((groupKey, displayText, new List<int>()));
             }
             groups[groupIdx].Indices.Add(sourceIdx);
@@ -1762,7 +2023,16 @@ public class KumikoSource : IDisposable
                 ? $"{groupDesc.PropertyName}={displayText}"
                 : $"{parentPath}|{groupDesc.PropertyName}={displayText}";
 
-            bool isExpanded = _groupExpandedState.TryGetValue(groupPath, out bool state)
+            // Distinct keys can share display text; the path string stays unique per group for lookups by path.
+            if (!usedPaths.Add(groupPath))
+            {
+                int n = 2;
+                while (!usedPaths.Add($"{groupPath}#{n}")) n++;
+                groupPath = $"{groupPath}#{n}";
+            }
+            var keyPath = new GroupKeyPath(parentKeyPath, groupDesc.PropertyName, key);
+
+            bool isExpanded = _groupExpandedState.TryGetValue(keyPath, out bool state)
                 ? state
                 : _defaultGroupExpanded;
 
@@ -1775,7 +2045,8 @@ public class KumikoSource : IDisposable
                 HeaderText = headerText,
                 ItemCount = indices.Count,
                 IsExpanded = isExpanded,
-                GroupPath = groupPath
+                GroupPath = groupPath,
+                KeyPath = keyPath
             };
 
             // Compute caption summary for this group header
@@ -1793,7 +2064,7 @@ public class KumikoSource : IDisposable
 
             if (isExpanded)
             {
-                BuildGroupedFlatView(indices, level + 1, groupPath);
+                BuildGroupedFlatView(indices, level + 1, groupPath, keyPath);
 
                 // Emit group summary rows after the group's data: at every level for rows set to All,
                 // at the innermost level for rows set to Innermost
