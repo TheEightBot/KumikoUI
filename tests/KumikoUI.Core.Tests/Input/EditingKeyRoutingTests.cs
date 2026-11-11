@@ -413,8 +413,8 @@ public class EditingKeyRoutingTests
 
         // A drag that starts on the list and runs far past its top edge scrolls the list, not the grid
         g.Press(x, drop.Y + 150);
-        for (int i = 1; i <= 30; i++) g.Move(x, drop.Y + 150 - i * 50);
-        g.Release(x, drop.Y + 150 - 30 * 50);
+        for (int i = 1; i <= 30; i++) g.Move(x, drop.Y + 150 - i * 50f);
+        g.Release(x, drop.Y + 150 - 30 * 50f);
 
         Assert.Equal(50 * combo.ItemHeight - drop.Height, combo.DropdownScrollOffset);
         Assert.Equal(0, g.Scroll.OffsetY);

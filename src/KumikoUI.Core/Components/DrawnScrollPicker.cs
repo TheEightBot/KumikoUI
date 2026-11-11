@@ -380,7 +380,7 @@ public class DrawnScrollPicker : DrawnComponent, IValueEditor
             var (_, dy) = _fling.Update(frameIntervalMs);
             float before = _scrollOffset;
             _scrollOffset = Math.Clamp(_scrollOffset + dy, 0, MaxScrollOffset);
-            if (_fling.IsActive && _scrollOffset != before)
+            if (_fling.IsActive && Math.Abs(_scrollOffset - before) > 0.01f)
             {
                 InvalidateVisual();
                 return true;
