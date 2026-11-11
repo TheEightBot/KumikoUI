@@ -69,7 +69,7 @@ public class KumikoRendererOverlayTests
         // One filled triangle: apex at the arrow head (top when ascending), base on the other side.
         var apex = Assert.Single(arrow.Points!, p => Near(p.Y, headY));
         Assert.Equal(3, arrow.Points!.Length);
-        Assert.Equal(2, arrow.Points.Count(p => Near(p.Y, headY == 16f ? 24f : 16f)));
+        Assert.Equal(2, arrow.Points.Count(p => Near(p.Y, Near(headY, 16f) ? 24f : 16f)));
         Assert.True(apex.X > arrow.Points.Min(p => p.X) && apex.X < arrow.Points.Max(p => p.X));
     }
 

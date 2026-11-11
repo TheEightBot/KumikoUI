@@ -486,7 +486,7 @@ public class KumikoRendererTests
         // The apex is the one vertex alone on its side of the base: at the top when ascending, bottom when descending.
         var apex = Assert.Single(arrow.Points, p => Near(p.X, 138f));
         Assert.Equal(apexY, apex.Y);
-        Assert.Equal(2, arrow.Points.Count(p => Near(p.Y, apexY == 17f ? 23f : 17f)));
+        Assert.Equal(2, arrow.Points.Count(p => Near(p.Y, Near(apexY, 17f) ? 23f : 17f)));
     }
 
     [Fact]
