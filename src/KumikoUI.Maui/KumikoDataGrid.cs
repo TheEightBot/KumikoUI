@@ -400,9 +400,18 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="IsReadOnly"/> bindable property.</summary>
     public static readonly BindableProperty IsReadOnlyProperty = BindableProperty.Create(
-        nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid), false);
+        nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid), false,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._editSession.IsReadOnly = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When true, cells cannot be edited.</summary>
+    /// <summary>
+    /// When true, no cell can be edited, Boolean cells do not toggle and Tab skips every cell; combines with
+    /// the per-column <c>IsReadOnly</c> (either one makes a cell read-only).
+    /// </summary>
     public bool IsReadOnly
     {
         get => (bool)GetValue(IsReadOnlyProperty);
@@ -489,9 +498,15 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="AllowSorting"/> bindable property.</summary>
     public static readonly BindableProperty AllowSortingProperty = BindableProperty.Create(
-        nameof(AllowSorting), typeof(bool), typeof(KumikoDataGrid), true);
+        nameof(AllowSorting), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._inputController.AllowSorting = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When false, column header taps do not sort.</summary>
+    /// <summary>When false, column header taps do not sort (a column's own <c>AllowSorting</c> also applies).</summary>
     public bool AllowSorting
     {
         get => (bool)GetValue(AllowSortingProperty);
@@ -502,9 +517,19 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="AllowFiltering"/> bindable property.</summary>
     public static readonly BindableProperty AllowFilteringProperty = BindableProperty.Create(
-        nameof(AllowFiltering), typeof(bool), typeof(KumikoDataGrid), true);
+        nameof(AllowFiltering), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._inputController.AllowFiltering = (bool)n;
+            grid._renderer.AllowFiltering = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When false, filter icons are not shown in column headers.</summary>
+    /// <summary>
+    /// When false, filter icons are not shown in column headers and cannot be tapped (a column's own
+    /// <c>AllowFiltering</c> also applies).
+    /// </summary>
     public bool AllowFiltering
     {
         get => (bool)GetValue(AllowFilteringProperty);

@@ -68,6 +68,27 @@ public class KumikoInputController
         set => _editSession = value;
     }
 
+    /// <summary>
+    /// Grid-level switch for header-tap sorting: when false a header tap (with or without Ctrl/Shift) does not
+    /// sort, whatever a column's own <see cref="KumikoColumn.AllowSorting"/>. Default true. Sorting set in code
+    /// (<see cref="KumikoSource.ToggleSort"/>) is not affected.
+    /// </summary>
+    public bool AllowSorting { get; set; } = true;
+
+    /// <summary>
+    /// Grid-level switch for column filtering from the header: when false the filter icon is not hit-testable
+    /// and no filter popup opens, whatever a column's own <see cref="KumikoColumn.AllowFiltering"/>. Default
+    /// true. Filters set in code are not affected.
+    /// </summary>
+    public bool AllowFiltering
+    {
+        get => _hitTester.AllowFiltering;
+        set => _hitTester.AllowFiltering = value;
+    }
+
+    // Grid-level read-only: the edit session's flag, so editors, Boolean toggles and Tab stops agree
+    private bool GridReadOnly => _editSession is { IsReadOnly: true };
+
     // ── Events ──
     /// <summary>Raised when the grid surface needs to be redrawn.</summary>
     public event Action? NeedsRedraw;
@@ -925,7 +946,7 @@ public class KumikoInputController
 
         if (hit.Region == HitRegion.HeaderFilterIcon && hit.Column != null)
         {
-            if (hit.Column.AllowFiltering && CommitEditBeforeViewChange(dataSource, selection))
+            if (AllowFiltering && hit.Column.AllowFiltering && CommitEditBeforeViewChange(dataSource, selection))
             {
                 ShowFilterPopup(hit.Column, hit.ColumnIndex, scroll, style, dataSource);
             }
@@ -939,10 +960,13 @@ public class KumikoInputController
             bool ctrl = (e.Modifiers & InputModifiers.Control) != 0;
             bool shift = (e.Modifiers & InputModifiers.Shift) != 0;
 
-            if (ctrl || shift)
-                dataSource.ToggleMultiSort(hit.Column);
-            else
-                dataSource.ToggleSort(hit.Column);
+            if (AllowSorting)
+            {
+                if (ctrl || shift)
+                    dataSource.ToggleMultiSort(hit.Column);
+                else
+                    dataSource.ToggleSort(hit.Column);
+            }
 
             Redraw();
             e.Handled = true;
@@ -1548,7 +1572,7 @@ public class KumikoInputController
         if (dataSource.IsNonDataRow(row)) return false;
 
         var column = dataSource.Columns[col];
-        if (column.IsReadOnly) return false;
+        if (column.IsReadOnly || _editSession.IsReadOnly) return false;
 
         // An interactive cell (action buttons) is acted on, never edited
         if (GetInteractiveRenderer(column) != null) return false;
@@ -1713,8 +1737,8 @@ public class KumikoInputController
     }
 
     /// <summary>A Tab stop: a visible, editable column that allows tab stops, of any column type.</summary>
-    private static bool IsTabStop(KumikoColumn column) =>
-        column.IsVisible && column.AllowTabStop && !column.IsReadOnly;
+    private static bool IsTabStop(KumikoColumn column, bool gridReadOnly) =>
+        !gridReadOnly && column.IsVisible && column.AllowTabStop && !column.IsReadOnly;
 
     /// <summary>
     /// The next tab stop after <paramref name="from"/> in reading order (direction +1) or before it (-1),
@@ -1722,15 +1746,16 @@ public class KumikoInputController
     /// columns are the same in every row, so they are found once and the search walks rows, never
     /// rows × columns cells.
     /// </summary>
-    private static CellPosition FindNextTabStop(CellPosition from, KumikoSource dataSource, int direction)
+    private CellPosition FindNextTabStop(CellPosition from, KumikoSource dataSource, int direction)
     {
         if (!from.IsValid) return CellPosition.Invalid;
 
         var columns = dataSource.Columns;
+        bool gridReadOnly = GridReadOnly;
         int firstStop = -1, lastStop = -1, nextInRow = -1;
         for (int c = 0; c < columns.Count; c++)
         {
-            if (!IsTabStop(columns[c])) continue;
+            if (!IsTabStop(columns[c], gridReadOnly)) continue;
             if (firstStop < 0) firstStop = c;
             lastStop = c;
             if (direction > 0 ? c > from.Column && nextInRow < 0 : c < from.Column)
@@ -1791,7 +1816,7 @@ public class KumikoInputController
     /// </summary>
     private bool CanToggleBooleanCell(CellPosition cell, KumikoSource dataSource)
     {
-        if (_editSession == null || !cell.IsValid) return false;
+        if (_editSession == null || _editSession.IsReadOnly || !cell.IsValid) return false;
         if (cell.Row >= dataSource.RowCount || dataSource.IsNonDataRow(cell.Row)) return false;
         var column = ColumnAt(dataSource, cell.Column);
         return column is { ColumnType: KumikoColumnType.Boolean, IsReadOnly: false } &&
