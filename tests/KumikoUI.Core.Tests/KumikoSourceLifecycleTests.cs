@@ -128,7 +128,10 @@ public class KumikoSourceLifecycleTests
         Assert.Equal(1, list[0].Subscribers);
     }
 
+    // A wall-clock bound: excluded from the instrumented coverage run (which is many times slower) and run by the
+    // uninstrumented test matrix instead.
     [Fact]
+    [Trait("Category", "Performance")]
     public void TrackingAndUntracking100KItems_IsFast()
     {
         const int n = 100_000;
@@ -136,13 +139,17 @@ public class KumikoSourceLifecycleTests
         using var src = new KumikoSource();
         var sw = Stopwatch.StartNew();
         src.SetItems(list); // tracks 100K
-        // Untrack one by one through collection events (the old list-based untrack was O(n) each).
+        // Untrack one by one through collection events (the old list-based untrack was O(n) each). The batch defers
+        // the view work to EndUpdate, so the loop times item tracking, not 20K incremental view updates (which are
+        // slow under coverage instrumentation and are not what this test is about).
+        src.BeginUpdate();
         for (int i = 0; i < 20_000; i++)
         {
             var r = list[list.Count - 1];
             list.RemoveAt(list.Count - 1);
             list.RaiseRemove(r);
         }
+        src.EndUpdate();
         src.Dispose();
         sw.Stop();
         // Quadratic behavior would take many seconds; a generous bound keeps this non-flaky.

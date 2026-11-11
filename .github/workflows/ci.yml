@@ -81,6 +81,7 @@ jobs:
           && dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
           && dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           && dotnet restore tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
+          && dotnet restore tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj
 
       - name: Build — Core
         run: dotnet build src/KumikoUI.Core/KumikoUI.Core.csproj
@@ -97,13 +98,41 @@ jobs:
           -- src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll
           src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
 
+      # Collects Cobertura coverage for KumikoUI.Core + KumikoUI.SkiaSharp (coverage.runsettings excludes the tests,
+      # generated code and samples); the report and ratchet follow the source generator tests below. Tests with a
+      # wall-clock bound (Category=Performance) are skipped here, because instrumentation slows them many times
+      # over; the uninstrumented Core test matrix runs them.
       - name: Test
         run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+          --collect:"XPlat Code Coverage" --settings coverage.runsettings --filter "Category!=Performance"
 
       - name: Test — source generator
         run: dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
           --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+
+      # MAUI host: bindable property -> Core mapping, on plain net10.0 (sources linked in, no handler).
+      - name: Test — MAUI host
+        run: dotnet test tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj
+          --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+
+      # Merges the coverage files, writes the summary to the job summary (needs no token permissions) and fails when
+      # coverage drops below eng/coverage/baseline.json (the ratchet; raise it by hand as coverage grows).
+      - name: Coverage report and ratchet
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11
+          reportgenerator "-reports:TestResults/**/coverage.cobertura.xml" "-targetdir:CoverageReport" \
+            "-reporttypes:MarkdownSummaryGithub;Cobertura;Html"
+          cat CoverageReport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+          eng/coverage/check-coverage.sh CoverageReport/Cobertura.xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-report
+          path: CoverageReport/
+          if-no-files-found: ignore
 
       - name: Upload test results
         if: always()
@@ -374,6 +403,103 @@ jobs:
       - name: Build sample — Uno Android
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-android -c Release
 
+  # ─── Native AOT: the grid engine, published ahead of time and run (#76) ───
+  # eng/AotSmoke builds a grid source (generated accessors, sort, filter, grouping, summaries) and renders a frame
+  # to an SKSurface through Core + SkiaSharp. It is published with PublishAot and TreatWarningsAsErrors, so a
+  # trimming or AOT warning in the app or the KumikoUI assemblies fails the job, and the published binary runs.
+  aot-smoke:
+    name: Native AOT smoke (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  rid: linux-x64,  exe: AotSmoke }
+          - { os: windows-latest, rid: win-x64,    exe: AotSmoke.exe }
+          - { os: macos-15,       rid: osx-arm64,  exe: AotSmoke }   # macos-15: arm64
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version of the referenced libraries from git tags
+
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
+        with:
+          cache-nuget: 'true'
+
+      - name: Publish — Native AOT
+        run: dotnet publish eng/AotSmoke/AotSmoke.csproj -c Release -r ${{ matrix.rid }} -o aot-smoke-out
+
+      - name: Run the published binary
+        shell: bash
+        run: ./aot-smoke-out/${{ matrix.exe }}
+
+  # ─── Native AOT: MAUI sample on iOS and Mac Catalyst (macOS, Xcode) ───
+  # KumikoPublishAot=true sets PublishAot in the sample only (see SampleApp.Maui.csproj). iOS publishes for a device
+  # runtime identifier (the SDK refuses simulator ones) without an archive or signing, so no certificates are needed.
+  # MAUI itself and the sample's XAML pages still raise IL2026/IL3050 trim and AOT warnings, so warnings are not
+  # errors here: the job proves the AOT compile and native link succeed.
+  aot-maui-apple:
+    name: Native AOT publish (MAUI sample — iOS + Mac Catalyst)
+    runs-on: xcode-27   # Xcode pinned below; see build-apple-maui
+    timeout-minutes: 60
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+    env:
+      XCODE_VERSION: '27.1'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+
+      - name: Setup .NET + MAUI workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          workloads: maui
+          cache-nuget: 'true'
+
+      - name: Publish sample — iOS (Native AOT)
+        run: dotnet publish samples/SampleApp.Maui/SampleApp.Maui.csproj -f net10.0-ios -c Release
+          -r ios-arm64 -p:KumikoPublishAot=true -p:EnableCodeSigning=false -p:BuildIpa=false -p:ArchiveOnBuild=false
+
+      - name: Publish sample — Mac Catalyst (Native AOT)
+        run: dotnet publish samples/SampleApp.Maui/SampleApp.Maui.csproj -f net10.0-maccatalyst -c Release
+          -r maccatalyst-arm64 -p:KumikoPublishAot=true -p:EnableCodeSigning=false -p:CreatePackage=false
+
+  # ─── Native AOT: MAUI sample on Windows ───
+  # Non-blocking: .NET MAUI does not support Native AOT on Windows (WinUI 3) yet, so the publish is expected to fail
+  # or warn until the platform does. The job records where it stands; drop continue-on-error if it turns green.
+  aot-maui-windows:
+    name: Native AOT publish (MAUI sample — Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Setup .NET + MAUI workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          workloads: maui
+          cache-nuget: 'true'
+
+      - name: Publish sample — Windows (Native AOT)
+        continue-on-error: true
+        run: dotnet publish samples/SampleApp.Maui/SampleApp.Maui.csproj -f net10.0-windows10.0.19041.0 -c Release
+          -r win-x64 -p:KumikoPublishAot=true
+
   # ─── WebAssembly sample head (Linux: the Emscripten native relink of Uno's Skia shims fails on Windows) ───
   build-sample-wasm:
     name: Build (Sample — Uno WebAssembly)
@@ -397,3 +523,33 @@ jobs:
 
       - name: Build sample — Uno WebAssembly
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-browserwasm -c Release
+
+  # ─── Uno WebAssembly sample, trimmed (UNO-22, #76) ───
+  # PublishTrimmed with TrimMode=full: the trimmer removes everything unreferenced, and the KumikoUI.Core targets
+  # switch the reflection fallback off, so only generated accessors work. Nothing preserves the KumikoUI
+  # assemblies (LinkerConfig.xml names the sample only).
+  publish-sample-wasm-trimmed:
+    name: Publish trimmed (Sample — Uno WebAssembly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from tags
+
+      # Same workloads as build-sample-wasm.
+      - name: Setup .NET + wasm-tools and android workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          workloads: wasm-tools android
+          cache-nuget: 'true'
+
+      # Non-blocking until the trimmed publish has been seen green: #184 fixed the WebAssembly build itself, but a
+      # full-trim publish hasn't run in CI yet. Drop continue-on-error once it passes.
+      - name: Publish sample — Uno WebAssembly (trimmed)
+        continue-on-error: true
+        run: dotnet publish samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-browserwasm -c Release
+          -p:PublishTrimmed=true -p:TrimMode=full

@@ -7,8 +7,10 @@
     <!--
       Uno single-project head TFMs. The sample and the library KumikoUI.Uno both target .NET 10
       (docs/uno ADR-4, #10), so each app head binds the library's matching head directly. The Windows (WinAppSDK) head is conditioned on Windows
-      only so non-Windows machines / CI don't try to build it. Only net10.0-desktop is built/verified
-      locally; the other heads are CI-verified (Phase 08).
+      only so non-Windows machines / CI don't try to build it. Day to day you build one head with
+      `-f net10.0-desktop`, but restore walks every head listed here: a local restore needs the workloads of
+      all of them (`wasm-tools`, plus the mobile heads' workloads, see CONTRIBUTING.md), even when you only
+      build the desktop head. CI builds and verifies the other heads (Phase 08).
     -->
     <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-browserwasm;net10.0-desktop</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.26100</TargetFrameworks>
@@ -90,6 +92,18 @@
   -->
   <ItemGroup>
     <Content Include="Assets/Fonts/*.ttf" />
+  </ItemGroup>
+
+  <!--
+    The KumikoUI.Core package delivers the [KumikoGridItem] source generator as an analyzer; a project reference
+    does not, so the sample references it directly. The sample's row types then read through generated accessors,
+    which is what Native AOT and full trimming need (#76).
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      UndefineProperties="TargetFramework;TargetFrameworks" />
   </ItemGroup>
 
   <!--

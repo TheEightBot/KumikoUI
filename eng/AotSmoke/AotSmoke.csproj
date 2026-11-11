@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Native AOT smoke test (#76), not a shipped package and not part of KumikoUI.sln. A tiny console app that
+    builds a grid source over [KumikoGridItem] rows, sorts, filters, groups, and renders a frame to an
+    SKSurface through KumikoUI.Core + KumikoUI.SkiaSharp. CI publishes it with PublishAot and
+    TreatWarningsAsErrors, so a trimming or AOT warning (IL2xxx/IL3xxx) anywhere in the app or the KumikoUI
+    assemblies it pulls in fails the job; running the published binary then proves the grid works without JIT.
+    Run locally: dotnet publish eng/AotSmoke -c Release -r <rid>, then run the binary from the publish folder.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>KumikoUI.Build.AotSmoke</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IncludeSymbols>false</IncludeSymbols>
+
+    <PublishAot>true</PublishAot>
+    <!-- IsAotCompatible turns the trim, AOT and single-file analyzers on for the app's own code as well. -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Report trimming and AOT warnings of every referenced assembly (not one summary per assembly). -->
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- No version stamping for a build tool (Directory.Build.props adds MinVer to every project). -->
+  <ItemGroup>
+    <PackageReference Remove="MinVer" />
+  </ItemGroup>
+
+  <!-- SkiaSharp's native library for a Linux host (macOS and Windows get it from the SkiaSharp package itself). -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/KumikoUI.Core/KumikoUI.Core.csproj" />
+    <ProjectReference Include="../../src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" />
+    <!-- Core's package ships the generator as an analyzer; a project reference has to wire it up itself. -->
+    <ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>
