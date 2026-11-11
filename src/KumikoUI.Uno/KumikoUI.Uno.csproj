@@ -87,6 +87,8 @@
     output. (To scope a local build to one head use `-f net10.0-desktop`, NOT
     `-p:TargetFrameworks=net10.0-desktop` — the latter is a global property that reaches the
     dependencies at restore time and fails them with NETSDK1139 'desktop was not recognized'.)
+    `-f` limits what is built, not what is restored: restore walks every head in TargetFrameworks, so even a
+    desktop-only local build needs the `wasm-tools` workload (and the mobile heads' workloads) installed.
   -->
   <ItemGroup>
     <ProjectReference Include="../KumikoUI.Core/KumikoUI.Core.csproj" UndefineProperties="TargetFramework;TargetFrameworks" />
