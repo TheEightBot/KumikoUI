@@ -123,6 +123,45 @@ public sealed record KumikoStrings
     /// <summary>The message when writing an edited value fails without a reason. Default: "The value could not be saved.".</summary>
     public string ValueCouldNotBeSaved { get; init; } = "The value could not be saved.";
 
+    /// <summary>The grid's accessible name for screen readers, unless the host sets its own. Default: "Data grid".</summary>
+    public string AccessibleGridName { get; init; } = "Data grid";
+
+    /// <summary>The accessible hint for a grid without a current cell. <c>{0}</c> is the row count and <c>{1}</c> the column count. Default: "{0} rows, {1} columns".</summary>
+    public string AccessibleGridHint { get; init; } = "{0} rows, {1} columns";
+
+    /// <summary>The accessible hint for a grid with a current cell. <c>{0}</c> and <c>{1}</c> are the row and column counts, <c>{2}</c> and <c>{3}</c> the current cell's one-based row and column. Default: "{0} rows, {1} columns, current cell row {2} column {3}".</summary>
+    public string AccessibleGridHintWithCell { get; init; } = "{0} rows, {1} columns, current cell row {2} column {3}";
+
+    /// <summary>The announcement when the current cell moves. <c>{0}</c> is the column header, <c>{1}</c> the cell text, <c>{2}</c> and <c>{3}</c> the one-based row and column. Default: "{0}: {1}, row {2}, column {3}".</summary>
+    public string AnnounceCurrentCell { get; init; } = "{0}: {1}, row {2}, column {3}";
+
+    /// <summary>The text announced for a cell with no text. Default: "empty".</summary>
+    public string AnnounceEmptyValue { get; init; } = "empty";
+
+    /// <summary>The announcement for a column's header when it has no text. <c>{0}</c> is the one-based column number. Default: "Column {0}".</summary>
+    public string AnnounceUnnamedColumn { get; init; } = "Column {0}";
+
+    /// <summary>The announcement after a column was sorted ascending. <c>{0}</c> is the column header. Default: "Sorted by {0}, ascending".</summary>
+    public string AnnounceSortedAscending { get; init; } = "Sorted by {0}, ascending";
+
+    /// <summary>The announcement after a column was sorted descending. <c>{0}</c> is the column header. Default: "Sorted by {0}, descending".</summary>
+    public string AnnounceSortedDescending { get; init; } = "Sorted by {0}, descending";
+
+    /// <summary>The announcement after a column's sort was removed. <c>{0}</c> is the column header. Default: "Sort removed from {0}".</summary>
+    public string AnnounceSortRemoved { get; init; } = "Sort removed from {0}";
+
+    /// <summary>The announcement when editing starts. <c>{0}</c> is the column header and <c>{1}</c> the cell text. Default: "Editing {0}: {1}".</summary>
+    public string AnnounceEditStarted { get; init; } = "Editing {0}: {1}";
+
+    /// <summary>The announcement when an edit is committed. <c>{0}</c> is the column header and <c>{1}</c> the new text. Default: "{0} changed to {1}".</summary>
+    public string AnnounceEditCommitted { get; init; } = "{0} changed to {1}";
+
+    /// <summary>The announcement when an edit ends without a change. <c>{0}</c> is the column header. Default: "Editing {0} ended".</summary>
+    public string AnnounceEditCanceled { get; init; } = "Editing {0} ended";
+
+    /// <summary>The announcement when an edit fails validation. <c>{0}</c> is the column header and <c>{1}</c> the message. Default: "{0} is invalid: {1}".</summary>
+    public string AnnounceValidationFailed { get; init; } = "{0} is invalid: {1}";
+
     /// <summary>The default summary label for <paramref name="type"/>, or an empty string.</summary>
     /// <param name="type">The kind of summary.</param>
     internal string SummaryLabel(SummaryType type) => type switch
@@ -141,14 +180,14 @@ public sealed record KumikoStrings
     internal string SortLabel(KumikoColumnType type, KumikoSortDirection direction) => direction == KumikoSortDirection.Descending
         ? type switch
         {
-            KumikoColumnType.Numeric => SortNumericDescending,
+            KumikoColumnType.Numeric or KumikoColumnType.ProgressBar => SortNumericDescending,
             KumikoColumnType.Date => SortDateDescending,
             KumikoColumnType.Boolean => SortBooleanCheckedFirst,
             _ => SortTextDescending
         }
         : type switch
         {
-            KumikoColumnType.Numeric => SortNumericAscending,
+            KumikoColumnType.Numeric or KumikoColumnType.ProgressBar => SortNumericAscending,
             KumikoColumnType.Date => SortDateAscending,
             KumikoColumnType.Boolean => SortBooleanUncheckedFirst,
             _ => SortTextAscending

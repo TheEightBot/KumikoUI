@@ -63,7 +63,7 @@ or column type.
 ### [maui-control.instructions.md](.github/instructions/maui-control.instructions.md)
 **Applies to:** `src/KumikoUI.Maui/**`, `samples/**`
 
-Everything about consuming the control. Covers: `MauiProgram.UseSkiaKumikoUI()` bootstrap,
+Everything about consuming the control. Covers: `MauiProgram.UseKumikoUI()` bootstrap,
 required XAML namespaces, all `KumikoDataGrid` bindable properties, XAML examples for every column
 type (Numeric, Text, ComboBox, Picker, Date, Boolean, Template with renderer, Template with
 `EditorDescriptor`), summary row XAML, and `KumikoDataGrid` internals (keyboard proxy, platform-

@@ -88,6 +88,13 @@ internal sealed class LruMap<TKey, TValue> where TKey : notnull
         }
     }
 
+    /// <summary>Removes every entry.</summary>
+    public void Clear()
+    {
+        _order.Clear();
+        _map.Clear();
+    }
+
     /// <summary>Removes every entry, adding the values to <paramref name="removed"/>.</summary>
     public void Clear(List<TValue> removed)
     {

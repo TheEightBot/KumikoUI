@@ -33,11 +33,12 @@ public static class CellEditorFactory
         {
             KumikoColumnType.Text => CreateTextEditor(column, currentValue, cellBounds, initialCharacter, selectionMode, culture),
             KumikoColumnType.Numeric => CreateNumericEditor(column, currentValue, cellBounds, initialCharacter, selectionMode, culture),
-            KumikoColumnType.Date => CreateDateEditor(column, currentValue, cellBounds, culture),
+            KumikoColumnType.Date => CreateDateEditor(column, currentValue, cellBounds, initialCharacter, culture),
             KumikoColumnType.Boolean => null, // Toggled directly, no overlay editor
-            KumikoColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds),
+            KumikoColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds, initialCharacter),
             KumikoColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
             KumikoColumnType.Image => null, // Not editable
+            KumikoColumnType.ProgressBar => null, // Read-only display
             KumikoColumnType.Template => CreateTemplateEditor(column, currentValue, cellBounds, initialCharacter, culture),
             _ => null
         };
@@ -72,6 +73,38 @@ public static class CellEditorFactory
             case DrawnScrollPicker picker: picker.ApplyTheme(style); break;
             case DrawnActionButtons actionButtons: actionButtons.ApplyTheme(style); break;
         }
+    }
+
+    /// <summary>
+    /// Sets the font of an editor that shows text (text box, combo box, numeric up/down, date picker, scroll
+    /// picker), so it draws and measures like the cell it replaces. Other editors are left alone.
+    /// </summary>
+    /// <param name="editor">The editor component.</param>
+    /// <param name="font">The font of the cell: family, size, bold and italic.</param>
+    public static void ApplyFontToEditor(DrawnComponent editor, KumikoFont font)
+    {
+        switch (editor)
+        {
+            case DrawnTextBox textBox: textBox.ApplyFont(font); break;
+            case DrawnComboBox comboBox: comboBox.ApplyFont(font); break;
+            case DrawnNumericUpDown numeric: numeric.ApplyFont(font); break;
+            case DrawnDatePicker datePicker: datePicker.ApplyFont(font); break;
+            case DrawnScrollPicker picker: picker.ApplyFont(font); break;
+        }
+    }
+
+    /// <summary>
+    /// Tells an editor the visible area its popups must stay inside (<see cref="DrawnComponent.PopupViewport"/>),
+    /// and slides a scroll picker, which is drawn over the cell instead of beside it, into that area.
+    /// </summary>
+    /// <param name="editor">The editor component.</param>
+    /// <param name="viewport">The grid's visible area; empty for no limit.</param>
+    public static void ApplyViewportToEditor(DrawnComponent editor, KumikoRect viewport)
+    {
+        if (viewport.Width <= 0 || viewport.Height <= 0) return;
+        editor.PopupViewport = viewport;
+        if (editor is DrawnScrollPicker picker)
+            picker.Bounds = PopupLayout.Clamp(picker.Bounds, viewport);
     }
 
     // ── Editor creation ─────────────────────────────────────────
@@ -148,13 +181,16 @@ public static class CellEditorFactory
     }
 
     private static DrawnDatePicker CreateDateEditor(
-        KumikoColumn column, object? value, KumikoRect cellBounds, CultureInfo culture)
+        KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter, CultureInfo culture)
     {
         var picker = new DrawnDatePicker
         {
             Bounds = cellBounds,
             IsVisible = true,
-            Culture = culture
+            Culture = culture,
+            DateFormat = column.Format,
+            MinDate = column.EditorMinDate,
+            MaxDate = column.EditorMaxDate,
         };
 
         DateTime? initial = value switch
@@ -173,16 +209,24 @@ public static class CellEditorFactory
         // Auto-open the calendar when the editor is created
         picker.OpenCalendar();
 
+        // The typed character that opened the edit starts typing a date: a change by the user
+        if (initialCharacter is { } typed && !char.IsControl(typed) && !char.IsWhiteSpace(typed))
+        {
+            picker.StartTrackingChanges();
+            picker.OnKeyDown(new Input.KumikoKeyEventArgs { Key = Input.KumikoKey.Character, Character = typed });
+        }
+
         return picker;
     }
 
     private static DrawnComboBox CreateComboBoxEditor(
-        KumikoColumn column, object? value, KumikoRect cellBounds)
+        KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter)
     {
         var comboBox = new DrawnComboBox
         {
             Bounds = cellBounds,
-            IsVisible = true
+            IsVisible = true,
+            IsFilterable = column.EditorIsFilterable
         };
 
         if (column.EditorItems != null)
@@ -201,6 +245,13 @@ public static class CellEditorFactory
         // Auto-open the dropdown when the editor is created (like DatePicker.OpenCalendar)
         comboBox.OpenDropdown();
 
+        // The typed character that opened the edit jumps to its item (or starts the filter): a change by the user
+        if (initialCharacter is { } typed && !char.IsControl(typed))
+        {
+            comboBox.StartTrackingChanges();
+            comboBox.OnKeyDown(new Input.KumikoKeyEventArgs { Key = Input.KumikoKey.Character, Character = typed });
+        }
+
         return comboBox;
     }
 
@@ -214,9 +265,22 @@ public static class CellEditorFactory
 
         if (column.EditorItems != null)
         {
-            // Each item is shown as text and committed as itself (an enum, a number, an object)
-            var values = column.EditorItems.Cast<object?>().ToList();
-            picker.SetItems(values.Select(v => v?.ToString() ?? string.Empty).ToList(), values);
+            // Each item is shown as its display text and committed as its value, with the same selectors and
+            // member paths as the combo box; without them, as its text and itself (an enum, a number, an object)
+            var texts = new List<string>();
+            var values = new List<object?>();
+            foreach (var item in column.EditorItems)
+            {
+                texts.Add(item == null ? string.Empty
+                    : column.EditorDisplaySelector != null ? column.EditorDisplaySelector(item) ?? string.Empty
+                    : column.EditorDisplayMemberPath != null ? GetPathValue(item, column.EditorDisplayMemberPath)?.ToString() ?? string.Empty
+                    : item.ToString() ?? string.Empty);
+                values.Add(item == null ? null
+                    : column.EditorValueSelector != null ? column.EditorValueSelector(item)
+                    : column.EditorValueMemberPath != null ? GetPathValue(item, column.EditorValueMemberPath)
+                    : item);
+            }
+            picker.SetItems(texts, values);
         }
 
         // Expand the picker to popup-size below the cell so items are visible.
@@ -234,6 +298,9 @@ public static class CellEditorFactory
 
         return picker;
     }
+
+    private static object? GetPathValue(object item, string path) =>
+        Data.KumikoAccessorRegistry.GetPath(item.GetType(), path).GetValue(item);
 
     private static DrawnComponent? CreateTemplateEditor(
         KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter, CultureInfo culture)

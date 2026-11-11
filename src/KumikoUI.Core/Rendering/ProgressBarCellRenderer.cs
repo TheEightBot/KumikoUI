@@ -38,6 +38,13 @@ public class ProgressBarCellRenderer : ICellRenderer
     /// </summary>
     public Func<double, double, double, KumikoColor>? ColorSelector { get; set; }
 
+    /// <summary>
+    /// When true, the renderer takes its range, fill color, text and format from the cell's column
+    /// (<see cref="KumikoColumn.ProgressMinimum"/> and the other <c>Progress*</c> options) and its track and fill
+    /// colors from the style. The grid registers one such instance for <see cref="KumikoColumnType.ProgressBar"/>.
+    /// </summary>
+    internal bool UsesColumnOptions { get; init; }
+
     // Reused for every cell (only the color varies), so drawing a bar allocates nothing.
     private readonly KumikoPaint _trackPaint = new();
     private readonly KumikoPaint _fillPaint = new();
@@ -62,8 +69,12 @@ public class ProgressBarCellRenderer : ICellRenderer
         var style = cell.Style;
         double numValue = ToDouble(cell.Value);
 
-        double range = Maximum - Minimum;
-        double pct = range > 0 ? Math.Clamp((numValue - Minimum) / range, 0, 1) : 0;
+        var column = cell.Column;
+        bool fromColumn = UsesColumnOptions;
+        double min = fromColumn ? column.ProgressMinimum : Minimum;
+        double max = fromColumn ? column.ProgressMaximum : Maximum;
+        double range = max - min;
+        double pct = range > 0 ? Math.Clamp((numValue - min) / range, 0, 1) : 0;
 
         // Layout
         float pad = 4f;
@@ -72,16 +83,18 @@ public class ProgressBarCellRenderer : ICellRenderer
         var trackRect = new KumikoRect(cellRect.X + pad, trackY, cellRect.Width - pad * 2, trackH);
 
         // Track background
-        _trackPaint.Color = TrackColor;
+        _trackPaint.Color = fromColumn ? style.GridLineColor : TrackColor;
         ctx.FillRoundRect(trackRect, CornerRadius, _trackPaint);
 
         // Fill
         float fillWidth = trackRect.Width * (float)pct;
         if (fillWidth > 0.5f)
         {
-            var fillColor = ColorSelector != null
-                ? ColorSelector(numValue, Minimum, Maximum)
-                : FillColor ?? DefaultGradientColor(pct);
+            var fillColor = fromColumn
+                ? column.ProgressFillColor ?? style.AccentColor
+                : ColorSelector != null
+                    ? ColorSelector(numValue, min, max)
+                    : FillColor ?? DefaultGradientColor(pct);
             // Clip to track bounds then draw a rounded rect that extends beyond right edge
             // so only the left portion with fill width is visible
             ctx.Save();
@@ -92,9 +105,9 @@ public class ProgressBarCellRenderer : ICellRenderer
         }
 
         // Text overlay
-        if (ShowText)
+        if (fromColumn ? column.ProgressShowText : ShowText)
         {
-            string text = Label(numValue);
+            string text = Label(numValue, fromColumn ? column.Format ?? "N0" : TextFormat);
             _textPaint.Color = pct > 0.45 ? KumikoColor.White : style.CellTextColor;
             _textPaint.Font = TextFont(style.CellFont);
             ctx.DrawTextInRect(text, trackRect, _textPaint,
@@ -119,13 +132,13 @@ public class ProgressBarCellRenderer : ICellRenderer
     }
 
     /// <summary>The value formatted with <see cref="TextFormat"/> in the current culture, reusing a recent result.</summary>
-    private string Label(double value)
+    private string Label(double value, string format)
     {
         var culture = System.Globalization.CultureInfo.CurrentCulture;
-        if (!ReferenceEquals(_labelsFormat, TextFormat) || !ReferenceEquals(_labelsCulture, culture))
+        if (!ReferenceEquals(_labelsFormat, format) || !ReferenceEquals(_labelsCulture, culture))
         {
             _labels.Clear();
-            _labelsFormat = TextFormat;
+            _labelsFormat = format;
             _labelsCulture = culture;
         }
 
@@ -134,7 +147,7 @@ public class ProgressBarCellRenderer : ICellRenderer
 
         if (_labels.Count >= MaxLabels)
             _labels.Clear();
-        text = value.ToString(TextFormat, culture);
+        text = value.ToString(format, culture);
         _labels[value] = text;
         return text;
     }
