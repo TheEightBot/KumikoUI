@@ -457,6 +457,7 @@ public class KumikoSource : IDisposable
     private void OnSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (_disposed || _detached) return;
+        ContentVersion++;
         // During ReorderRow we do RemoveAt+Insert on the source list;
         // skip the intermediate rebuilds; ReorderRow rebuilds once afterwards.
         if (_isReordering)
@@ -1210,6 +1211,7 @@ public class KumikoSource : IDisposable
     /// <summary>Raise <see cref="KumikoViewChangeKind.Redraw"/>, or note it for the end of a batch.</summary>
     private void NotifyRedraw()
     {
+        ContentVersion++;
         if (_updateDepth > 0)
             _pendingRedraw = true;
         else if (_viewChanged != null && _rowKeys != null)
@@ -1434,13 +1436,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     internal void PrepareCellTextCache(int frozenRows, int scrollingRows)
     {
-        // Culture null means the current culture at the time of use, which may change between frames.
-        var culture = _comparer.Culture;
-        if (!ReferenceEquals(culture, _textCulture))
-        {
-            _textCulture = culture;
-            InvalidateCellText();
-        }
+        SyncCellTextCulture();
 
         int ring = _textRingSize;
         while (ring < scrollingRows * 2) ring *= 2;
@@ -1449,6 +1445,21 @@ public class KumikoSource : IDisposable
             _textFrozenRows = frozenRows;
             _textRingSize = ring;
             _textLayoutVersion++;
+        }
+    }
+
+    /// <summary>
+    /// Marks the cached display text stale when the formatting culture changed since the last frame. The renderer
+    /// calls it before laying out columns, so Auto columns measure text formatted in the culture the frame draws.
+    /// </summary>
+    internal void SyncCellTextCulture()
+    {
+        // Culture null means the current culture at the time of use, which may change between frames.
+        var culture = _comparer.Culture;
+        if (!ReferenceEquals(culture, _textCulture))
+        {
+            _textCulture = culture;
+            InvalidateCellText();
         }
     }
 
@@ -1482,9 +1493,17 @@ public class KumikoSource : IDisposable
         return text;
     }
 
+    /// <summary>
+    /// Moves on whenever the rows or what a cell may show can have changed: a rebuild, a collection change, a cell or
+    /// item property change, a redraw request. Layout compares it with the version an Auto column was measured at
+    /// (#24), so a frame of unchanged data measures nothing. It is not raised as an event and may wrap around.
+    /// </summary>
+    internal int ContentVersion { get; private set; }
+
     /// <summary>Mark every cached display text stale.</summary>
     private void InvalidateCellText()
     {
+        ContentVersion++;
         if (++_textStamp == 0) _textStamp = 1;
     }
 
@@ -1494,6 +1513,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     private void InvalidateCellText(object item, string? propertyName)
     {
+        ContentVersion++;
         foreach (var col in _columns)
         {
             var cache = col.TextCache;
