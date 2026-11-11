@@ -8,5 +8,6 @@
 - [#106 Column chooser and multi-select checkbox column](106-column-chooser-and-select-column.md)
 - [#107 Paging and DataTable, dictionary and dynamic row sources](107-paging-and-row-sources.md)
 - [#108 Cell selection unit with ranges and clipboard](108-cell-selection.md)
+- [#109 Item-based pinned rows, stacked headers and cell merging](109-pinning-stacked-headers-merging.md)
 - [110 - API reference site and cookbook](110-api-reference-and-cookbook.md)
 - [#111 HarfBuzz shaping for complex scripts](111-harfbuzz-shaping.md)
