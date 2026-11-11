@@ -84,6 +84,9 @@ public partial class KumikoDataGrid : UserControl
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
 
+        // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
+        InitializeAccessibility();
+
         // Core "invalidate" signals → request a single canvas repaint.
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
