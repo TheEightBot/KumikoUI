@@ -1090,8 +1090,9 @@ public partial class KumikoDataGrid : ContentView
     /// </summary>
     private void Reconnect()
     {
-        _dataSource.Attach();
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
+        _dataSource.Attach();
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
