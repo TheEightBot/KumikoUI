@@ -5,6 +5,7 @@ using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
+using KumikoUI.Uno.Input;
 using Microsoft.UI.Xaml;
 using Windows.UI;
 
@@ -263,8 +264,7 @@ public partial class KumikoDataGrid
         set => SetValue(AlternateRowBackgroundProperty, value);
     }
 
-    private static KumikoColor? ToKumikoColor(Color? color)
-        => color is { } c ? new KumikoColor(c.R, c.G, c.B, c.A) : null;
+    private static KumikoColor? ToKumikoColor(Color? color) => PointerGestures.ToKumikoColor(color);
 
     // ── CellValidator ──
 
