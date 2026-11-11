@@ -68,6 +68,27 @@ public class KumikoInputController
         set => _editSession = value;
     }
 
+    /// <summary>
+    /// Grid-level switch for header-tap sorting: when false a header tap (with or without Ctrl/Shift) does not
+    /// sort, whatever a column's own <see cref="KumikoColumn.AllowSorting"/>. Default true. Sorting set in code
+    /// (<see cref="KumikoSource.ToggleSort"/>) is not affected.
+    /// </summary>
+    public bool AllowSorting { get; set; } = true;
+
+    /// <summary>
+    /// Grid-level switch for column filtering from the header: when false the filter icon is not hit-testable
+    /// and no filter popup opens, whatever a column's own <see cref="KumikoColumn.AllowFiltering"/>. Default
+    /// true. Filters set in code are not affected.
+    /// </summary>
+    public bool AllowFiltering
+    {
+        get => _hitTester.AllowFiltering;
+        set => _hitTester.AllowFiltering = value;
+    }
+
+    // Grid-level read-only: the edit session's flag, so editors, Boolean toggles and Tab stops agree
+    private bool GridReadOnly => _editSession is { IsReadOnly: true };
+
     // ── Events ──
     /// <summary>Raised when the grid surface needs to be redrawn.</summary>
     public event Action? NeedsRedraw;
@@ -82,7 +103,11 @@ public class KumikoInputController
 
     /// <summary>Raised when <see cref="Cursor"/> changes (only when it changes), with the new cursor.</summary>
     public event Action<KumikoCursor>? CursorChanged;
-    /// <summary>Raised when the user finishes resizing a column by dragging its header edge.</summary>
+    /// <summary>
+    /// Raised when the user finishes resizing a column by dragging its header edge. The drag makes the width
+    /// explicit and switches a Star or Auto column to Fixed, so the width persists (see
+    /// <see cref="KumikoColumn.SizeMode"/>).
+    /// </summary>
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized;
     /// <summary>Raised when the user drops a dragged column header at a new position.</summary>
     public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered;
@@ -115,7 +140,10 @@ public class KumikoInputController
     public ITextInputSession? ActiveTextInput =>
         _activeFilterPopup?.SearchTextInput ?? _editSession?.ActiveTextInput;
 
-    /// <summary>Raised when a column edge is double-clicked, requesting auto-fit width.</summary>
+    /// <summary>
+    /// Raised when a column edge is double-clicked, requesting auto-fit width. The built-in hosts answer it with
+    /// <see cref="KumikoRenderer.AutoFitColumn"/>.
+    /// </summary>
     public event EventHandler<AutoFitColumnEventArgs>? AutoFitColumnRequested;
 
     /// <summary>Is the inertial scroller still animating?</summary>
@@ -220,7 +248,7 @@ public class KumikoInputController
         int totalCols = dataSource.Columns.Count;
         // One page = the number of scrollable rows that fit between the fixed bands (header, grouping
         // panel, top summaries, frozen rows, pinned footer), so PageUp/PageDown never skip unseen rows.
-        int pageSize = Math.Max(1, (int)(GetScrollableRowsViewportHeight(scroll, style, dataSource) / style.RowHeight));
+        int pageSize = Math.Max(1, (int)(KumikoScroller.GetScrollableRowsViewportHeight(scroll, style, dataSource) / style.RowHeight));
 
         // ── Editing-mode key handling ──
         if (_editSession != null && _editSession.IsEditing)
@@ -934,7 +962,7 @@ public class KumikoInputController
 
         if (hit.Region == HitRegion.HeaderFilterIcon && hit.Column != null)
         {
-            if (hit.Column.AllowFiltering && CommitEditBeforeViewChange(dataSource, selection))
+            if (AllowFiltering && hit.Column.AllowFiltering && CommitEditBeforeViewChange(dataSource, selection))
             {
                 ShowFilterPopup(hit.Column, hit.ColumnIndex, scroll, style, dataSource);
             }
@@ -948,10 +976,13 @@ public class KumikoInputController
             bool ctrl = (e.Modifiers & InputModifiers.Control) != 0;
             bool shift = (e.Modifiers & InputModifiers.Shift) != 0;
 
-            if (ctrl || shift)
-                dataSource.ToggleMultiSort(hit.Column);
-            else
-                dataSource.ToggleSort(hit.Column);
+            if (AllowSorting)
+            {
+                if (ctrl || shift)
+                    dataSource.ToggleMultiSort(hit.Column);
+                else
+                    dataSource.ToggleSort(hit.Column);
+            }
 
             Redraw();
             e.Handled = true;
@@ -1162,8 +1193,10 @@ public class KumikoInputController
 
         var col = columns[_resizeColumnIndex];
         float delta = e.X - _resizeStartX;
-        float newWidth = Math.Clamp(_resizeStartWidth + delta, col.MinWidth, col.MaxWidth);
-        col.Width = newWidth;
+        // Not Math.Clamp: a MinWidth above MaxWidth wins instead of throwing. A Star or Auto column switches to
+        // Fixed, so the next layout pass keeps the width instead of sharing it out or measuring it again (#24).
+        float newWidth = Math.Max(col.MinWidth, Math.Min(_resizeStartWidth + delta, col.MaxWidth));
+        col.ApplyUserWidth(newWidth);
         Redraw();
     }
 
@@ -1254,20 +1287,6 @@ public class KumikoInputController
     // ── Scroll helpers ──
 
     /// <summary>
-    /// Height available to scrollable rows: the viewport minus the fixed bands drawn over or above
-    /// them — grouping panel, header, top summaries, frozen rows and the pinned bottom summary footer.
-    /// </summary>
-    private static float GetScrollableRowsViewportHeight(ScrollState scroll, KumikoStyle style, KumikoSource? dataSource)
-    {
-        float groupPanelHeight = dataSource != null && dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
-        float topSummaryHeight = dataSource != null ? dataSource.TopSummaryCount * style.SummaryRowHeight : 0;
-        float frozenRowHeight = (dataSource?.EffectiveFrozenRowCount ?? 0) * style.RowHeight;
-        float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(dataSource?.BottomSummaryCount ?? 0);
-        return scroll.ViewportHeight - groupPanelHeight - style.HeaderHeight - topSummaryHeight
-            - frozenRowHeight - pinnedFooterHeight;
-    }
-
-    /// <summary>
     /// Toggle the group whose header was tapped. When that collapses a group whose header was pinned at the top of the
     /// data area (#174) — its own row scrolled above its pinned slot — the view scrolls so the collapsed header stays
     /// where it was pinned, instead of jumping to whatever followed the group's rows.
@@ -1308,70 +1327,11 @@ public class KumikoInputController
         int row = selection.CurrentCell.Row;
         int col = selection.CurrentCell.Column;
 
-        int frozenRowCount = dataSource?.EffectiveFrozenRowCount ?? 0;
-
-        // If the row is a frozen row, no vertical scroll needed for it
-        if (row >= frozenRowCount)
-        {
-            // Scrollable row: ensure visible between the frozen rows and the pinned footer
-            float scrollableRowTop = (row - frozenRowCount) * style.RowHeight;
-            float scrollableRowBottom = scrollableRowTop + style.RowHeight;
-
-            float visibleHeight = Math.Max(style.RowHeight, GetScrollableRowsViewportHeight(scroll, style, dataSource));
-
-            // Keep the row below the sticky group headers pinned over the top of the rows (#174)
-            float pinnedBand = PinnedGroupHeaders.BandHeightAbove(dataSource, style, row);
-
-            if (scrollableRowTop - pinnedBand < scroll.OffsetY)
-                scroll.OffsetY = scrollableRowTop - pinnedBand;
-            else if (scrollableRowBottom > scroll.OffsetY + visibleHeight)
-                scroll.OffsetY = scrollableRowBottom - visibleHeight;
-        }
-
-        // If the column is frozen (left or right), no horizontal scroll needed
-        if (col >= 0 && col < columns.Count && (columns[col].IsFrozen || columns[col].IsFrozenRight))
-        {
-            scroll.ClampOffset();
-            return;
-        }
-
-        // Calculate frozen widths
-        float frozenWidth = 0;
-        float rightFrozenWidth = 0;
-        foreach (var c in columns)
-        {
-            if (!c.IsVisible) continue;
-            if (c.IsFrozen) frozenWidth += c.Width;
-            if (c.IsFrozenRight) rightFrozenWidth += c.Width;
-        }
-
-        // Ensure scrollable column is visible (accounting for frozen areas on both sides)
-        float colLeft = frozenWidth;
-        for (int i = 0; i < columns.Count; i++)
-        {
-            if (!columns[i].IsVisible || columns[i].IsFrozen || columns[i].IsFrozenRight) continue;
-            if (i == col) break;
-            colLeft += columns[i].Width;
-        }
-
-        float colRight = colLeft;
-        if (col >= 0 && col < columns.Count)
-            colRight += columns[col].Width;
-
-        // The row drag handle (left or right) takes viewport width from the columns as well
-        float handleWidth = style.ShowRowDragHandle ? style.RowDragHandleWidth : 0;
-
-        // Scrollable area: starts at frozenWidth, ends at viewportWidth - drag handle - rightFrozenWidth
-        float scrollableWidth = scroll.ViewportWidth - handleWidth - rightFrozenWidth;
-        float scrollableLeft = scroll.OffsetX + frozenWidth;
-        float scrollableRight = scroll.OffsetX + scrollableWidth;
-
-        if (colLeft < scrollableLeft)
-            scroll.OffsetX = colLeft - frozenWidth;
-        else if (colRight > scrollableRight)
-            scroll.OffsetX = colRight - scrollableWidth;
-
-        scroll.ClampOffset();
+        float offsetY = dataSource != null
+            ? KumikoScroller.GetRowOffsetY(dataSource, style, scroll, row)
+            : scroll.OffsetY;
+        float offsetX = KumikoScroller.GetColumnOffsetX(columns, style, scroll, col);
+        scroll.ScrollTo(offsetX, offsetY);
     }
 
     private void Redraw() => NeedsRedraw?.Invoke();
@@ -1410,7 +1370,7 @@ public class KumikoInputController
         KumikoRect Anchor()
         {
             _popupManager.Viewport = new KumikoRect(0, 0, scroll.ViewportWidth, scroll.ViewportHeight);
-            float x = HeaderScreenX(column, scroll, dataSource);
+            float x = HeaderScreenX(column, scroll, dataSource, style);
             float popupWidth = popup.Bounds.Width;
             if (x + popupWidth > scroll.ViewportWidth)
                 x = scroll.ViewportWidth - popupWidth - 4;
@@ -1456,14 +1416,29 @@ public class KumikoInputController
             _popupManager.Close(_activeFilterPopup); // OnPopupClosed clears it and raises FilterPopupClosed
     }
 
-    /// <summary>The viewport x of a column's header, by its freeze pane.</summary>
-    private static float HeaderScreenX(KumikoColumn column, ScrollState scroll, KumikoSource dataSource)
+    /// <summary>
+    /// The viewport x of a column's header, by its freeze pane. The row drag handle takes width at the start
+    /// (<see cref="Models.DragHandlePosition.Left"/>) or the end of the viewport, and the columns sit beside it.
+    /// </summary>
+    /// <remarks>Allocation-free: it runs per anchor update while a filter popup is open.</remarks>
+    internal static float HeaderScreenX(KumikoColumn column, ScrollState scroll, KumikoSource dataSource, KumikoStyle style)
     {
+        float handleOffset = 0, rightHandleOffset = 0;
+        if (style.ShowRowDragHandle)
+        {
+            if (style.RowDragHandlePosition == Models.DragHandlePosition.Left)
+                handleOffset = style.RowDragHandleWidth;
+            else
+                rightHandleOffset = style.RowDragHandleWidth;
+        }
+
+        var columns = dataSource.Columns;
         if (column.IsFrozen)
         {
-            float x = 0;
-            foreach (var c in dataSource.Columns)
+            float x = handleOffset;
+            for (int i = 0; i < columns.Count; i++)
             {
+                var c = columns[i];
                 if (c == column) break;
                 if (c.IsVisible && c.IsFrozen) x += c.Width;
             }
@@ -1472,17 +1447,31 @@ public class KumikoInputController
 
         if (column.IsFrozenRight)
         {
-            var rightFrozen = dataSource.Columns.Where(c => c.IsVisible && c.IsFrozenRight).ToList();
-            float x = scroll.ViewportWidth - rightFrozen.Sum(c => c.Width);
-            return x + rightFrozen.TakeWhile(c => c != column).Sum(c => c.Width);
+            float rightFrozenWidth = 0, before = 0;
+            bool found = false;
+            for (int i = 0; i < columns.Count; i++)
+            {
+                var c = columns[i];
+                if (!c.IsVisible || !c.IsFrozenRight) continue;
+                if (c == column) found = true;
+                if (!found) before += c.Width;
+                rightFrozenWidth += c.Width;
+            }
+            return scroll.ViewportWidth - rightHandleOffset - rightFrozenWidth + before;
         }
 
-        float frozenWidth = dataSource.Columns.Where(c => c.IsVisible && c.IsFrozen).Sum(c => c.Width);
-        float scrollableBefore = dataSource.Columns
-            .Where(c => c.IsVisible && !c.IsFrozen && !c.IsFrozenRight)
-            .TakeWhile(c => c != column)
-            .Sum(c => c.Width);
-        return frozenWidth + scrollableBefore - scroll.OffsetX;
+        float frozenWidth = 0, scrollableBefore = 0;
+        bool reached = false;
+        for (int i = 0; i < columns.Count; i++)
+        {
+            var c = columns[i];
+            if (!c.IsVisible) continue;
+            if (c.IsFrozen) { frozenWidth += c.Width; continue; }
+            if (c.IsFrozenRight) continue;
+            if (c == column) reached = true;
+            if (!reached) scrollableBefore += c.Width;
+        }
+        return handleOffset + frozenWidth + scrollableBefore - scroll.OffsetX;
     }
 
     // ── Edit helpers ──────────────────────────────────────────────
@@ -1558,7 +1547,7 @@ public class KumikoInputController
         if (dataSource.IsNonDataRow(row)) return false;
 
         var column = dataSource.Columns[col];
-        if (column.IsReadOnly) return false;
+        if (column.IsReadOnly || _editSession.IsReadOnly) return false;
 
         // An interactive cell (action buttons) is acted on, never edited
         if (GetInteractiveRenderer(column) != null) return false;
@@ -1725,8 +1714,8 @@ public class KumikoInputController
     }
 
     /// <summary>A Tab stop: a visible, editable column that allows tab stops, of any column type.</summary>
-    private static bool IsTabStop(KumikoColumn column) =>
-        column.IsVisible && column.AllowTabStop && !column.IsReadOnly;
+    private static bool IsTabStop(KumikoColumn column, bool gridReadOnly) =>
+        !gridReadOnly && column.IsVisible && column.AllowTabStop && !column.IsReadOnly;
 
     /// <summary>
     /// The next tab stop after <paramref name="from"/> in reading order (direction +1) or before it (-1),
@@ -1734,18 +1723,25 @@ public class KumikoInputController
     /// columns are the same in every row, so they are found once and the search walks rows, never
     /// rows × columns cells.
     /// </summary>
-    private static CellPosition FindNextTabStop(CellPosition from, KumikoSource dataSource, int direction)
+    private CellPosition FindNextTabStop(CellPosition from, KumikoSource dataSource, int direction)
     {
         if (!from.IsValid) return CellPosition.Invalid;
 
-        var columns = dataSource.Columns;
+        // Tab stops are found in on-screen order (left-frozen, scrolling, right-frozen), as Left and Right move.
+        var columns = dataSource.DisplayColumns;
+        int fromDisplay = dataSource.ToDisplayIndex(from.Column);
+        bool gridReadOnly = GridReadOnly;
         int firstStop = -1, lastStop = -1, nextInRow = -1;
-        for (int c = 0; c < columns.Count; c++)
+        for (int d = 0; d < columns.Count; d++)
         {
-            if (!IsTabStop(columns[c])) continue;
+            if (!IsTabStop(columns[d], gridReadOnly)) continue;
+            int c = dataSource.ToColumnIndex(d);
             if (firstStop < 0) firstStop = c;
             lastStop = c;
-            if (direction > 0 ? c > from.Column && nextInRow < 0 : c < from.Column)
+            // A current cell on a hidden column has no display position: its Columns index stands in for it.
+            bool after = fromDisplay >= 0 ? d > fromDisplay : c > from.Column;
+            bool before = fromDisplay >= 0 ? d < fromDisplay : c < from.Column;
+            if (direction > 0 ? after && nextInRow < 0 : before)
                 nextInRow = c;
         }
         if (firstStop < 0) return CellPosition.Invalid;
@@ -1803,7 +1799,7 @@ public class KumikoInputController
     /// </summary>
     private bool CanToggleBooleanCell(CellPosition cell, KumikoSource dataSource)
     {
-        if (_editSession == null || !cell.IsValid) return false;
+        if (_editSession == null || _editSession.IsReadOnly || !cell.IsValid) return false;
         if (cell.Row >= dataSource.RowCount || dataSource.IsNonDataRow(cell.Row)) return false;
         var column = ColumnAt(dataSource, cell.Column);
         return column is { ColumnType: KumikoColumnType.Boolean, IsReadOnly: false } &&

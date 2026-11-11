@@ -97,7 +97,24 @@ git push origin v0.2.0
 
 The section becomes the GitHub release notes, and every package links to the CHANGELOG. Versioning rules (SemVer, lockstep packages, deprecation, support window) are in [docs/VERSIONING.md](docs/VERSIONING.md).
 
-The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. It then runs the Core and Uno test suites and waits for approval in the `nuget-publish` environment before pushing to NuGet.org. Symbol packages (`.snupkg`) are produced for every package by default. Only admins can create `v*` tags.
+The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. It then runs the Core and Uno test suites, packs all four packages, and fails unless each `.nupkg` has a matching `.snupkg` symbol package and carries the CHANGELOG section as its release notes. The publish job then waits for approval in the `nuget-publish` environment before pushing to NuGet.org. Only admins can create `v*` tags.
+
+To rehearse a release, run the **Publish NuGet Packages** workflow manually with **dry run** on (the default), from any branch. It runs the same resolve, test, pack and validate jobs as a tag push but never pushes to NuGet.org or creates a GitHub Release. To retry a failed publish, run it from the `vX.Y.Z` tag with dry run off. Runs are serialized per ref, so a tag push and a manual retry cannot publish at the same time.
+
+### NuGet Trusted Publishing (one-time maintainer setup)
+
+The workflow authenticates to NuGet.org with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing): the publish job exchanges a GitHub OIDC token for a short-lived API key through `NuGet/login`. No API key is stored as a secret. Before the first release with this workflow:
+
+1. Sign in to nuget.org as the owner of the four packages (or of the organization that owns them), open **Trusted Publishing**, and add a policy with:
+   - Repository owner: `TheEightBot`
+   - Repository: `KumikoUI`
+   - Workflow file: `publish.yml`
+   - Environment: `nuget-publish`
+   For a package ID that does not exist yet, create the policy as pending so the first push can claim it.
+2. In the GitHub repository, add the variable `NUGET_USER` (Settings, Secrets and variables, Actions, Variables) containing the nuget.org profile name (not the email address) that owns the policy.
+3. After one successful release, delete the old `EIGHTBOT_NUGET_APIKEY` secret and revoke that key on nuget.org.
+
+Only the publish job has `id-token: write`, and the policy is bound to the `nuget-publish` environment, so the approval and `v*` tag restrictions apply to getting a key.
 
 ## Making a change
 

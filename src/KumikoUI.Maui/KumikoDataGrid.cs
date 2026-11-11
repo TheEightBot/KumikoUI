@@ -99,10 +99,6 @@ public partial class KumikoDataGrid : ContentView
         _selection = new KumikoSelectionModel(_dataSource);
         InitializeSelectionBinding();
 
-        // Accessibility: set semantic description for screen readers
-        SemanticProperties.SetDescription(this, "Data grid");
-        AutomationProperties.SetIsInAccessibleTree(this, true);
-
         // Set up the hidden keyboard proxy entry (fallback for Android/Windows)
         _keyboardProxy = new Entry
         {
@@ -122,9 +118,12 @@ public partial class KumikoDataGrid : ContentView
         _canvasView.VerticalOptions = LayoutOptions.Fill;
         _canvasView.EnableTouchEvents = true;
         _canvasView.IgnorePixelScaling = false;
+        // The grid draws left-to-right whatever its ancestors' direction (RTL is unsupported in 1.0, #80, #228)
+        _canvasView.FlowDirection = FlowDirection.LeftToRight;
 
         _root.Children.Add(_canvasView);
         _root.Children.Add(_keyboardProxy);
+        InitializeAccessibility();
         Content = _root;
         _contentSealed = true;
 
@@ -136,6 +135,9 @@ public partial class KumikoDataGrid : ContentView
 
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
+
+        // Scroll offsets and the Scrolled event (KumikoDataGrid.Scrolling.cs)
+        InitializeScrolling();
 
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
@@ -152,6 +154,7 @@ public partial class KumikoDataGrid : ContentView
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
         _editSession.Style = _style;
+        ConnectTheming();
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
 
         // Wire edit session lifecycle for cursor blink timer
@@ -215,6 +218,7 @@ public partial class KumikoDataGrid : ContentView
     protected override void OnHandlerChanged()
     {
         base.OnHandlerChanged();
+        EnsureHostingConfigured();
 
         // Connected to a new handler — re-subscribe if previously cleaned up.
         // On first attach, the constructor already did the wiring and _isConnected
@@ -229,13 +233,6 @@ public partial class KumikoDataGrid : ContentView
 
     // ── Public API ────────────────────────────────────────────────
 
-    /// <summary>Configurable scroll/inertia settings.</summary>
-    public ScrollSettings ScrollSettings
-    {
-        get => _inputController.ScrollSettings;
-        set => _inputController.ScrollSettings = value;
-    }
-
     /// <summary>Gets the underlying data source.</summary>
     public KumikoSource DataSource => _dataSource;
 
@@ -247,42 +244,6 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Gets the edit session for inline cell editing.</summary>
     public EditSession EditSession => _editSession;
-
-    /// <summary>
-    /// Gets or sets the grid style / theme. Style-backed properties you set explicitly
-    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied to the style you assign.
-    /// </summary>
-    public KumikoStyle GridStyle
-    {
-        get => _style;
-        set
-        {
-            _style = value;
-            ApplyStyleOptions();
-            _editSession.Style = _style;
-            InvalidateSurface();
-        }
-    }
-
-    /// <summary>
-    /// Applies a built-in theme preset. Sets <see cref="GridStyle"/>
-    /// to a preconfigured <see cref="KumikoStyle"/> for the chosen theme; style-backed properties you set
-    /// explicitly (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied on top of it.
-    /// </summary>
-    public KumikoThemeMode Theme
-    {
-        get => _themeMode;
-        set
-        {
-            if (_themeMode == value) return;
-            _themeMode = value;
-            _style = KumikoTheme.Create(value);
-            ApplyStyleOptions();
-            _editSession.Style = _style;
-            InvalidateSurface();
-        }
-    }
-    private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
 
     // ── Bindable Properties ──────────────────────────────────────
 
@@ -318,8 +279,13 @@ public partial class KumikoDataGrid : ContentView
         {
             _dataSource.SetItems(newValue);
 
+            if (!IsObservingCollections)
+            {
+                // Set while disconnected: SetItems subscribed, so release it; Reconnect re-attaches
+                _dataSource.Detach();
+            }
             // Subscribe at MAUI layer for thread-safe invalidation
-            if (newValue is INotifyCollectionChanged incc)
+            else if (newValue is INotifyCollectionChanged incc)
             {
                 _boundCollectionChangedSource = incc;
                 _boundCollectionChangedSource.CollectionChanged += OnBoundItemsCollectionChanged;
@@ -400,9 +366,18 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="IsReadOnly"/> bindable property.</summary>
     public static readonly BindableProperty IsReadOnlyProperty = BindableProperty.Create(
-        nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid), false);
+        nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid), false,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._editSession.IsReadOnly = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When true, cells cannot be edited.</summary>
+    /// <summary>
+    /// When true, no cell can be edited, Boolean cells do not toggle and Tab skips every cell; combines with
+    /// the per-column <c>IsReadOnly</c> (either one makes a cell read-only).
+    /// </summary>
     public bool IsReadOnly
     {
         get => (bool)GetValue(IsReadOnlyProperty);
@@ -489,9 +464,15 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="AllowSorting"/> bindable property.</summary>
     public static readonly BindableProperty AllowSortingProperty = BindableProperty.Create(
-        nameof(AllowSorting), typeof(bool), typeof(KumikoDataGrid), true);
+        nameof(AllowSorting), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._inputController.AllowSorting = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When false, column header taps do not sort.</summary>
+    /// <summary>When false, column header taps do not sort (a column's own <c>AllowSorting</c> also applies).</summary>
     public bool AllowSorting
     {
         get => (bool)GetValue(AllowSortingProperty);
@@ -502,9 +483,19 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="AllowFiltering"/> bindable property.</summary>
     public static readonly BindableProperty AllowFilteringProperty = BindableProperty.Create(
-        nameof(AllowFiltering), typeof(bool), typeof(KumikoDataGrid), true);
+        nameof(AllowFiltering), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._inputController.AllowFiltering = (bool)n;
+            grid._renderer.AllowFiltering = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When false, filter icons are not shown in column headers.</summary>
+    /// <summary>
+    /// When false, filter icons are not shown in column headers and cannot be tapped (a column's own
+    /// <c>AllowFiltering</c> also applies).
+    /// </summary>
     public bool AllowFiltering
     {
         get => (bool)GetValue(AllowFilteringProperty);
@@ -516,11 +507,15 @@ public partial class KumikoDataGrid : ContentView
     /// <summary>Identifies the <see cref="HeaderHeight"/> bindable property.</summary>
     public static readonly BindableProperty HeaderHeightProperty = BindableProperty.Create(
         nameof(HeaderHeight), typeof(double), typeof(KumikoDataGrid), 40d,
-        propertyChanged: (b, _, n) =>
+        coerceValue: (b, v) =>
         {
+            // Runs on every assignment (even one equal to the default), so the value is always an explicit
+            // override that survives a later style or theme change.
             var view = (KumikoDataGrid)b;
-            view._style.HeaderHeight = (float)(double)n;
+            view._styleOptions.HeaderHeight = (float)(double)v;
+            view.ApplyStyleOptions();
             view.InvalidateSurface();
+            return v;
         });
 
     /// <summary>Height of the column header row in pixels.</summary>
@@ -535,11 +530,15 @@ public partial class KumikoDataGrid : ContentView
     /// <summary>Identifies the <see cref="RowHeight"/> bindable property.</summary>
     public static readonly BindableProperty RowHeightProperty = BindableProperty.Create(
         nameof(RowHeight), typeof(double), typeof(KumikoDataGrid), 36d,
-        propertyChanged: (b, _, n) =>
+        coerceValue: (b, v) =>
         {
+            // Runs on every assignment (even one equal to the default), so the value is always an explicit
+            // override that survives a later style or theme change.
             var view = (KumikoDataGrid)b;
-            view._style.RowHeight = (float)(double)n;
+            view._styleOptions.RowHeight = (float)(double)v;
+            view.ApplyStyleOptions();
             view.InvalidateSurface();
+            return v;
         });
 
     /// <summary>Height of each data row in pixels.</summary>
@@ -553,17 +552,16 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="GridDescription"/> bindable property.</summary>
     public static readonly BindableProperty GridDescriptionProperty = BindableProperty.Create(
-        nameof(GridDescription), typeof(string), typeof(KumikoDataGrid), "Data grid",
-        propertyChanged: (b, _, n) =>
-        {
-            var view = (KumikoDataGrid)b;
-            SemanticProperties.SetDescription(view, (string)n);
-        });
+        nameof(GridDescription), typeof(string), typeof(KumikoDataGrid), null,
+        propertyChanged: (b, _, _) => ((KumikoDataGrid)b).UpdateAccessibilityHint());
 
-    /// <summary>Accessible description for screen readers.</summary>
-    public string GridDescription
+    /// <summary>
+    /// Accessible description for screen readers. Null (the default) uses the localized
+    /// <see cref="KumikoStrings.AccessibleGridName"/> ("Data grid").
+    /// </summary>
+    public string? GridDescription
     {
-        get => (string)GetValue(GridDescriptionProperty);
+        get => (string?)GetValue(GridDescriptionProperty);
         set => SetValue(GridDescriptionProperty, value);
     }
 
@@ -599,7 +597,8 @@ public partial class KumikoDataGrid : ContentView
 
         if (newCollection != null)
         {
-            newCollection.CollectionChanged += OnColumnsCollectionChanged;
+            if (IsObservingCollections)
+                newCollection.CollectionChanged += OnColumnsCollectionChanged;
             _dataSource.SetColumns(newCollection);
         }
         else
@@ -648,7 +647,8 @@ public partial class KumikoDataGrid : ContentView
 
         if (newCollection != null)
         {
-            newCollection.CollectionChanged += OnTableSummaryRowsCollectionChanged;
+            if (IsObservingCollections)
+                newCollection.CollectionChanged += OnTableSummaryRowsCollectionChanged;
             SyncTableSummaryRows(newCollection);
         }
         else
@@ -671,19 +671,6 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Invalidate the canvas surface to trigger a repaint.</summary>
     private void InvalidateSurface() => _canvasView.InvalidateSurface();
-
-    /// <summary>Update the accessibility hint with current grid dimensions.</summary>
-    private void UpdateAccessibilityHint()
-    {
-        int rows = _dataSource.RowCount;
-        int cols = _dataSource.Columns.Count;
-        string hint = $"{rows} rows, {cols} columns";
-
-        if (_selection.CurrentCell.IsValid)
-            hint += $", current cell row {_selection.CurrentCell.Row + 1} column {_selection.CurrentCell.Column + 1}";
-
-        SemanticProperties.SetHint(this, hint);
-    }
 
     // ── Rendering ────────────────────────────────────────────────
 
@@ -938,12 +925,10 @@ public partial class KumikoDataGrid : ContentView
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
         using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
-        var layoutEngine = new KumikoLayoutEngine();
 
-        float optimalWidth = layoutEngine.CalculateAutoFitWidth(
-            e.Column, _dataSource, measureCtx, _style);
-
-        e.Column.Width = optimalWidth;
+        // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
+        // Auto column becomes Fixed at the fitted width so it keeps it.
+        _renderer.AutoFitColumn(e.Column, _dataSource, measureCtx, _style);
         InvalidateSurface();
     }
 
@@ -1013,10 +998,15 @@ public partial class KumikoDataGrid : ContentView
     private void Cleanup()
     {
         _wasCleanedUp = true;
+        DisconnectTheming();
 
         // Stop timers first (they capture 'this' via Tick delegates)
         StopInertialScrollTimer();
         StopCursorBlinkTimer();
+        CancelLongPressTimer();
+
+        // Stop observing the app's collection and its items (the source lives on; Reconnect re-attaches it)
+        _dataSource.Detach();
 
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
@@ -1033,6 +1023,7 @@ public partial class KumikoDataGrid : ContentView
         _editSession.NeedsRedraw -= OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit -= OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit -= OnEditSessionCellEndEdit;
+        UnsubscribeAccessibility();
 
         // Unsubscribe canvas events
         _canvasView.PaintSurface -= OnPaintSurface;
@@ -1046,12 +1037,9 @@ public partial class KumikoDataGrid : ContentView
         _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed -= OnKeyboardProxyCompleted;
 
-        // Unsubscribe bound collection
-        if (_boundCollectionChangedSource != null)
-        {
-            _boundCollectionChangedSource.CollectionChanged -= OnBoundItemsCollectionChanged;
-            _boundCollectionChangedSource = null;
-        }
+        // Unsubscribe the bound items and the Columns/summary/grouping collections (Reconnect restores them)
+        UnsubscribeObservedCollections();
+        _selectionBinder.Detach(); // the app's SelectedItems list, when it supplied one
 
 #if MACCATALYST || IOS
         // Remove native keyboard input
@@ -1060,6 +1048,9 @@ public partial class KumikoDataGrid : ContentView
             _nativeKeyInput.TextInserted -= OnNativeTextInserted;
             _nativeKeyInput.BackspaceDeleted -= OnNativeBackspace;
             _nativeKeyInput.KeyPressed -= OnNativeKeyPress;
+            _nativeKeyInput.TabKeyReceived -= OnNativeTabKey;
+            _nativeKeyInput.NavigationKeyReceived -= OnNativeNavigationKey;
+            _nativeKeyInput.CanHandleTab = null;
             _nativeKeyInput.RemoveFromSuperview();
             _nativeKeyInput = null;
             _useNativeKeyInput = false;
@@ -1092,7 +1083,12 @@ public partial class KumikoDataGrid : ContentView
     /// </summary>
     private void Reconnect()
     {
+        ConnectTheming();
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
+        _dataSource.Attach();
+        ResubscribeObservedCollections();
+        _selectionBinder.Attach();
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
@@ -1105,6 +1101,7 @@ public partial class KumikoDataGrid : ContentView
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
+        SubscribeAccessibility();
 
         _canvasView.PaintSurface += OnPaintSurface;
         _canvasView.Touch += OnCanvasTouch;

@@ -60,11 +60,17 @@ public class KumikoColumn
 
     /// <summary>
     /// Current width in pixels (after layout). Setting it, in code, in XAML, by dragging the column's resize
-    /// grip or by auto-fit, makes the width explicit (<see cref="HasExplicitWidth"/>): the column is drawn at that
-    /// width and a header that does not fit is truncated with an ellipsis. A column whose width was never set is
-    /// at least wide enough for its whole header (see <see cref="HeaderFitWidth"/>), unless <see cref="MaxWidth"/>
-    /// is smaller.
+    /// grip or by auto-fit, makes the width explicit (<see cref="HasExplicitWidth"/>): a
+    /// <see cref="ColumnSizeMode.Fixed"/> column is drawn at that width and a header that does not fit is truncated
+    /// with an ellipsis. A column whose width was never set is at least wide enough for its whole header (see
+    /// <see cref="HeaderFitWidth"/>), unless <see cref="MaxWidth"/> is smaller.
     /// </summary>
+    /// <remarks>
+    /// For <see cref="ColumnSizeMode.Star"/> and <see cref="ColumnSizeMode.Auto"/> columns the width is an output of
+    /// layout: a Star column gets its share of the viewport and an Auto column its <see cref="ContentFitWidth"/> once
+    /// measured, whatever is set here. To pin such a column's width, set <see cref="SizeMode"/> to
+    /// <see cref="ColumnSizeMode.Fixed"/>; a resize drag or an auto-fit does that for you.
+    /// </remarks>
     public float Width
     {
         get => _width;
@@ -93,8 +99,39 @@ public class KumikoColumn
     // The header text width last measured, and the text and font it was measured for (#182).
     internal readonly Layout.HeaderMeasurement HeaderMeasure = new();
 
+    /// <summary>
+    /// The width that fits the header and the widest sampled cell of a <see cref="ColumnSizeMode.Auto"/> column:
+    /// the wider of <see cref="HeaderFitWidth"/> and the widest sampled cell's display text plus the cell padding on
+    /// both sides and a small buffer, before <see cref="MinWidth"/> and <see cref="MaxWidth"/> are applied. Zero
+    /// until the renderer has measured the column, and for columns of other size modes.
+    /// </summary>
+    /// <remarks>
+    /// The renderer samples the cells on the first frame and again on the first frame after the data or the view
+    /// changes (a rebuild, a collection change, a cell or item property change), or after the cell font changes; it
+    /// measures the rows on screen plus up to <see cref="Layout.KumikoLayoutEngine.AutoFitSampleRows"/> rows at each
+    /// end of the view, never every row. Scrolling alone does not measure again, so the column keeps its width while
+    /// the grid scrolls.
+    /// </remarks>
+    public float ContentFitWidth { get; internal set; }
+
+    // The widest sampled cell text last measured for an Auto column, and what it was measured for (#24).
+    internal readonly Layout.ContentMeasurement ContentMeasure = new();
+
     /// <summary>Sets the width layout computed, without making it explicit.</summary>
     internal void SetLayoutWidth(float width) => _width = width;
+
+    /// <summary>
+    /// Applies a width the user chose by dragging the resize grip or by auto-fit: it becomes explicit and, for a
+    /// Star or Auto column, the column switches to <see cref="ColumnSizeMode.Fixed"/> so layout keeps it (#24).
+    /// </summary>
+    internal void ApplyUserWidth(float width)
+    {
+        Width = width;
+        if (SizeMode == ColumnSizeMode.Fixed) return;
+        SizeMode = ColumnSizeMode.Fixed;
+        ContentFitWidth = 0f;
+        ContentMeasure.Clear();
+    }
 
     /// <summary>Minimum allowed width.</summary>
     public float MinWidth { get; set; } = 40f;
@@ -102,10 +139,18 @@ public class KumikoColumn
     /// <summary>Maximum allowed width.</summary>
     public float MaxWidth { get; set; } = float.MaxValue;
 
-    /// <summary>Sizing mode for layout calculation.</summary>
+    /// <summary>
+    /// Sizing mode for layout calculation. Dragging the resize grip of a <see cref="ColumnSizeMode.Star"/> or
+    /// <see cref="ColumnSizeMode.Auto"/> column, or auto-fitting it, switches it to <see cref="ColumnSizeMode.Fixed"/>
+    /// at the chosen width, so the width persists instead of being shared out or measured again on the next frame.
+    /// </summary>
     public ColumnSizeMode SizeMode { get; set; } = ColumnSizeMode.Fixed;
 
-    /// <summary>Star weight when SizeMode == Star.</summary>
+    /// <summary>
+    /// Star weight when SizeMode == Star: the column's share of the width Fixed and Auto columns leave, relative to
+    /// the other Star columns' weights. A resize drag or an auto-fit does not change it; it switches the column to
+    /// <see cref="ColumnSizeMode.Fixed"/> instead (see <see cref="SizeMode"/>).
+    /// </summary>
     public float StarWeight { get; set; } = 1f;
 
     /// <summary>Is the column visible?</summary>
@@ -221,6 +266,16 @@ public class KumikoColumn
 
     /// <summary>Horizontal alignment of cell content.</summary>
     public Rendering.KumikoTextAlignment TextAlignment { get; set; } = Rendering.KumikoTextAlignment.Left;
+
+    /// <summary>
+    /// How the text of this column's cells is laid out when it is wider than the cell. With
+    /// <see cref="Rendering.KumikoTextWrap.None"/> (the default) a cell shows one line, cut with an ellipsis; with
+    /// <see cref="Rendering.KumikoTextWrap.Word"/> or <see cref="Rendering.KumikoTextWrap.Character"/> it shows as
+    /// many wrapped lines as fit the row height (line breaks in the value start a new line), and the last one ends
+    /// with an ellipsis when there is more. Rows keep their height (<see cref="KumikoStyle.RowHeight"/>), so
+    /// raise it to show more lines. Applies to the built-in text cells (Text, Numeric and Date columns).
+    /// </summary>
+    public Rendering.KumikoTextWrap TextWrap { get; set; } = Rendering.KumikoTextWrap.None;
 
     // ── Editor configuration ─────────────────────────────────────
 

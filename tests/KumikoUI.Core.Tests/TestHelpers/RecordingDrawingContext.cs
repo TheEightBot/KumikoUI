@@ -198,17 +198,16 @@ internal sealed class RecordingDrawingContext : IDrawingContext
 
     /// <summary>
     /// The text a <see cref="DrawOpKind.TextInRect"/> call shows on screen, by the rule the SkiaSharp context
-    /// applies: text wider than its rectangle (when the rectangle is wider than 20 px) is cut to the characters
-    /// that fit beside an ellipsis. Measures with this context's monospace <see cref="CharWidth"/>.
+    /// applies (<see cref="KumikoTextLayout.LayOut"/> on one line): text wider than its rectangle is cut to the
+    /// whole characters that fit beside an ellipsis. Measures with this context's monospace <see cref="CharWidth"/>.
     /// </summary>
     public static string ShownText(DrawOp op)
     {
         string text = op.Text ?? string.Empty;
-        float width = text.Length * CharWidth;
-        if (op.Kind != DrawOpKind.TextInRect || width <= op.Rect.Width || op.Rect.Width <= 20)
+        if (op.Kind != DrawOpKind.TextInRect)
             return text;
-        int fit = Math.Max(0, (int)((op.Rect.Width - CharWidth) / CharWidth));
-        return text[..Math.Min(fit, text.Length)] + "…";
+        var lines = KumikoTextLayout.LayOut(text, op.Rect.Width, KumikoTextWrap.None, 1, s => s.Length * CharWidth);
+        return lines.Count == 0 ? string.Empty : lines.GetLine(0);
     }
 
     public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) => new(-11, 3, 2);

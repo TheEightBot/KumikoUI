@@ -77,7 +77,7 @@ font-agnostic exactly like `KumikoUI.Maui`; only the *helper* moved into the lib
 ## 3. When to register (startup)
 
 - [x] Register **before** the first grid render. In the Uno app, `await` registration early in
-  `App.OnLaunched` (before activating the main window), or inside `UseKumikoUI()` startup. Because the
+  `App.OnLaunched` (before activating the main window). Because the
   grid falls back to the system font, an acceptable alternative is fire-and-forget registration followed
   by a `KumikoDataGrid.Invalidate()` once complete.
   > Avoid `.GetAwaiter().GetResult()` blocking on Uno startup (unlike MAUI's pre-loop `CreateMauiApp`,

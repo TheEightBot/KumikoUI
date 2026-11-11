@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Code coverage settings for the dotnet test command with the "XPlat Code Coverage" collector and this settings file
+  (coverlet.collector). Coverage is measured for the shipped platform-agnostic libraries only: KumikoUI.Core
+  and KumikoUI.SkiaSharp. The test assemblies, source generator output, samples and benchmarks are excluded.
+  The CI ratchet (eng/coverage/baseline.json, checked by eng/coverage/check-coverage.sh) reads the result.
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Include>[KumikoUI.Core]*,[KumikoUI.SkiaSharp]*</Include>
+          <Exclude>[*.Tests]*,[*]*.Generated.*,[*]SampleApp.*</Exclude>
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <ExcludeByFile>**/obj/**,**/*.g.cs,**/*.generated.cs,**/samples/**,**/benchmarks/**</ExcludeByFile>
+          <SkipAutoProps>true</SkipAutoProps>
+          <DeterministicReport>true</DeterministicReport>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

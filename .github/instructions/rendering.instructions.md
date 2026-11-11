@@ -20,7 +20,11 @@ void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
     KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
     KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center,
     bool clip = true);
+// Default interface members (#23): wrapping draw and measure; see KumikoTextWrap / KumikoTextLayout.
+void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint, KumikoTextAlignment hAlign,
+    KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap);
 KumikoSize MeasureText(string text, KumikoPaint paint);
+KumikoSize MeasureText(string text, KumikoPaint paint, float maxWidth, KumikoTextWrap wrap);
 KumikoFontMetrics GetFontMetrics(KumikoPaint paint);
 void ClipRect(KumikoRect rect);
 void Save();
@@ -141,7 +145,12 @@ it on theme change.
   (objects evicted mid-frame are released then) and leaves the cached objects alive.
 - `SkiaFontRegistrar` changes invalidate every live cache before the registrar disposes a typeface.
 - Text rendering uses modern SkiaSharp 3.x `SKFont`-based API (not deprecated `SKPaint.TextSize`).
-- Binary-search ellipsis truncation for text overflow.
+- Text widths and laid-out lines (ellipsis cuts, wrapped lines) are cached in the `SkiaResourceCache` across
+  frames, keyed by text and font values; a steady-state frame measures no text. Ellipsis cuts and wraps use
+  `KumikoTextLayout` (Core), which never splits a text element (emoji, combining sequence).
+- Glyphs the requested typeface lacks are drawn run by run with fallback typefaces (`SkiaFontRegistrar.FallbackFamilies`,
+  then `SKFontManager.MatchCharacter`); the runs are cached with the text's measurement, so measure through the cache
+  (never `SKFont.MeasureText` directly) to get widths that match what is drawn. See docs/RENDERING.md "Font fallback".
 - If a new `IDrawingContext` method is needed: **add to the interface in Core first**, then implement in `SkiaDrawingContext`.
 
 ---
