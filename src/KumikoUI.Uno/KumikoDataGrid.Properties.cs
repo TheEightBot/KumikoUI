@@ -48,7 +48,12 @@ public partial class KumikoDataGrid
         {
             view._dataSource.SetItems(newValue);
 
-            if (newValue is INotifyCollectionChanged incc)
+            if (!view.IsObservingCollections)
+            {
+                // Set while unloaded: SetItems subscribed, so release it; OnLoaded re-attaches
+                view._dataSource.Detach();
+            }
+            else if (newValue is INotifyCollectionChanged incc)
             {
                 view._boundCollectionChangedSource = incc;
                 view._boundCollectionChangedSource.CollectionChanged += view.OnBoundItemsCollectionChanged;
@@ -107,7 +112,8 @@ public partial class KumikoDataGrid
 
         if (e.NewValue is ObservableCollection<KumikoColumn> newCollection)
         {
-            newCollection.CollectionChanged += view.OnColumnsCollectionChanged;
+            if (view.IsObservingCollections)
+                newCollection.CollectionChanged += view.OnColumnsCollectionChanged;
             view._dataSource.SetColumns(newCollection);
         }
         else
@@ -158,7 +164,8 @@ public partial class KumikoDataGrid
 
         if (e.NewValue is ObservableCollection<TableSummaryRow> newCollection)
         {
-            newCollection.CollectionChanged += view.OnTableSummaryRowsCollectionChanged;
+            if (view.IsObservingCollections)
+                newCollection.CollectionChanged += view.OnTableSummaryRowsCollectionChanged;
             view.SyncTableSummaryRows(newCollection);
         }
         else
@@ -241,7 +248,8 @@ public partial class KumikoDataGrid
     private static void OnRowHeightChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var view = (KumikoDataGrid)d;
-        view._style.RowHeight = (float)(double)e.NewValue;
+        view._styleOptions.RowHeight = (float)(double)e.NewValue;
+        view.ApplyStyleOptions();
         view.Invalidate();
     }
 
@@ -263,7 +271,8 @@ public partial class KumikoDataGrid
     private static void OnHeaderHeightChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var view = (KumikoDataGrid)d;
-        view._style.HeaderHeight = (float)(double)e.NewValue;
+        view._styleOptions.HeaderHeight = (float)(double)e.NewValue;
+        view.ApplyStyleOptions();
         view.Invalidate();
     }
 
@@ -364,7 +373,10 @@ public partial class KumikoDataGrid
             nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid),
             new PropertyMetadata(false, OnIsReadOnlyChanged));
 
-    /// <summary>When true, cells cannot be edited.</summary>
+    /// <summary>
+    /// When true, no cell can be edited, Boolean cells do not toggle and Tab skips every cell; combines with
+    /// the per-column <c>IsReadOnly</c> (either one makes a cell read-only).
+    /// </summary>
     public bool IsReadOnly
     {
         get => (bool)GetValue(IsReadOnlyProperty);
@@ -373,10 +385,9 @@ public partial class KumikoDataGrid
 
     private static void OnIsReadOnlyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        // Honored at edit time by the input controller / edit session (the gesture path is
-        // wired in KumikoDataGrid.Input.cs). MAUI exposes IsReadOnly as a plain flag too;
-        // a repaint keeps any read-only affordance in sync.
-        ((KumikoDataGrid)d).Invalidate();
+        var view = (KumikoDataGrid)d;
+        view._editSession.IsReadOnly = (bool)e.NewValue;
+        view.Invalidate();
     }
 
     // ── AllowSorting ──────────────────────────────────────────────
@@ -387,7 +398,7 @@ public partial class KumikoDataGrid
             nameof(AllowSorting), typeof(bool), typeof(KumikoDataGrid),
             new PropertyMetadata(true, OnAllowSortingChanged));
 
-    /// <summary>When false, column header taps do not sort.</summary>
+    /// <summary>When false, column header taps do not sort (a column's own <c>AllowSorting</c> also applies).</summary>
     public bool AllowSorting
     {
         get => (bool)GetValue(AllowSortingProperty);
@@ -395,7 +406,11 @@ public partial class KumikoDataGrid
     }
 
     private static void OnAllowSortingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((KumikoDataGrid)d).Invalidate();
+    {
+        var view = (KumikoDataGrid)d;
+        view._inputController.AllowSorting = (bool)e.NewValue;
+        view.Invalidate();
+    }
 
     // ── AllowFiltering ────────────────────────────────────────────
 
@@ -405,7 +420,10 @@ public partial class KumikoDataGrid
             nameof(AllowFiltering), typeof(bool), typeof(KumikoDataGrid),
             new PropertyMetadata(true, OnAllowFilteringChanged));
 
-    /// <summary>When false, filter icons are not shown in column headers.</summary>
+    /// <summary>
+    /// When false, filter icons are not shown in column headers and cannot be tapped (a column's own
+    /// <c>AllowFiltering</c> also applies).
+    /// </summary>
     public bool AllowFiltering
     {
         get => (bool)GetValue(AllowFilteringProperty);
@@ -413,7 +431,12 @@ public partial class KumikoDataGrid
     }
 
     private static void OnAllowFilteringChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((KumikoDataGrid)d).Invalidate();
+    {
+        var view = (KumikoDataGrid)d;
+        view._inputController.AllowFiltering = (bool)e.NewValue;
+        view._renderer.AllowFiltering = (bool)e.NewValue;
+        view.Invalidate();
+    }
 
     // ── DismissKeyboardOnEnter ────────────────────────────────────
 
@@ -445,18 +468,18 @@ public partial class KumikoDataGrid
     public static readonly DependencyProperty GridDescriptionProperty =
         DependencyProperty.Register(
             nameof(GridDescription), typeof(string), typeof(KumikoDataGrid),
-            new PropertyMetadata("Data grid", OnGridDescriptionChanged));
+            new PropertyMetadata(null, OnGridDescriptionChanged));
 
-    /// <summary>Accessible description for screen readers.</summary>
-    public string GridDescription
+    /// <summary>
+    /// Accessible name for screen readers. Null (the default) uses <see cref="KumikoStrings.AccessibleGridName"/>
+    /// of <see cref="KumikoSource.Strings"/> on <see cref="DataSource"/>, so the name follows the grid's localization.
+    /// </summary>
+    public string? GridDescription
     {
-        get => (string)GetValue(GridDescriptionProperty);
+        get => (string?)GetValue(GridDescriptionProperty);
         set => SetValue(GridDescriptionProperty, value);
     }
 
     private static void OnGridDescriptionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var view = (KumikoDataGrid)d;
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(view, (string)e.NewValue);
-    }
+        => ((KumikoDataGrid)d).UpdateAccessibleName();
 }

@@ -376,6 +376,29 @@ public class KumikoRendererTests
     }
 
     [Fact]
+    public void SetCellRenderer_ColumnCustomRenderer_StillTakesPrecedence()
+    {
+        var h = Create(rows: 2);
+        var typeProbe = new CapturingCellRenderer();
+        var columnProbe = new CapturingCellRenderer();
+        h.Renderer.SetCellRenderer(KumikoColumnType.Numeric, typeProbe);
+        h.Column("Age").CustomCellRenderer = columnProbe;
+
+        h.Render();
+
+        Assert.Equal(2, columnProbe.Calls.Count); // Age
+        Assert.Equal(2, typeProbe.Calls.Count);   // Salary only
+    }
+
+    [Fact]
+    public void SetCellRenderer_Null_Throws()
+    {
+        var renderer = new KumikoRenderer();
+
+        Assert.Throws<ArgumentNullException>(() => renderer.SetCellRenderer(KumikoColumnType.Text, null!));
+    }
+
+    [Fact]
     public void GetCellRenderer_UnregisteredType_FallsBackToTheTextRenderer()
     {
         var renderer = new KumikoRenderer();

@@ -80,6 +80,14 @@ public partial class KumikoDataGrid
         TabIndex = int.MaxValue,
         // Text starts at sentinel so the first Backspace is detectable.
         Text = ProxySentinel,
+        // Opacity=0 hides the proxy from the eye only: it stays hit-testable and visible to UI Automation.
+        // The minimums beat the default style's 64x32 and it is not hit-testable, so it never takes clicks
+        // meant for cells (focus is programmatic). It is marked Raw in SetupInputProxy.
+        MinWidth = 0,
+        MinHeight = 0,
+        HorizontalAlignment = HorizontalAlignment.Left,
+        VerticalAlignment = VerticalAlignment.Top,
+        IsHitTestVisible = false,
     };
 
     private bool _suppressProxyTextChanged;
@@ -101,6 +109,10 @@ public partial class KumikoDataGrid
     /// </summary>
     private void SetupInputProxy()
     {
+        // Raw keeps Narrator/VoiceOver from announcing an editable text box holding a zero-width space; the
+        // grid itself is exposed through KumikoDataGridAutomationPeer.
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAccessibilityView(
+            _inputProxy, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
         _root.Children.Add(_inputProxy);
         // Note: handlers are NOT subscribed here; AttachInputHandlers owns subscription
         // so idempotent re-attach on Loaded works correctly.

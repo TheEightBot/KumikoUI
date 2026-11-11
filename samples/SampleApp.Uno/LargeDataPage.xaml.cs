@@ -153,6 +153,7 @@ public class LargeDataViewModel : INotifyPropertyChanged
 }
 
 /// <summary>Data item for large dataset stress testing.</summary>
+[KumikoUI.Core.Data.KumikoGridItem]
 public class LargeDataItem : INotifyPropertyChanged
 {
     private int _rowNumber;

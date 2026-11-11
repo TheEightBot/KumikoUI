@@ -64,6 +64,8 @@ public partial class KumikoDataGrid : UserControl
         // Layout: the canvas fills the grid (mirrors MAUI's LayoutOptions.Fill).
         _canvasView.HorizontalAlignment = HorizontalAlignment.Stretch;
         _canvasView.VerticalAlignment = VerticalAlignment.Stretch;
+        // The grid draws left-to-right whatever its ancestors' direction (RTL is unsupported in 1.0, #80, #228)
+        _canvasView.FlowDirection = FlowDirection.LeftToRight;
         _root.Children.Add(_canvasView);
         Content = _root;
         UseSystemFocusVisuals = false; // the grid draws its own focus (the current cell)
@@ -83,6 +85,10 @@ public partial class KumikoDataGrid : UserControl
 
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
+        InitializeScrolling(); // KumikoDataGrid.Scrolling.cs
+
+        // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
+        InitializeAccessibility();
 
         // Core "invalidate" signals → request a single canvas repaint.
         _dataSource.ViewChanged += OnDataSourceViewChanged;
@@ -100,6 +106,7 @@ public partial class KumikoDataGrid : UserControl
         // Wire edit session to input controller and style (mirrors MAUI).
         _inputController.EditSession = _editSession;
         _editSession.Style = _style;
+        ConnectTheming();
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
 
         // Edit lifecycle drives the cursor-blink repaint timer (mirrors MAUI). These target the
@@ -129,46 +136,6 @@ public partial class KumikoDataGrid : UserControl
 
     /// <summary>Gets the edit session for inline cell editing.</summary>
     public EditSession EditSession => _editSession;
-
-    /// <summary>Configurable scroll/inertia settings.</summary>
-    public ScrollSettings ScrollSettings
-    {
-        get => _inputController.ScrollSettings;
-        set => _inputController.ScrollSettings = value;
-    }
-
-    /// <summary>
-    /// Gets or sets the grid style / theme. Style-backed properties you set explicitly
-    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied to the style you assign.
-    /// </summary>
-    public KumikoStyle GridStyle
-    {
-        get => _style;
-        set
-        {
-            _style = value;
-            ApplyStyleOptions();
-            _editSession.Style = value;
-            InvalidateSurface();
-        }
-    }
-
-    /// <summary>
-    /// Applies a built-in theme preset. Sets <see cref="GridStyle"/> to a preconfigured
-    /// <see cref="KumikoStyle"/> for the chosen theme; style-backed properties you set explicitly
-    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied on top of it.
-    /// </summary>
-    public KumikoThemeMode Theme
-    {
-        get => _themeMode;
-        set
-        {
-            if (_themeMode == value) return;
-            _themeMode = value;
-            GridStyle = KumikoTheme.Create(value);
-        }
-    }
-    private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
 
     private void OnContentReplaced(DependencyObject sender, DependencyProperty property)
     {
@@ -253,12 +220,10 @@ public partial class KumikoDataGrid : UserControl
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
         using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
-        var layoutEngine = new KumikoLayoutEngine();
 
-        float optimalWidth = layoutEngine.CalculateAutoFitWidth(
-            e.Column, _dataSource, measureCtx, _style);
-
-        e.Column.Width = optimalWidth;
+        // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
+        // Auto column becomes Fixed at the fitted width so it keeps it.
+        _renderer.AutoFitColumn(e.Column, _dataSource, measureCtx, _style);
         InvalidateSurface();
     }
 
@@ -364,12 +329,21 @@ public partial class KumikoDataGrid : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ConnectTheming(loaded: true);
         // Re-attach the paint loop in case Unloaded detached it on a prior
         // navigation. Idempotent: detach first to avoid a double subscription.
         _canvasView.PaintSurface -= OnPaintSurface;
         _canvasView.PaintSurface += OnPaintSurface;
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
+
+        _isUnloaded = false;
+
+        // Resume following the app's collection if Unloaded detached it (no-op on first load), then the
+        // collections the grid observes, then the app's SelectedItems list.
+        _dataSource.Attach();
+        ResubscribeObservedCollections();
+        _selectionBinder.Attach();
 
         // Re-render with the current DPI now that we are in the visual tree.
         InvalidateSurface();
@@ -381,11 +355,22 @@ public partial class KumikoDataGrid : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        DisconnectTheming();
         // Detach the paint loop. The Core redraw-signal subscriptions target
         // owned objects (this control owns _dataSource/_inputController/
         // _editSession), so they don't leak the page — but the canvas's
         // PaintSurface delegate roots `this`, so it must be released.
         _canvasView.PaintSurface -= OnPaintSurface;
+
+        // Stop observing the app's collection and its items so they do not keep this grid's source alive;
+        // OnLoaded re-attaches (the control can be reloaded, so the source is detached, not disposed).
+        _dataSource.Detach();
+
+        // Unsubscribe the bound items, the Columns/summary/grouping collections and the app's SelectedItems
+        // list, which can outlive the page; OnLoaded restores them.
+        _isUnloaded = true;
+        UnsubscribeObservedCollections();
+        _selectionBinder.Detach();
 
         // Stop listening to action-button commands (a cell renderer can outlive this grid). The renderer
         // re-attaches to them on the next paint after a reload.
