@@ -128,7 +128,10 @@ public class KumikoSourceLifecycleTests
         Assert.Equal(1, list[0].Subscribers);
     }
 
+    // A wall-clock bound: excluded from the instrumented coverage run (which is many times slower) and run by the
+    // uninstrumented test matrix instead.
     [Fact]
+    [Trait("Category", "Performance")]
     public void TrackingAndUntracking100KItems_IsFast()
     {
         const int n = 100_000;

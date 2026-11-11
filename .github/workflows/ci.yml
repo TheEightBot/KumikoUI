@@ -99,11 +99,13 @@ jobs:
           src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
 
       # Collects Cobertura coverage for KumikoUI.Core + KumikoUI.SkiaSharp (coverage.runsettings excludes the tests,
-      # generated code and samples); the report and ratchet follow the source generator tests below.
+      # generated code and samples); the report and ratchet follow the source generator tests below. Tests with a
+      # wall-clock bound (Category=Performance) are skipped here, because instrumentation slows them many times
+      # over; the uninstrumented Core test matrix runs them.
       - name: Test
         run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
-          --collect:"XPlat Code Coverage" --settings coverage.runsettings
+          --collect:"XPlat Code Coverage" --settings coverage.runsettings --filter "Category!=Performance"
 
       - name: Test — source generator
         run: dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
