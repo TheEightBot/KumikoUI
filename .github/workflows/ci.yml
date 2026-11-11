@@ -81,6 +81,7 @@ jobs:
           && dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
           && dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           && dotnet restore tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
+          && dotnet restore tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj
 
       - name: Build — Core
         run: dotnet build src/KumikoUI.Core/KumikoUI.Core.csproj
@@ -103,6 +104,11 @@ jobs:
 
       - name: Test — source generator
         run: dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
+          --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+
+      # MAUI host: bindable property -> Core mapping, on plain net10.0 (sources linked in, no handler).
+      - name: Test — MAUI host
+        run: dotnet test tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj
           --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
 
       - name: Upload test results
