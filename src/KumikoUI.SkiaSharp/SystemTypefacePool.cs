@@ -25,17 +25,32 @@ internal static class SystemTypefacePool
     public static SKTypeface? Match(string family, SKFontStyle style, out bool leased)
     {
         lock (_leases)
+            return LeaseLocked(SkiaDrawingContext.FamilyMatcher(family, style), out leased);
+    }
+
+    /// <summary>
+    /// Resolves the typeface the font manager would use for <paramref name="codepoint"/> when
+    /// <paramref name="family"/> in <paramref name="style"/> lacks it, through
+    /// <see cref="SkiaDrawingContext.CharacterMatcher"/>; <c>null</c> when no installed font has it.
+    /// <paramref name="leased"/> is <c>true</c> when the result must be given back with <see cref="Release"/>.
+    /// </summary>
+    public static SKTypeface? MatchCharacter(string? family, SKFontStyle style, string[]? bcp47, int codepoint,
+        out bool leased)
+    {
+        lock (_leases)
+            return LeaseLocked(SkiaDrawingContext.CharacterMatcher(family, style, bcp47, codepoint), out leased);
+    }
+
+    private static SKTypeface? LeaseLocked(SKTypeface? typeface, out bool leased)
+    {
+        if (typeface is null || ReferenceEquals(typeface, SKTypeface.Default) || SkiaFontRegistrar.IsRegistered(typeface))
         {
-            var typeface = SkiaDrawingContext.FamilyMatcher(family, style);
-            if (typeface is null || ReferenceEquals(typeface, SKTypeface.Default) || SkiaFontRegistrar.IsRegistered(typeface))
-            {
-                leased = false;
-                return typeface;
-            }
-            _leases[typeface] = _leases.TryGetValue(typeface, out var count) ? count + 1 : 1;
-            leased = true;
+            leased = false;
             return typeface;
         }
+        _leases[typeface] = _leases.TryGetValue(typeface, out var count) ? count + 1 : 1;
+        leased = true;
+        return typeface;
     }
 
     /// <summary>Releases one lease; returns <c>true</c> when it was the last one and the typeface was disposed.</summary>

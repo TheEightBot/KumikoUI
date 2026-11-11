@@ -31,6 +31,7 @@ public sealed class KumikoSelectionBinder
     private INotifyCollectionChanged? _listNotify;
     private object? _primary;
     private bool _syncing;
+    private bool _detached;
 
     // What the last Changed notification reported.
     private object? _publishedItem;
@@ -113,13 +114,39 @@ public sealed class KumikoSelectionBinder
 
         if (_listNotify != null) _listNotify.CollectionChanged -= OnListChanged;
         _list = target;
-        _listNotify = target as INotifyCollectionChanged;
+        _listNotify = _detached ? null : target as INotifyCollectionChanged;
         if (_listNotify != null) _listNotify.CollectionChanged += OnListChanged;
 
         if (list == null)
             WriteList(_model.SelectedItems);   // back to the owned collection: mirror the grid
         else
             ApplyListToModel();
+    }
+
+    /// <summary>
+    /// Stops listening to the view model's list, so a list that outlives the grid does not keep it alive. The
+    /// grid still writes its selection into the list. <see cref="Attach"/> resumes. Does nothing when the grid's
+    /// own collection is in use, or when already detached.
+    /// </summary>
+    public void Detach()
+    {
+        if (_listNotify == null || ReferenceEquals(_listNotify, _owned)) return;
+        _listNotify.CollectionChanged -= OnListChanged;
+        _listNotify = null;
+        _detached = true;
+    }
+
+    /// <summary>
+    /// Resumes listening to the list after <see cref="Detach"/>. The list may have changed meanwhile, so the
+    /// selection is set from it again. Does nothing unless detached.
+    /// </summary>
+    public void Attach()
+    {
+        if (!_detached) return;
+        _detached = false;
+        _listNotify = _list as INotifyCollectionChanged;
+        if (_listNotify != null) _listNotify.CollectionChanged += OnListChanged;
+        ApplyListToModel();
     }
 
     // ── Model → list ──

@@ -50,6 +50,7 @@ public partial class KumikoDataGrid : ContentView
 
     // Inertial scroll timer
     private IDispatcherTimer? _scrollTimer;
+    private long _scrollTimerLastTicks;
 
     // Cursor blink timer — drives regular repaints while editing
     private IDispatcherTimer? _cursorBlinkTimer;
@@ -68,6 +69,13 @@ public partial class KumikoDataGrid : ContentView
     private bool _longPressFired;
     private const long LongPressThresholdMs = 500;
     private const float LongPressMoveTolerance = 15f;
+
+    // The pointer (SKTouchEventArgs.Id) whose press is in progress, and when it was last heard from. Core ignores
+    // other pointers by id; the host keeps them out of its click-count and long-press bookkeeping too. A press
+    // after the pressed pointer has been silent for a second takes over, in case its release was lost (as Core).
+    private long? _pressedPointerId;
+    private long _pressedPointerLastMs;
+    private const long StalePointerMs = 1000;
 
     // Track if we are suppressing TextChanged because we set the text programmatically
     private bool _suppressTextChanged;
@@ -99,10 +107,6 @@ public partial class KumikoDataGrid : ContentView
         _selection = new KumikoSelectionModel(_dataSource);
         InitializeSelectionBinding();
 
-        // Accessibility: set semantic description for screen readers
-        SemanticProperties.SetDescription(this, "Data grid");
-        AutomationProperties.SetIsInAccessibleTree(this, true);
-
         // Set up the hidden keyboard proxy entry (fallback for Android/Windows)
         _keyboardProxy = new Entry
         {
@@ -122,9 +126,12 @@ public partial class KumikoDataGrid : ContentView
         _canvasView.VerticalOptions = LayoutOptions.Fill;
         _canvasView.EnableTouchEvents = true;
         _canvasView.IgnorePixelScaling = false;
+        // The grid draws left-to-right whatever its ancestors' direction (RTL is unsupported in 1.0, #80, #228)
+        _canvasView.FlowDirection = FlowDirection.LeftToRight;
 
         _root.Children.Add(_canvasView);
         _root.Children.Add(_keyboardProxy);
+        InitializeAccessibility();
         Content = _root;
         _contentSealed = true;
 
@@ -136,6 +143,9 @@ public partial class KumikoDataGrid : ContentView
 
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
+
+        // Scroll offsets and the Scrolled event (KumikoDataGrid.Scrolling.cs)
+        InitializeScrolling();
 
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
@@ -151,7 +161,9 @@ public partial class KumikoDataGrid : ContentView
 
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
+        InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;
+        ConnectTheming();
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
 
         // Wire edit session lifecycle for cursor blink timer
@@ -161,6 +173,9 @@ public partial class KumikoDataGrid : ContentView
         // Wire canvas events
         _canvasView.PaintSurface += OnPaintSurface;
         _canvasView.Touch += OnCanvasTouch;
+#if ANDROID
+        _canvasView.HandlerChanged += OnCanvasHandlerChanged_Pointer;
+#endif
 
         // Wire keyboard proxy events (used on Android/Windows, or as fallback)
         _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
@@ -186,6 +201,8 @@ public partial class KumikoDataGrid : ContentView
     protected override void OnPropertyChanged(string? propertyName = null)
     {
         base.OnPropertyChanged(propertyName);
+        if (propertyName == IsEnabledProperty.PropertyName)
+            SyncIsEnabled();
         if (_contentSealed && propertyName == ContentProperty.PropertyName && !ReferenceEquals(Content, _root))
         {
             Content = _root;
@@ -215,6 +232,7 @@ public partial class KumikoDataGrid : ContentView
     protected override void OnHandlerChanged()
     {
         base.OnHandlerChanged();
+        EnsureHostingConfigured();
 
         // Connected to a new handler — re-subscribe if previously cleaned up.
         // On first attach, the constructor already did the wiring and _isConnected
@@ -225,16 +243,12 @@ public partial class KumikoDataGrid : ContentView
             _wasCleanedUp = false;
             Reconnect();
         }
+#if WINDOWS
+        if (Handler != null) AttachNativeWheel();
+#endif
     }
 
     // ── Public API ────────────────────────────────────────────────
-
-    /// <summary>Configurable scroll/inertia settings.</summary>
-    public ScrollSettings ScrollSettings
-    {
-        get => _inputController.ScrollSettings;
-        set => _inputController.ScrollSettings = value;
-    }
 
     /// <summary>Gets the underlying data source.</summary>
     public KumikoSource DataSource => _dataSource;
@@ -247,42 +261,6 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Gets the edit session for inline cell editing.</summary>
     public EditSession EditSession => _editSession;
-
-    /// <summary>
-    /// Gets or sets the grid style / theme. Style-backed properties you set explicitly
-    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied to the style you assign.
-    /// </summary>
-    public KumikoStyle GridStyle
-    {
-        get => _style;
-        set
-        {
-            _style = value;
-            ApplyStyleOptions();
-            _editSession.Style = _style;
-            InvalidateSurface();
-        }
-    }
-
-    /// <summary>
-    /// Applies a built-in theme preset. Sets <see cref="GridStyle"/>
-    /// to a preconfigured <see cref="KumikoStyle"/> for the chosen theme; style-backed properties you set
-    /// explicitly (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied on top of it.
-    /// </summary>
-    public KumikoThemeMode Theme
-    {
-        get => _themeMode;
-        set
-        {
-            if (_themeMode == value) return;
-            _themeMode = value;
-            _style = KumikoTheme.Create(value);
-            ApplyStyleOptions();
-            _editSession.Style = _style;
-            InvalidateSurface();
-        }
-    }
-    private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
 
     // ── Bindable Properties ──────────────────────────────────────
 
@@ -318,8 +296,13 @@ public partial class KumikoDataGrid : ContentView
         {
             _dataSource.SetItems(newValue);
 
+            if (!IsObservingCollections)
+            {
+                // Set while disconnected: SetItems subscribed, so release it; Reconnect re-attaches
+                _dataSource.Detach();
+            }
             // Subscribe at MAUI layer for thread-safe invalidation
-            if (newValue is INotifyCollectionChanged incc)
+            else if (newValue is INotifyCollectionChanged incc)
             {
                 _boundCollectionChangedSource = incc;
                 _boundCollectionChangedSource.CollectionChanged += OnBoundItemsCollectionChanged;
@@ -400,9 +383,18 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="IsReadOnly"/> bindable property.</summary>
     public static readonly BindableProperty IsReadOnlyProperty = BindableProperty.Create(
-        nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid), false);
+        nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid), false,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._editSession.IsReadOnly = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When true, cells cannot be edited.</summary>
+    /// <summary>
+    /// When true, no cell can be edited, Boolean cells do not toggle and Tab skips every cell; combines with
+    /// the per-column <c>IsReadOnly</c> (either one makes a cell read-only).
+    /// </summary>
     public bool IsReadOnly
     {
         get => (bool)GetValue(IsReadOnlyProperty);
@@ -489,9 +481,15 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="AllowSorting"/> bindable property.</summary>
     public static readonly BindableProperty AllowSortingProperty = BindableProperty.Create(
-        nameof(AllowSorting), typeof(bool), typeof(KumikoDataGrid), true);
+        nameof(AllowSorting), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._inputController.AllowSorting = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When false, column header taps do not sort.</summary>
+    /// <summary>When false, column header taps do not sort (a column's own <c>AllowSorting</c> also applies).</summary>
     public bool AllowSorting
     {
         get => (bool)GetValue(AllowSortingProperty);
@@ -502,9 +500,19 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="AllowFiltering"/> bindable property.</summary>
     public static readonly BindableProperty AllowFilteringProperty = BindableProperty.Create(
-        nameof(AllowFiltering), typeof(bool), typeof(KumikoDataGrid), true);
+        nameof(AllowFiltering), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._inputController.AllowFiltering = (bool)n;
+            grid._renderer.AllowFiltering = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When false, filter icons are not shown in column headers.</summary>
+    /// <summary>
+    /// When false, filter icons are not shown in column headers and cannot be tapped (a column's own
+    /// <c>AllowFiltering</c> also applies).
+    /// </summary>
     public bool AllowFiltering
     {
         get => (bool)GetValue(AllowFilteringProperty);
@@ -516,11 +524,15 @@ public partial class KumikoDataGrid : ContentView
     /// <summary>Identifies the <see cref="HeaderHeight"/> bindable property.</summary>
     public static readonly BindableProperty HeaderHeightProperty = BindableProperty.Create(
         nameof(HeaderHeight), typeof(double), typeof(KumikoDataGrid), 40d,
-        propertyChanged: (b, _, n) =>
+        coerceValue: (b, v) =>
         {
+            // Runs on every assignment (even one equal to the default), so the value is always an explicit
+            // override that survives a later style or theme change.
             var view = (KumikoDataGrid)b;
-            view._style.HeaderHeight = (float)(double)n;
+            view._styleOptions.HeaderHeight = (float)(double)v;
+            view.ApplyStyleOptions();
             view.InvalidateSurface();
+            return v;
         });
 
     /// <summary>Height of the column header row in pixels.</summary>
@@ -535,11 +547,15 @@ public partial class KumikoDataGrid : ContentView
     /// <summary>Identifies the <see cref="RowHeight"/> bindable property.</summary>
     public static readonly BindableProperty RowHeightProperty = BindableProperty.Create(
         nameof(RowHeight), typeof(double), typeof(KumikoDataGrid), 36d,
-        propertyChanged: (b, _, n) =>
+        coerceValue: (b, v) =>
         {
+            // Runs on every assignment (even one equal to the default), so the value is always an explicit
+            // override that survives a later style or theme change.
             var view = (KumikoDataGrid)b;
-            view._style.RowHeight = (float)(double)n;
+            view._styleOptions.RowHeight = (float)(double)v;
+            view.ApplyStyleOptions();
             view.InvalidateSurface();
+            return v;
         });
 
     /// <summary>Height of each data row in pixels.</summary>
@@ -553,17 +569,16 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="GridDescription"/> bindable property.</summary>
     public static readonly BindableProperty GridDescriptionProperty = BindableProperty.Create(
-        nameof(GridDescription), typeof(string), typeof(KumikoDataGrid), "Data grid",
-        propertyChanged: (b, _, n) =>
-        {
-            var view = (KumikoDataGrid)b;
-            SemanticProperties.SetDescription(view, (string)n);
-        });
+        nameof(GridDescription), typeof(string), typeof(KumikoDataGrid), null,
+        propertyChanged: (b, _, _) => ((KumikoDataGrid)b).UpdateAccessibilityHint());
 
-    /// <summary>Accessible description for screen readers.</summary>
-    public string GridDescription
+    /// <summary>
+    /// Accessible description for screen readers. Null (the default) uses the localized
+    /// <see cref="KumikoStrings.AccessibleGridName"/> ("Data grid").
+    /// </summary>
+    public string? GridDescription
     {
-        get => (string)GetValue(GridDescriptionProperty);
+        get => (string?)GetValue(GridDescriptionProperty);
         set => SetValue(GridDescriptionProperty, value);
     }
 
@@ -599,7 +614,8 @@ public partial class KumikoDataGrid : ContentView
 
         if (newCollection != null)
         {
-            newCollection.CollectionChanged += OnColumnsCollectionChanged;
+            if (IsObservingCollections)
+                newCollection.CollectionChanged += OnColumnsCollectionChanged;
             _dataSource.SetColumns(newCollection);
         }
         else
@@ -648,7 +664,8 @@ public partial class KumikoDataGrid : ContentView
 
         if (newCollection != null)
         {
-            newCollection.CollectionChanged += OnTableSummaryRowsCollectionChanged;
+            if (IsObservingCollections)
+                newCollection.CollectionChanged += OnTableSummaryRowsCollectionChanged;
             SyncTableSummaryRows(newCollection);
         }
         else
@@ -672,19 +689,6 @@ public partial class KumikoDataGrid : ContentView
     /// <summary>Invalidate the canvas surface to trigger a repaint.</summary>
     private void InvalidateSurface() => _canvasView.InvalidateSurface();
 
-    /// <summary>Update the accessibility hint with current grid dimensions.</summary>
-    private void UpdateAccessibilityHint()
-    {
-        int rows = _dataSource.RowCount;
-        int cols = _dataSource.Columns.Count;
-        string hint = $"{rows} rows, {cols} columns";
-
-        if (_selection.CurrentCell.IsValid)
-            hint += $", current cell row {_selection.CurrentCell.Row + 1} column {_selection.CurrentCell.Column + 1}";
-
-        SemanticProperties.SetHint(this, hint);
-    }
-
     // ── Rendering ────────────────────────────────────────────────
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
@@ -697,6 +701,7 @@ public partial class KumikoDataGrid : ContentView
 
         float canvasWidth = _canvasView.Width > 0 ? (float)_canvasView.Width : 1;
         float scale = (float)(info.Width / canvasWidth);
+        if (_canvasView.Width > 0) RememberTouchScale(scale);
         _scroll.ViewportWidth = info.Width / scale;
         _scroll.ViewportHeight = info.Height / scale;
 
@@ -721,7 +726,40 @@ public partial class KumikoDataGrid : ContentView
         // nothing to act on.
         if (e.ActionType == SKTouchAction.Entered && e.InContact)
             return;
+#if WINDOWS
+        // The wheel is read from WinUI directly (KumikoDataGrid.Pointer.cs), which knows its axis.
+        if (e.ActionType == SKTouchAction.WheelChanged && _nativeWheelView != null)
+            return;
+#endif
+        // A disabled grid takes no input (and leaves the event to the page).
+        if (!_inputController.IsEnabled)
+            return;
+
+        // Before the first layout and paint the touch has no grid position (MAUI-26).
+        if (!TryGetTouchScale(out float scale))
+            return;
+
         var action = MapAction(e.ActionType, e.InContact);
+        float x = e.Location.X / scale;
+        float y = e.Location.Y / scale;
+
+        // A second finger while one is down: Core ignores it by id (and marks it handled). It must not restart the
+        // click count or the long-press timer, or take the keyboard focus.
+        long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        bool fromPressedPointer = _pressedPointerId == null || _pressedPointerId == e.Id ||
+            (e.ActionType == SKTouchAction.Pressed && nowMs - _pressedPointerLastMs > StalePointerMs);
+        if (!fromPressedPointer && action is InputAction.Pressed or InputAction.Moved or InputAction.Released or InputAction.Cancelled)
+        {
+            var ignored = new KumikoPointerEventArgs { X = x, Y = y, Action = action, PointerId = e.Id, TimestampMs = nowMs };
+            _inputController.HandlePointer(ignored, _scroll, _selection, _style, _dataSource);
+            e.Handled = ignored.Handled;
+            return;
+        }
+        if (e.ActionType == SKTouchAction.Pressed)
+            _pressedPointerId = e.Id;
+        else if (e.ActionType is SKTouchAction.Released or SKTouchAction.Cancelled)
+            _pressedPointerId = null;
+        if (action != InputAction.Hover) _pressedPointerLastMs = nowMs;
 
         // On desktop platforms, focus keyboard input on press so we can capture
         // key events for grid navigation (arrow keys, Tab, etc.).
@@ -735,16 +773,10 @@ public partial class KumikoDataGrid : ContentView
 #endif
         }
 
-        float canvasWidth = _canvasView.Width > 0 ? (float)_canvasView.Width : 1;
-        float scale = (float)(CanvasSize.Width / canvasWidth);
-        float x = e.Location.X / scale;
-        float y = e.Location.Y / scale;
-
         // Detect double-tap — store on Pressed so Released also gets ClickCount=2
         int clickCount = 1;
         if (e.ActionType == SKTouchAction.Pressed)
         {
-            long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             float dx = x - _lastTapX;
             float dy = y - _lastTapY;
             float dist = MathF.Sqrt(dx * dx + dy * dy);
@@ -789,10 +821,17 @@ public partial class KumikoDataGrid : ContentView
             CancelLongPressTimer();
         }
 
-        // If long press already fired, suppress the Released event to avoid double-triggering
+        // If long press already fired, the release must not also tap: Core is told the press was canceled, which
+        // ends it without acting on it.
         if (_longPressFired && e.ActionType == SKTouchAction.Released)
         {
             _longPressFired = false;
+            var cancel = new KumikoPointerEventArgs
+            {
+                X = x, Y = y, Action = InputAction.Cancelled, PointerId = e.Id,
+                TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            };
+            _inputController.HandlePointer(cancel, _scroll, _selection, _style, _dataSource);
             e.Handled = true;
             return;
         }
@@ -808,8 +847,11 @@ public partial class KumikoDataGrid : ContentView
                 SKMouseButton.Middle => PointerButton.Middle,
                 _ => PointerButton.Primary
             },
-            ScrollDeltaY = e.ActionType == SKTouchAction.WheelChanged ? e.WheelDelta : 0,
-            TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Modifiers = GetPointerModifiers(),
+            PointerId = e.Id,
+            // Only Windows reports the wheel here (when the native hook is missing): 120ths of a notch
+            ScrollDeltaY = e.ActionType == SKTouchAction.WheelChanged ? e.WheelDelta / 120f : 0,
+            TimestampMs = nowMs,
             ClickCount = clickCount
         };
 
@@ -817,10 +859,13 @@ public partial class KumikoDataGrid : ContentView
         if (action == InputAction.Moved)
             ReassertPlatformCursor(); // keeps the resize cursor through a drag on Catalyst
 
-        // Start/stop inertial scroll timer
+        // Start the frame timer for a fling (the grid coasting, or a scroll picker editor coasting and
+        // snapping to an item)
         if ((e.ActionType == SKTouchAction.Released || e.ActionType == SKTouchAction.Cancelled)
-            && _inputController.IsInertialScrolling)
+            && (_inputController.IsInertialScrolling || _editSession.IsAnimating))
             StartInertialScrollTimer();
+        else if (_editSession.IsAnimating)
+            StartInertialScrollTimer(); // a spin button pressed and held repeats from the frame loop
 
         e.Handled = gridEvent.Handled;
     }
@@ -864,11 +909,10 @@ public partial class KumikoDataGrid : ContentView
     private void OnLongPressTimerTick(object? sender, EventArgs e)
     {
         CancelLongPressTimer();
-        _longPressFired = true;
 
-        // Synthesize a LongPress event for the input controller
-        float canvasWidth = _canvasView.Width > 0 ? (float)_canvasView.Width : 1;
-        float scale = (float)(CanvasSize.Width / canvasWidth);
+        // Synthesize a LongPress event for the input controller, from the press in progress
+        if (_pressedPointerId is not { } pointerId) return;
+        _longPressFired = true;
 
         var gridEvent = new KumikoPointerEventArgs
         {
@@ -876,6 +920,7 @@ public partial class KumikoDataGrid : ContentView
             Y = _longPressY,
             Action = InputAction.LongPress,
             Button = PointerButton.Primary,
+            PointerId = pointerId,
             TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             ClickCount = 1
         };
@@ -890,12 +935,21 @@ public partial class KumikoDataGrid : ContentView
         _scrollTimer = Dispatcher.CreateTimer();
         _scrollTimer.Interval = TimeSpan.FromMilliseconds(16); // ~60fps
         _scrollTimer.Tick += OnScrollTimerTick;
+        _scrollTimerLastTicks = System.Diagnostics.Stopwatch.GetTimestamp();
         _scrollTimer.Start();
     }
 
     private void OnScrollTimerTick(object? sender, EventArgs e)
     {
-        if (!_inputController.UpdateInertialScroll(_scroll, 16f))
+        // Real elapsed time: dispatcher timers drift and coalesce, so a fixed 16 ms would slow slow ticks down.
+        long nowTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+        float elapsedMs = (float)System.Diagnostics.Stopwatch.GetElapsedTime(_scrollTimerLastTicks, nowTicks).TotalMilliseconds;
+        _scrollTimerLastTicks = nowTicks;
+        // The grid's inertial scroll and the open editor's animation (a scroll picker settling, which may
+        // commit the edit) both run on this timer, which stops once neither moves.
+        bool scrolling = _inputController.UpdateInertialScroll(_scroll, elapsedMs);
+        bool animating = _editSession.UpdateAnimation(elapsedMs);
+        if (!scrolling && !animating)
         {
             StopInertialScrollTimer();
         }
@@ -933,12 +987,10 @@ public partial class KumikoDataGrid : ContentView
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
         using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
-        var layoutEngine = new KumikoLayoutEngine();
 
-        float optimalWidth = layoutEngine.CalculateAutoFitWidth(
-            e.Column, _dataSource, measureCtx, _style);
-
-        e.Column.Width = optimalWidth;
+        // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
+        // Auto column becomes Fixed at the fitted width so it keeps it.
+        _renderer.AutoFitColumn(e.Column, _dataSource, measureCtx, _style);
         InvalidateSurface();
     }
 
@@ -1008,10 +1060,15 @@ public partial class KumikoDataGrid : ContentView
     private void Cleanup()
     {
         _wasCleanedUp = true;
+        DisconnectTheming();
 
         // Stop timers first (they capture 'this' via Tick delegates)
         StopInertialScrollTimer();
         StopCursorBlinkTimer();
+        CancelLongPressTimer();
+
+        // Stop observing the app's collection and its items (the source lives on; Reconnect re-attaches it)
+        _dataSource.Detach();
 
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
@@ -1028,10 +1085,19 @@ public partial class KumikoDataGrid : ContentView
         _editSession.NeedsRedraw -= OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit -= OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit -= OnEditSessionCellEndEdit;
+        UnsubscribeAccessibility();
 
         // Unsubscribe canvas events
         _canvasView.PaintSurface -= OnPaintSurface;
         _canvasView.Touch -= OnCanvasTouch;
+#if ANDROID
+        _canvasView.HandlerChanged -= OnCanvasHandlerChanged_Pointer;
+        DetachNativePointer();
+#elif WINDOWS
+        DetachNativeWheel();
+#endif
+        CancelLongPressTimer();
+        _pressedPointerId = null;
 
         // Release the cached native Skia objects; the next frame after Reconnect creates a new cache.
         _resourceCache?.Dispose();
@@ -1041,12 +1107,9 @@ public partial class KumikoDataGrid : ContentView
         _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed -= OnKeyboardProxyCompleted;
 
-        // Unsubscribe bound collection
-        if (_boundCollectionChangedSource != null)
-        {
-            _boundCollectionChangedSource.CollectionChanged -= OnBoundItemsCollectionChanged;
-            _boundCollectionChangedSource = null;
-        }
+        // Unsubscribe the bound items and the Columns/summary/grouping collections (Reconnect restores them)
+        UnsubscribeObservedCollections();
+        _selectionBinder.Detach(); // the app's SelectedItems list, when it supplied one
 
 #if MACCATALYST || IOS
         // Remove native keyboard input
@@ -1055,6 +1118,9 @@ public partial class KumikoDataGrid : ContentView
             _nativeKeyInput.TextInserted -= OnNativeTextInserted;
             _nativeKeyInput.BackspaceDeleted -= OnNativeBackspace;
             _nativeKeyInput.KeyPressed -= OnNativeKeyPress;
+            _nativeKeyInput.TabKeyReceived -= OnNativeTabKey;
+            _nativeKeyInput.NavigationKeyReceived -= OnNativeNavigationKey;
+            _nativeKeyInput.CanHandleTab = null;
             _nativeKeyInput.RemoveFromSuperview();
             _nativeKeyInput = null;
             _useNativeKeyInput = false;
@@ -1087,7 +1153,12 @@ public partial class KumikoDataGrid : ContentView
     /// </summary>
     private void Reconnect()
     {
+        ConnectTheming();
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
+        _dataSource.Attach();
+        ResubscribeObservedCollections();
+        _selectionBinder.Attach();
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
@@ -1100,9 +1171,14 @@ public partial class KumikoDataGrid : ContentView
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
+        SubscribeAccessibility();
 
         _canvasView.PaintSurface += OnPaintSurface;
         _canvasView.Touch += OnCanvasTouch;
+#if ANDROID
+        _canvasView.HandlerChanged += OnCanvasHandlerChanged_Pointer;
+        AttachNativePointer();
+#endif
 
         _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed += OnKeyboardProxyCompleted;
@@ -1305,6 +1381,8 @@ public partial class KumikoDataGrid : ContentView
         };
 
         _inputController.HandleKey(keyEvent, _scroll, _selection, _style, _dataSource);
+        if (_editSession.IsAnimating)
+            StartInertialScrollTimer(); // a held arrow key repeats a spin button from the frame loop
     }
 
 #if ANDROID
@@ -1371,21 +1449,6 @@ public partial class KumikoDataGrid : ContentView
             _nativeScrollGesture.MaximumNumberOfTouches = 0; // Only indirect (trackpad/mouse wheel)
             platformView.AddGestureRecognizer(_nativeScrollGesture);
         }
-    }
-
-    private void HandleNativeScrollGesture(UIPanGestureRecognizer recognizer)
-    {
-        var translation = recognizer.TranslationInView(recognizer.View);
-
-        // Apply scroll — translation is in points, negate for natural scrolling direction
-        float dx = -(float)translation.X;
-        float dy = -(float)translation.Y;
-
-        _scroll.ScrollBy(dx, dy);
-        _canvasView.InvalidateSurface();
-
-        // Reset translation so we get deltas, not cumulative values
-        recognizer.SetTranslation(CGPoint.Empty, recognizer.View);
     }
 
     private void OnNativeTextInserted(string text)

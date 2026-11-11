@@ -81,6 +81,7 @@ public partial class KumikoDataGrid
             var view = (KumikoDataGrid)b;
             if (view._pushingSelectionState) return;
             view._selectionBinder.AttachSelectedItems((IList?)n);
+            if (!view.IsObservingCollections) view._selectionBinder.Detach(); // set while disconnected
             view.PushSelectionState();
         });
 

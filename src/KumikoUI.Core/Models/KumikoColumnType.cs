@@ -25,5 +25,12 @@ public enum KumikoColumnType
     /// <summary>Drop-down combo box column.</summary>
     ComboBox,
     /// <summary>Scroll-picker column.</summary>
-    Picker
+    Picker,
+    /// <summary>
+    /// Read-only numeric column drawn as a progress bar. Configure it with
+    /// <see cref="KumikoColumn.ProgressMinimum"/>, <see cref="KumikoColumn.ProgressMaximum"/>,
+    /// <see cref="KumikoColumn.ProgressShowText"/>, <see cref="KumikoColumn.ProgressFillColor"/> and
+    /// <see cref="KumikoColumn.Format"/>. Sorts and filters as numbers.
+    /// </summary>
+    ProgressBar
 }
