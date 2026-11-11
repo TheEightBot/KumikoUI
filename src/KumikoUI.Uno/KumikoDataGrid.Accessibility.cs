@@ -84,7 +84,7 @@ public partial class KumikoDataGrid
     /// its current cell.
     /// </summary>
     internal string GetAccessibilityHint() => GridHint ?? KumikoAnnouncements.GridHint(
-        _dataSource.Strings, _dataSource.RowCount, _dataSource.Columns.Count, _selection.CurrentCell);
+        _dataSource.Strings, _dataSource.RowCount, _dataSource.DisplayColumns.Count, ToDisplayCell(_selection.CurrentCell));
 
     /// <summary>Mirrors an explicit <see cref="GridDescription"/> into AutomationProperties.Name; null clears it.</summary>
     private void UpdateAccessibleName()
@@ -154,13 +154,13 @@ public partial class KumikoDataGrid
         if (_dataSource.IsGroupHeaderRow(cell.Row)) return;
 
         var column = _dataSource.Columns[cell.Column];
-        Announce(KumikoAnnouncements.CurrentCell(_dataSource.Strings, column, cell.Column, cell.Row,
+        Announce(KumikoAnnouncements.CurrentCell(_dataSource.Strings, column, DisplayColumnIndex(cell.Column), cell.Row,
             _dataSource.GetCellDisplayText(cell.Row, column)), important: false);
     }
 
     private void OnAccessibilitySortChanged(object? sender, SortColumnsChangedEventArgs e)
     {
-        int index = _dataSource.Columns.ToList().IndexOf(e.Column);
+        int index = _dataSource.GetDisplayIndex(e.Column);
         Announce(KumikoAnnouncements.SortChanged(_dataSource.Strings, e.Column, index < 0 ? 0 : index), important: true);
     }
 
@@ -173,7 +173,7 @@ public partial class KumikoDataGrid
         void AnnounceIfEditing()
         {
             if (_editSession.IsEditing)
-                Announce(KumikoAnnouncements.EditStarted(_dataSource.Strings, column, columnIndex, text), important: true);
+                Announce(KumikoAnnouncements.EditStarted(_dataSource.Strings, column, DisplayColumnIndex(columnIndex), text), important: true);
         }
         if (DispatcherQueue is { } queue) queue.TryEnqueue(AnnounceIfEditing);
         else AnnounceIfEditing();
@@ -182,12 +182,26 @@ public partial class KumikoDataGrid
     private void OnAccessibilityCellEndEdit(object? sender, CellEndEditEventArgs e)
     {
         string? text = e.Committed ? _dataSource.FormatCellValue(e.NewValue, e.Column) : null;
-        Announce(KumikoAnnouncements.EditEnded(_dataSource.Strings, e.Column, e.ColumnIndex, e.Committed, text), important: true);
+        Announce(KumikoAnnouncements.EditEnded(_dataSource.Strings, e.Column, DisplayColumnIndex(e.ColumnIndex), e.Committed, text), important: true);
     }
 
     private void OnAccessibilityValidationFailed(object? sender, CellValidationEventArgs e)
         => Announce(KumikoAnnouncements.ValidationFailed(
-            _dataSource.Strings, e.Column, e.ColumnIndex, e.Result.ErrorMessage), important: true);
+            _dataSource.Strings, e.Column, DisplayColumnIndex(e.ColumnIndex), e.Result.ErrorMessage), important: true);
+
+    // Screen readers number columns as the user sees them: on-screen order, hidden columns not counted (#79).
+    private int DisplayColumnIndex(int columnIndex)
+    {
+        int display = _dataSource.ToDisplayIndex(columnIndex);
+        return display < 0 ? columnIndex : display;
+    }
+
+    private CellPosition ToDisplayCell(CellPosition cell)
+    {
+        if (!cell.IsValid) return cell;
+        int display = _dataSource.ToDisplayIndex(cell.Column);
+        return display < 0 ? CellPosition.Invalid : new CellPosition(cell.Row, display);
+    }
 }
 
 /// <summary>The automation peer of <see cref="KumikoDataGrid"/>: a DataGrid element named by <c>GridDescription</c>.</summary>

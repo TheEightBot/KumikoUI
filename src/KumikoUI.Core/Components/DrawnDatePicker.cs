@@ -37,6 +37,9 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private bool _hasSelection = true;
     private DateTime? _rangeEndDate;
     private DateTime _displayMonth;
+
+    /// <summary>The first day of the month the calendar shows (for tests).</summary>
+    internal DateTime DisplayMonth => _displayMonth;
     private bool _isCalendarOpen;
     private bool _isMonthDropdownOpen;
     private bool _isYearDropdownOpen;
@@ -44,6 +47,10 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private int _highlightedMonthIndex = -1;
     private int _highlightedYearIndex = -1;
     private float _yearScrollOffset;
+
+    // Trackpad scroll distance, in pixels, that changes the calendar by one month.
+    private const float MonthScrollPixels = 60f;
+    private float _monthWheelRemainder;
     private DateTime? _minDate;
     private DateTime? _maxDate;
     private string? _dateFormat;
@@ -875,14 +882,22 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
 
         if (_isYearDropdownOpen)
         {
-            _yearScrollOffset = ClampYearScroll(_yearScrollOffset - e.ScrollDeltaY * DropdownItemHeight * 2);
+            _yearScrollOffset = ClampYearScroll(_yearScrollOffset - e.GetScrollPixelsY(DropdownItemHeight * 2));
             InvalidateVisual();
             return true;
         }
 
         if (_isMonthDropdownOpen) return true;
 
-        if (e.ScrollDeltaY > 0) PreviousMonth(); else NextMonth();
+        // One month per wheel notch. A trackpad reports small pixel deltas, so those add up to a month first.
+        if (e.ScrollUnit == KumikoScrollUnit.Notches)
+        {
+            if (e.ScrollDeltaY > 0) PreviousMonth(); else NextMonth();
+            return true;
+        }
+        _monthWheelRemainder += e.ScrollDeltaY;
+        while (_monthWheelRemainder >= MonthScrollPixels) { _monthWheelRemainder -= MonthScrollPixels; PreviousMonth(); }
+        while (_monthWheelRemainder <= -MonthScrollPixels) { _monthWheelRemainder += MonthScrollPixels; NextMonth(); }
         return true;
     }
 
