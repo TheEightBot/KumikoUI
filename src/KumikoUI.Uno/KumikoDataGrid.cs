@@ -83,6 +83,7 @@ public partial class KumikoDataGrid : UserControl
 
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
+        InitializeScrolling(); // KumikoDataGrid.Scrolling.cs
 
         // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
         InitializeAccessibility();

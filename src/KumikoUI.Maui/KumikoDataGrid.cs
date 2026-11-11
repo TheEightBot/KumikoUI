@@ -134,6 +134,9 @@ public partial class KumikoDataGrid : ContentView
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
 
+        // Scroll offsets and the Scrolled event (KumikoDataGrid.Scrolling.cs)
+        InitializeScrolling();
+
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
