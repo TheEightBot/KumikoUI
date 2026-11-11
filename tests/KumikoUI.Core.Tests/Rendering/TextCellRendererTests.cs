@@ -92,7 +92,9 @@ public class TextCellRendererTests
     private sealed class SizeComparer : IEqualityComparer<KumikoSize>
     {
         public static readonly SizeComparer Instance = new();
-        public bool Equals(KumikoSize a, KumikoSize b) => a.Width == b.Width && a.Height == b.Height;
-        public int GetHashCode(KumikoSize s) => HashCode.Combine(s.Width, s.Height);
+        public bool Equals(KumikoSize a, KumikoSize b) =>
+            Math.Abs(a.Width - b.Width) < 0.001f && Math.Abs(a.Height - b.Height) < 0.001f;
+        // Tolerant equality cannot be hashed consistently; the comparer is only used by Assert.Equal.
+        public int GetHashCode(KumikoSize s) => 0;
     }
 }

@@ -54,7 +54,7 @@ public static class KumikoTextLayout
     public static int GetMaxLines(float height, KumikoFontMetrics metrics)
     {
         float step = metrics.LineHeight;
-        if (!(step > 0f) || float.IsNaN(height)) return 1;
+        if (float.IsNaN(step) || step <= 0f || float.IsNaN(height)) return 1;
         if (float.IsPositiveInfinity(height)) return int.MaxValue;
         // A small tolerance so a rectangle exactly n lines tall holds n lines despite float rounding.
         double lines = Math.Floor((height + metrics.Leading + 0.01f) / step);
@@ -73,7 +73,7 @@ public static class KumikoTextLayout
     public static int FitTextElements(ReadOnlySpan<char> text, float maxWidth, KumikoTextMeasurer measure)
     {
         ArgumentNullException.ThrowIfNull(measure);
-        if (text.IsEmpty || !(maxWidth >= 0f)) return 0;
+        if (text.IsEmpty || float.IsNaN(maxWidth) || maxWidth < 0f) return 0;
 
         int[]? rented = null;
         Span<int> ends = text.Length <= StackBoundaries
@@ -170,7 +170,7 @@ public static class KumikoTextLayout
                 return lineString ?? line.ToString();
         }
 
-        if (!(maxWidth > 0f))
+        if (float.IsNaN(maxWidth) || maxWidth <= 0f)
         {
             width = 0f;
             return string.Empty;
