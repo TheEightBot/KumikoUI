@@ -252,23 +252,30 @@ public class KumikoColumn
     }
     private string? _editorItemsString;
 
-    /// <summary>Property path for display text in ComboBox editor items.</summary>
+    /// <summary>Property path for display text in ComboBox and Picker editor items.</summary>
     public string? EditorDisplayMemberPath { get; set; }
 
-    /// <summary>Property path for value in ComboBox editor items.</summary>
+    /// <summary>Property path for value in ComboBox and Picker editor items.</summary>
     public string? EditorValueMemberPath { get; set; }
 
     /// <summary>
-    /// Returns the display text of a ComboBox editor item. Takes precedence over
+    /// Returns the display text of a ComboBox or Picker editor item. Takes precedence over
     /// <see cref="EditorDisplayMemberPath"/>; reflection-free.
     /// </summary>
     public Func<object, string?>? EditorDisplaySelector { get; set; }
 
     /// <summary>
-    /// Returns the value of a ComboBox editor item. Takes precedence over
+    /// Returns the value of a ComboBox or Picker editor item. Takes precedence over
     /// <see cref="EditorValueMemberPath"/>; reflection-free.
     /// </summary>
     public Func<object, object?>? EditorValueSelector { get; set; }
+
+    /// <summary>
+    /// Whether the ComboBox editor is searchable: typed characters narrow its dropdown to the items that
+    /// contain them (<see cref="Components.DrawnComboBox.IsFilterable"/>). When false (the default), a typed
+    /// character jumps to the next item that starts with it.
+    /// </summary>
+    public bool EditorIsFilterable { get; set; }
 
     /// <summary>
     /// Custom editor factory for Template columns.

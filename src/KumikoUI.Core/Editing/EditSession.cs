@@ -26,6 +26,7 @@ public class EditSession
     private KumikoSource? _editDataSource;
     private bool _warningShown;     // a warning was shown for _warnedValue; committing it again accepts it
     private object? _warnedValue;
+    private bool _pointerCaptured;  // the editor took the press: moves and the release go to it
 
     /// <summary>Whether a cell is currently being edited.</summary>
     public bool IsEditing => _isEditing;
@@ -580,18 +581,61 @@ public class EditSession
     }
 
     /// <summary>
-    /// Forward a pointer event to the active editor.
+    /// Forward a pointer event to the active editor: a press, move, release or wheel scroll over it (its
+    /// dropdown or calendar included). A press the editor handles captures the pointer: the moves and the
+    /// release that follow go to the editor wherever they are, so a drag that starts in a dropdown list keeps
+    /// scrolling it past its edge instead of panning the grid.
     /// Returns true if the editor handled it.
     /// </summary>
     public bool HandlePointerEvent(KumikoPointerEventArgs e)
     {
         if (!_isEditing || _activeEditor == null) return false;
 
+        if (e.Action == InputAction.Pressed)
+            _pointerCaptured = false;
+        else if (_pointerCaptured && e.Action is InputAction.Moved or InputAction.Released or InputAction.Cancelled)
+        {
+            var editor = _activeEditor;
+            if (e.Action == InputAction.Moved)
+                editor.OnPointerMove(e);
+            else
+            {
+                _pointerCaptured = false;
+                if (e.Action == InputAction.Released)
+                    editor.OnPointerUp(e);
+            }
+            return true;
+        }
+
         // Check if click is inside editor
         if (_activeEditor.HitTest(e.X, e.Y))
-            return _focusManager.DispatchPointer(e);
+        {
+            bool handled = _focusManager.DispatchPointer(e);
+            if (handled && e.Action == InputAction.Pressed && _isEditing)
+                _pointerCaptured = true;
+            return handled;
+        }
 
         return false;
+    }
+
+    /// <summary>
+    /// Whether the active editor is animating (a scroll picker coasting or snapping to an item). While it
+    /// is, the host calls <see cref="UpdateAnimation"/> from its frame timer.
+    /// </summary>
+    public bool IsAnimating => _isEditing && _activeEditor is { IsAnimating: true };
+
+    /// <summary>
+    /// Advance the active editor's animation by one frame (<see cref="DrawnComponent.UpdateAnimation"/>).
+    /// An editor may complete the edit when its animation settles (a scroll picker confirms the item it
+    /// stops on), which commits it like any other completion.
+    /// </summary>
+    /// <param name="frameIntervalMs">Time since the previous frame, in milliseconds.</param>
+    /// <returns>True while the editor is still animating.</returns>
+    public bool UpdateAnimation(float frameIntervalMs = 16f)
+    {
+        if (!_isEditing || _activeEditor is not { } editor) return false;
+        return editor.UpdateAnimation(frameIntervalMs) && _isEditing;
     }
 
     /// <summary>
@@ -682,6 +726,7 @@ public class EditSession
         _originalValue = null;
         _warningShown = false;
         _warnedValue = null;
+        _pointerCaptured = false;
         CurrentValidation = null;
         NeedsRedraw?.Invoke();
     }

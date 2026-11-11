@@ -91,6 +91,20 @@ public abstract class DrawnComponent
     /// </summary>
     public virtual bool ActivatesImmediately => false;
 
+    /// <summary>
+    /// Whether the component is animating (a scroll wheel coasting or snapping) and needs
+    /// <see cref="UpdateAnimation"/> called every frame until it stops. Default: <see langword="false"/>.
+    /// </summary>
+    public virtual bool IsAnimating => false;
+
+    /// <summary>
+    /// Advance the component's animation by one frame. Hosts call this from their frame timer while
+    /// <see cref="IsAnimating"/> is true (the grid does it through <see cref="Editing.EditSession.UpdateAnimation"/>).
+    /// </summary>
+    /// <param name="frameIntervalMs">Time since the previous frame, in milliseconds.</param>
+    /// <returns>True while the component is still animating.</returns>
+    public virtual bool UpdateAnimation(float frameIntervalMs) => false;
+
     /// <summary>Request a redraw of the hosting surface.</summary>
     public void InvalidateVisual() => RedrawRequested?.Invoke();
 

@@ -220,10 +220,16 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     /// <summary>Raised when text changes via user input.</summary>
     public event EventHandler<KumikoTextChangedEventArgs>? TextChanged;
 
-    /// <summary>Raised when Enter is pressed during editing.</summary>
+    /// <summary>
+    /// Raised when Enter is pressed during editing (not while an input method is composing). The key itself
+    /// is left unhandled, so a host (the grid's edit session) can commit the edit.
+    /// </summary>
     public event Action? Committed;
 
-    /// <summary>Raised when Escape is pressed during editing.</summary>
+    /// <summary>
+    /// Raised when Escape is pressed during editing (not while an input method is composing). The key itself
+    /// is left unhandled, so a host (the grid's edit session) can cancel the edit.
+    /// </summary>
     public event Action? Cancelled;
 
     /// <summary>Raised when clipboard paste is requested (host must provide text).</summary>
@@ -568,13 +574,14 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
                 else DeleteForward();
                 return true;
 
+            // A single-line box has no use for Enter and Escape: they are reported and left to the host
             case KumikoKey.Enter:
                 Committed?.Invoke();
-                return true;
+                return false;
 
             case KumikoKey.Escape:
                 Cancelled?.Invoke();
-                return true;
+                return false;
 
             case KumikoKey.A when command:
                 SelectAll();

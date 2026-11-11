@@ -11,10 +11,18 @@ namespace KumikoUI.Core.Components;
 /// Vertically scrolling list with center-selection indicator and snap-to-item.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Each item has display text and a value (<see cref="SetItems(IReadOnlyList{string}, IReadOnlyList{object?})"/>);
-/// <see cref="SelectedIndex"/> is -1 when nothing is selected. The choice is confirmed
-/// (<see cref="DrawnComponent.EditCompleted"/>) by releasing the wheel, which snaps to the nearest item and
-/// stops there, or by Enter.
+/// <see cref="SelectedIndex"/> is -1 when nothing is selected.
+/// </para>
+/// <para>
+/// A drag scrolls the wheel; on release it coasts with the drag's velocity, then snaps to the nearest
+/// item. A tap on an item other than the centered one scrolls it to the center. Either way, the item is
+/// selected and confirmed (<see cref="DrawnComponent.EditCompleted"/>) once the wheel settles, which needs
+/// <see cref="UpdateAnimation"/> to be called every frame while <see cref="IsAnimating"/> (the grid's hosts do
+/// it through <see cref="EditSession.UpdateAnimation"/>). A tap on the centered item, or Enter, confirms
+/// it at once. Up, Down and the mouse wheel step the selection without confirming it.
+/// </para>
 /// </remarks>
 public class DrawnScrollPicker : DrawnComponent, IValueEditor
 {
@@ -22,13 +30,20 @@ public class DrawnScrollPicker : DrawnComponent, IValueEditor
     private readonly List<object?> _values = new();
     private int _selectedIndex;
     private float _scrollOffset;
-    private float _velocity;
+    private float _pressY;
     private float _lastDragY;
     private bool _isDragging;
+    private bool _hasDragged;
+    private bool _isSnapping;
+    private int _snapTarget;
+    private bool _confirmWhenSettled;
+    private float _wheelRemainder;
 
-    private const float Friction = 0.92f;
-    private const float SnapSpeed = 0.15f;
-    private const float MinVelocity = 0.5f;
+    // Coasting after a drag: velocity in px/s from timestamped moves, stopping below MinVelocity
+    private readonly InertialScroller _fling = new() { Settings = new ScrollSettings { MinVelocity = 20f } };
+
+    private const float SnapSpeed = 0.25f;
+    private const float DragThreshold = 6f;
 
     // ── Style ───────────────────────────────────────────────────
 
@@ -153,6 +168,7 @@ public class DrawnScrollPicker : DrawnComponent, IValueEditor
         if (displayTexts.Count != values.Count)
             throw new ArgumentException("Each display text needs a value.", nameof(values));
 
+        StopAnimation();
         _items.Clear();
         _items.AddRange(displayTexts);
         _values.Clear();
@@ -206,7 +222,7 @@ public class DrawnScrollPicker : DrawnComponent, IValueEditor
             float alpha = 1f - (distFromCenter / maxDist) * 0.6f;
 
             // With nothing selected (and the wheel untouched) no item is highlighted
-            bool isSelected = i == center && (_selectedIndex >= 0 || _isDragging || Math.Abs(_velocity) > MinVelocity);
+            bool isSelected = i == center && (_selectedIndex >= 0 || _isDragging || IsAnimating);
             var font = isSelected ? SelectedFont : Font;
             var color = isSelected ? SelectedTextColor : TextColor;
             color = new KumikoColor(color.R, color.G, color.B, (byte)(color.A * alpha));
@@ -231,39 +247,81 @@ public class DrawnScrollPicker : DrawnComponent, IValueEditor
 
     // ── Input ───────────────────────────────────────────────────
 
-    /// <inheritdoc />
+    /// <summary>Press: stop any coasting or snapping (and the confirmation it would make) and start a drag.</summary>
     public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
+        StopAnimation();
         _isDragging = true;
-        _lastDragY = e.Y;
-        _velocity = 0;
+        _hasDragged = false;
+        _pressY = _lastDragY = e.Y;
+        _fling.TrackVelocity(0, 0, e.TimestampMs);
         return true;
     }
 
-    /// <inheritdoc />
+    /// <summary>Drag: past a small threshold the wheel follows the pointer, and the velocity is tracked for coasting.</summary>
     public override bool OnPointerMove(KumikoPointerEventArgs e)
     {
         if (!_isDragging) return false;
+        if (!_hasDragged && Math.Abs(e.Y - _pressY) <= DragThreshold) return true;
 
+        _hasDragged = true;
         float dy = _lastDragY - e.Y;
-        _scrollOffset += dy;
-        _scrollOffset = Math.Clamp(_scrollOffset, 0, Math.Max(0, (_items.Count - 1) * ItemHeight));
-        _velocity = dy;
+        _scrollOffset = Math.Clamp(_scrollOffset + dy, 0, MaxScrollOffset);
+        _fling.TrackVelocity(0, dy, e.TimestampMs);
         _lastDragY = e.Y;
         InvalidateVisual();
         return true;
     }
 
     /// <summary>
-    /// Release: snap to the nearest item, stop there (the wheel doesn't coast past the item it confirms),
-    /// and confirm it.
+    /// Release. After a drag the wheel coasts and snaps to the nearest item, confirming it once settled. A
+    /// tap on the centered item confirms it at once; a tap on another item scrolls it to the center and
+    /// confirms it once settled.
     /// </summary>
     public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
+        if (!_isDragging) return true;
+
+        bool dragged = _hasDragged;
         _isDragging = false;
-        _velocity = 0;
-        SnapToNearest();
-        RaiseEditCompleted();
+        _hasDragged = false;
+
+        if (dragged)
+        {
+            _fling.StartFling();
+            if (!_fling.IsActive) BeginSnap(GetNearestIndex());
+            _confirmWhenSettled = true;
+        }
+        else if (IndexAt(e.Y) is var tapped and >= 0)
+        {
+            if (tapped == GetNearestIndex())
+            {
+                _fling.Reset();
+                _scrollOffset = tapped * ItemHeight;
+                SelectSettled(tapped);
+                RaiseEditCompleted(); // a tap on the centered item confirms it
+            }
+            else
+            {
+                BeginSnap(tapped);
+                _confirmWhenSettled = true;
+            }
+        }
+
+        InvalidateVisual();
+        return true;
+    }
+
+    /// <summary>The mouse wheel steps the selection one item per notch, without confirming it.</summary>
+    public override bool OnScroll(KumikoPointerEventArgs e)
+    {
+        if (_items.Count == 0) return false;
+
+        _wheelRemainder -= e.ScrollDeltaY; // positive is up: toward earlier items
+        int steps = (int)_wheelRemainder;
+        _wheelRemainder -= steps;
+        if (steps != 0)
+            MoveSelection(Math.Max(0, (_selectedIndex < 0 ? -1 : _selectedIndex) + steps));
         return true;
     }
 
@@ -278,7 +336,9 @@ public class DrawnScrollPicker : DrawnComponent, IValueEditor
             case KumikoKey.Down:
                 MoveSelection(_selectedIndex < 0 ? 0 : _selectedIndex + 1);
                 return true;
-            case KumikoKey.Enter when _selectedIndex >= 0:
+            case KumikoKey.Enter:
+                FinishAnimation();
+                if (_selectedIndex < 0) return false; // nothing selected: nothing to confirm
                 RaiseEditCompleted(); // confirm the selection
                 return true;
         }
@@ -288,68 +348,115 @@ public class DrawnScrollPicker : DrawnComponent, IValueEditor
     private void MoveSelection(int index)
     {
         if (_items.Count == 0) return;
+        StopAnimation();
         index = Math.Clamp(index, 0, _items.Count - 1);
-        if (index == _selectedIndex) return;
+        if (index == _selectedIndex)
+        {
+            _scrollOffset = index * ItemHeight; // a drag left the wheel between items
+            InvalidateVisual();
+            return;
+        }
         SelectedIndex = index;
         SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
     }
 
-    /// <summary>Animate scroll physics. Call from a frame timer. Returns true if still animating.</summary>
-    public bool UpdateAnimation(float frameMs)
+    // ── Animation ───────────────────────────────────────────────
+
+    /// <summary>Whether the wheel is coasting after a drag or snapping to an item.</summary>
+    public override bool IsAnimating => !_isDragging && (_fling.IsActive || _isSnapping);
+
+    /// <summary>
+    /// Advance the coasting and snapping by one frame; when the wheel settles on an item after a release,
+    /// that item is selected and confirmed (<see cref="DrawnComponent.EditCompleted"/>).
+    /// </summary>
+    /// <param name="frameIntervalMs">Time since the previous frame, in milliseconds.</param>
+    /// <returns>True while the wheel is still moving.</returns>
+    public override bool UpdateAnimation(float frameIntervalMs)
     {
         if (_isDragging) return false;
 
-        // Apply friction to velocity
-        if (Math.Abs(_velocity) > MinVelocity)
+        if (_fling.IsActive)
         {
-            _scrollOffset += _velocity;
-            _scrollOffset = Math.Clamp(_scrollOffset, 0, Math.Max(0, (_items.Count - 1) * ItemHeight));
-            _velocity *= Friction;
+            var (_, dy) = _fling.Update(frameIntervalMs);
+            float before = _scrollOffset;
+            _scrollOffset = Math.Clamp(_scrollOffset + dy, 0, MaxScrollOffset);
+            if (_fling.IsActive && _scrollOffset != before)
+            {
+                InvalidateVisual();
+                return true;
+            }
+
+            // Slowed down, or ran into an end: snap to the nearest item
+            _fling.Reset();
+            BeginSnap(GetNearestIndex());
+        }
+
+        if (!_isSnapping) return false;
+
+        float target = _snapTarget * ItemHeight;
+        float diff = target - _scrollOffset;
+        if (Math.Abs(diff) >= 0.5f)
+        {
+            _scrollOffset += diff * Math.Min(1f, SnapSpeed * frameIntervalMs / 16f);
             InvalidateVisual();
             return true;
         }
 
-        // Snap to nearest
-        return AnimateSnap();
+        _scrollOffset = target;
+        _isSnapping = false;
+        SelectSettled(_snapTarget);
+        InvalidateVisual();
+        if (_confirmWhenSettled)
+        {
+            _confirmWhenSettled = false;
+            RaiseEditCompleted();
+        }
+        return false;
     }
 
-    private void SnapToNearest()
+    private float MaxScrollOffset => Math.Max(0, (_items.Count - 1) * ItemHeight);
+
+    /// <summary>The item at viewport y <paramref name="y"/>, or -1 when none is there.</summary>
+    private int IndexAt(float y)
     {
-        int nearest = GetNearestIndex();
-        if (nearest != _selectedIndex)
-        {
-            var old = SelectedValue;
-            _selectedIndex = nearest;
-            SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
-            RaiseValueChanged(old, SelectedValue);
-        }
-        _scrollOffset = nearest * ItemHeight;
+        if (ItemHeight <= 0 || _items.Count == 0) return -1;
+        float centerY = Bounds.Y + Bounds.Height / 2;
+        int index = (int)MathF.Round((y - centerY + _scrollOffset) / ItemHeight);
+        return index >= 0 && index < _items.Count ? index : -1;
+    }
+
+    private void BeginSnap(int index)
+    {
+        _snapTarget = Math.Clamp(index, 0, Math.Max(0, _items.Count - 1));
+        _isSnapping = _items.Count > 0;
+    }
+
+    /// <summary>Stop coasting and snapping where the wheel is, dropping the pending confirmation.</summary>
+    private void StopAnimation()
+    {
+        _fling.Reset();
+        _isSnapping = false;
+        _confirmWhenSettled = false;
+    }
+
+    /// <summary>Jump to where the coasting or snapping would settle, selecting that item, without confirming it.</summary>
+    private void FinishAnimation()
+    {
+        if (!IsAnimating) return;
+        int target = _isSnapping ? _snapTarget : GetNearestIndex();
+        StopAnimation();
+        _scrollOffset = target * ItemHeight;
+        SelectSettled(target);
         InvalidateVisual();
     }
 
-    private bool AnimateSnap()
+    private void SelectSettled(int index)
     {
-        float target = GetNearestIndex() * ItemHeight;
-        float diff = target - _scrollOffset;
-
-        if (Math.Abs(diff) < 0.5f)
-        {
-            _scrollOffset = target;
-            var newIdx = GetNearestIndex();
-            if (newIdx != _selectedIndex)
-            {
-                var old = SelectedValue;
-                _selectedIndex = newIdx;
-                SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
-                RaiseValueChanged(old, SelectedValue);
-            }
-            InvalidateVisual();
-            return false;
-        }
-
-        _scrollOffset += diff * SnapSpeed;
-        InvalidateVisual();
-        return true;
+        if (index == _selectedIndex || index < 0 || index >= _items.Count) return;
+        var old = SelectedValue;
+        _selectedIndex = index;
+        SelectionChanged?.Invoke(this, new PickerSelectionChangedEventArgs(_selectedIndex));
+        RaiseValueChanged(old, SelectedValue);
     }
 
     // ── IValueEditor ────────────────────────────────────────────

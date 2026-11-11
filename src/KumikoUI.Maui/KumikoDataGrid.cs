@@ -817,9 +817,10 @@ public partial class KumikoDataGrid : ContentView
         if (action == InputAction.Moved)
             ReassertPlatformCursor(); // keeps the resize cursor through a drag on Catalyst
 
-        // Start/stop inertial scroll timer
+        // Start the frame timer for a fling (the grid coasting, or a scroll picker editor coasting and
+        // snapping to an item)
         if ((e.ActionType == SKTouchAction.Released || e.ActionType == SKTouchAction.Cancelled)
-            && _inputController.IsInertialScrolling)
+            && (_inputController.IsInertialScrolling || _editSession.IsAnimating))
             StartInertialScrollTimer();
 
         e.Handled = gridEvent.Handled;
@@ -895,7 +896,11 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnScrollTimerTick(object? sender, EventArgs e)
     {
-        if (!_inputController.UpdateInertialScroll(_scroll, 16f))
+        // The grid's inertial scroll and the open editor's animation (a scroll picker settling, which may
+        // commit the edit) both run on this timer, which stops once neither moves.
+        bool scrolling = _inputController.UpdateInertialScroll(_scroll, 16f);
+        bool animating = _editSession.UpdateAnimation(16f);
+        if (!scrolling && !animating)
         {
             StopInertialScrollTimer();
         }
