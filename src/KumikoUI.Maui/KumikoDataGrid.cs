@@ -122,6 +122,8 @@ public partial class KumikoDataGrid : ContentView
         _canvasView.VerticalOptions = LayoutOptions.Fill;
         _canvasView.EnableTouchEvents = true;
         _canvasView.IgnorePixelScaling = false;
+        // The grid draws left-to-right whatever its ancestors' direction (RTL is unsupported in 1.0, #80, #228)
+        _canvasView.FlowDirection = FlowDirection.LeftToRight;
 
         _root.Children.Add(_canvasView);
         _root.Children.Add(_keyboardProxy);

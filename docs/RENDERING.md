@@ -186,6 +186,9 @@ Small icons (group expand/collapse triangles, sort arrows, dropdown and picker a
 - `ScrollState.OffsetX/Y` represent the logical scroll position (positive = scrolled right/down).
 - All row/column coordinates are computed relative to the viewport, not the data extent.
 
+### Right-to-Left Limitation (1.0)
+Right-to-left layout is not supported in 1.0. The grid always lays out and draws left to right, also inside a right-to-left page or container, and Hebrew or Arabic cell text is drawn without bidi reordering or shaping. Each host pins its canvas element (`SKCanvasView` on MAUI, `SKXamlCanvas` on Uno) to `FlowDirection.LeftToRight`, so an RTL ancestor does not mirror the drawing, and Uno takes pointer coordinates relative to that canvas element so hit-testing matches what is drawn. Mirroring is planned for 1.x (see the RTL spec, #80).
+
 ### Visible Range Computation
 ```
 firstVisibleRow = (int)(offsetY / rowHeight)
