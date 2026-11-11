@@ -43,7 +43,12 @@ public class KumikoStyle
     public KumikoColor GridLineColor { get; set => Set(ref field, value); } = new(220, 220, 220);
     /// <summary>Fill color of selected row/cell highlights.</summary>
     public KumikoColor SelectionColor { get; set => Set(ref field, value); } = new(0, 120, 215, 60);
-    /// <summary>Text color for selected cells (used in high-contrast themes).</summary>
+    /// <summary>
+    /// Text color of cells in selected rows, drawn over <see cref="SelectionColor"/>. A text color set by
+    /// <see cref="CellStyleResolver"/>, the column's <see cref="KumikoColumn.CellStyle"/> or
+    /// <see cref="RowStyleResolver"/> takes precedence, so a cell that sets its own color keeps it when
+    /// selected. Custom cell renderers read it through <see cref="Rendering.CellRenderContext.TextPaint"/>.
+    /// </summary>
     public KumikoColor SelectionTextColor { get; set => Set(ref field, value); } = new(255, 255, 255);
     /// <summary>Subtle highlight color for the focused/current row.</summary>
     public KumikoColor FocusedRowColor { get; set => Set(ref field, value); } = new(0, 120, 215, 30);
@@ -147,7 +152,7 @@ public class KumikoStyle
     public KumikoColor GroupPanelBackgroundColor { get; set => Set(ref field, value); } = new(248, 249, 252);
     /// <summary>Text color used in the group-by panel.</summary>
     public KumikoColor GroupPanelTextColor { get; set => Set(ref field, value); } = new(100, 105, 115);
-    /// <summary>Color of the label text in the group-by panel (e.g., "Drag columns here").</summary>
+    /// <summary>Color of the "Grouped by:" label in the group-by panel, and of the separators between its chips.</summary>
     public KumikoColor GroupPanelLabelColor { get; set => Set(ref field, value); } = new(130, 135, 145);
     /// <summary>Font for label text in the group-by panel.</summary>
     public KumikoFont GroupPanelLabelFont { get; set => Set(ref field, value); } = new("Default", 11);

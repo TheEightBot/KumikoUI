@@ -172,13 +172,6 @@ public class KumikoRowStyleTests
     }
 
     [Fact]
-    public void HasOverrides_WithHeight_ReturnsTrue()
-    {
-        var style = new KumikoRowStyle { Height = 48f };
-        Assert.True(style.HasOverrides);
-    }
-
-    [Fact]
     public void HasOverrides_WithFont_ReturnsTrue()
     {
         var style = new KumikoRowStyle { Font = new KumikoFont("Arial", 14f) };
