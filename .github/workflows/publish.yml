@@ -270,6 +270,9 @@ jobs:
           dotnet restore tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
           dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj \
             -c Release --logger "trx" --results-directory TestResults
+          dotnet restore tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj
+          dotnet test tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj \
+            -c Release --logger "trx" --results-directory TestResults
 
   test-uno:
     name: Run Uno tests

@@ -70,6 +70,12 @@ public class KumikoRenderer : IDisposable
     /// </summary>
     public bool ShowFrameStats { get; set; }
 
+    /// <summary>
+    /// Grid-level switch for the header filter icons: when false none is drawn and no header width is reserved
+    /// for it, whatever a column's own <see cref="KumikoColumn.AllowFiltering"/>. Default true.
+    /// </summary>
+    public bool AllowFiltering { get; set; } = true;
+
     /// <summary>The overlay's counters, readable for logging; they update only while <see cref="ShowFrameStats"/> is true.</summary>
     public KumikoFrameStats FrameStats => _frameStats ??= new KumikoFrameStats();
 
@@ -103,9 +109,14 @@ public class KumikoRenderer : IDisposable
             interactive.RedrawRequested += OnInteractiveRedrawRequested;
     }
 
-    /// <summary>Register a custom cell renderer for a column type.</summary>
+    /// <summary>
+    /// Register a custom cell renderer for every column of a type that has no
+    /// <see cref="KumikoColumn.CustomCellRenderer"/> of its own. Replaces the built-in renderer for that type.
+    /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="renderer"/> is null.</exception>
     public void SetCellRenderer(KumikoColumnType columnType, ICellRenderer renderer)
     {
+        ArgumentNullException.ThrowIfNull(renderer);
         _cellRenderers[columnType] = renderer;
     }
 
@@ -642,7 +653,7 @@ public class KumikoRenderer : IDisposable
     private static float SortGlyphSpace(KumikoColumn col) => col.SortDirection != KumikoSortDirection.None ? KumikoLayoutEngine.SortGlyphSpace : 0f;
 
     // Header width the filter icon takes when it is drawn (the column allows filtering): icon (10) + gap (4).
-    private static float FilterGlyphSpace(KumikoColumn col) => col.AllowFiltering ? KumikoLayoutEngine.FilterGlyphSpace : 0f;
+    private float FilterGlyphSpace(KumikoColumn col) => AllowFiltering && col.AllowFiltering ? KumikoLayoutEngine.FilterGlyphSpace : 0f;
 
     private void DrawRows(
         IDrawingContext ctx,
@@ -791,7 +802,7 @@ public class KumikoRenderer : IDisposable
             string displayText = dataSource.GetCachedCellText(row, dataItem, col, out object? value);
 
             var cell = new CellRenderContext(cellRect, row, value, displayText, col, style, colCellStyle, isSelected,
-                _paintCache, _paintCache.CellTextPaint(colCellStyle, style),
+                _paintCache, _paintCache.CellTextPaint(colCellStyle, style, isSelected),
                 colCellStyle?.TextAlignment ?? col.TextAlignment);
             renderer.Render(ctx, in cell);
         }
@@ -952,16 +963,32 @@ public class KumikoRenderer : IDisposable
                 leftX, chevronCenterY + triH / 2, chevronPaint);
         }
 
-        // Draw group text: "Header: DisplayText (count items)"
+        // Draw group text in up to three runs: "Header: DisplayText", " (count)" and the caption summary, each
+        // with its own paint (group header text, count, caption summary).
         float textX = indent + chevronSize + style.CellPadding;
+        float textRight = areaWidth - style.CellPadding;
 
-        // Include caption summary if available
-        string? captionText = dataSource.GetCaptionSummaryText(groupInfo.GroupPath);
-        string label = groupInfo.GetLabel(captionText);
+        string? captionLabel = groupInfo.GetCaptionLabel(dataSource.GetCaptionSummaryText(groupInfo.GroupPath));
 
-        var textRect = new KumikoRect(textX, rowY, areaWidth - textX - style.CellPadding, style.RowHeight);
-        ctx.DrawTextInRect(label, textRect, _paintCache.GroupHeaderText,
-            KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+        textX = DrawGroupHeaderRun(ctx, groupInfo.GetTitle(), _paintCache.GroupHeaderText, textX, textRight, rowY, style);
+        textX = DrawGroupHeaderRun(ctx, groupInfo.GetCountText(), _paintCache.GroupHeaderCount, textX, textRight, rowY, style);
+        if (captionLabel != null)
+            DrawGroupHeaderRun(ctx, captionLabel, _paintCache.CaptionSummaryText, textX, textRight, rowY, style);
+    }
+
+    /// <summary>
+    /// Draw one run of a group header's text starting at <paramref name="x"/> and return where the next run
+    /// starts; returns <paramref name="right"/> when the run did not fit, so nothing is drawn after it.
+    /// </summary>
+    private static float DrawGroupHeaderRun(
+        IDrawingContext ctx, string text, KumikoPaint paint, float x, float right, float rowY, KumikoStyle style)
+    {
+        if (x >= right) return right;
+
+        float width = ctx.MeasureText(text, paint).Width;
+        var rect = new KumikoRect(x, rowY, right - x, style.RowHeight);
+        ctx.DrawTextInRect(text, rect, paint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+        return x + width;
     }
 
     private void DrawGridLines(
@@ -1161,7 +1188,7 @@ public class KumikoRenderer : IDisposable
         Span<KumikoPoint> outline = stackalloc KumikoPoint[7];
         foreach (var (col, colX, _) in visibleCols)
         {
-            if (!col.AllowFiltering) continue;
+            if (!AllowFiltering || !col.AllowFiltering) continue;
 
             float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
             bool hasActiveFilter = col.ActiveFilter != null && col.ActiveFilter.IsActive;
