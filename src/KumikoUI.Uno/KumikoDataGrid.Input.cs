@@ -232,7 +232,7 @@ public partial class KumikoDataGrid
     // ── Cursor ──
     // InputSystemCursor instances are cached: Core raises CursorChanged only on a change, but a cursor
     // object per change would still be churn. Created lazily on the UI thread, where cursors are set.
-    private static InputCursor? s_resizeCursor, s_handCursor, s_arrowCursor;
+    private InputCursor? _resizeCursor, _handCursor, _arrowCursor;
 
     /// <summary>
     /// Shows the cursor Core asks for (a resize cursor over column grips and during a resize, a hand over
@@ -243,9 +243,9 @@ public partial class KumikoDataGrid
     {
         ProtectedCursor = cursor switch
         {
-            KumikoCursor.ResizeHorizontal => s_resizeCursor ??= InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast),
-            KumikoCursor.Hand => s_handCursor ??= InputSystemCursor.Create(InputSystemCursorShape.Hand),
-            _ => s_arrowCursor ??= InputSystemCursor.Create(InputSystemCursorShape.Arrow),
+            KumikoCursor.ResizeHorizontal => _resizeCursor ??= InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast),
+            KumikoCursor.Hand => _handCursor ??= InputSystemCursor.Create(InputSystemCursorShape.Hand),
+            _ => _arrowCursor ??= InputSystemCursor.Create(InputSystemCursorShape.Arrow),
         };
     }
 
