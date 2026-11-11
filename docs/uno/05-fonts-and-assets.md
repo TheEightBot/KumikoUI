@@ -18,8 +18,9 @@ particular, CJK and icon fonts garble without an explicitly registered typeface 
 |---|---|
 | `RegisterTypefaceFromStream(string family, Stream stream)` | Register a TTF/OTF from any stream (the common path). |
 | `RegisterTypeface(string family, SKTypeface typeface)` | Register a pre-built typeface. |
-| `TryGetTypeface(string family, out SKTypeface?)` | Used internally by `SkiaDrawingContext`. |
-| `Clear()` | Reset (tests). |
+| `TryGetTypeface(string family, out SKTypeface?)` | Used internally by `SkiaResourceCache`. |
+| `Unregister(string family)` | Remove one family (disposes it if the registrar owns it). |
+| `Clear()` | Remove every family; safe while grids are alive. |
 
 A family registered here is then usable from `KumikoStyle` / `KumikoFont.Family` (e.g. header/cell
 fonts), identical to MAUI.

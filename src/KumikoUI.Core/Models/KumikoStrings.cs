@@ -78,6 +78,12 @@ public sealed record KumikoStrings
     /// <summary>The filter popup's descending sort row for <see cref="KumikoColumnType.Date"/> columns. Default: "Sort Newest to Oldest".</summary>
     public string SortDateDescending { get; init; } = "Sort Newest to Oldest";
 
+    /// <summary>The filter popup's row that sorts <see cref="KumikoColumnType.Boolean"/> columns checked rows first. Default: "Sort Checked First".</summary>
+    public string SortBooleanCheckedFirst { get; init; } = "Sort Checked First";
+
+    /// <summary>The filter popup's row that sorts <see cref="KumikoColumnType.Boolean"/> columns unchecked rows first. Default: "Sort Unchecked First".</summary>
+    public string SortBooleanUncheckedFirst { get; init; } = "Sort Unchecked First";
+
     /// <summary>The message for an empty value in a column that cannot be empty. Default: "A value is required.".</summary>
     public string ValueRequired { get; init; } = "A value is required.";
 
@@ -129,21 +135,22 @@ public sealed record KumikoStrings
         _ => ""
     };
 
-    /// <summary>The text of the ascending sort row for a column of <paramref name="type"/>.</summary>
+    /// <summary>The text of the filter popup row that sorts a column of <paramref name="type"/> in <paramref name="direction"/>.</summary>
     /// <param name="type">The column type.</param>
-    internal string SortAscending(KumikoColumnType type) => type switch
-    {
-        KumikoColumnType.Numeric => SortNumericAscending,
-        KumikoColumnType.Date => SortDateAscending,
-        _ => SortTextAscending
-    };
-
-    /// <summary>The text of the descending sort row for a column of <paramref name="type"/>.</summary>
-    /// <param name="type">The column type.</param>
-    internal string SortDescending(KumikoColumnType type) => type switch
-    {
-        KumikoColumnType.Numeric => SortNumericDescending,
-        KumikoColumnType.Date => SortDateDescending,
-        _ => SortTextDescending
-    };
+    /// <param name="direction">The sort direction, in comparer terms (a checked Boolean sorts after an unchecked one, so checked first is descending).</param>
+    internal string SortLabel(KumikoColumnType type, KumikoSortDirection direction) => direction == KumikoSortDirection.Descending
+        ? type switch
+        {
+            KumikoColumnType.Numeric => SortNumericDescending,
+            KumikoColumnType.Date => SortDateDescending,
+            KumikoColumnType.Boolean => SortBooleanCheckedFirst,
+            _ => SortTextDescending
+        }
+        : type switch
+        {
+            KumikoColumnType.Numeric => SortNumericAscending,
+            KumikoColumnType.Date => SortDateAscending,
+            KumikoColumnType.Boolean => SortBooleanUncheckedFirst,
+            _ => SortTextAscending
+        };
 }

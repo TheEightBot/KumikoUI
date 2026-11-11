@@ -75,6 +75,12 @@ public partial class KumikoDataGrid : ContentView
     // Track whether Cleanup has been called so Reconnect knows to re-wire
     private bool _wasCleanedUp;
 
+    // Native Skia objects (paints, fonts, typefaces) reused across frames (#62). Created on first
+    // use, disposed in Cleanup and created again on the next frame after Reconnect.
+    private SkiaResourceCache? _resourceCache;
+
+    private SkiaResourceCache ResourceCache => _resourceCache ??= new SkiaResourceCache();
+
     // Sentinel character used to detect backspace on Entry.
     // Zero-width space avoids collision with user-typed spaces and reduces
     // interference from Android IME composing/replacement behavior.
@@ -403,6 +409,28 @@ public partial class KumikoDataGrid : ContentView
         set => SetValue(IsReadOnlyProperty, value);
     }
 
+    // ── ShowFrameStats ──
+
+    /// <summary>Identifies the <see cref="ShowFrameStats"/> bindable property.</summary>
+    public static readonly BindableProperty ShowFrameStatsProperty = BindableProperty.Create(
+        nameof(ShowFrameStats), typeof(bool), typeof(KumikoDataGrid), false,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._renderer.ShowFrameStats = (bool)n;
+            grid.InvalidateSurface();
+        });
+
+    /// <summary>
+    /// Draws a frame-time overlay (render time, frames per second, bytes allocated per frame) in the grid's
+    /// top-right corner. A debugging aid, off by default; when off it costs nothing per frame.
+    /// </summary>
+    public bool ShowFrameStats
+    {
+        get => (bool)GetValue(ShowFrameStatsProperty);
+        set => SetValue(ShowFrameStatsProperty, value);
+    }
+
     // ── DismissKeyboardOnEnter ──
 
     /// <summary>Identifies the <see cref="DismissKeyboardOnEnter"/> bindable property.</summary>
@@ -675,7 +703,7 @@ public partial class KumikoDataGrid : ContentView
         canvas.Save();
         canvas.Scale(scale);
 
-        using var drawingContext = new SkiaDrawingContext(canvas);
+        using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
 
         _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
@@ -904,7 +932,7 @@ public partial class KumikoDataGrid : ContentView
         // Use a temporary SKBitmap/Canvas for text measurement
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
-        var measureCtx = new SkiaDrawingContext(canvas);
+        using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
         var layoutEngine = new KumikoLayoutEngine();
 
         float optimalWidth = layoutEngine.CalculateAutoFitWidth(
@@ -1004,6 +1032,10 @@ public partial class KumikoDataGrid : ContentView
         // Unsubscribe canvas events
         _canvasView.PaintSurface -= OnPaintSurface;
         _canvasView.Touch -= OnCanvasTouch;
+
+        // Release the cached native Skia objects; the next frame after Reconnect creates a new cache.
+        _resourceCache?.Dispose();
+        _resourceCache = null;
 
         // Unsubscribe keyboard proxy events
         _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;

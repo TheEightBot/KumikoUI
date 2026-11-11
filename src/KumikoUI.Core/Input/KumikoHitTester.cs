@@ -1,3 +1,4 @@
+using KumikoUI.Core.Layout;
 using KumikoUI.Core.Models;
 
 namespace KumikoUI.Core.Input;
@@ -11,6 +12,9 @@ public class KumikoHitTester
     private const float ResizeGripWidth = 6f;
     private const float FilterIconSize = 12f;
     private const float FilterIconRightMargin = 20f; // Right of sort indicator space
+
+    // Sticky group headers pinned for the scroll offset being hit-tested (#174); reused by every hit test
+    private readonly List<PinnedGroupHeader> _pinnedGroupHeaders = new();
 
     /// <summary>
     /// Resolve a viewport coordinate to a grid region, row, and column.
@@ -137,6 +141,22 @@ public class KumikoHitTester
         // Data area — find row (offset by top summary height and frozen rows)
         float dataAreaTop = style.HeaderHeight + topSummaryHeight;
 
+        // Sticky group headers (#174) are drawn over the scrolling rows, so a point on one hits that group's header,
+        // never the row beneath. Outermost first: it is drawn on top of a pushed-up inner header.
+        float scrollingRowsTop = dataAreaTop + frozenRowHeight;
+        if (dataSource != null && adjustedY >= scrollingRowsTop)
+        {
+            PinnedGroupHeaders.Compute(dataSource, style, scrollingRowsTop, scroll.OffsetY, frozenRowCount, _pinnedGroupHeaders);
+            foreach (var pinned in _pinnedGroupHeaders)
+            {
+                if (adjustedY >= pinned.Y && adjustedY < pinned.Y + style.RowHeight
+                    && dataSource.GetGroupHeaderInfo(pinned.Row) is { } pinnedInfo)
+                {
+                    return GroupHeaderHit(pinned.Row, pinnedInfo, viewportX, effectiveContentX, contentY, style);
+                }
+            }
+        }
+
         // Unpinned bottom summary rows scroll with the content, directly after the last row.
         if (pinnedFooterHeight == 0 && bottomSummaryCount > 0)
         {
@@ -183,33 +203,7 @@ public class KumikoHitTester
         {
             var groupInfo = dataSource.GetGroupHeaderInfo(row);
             if (groupInfo != null)
-            {
-                // Check if click is on the chevron area
-                float indent = style.CellPadding + groupInfo.Level * style.GroupIndentWidth;
-                float chevronLeft = indent;
-                float chevronRight = indent + style.GroupChevronSize;
-
-                // Use viewport X (not content X) for the chevron check
-                // since group headers span the full viewport
-                if (viewportX >= chevronLeft && viewportX <= chevronRight + style.CellPadding)
-                {
-                    return new KumikoHitInfo
-                    {
-                        Region = HitRegion.GroupChevron,
-                        RowIndex = row,
-                        ContentX = effectiveContentX,
-                        ContentY = contentY
-                    };
-                }
-
-                return new KumikoHitInfo
-                {
-                    Region = HitRegion.GroupHeaderRow,
-                    RowIndex = row,
-                    ContentX = effectiveContentX,
-                    ContentY = contentY
-                };
-            }
+                return GroupHeaderHit(row, groupInfo, viewportX, effectiveContentX, contentY, style);
         }
 
         // Check if click is on the row drag handle
@@ -241,6 +235,27 @@ public class KumikoHitTester
         // Find column — use the correct coordinate depending on pane
         return HitTestColumn(columnAreaViewportX, effectiveContentX, contentY, row, columns, scroll,
             frozenWidth, rightFrozenWidth, rightFrozenLeft, handleOffset);
+    }
+
+    /// <summary>A hit on a group header row: its chevron, or the rest of the row.</summary>
+    private static KumikoHitInfo GroupHeaderHit(
+        int row, GroupHeaderInfo groupInfo, float viewportX, float effectiveContentX, float contentY, KumikoStyle style)
+    {
+        // Check if click is on the chevron area
+        float indent = style.CellPadding + groupInfo.Level * style.GroupIndentWidth;
+        float chevronLeft = indent;
+        float chevronRight = indent + style.GroupChevronSize;
+
+        // Use viewport X (not content X) for the chevron check
+        // since group headers span the full viewport
+        bool onChevron = viewportX >= chevronLeft && viewportX <= chevronRight + style.CellPadding;
+        return new KumikoHitInfo
+        {
+            Region = onChevron ? HitRegion.GroupChevron : HitRegion.GroupHeaderRow,
+            RowIndex = row,
+            ContentX = effectiveContentX,
+            ContentY = contentY
+        };
     }
 
     /// <summary>

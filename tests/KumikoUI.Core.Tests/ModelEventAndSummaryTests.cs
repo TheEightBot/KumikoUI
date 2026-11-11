@@ -462,7 +462,7 @@ public class ModelEventAndSummaryTests
         Assert.Equal("Totals", row.Name);
         Assert.Equal("All", row.Title);
         Assert.Equal("Sum: 650", row.Values["Salary"]);
-        Assert.Equal(650d, row.RawValues["Salary"]);
+        Assert.Equal(650m, row.RawValues["Salary"]);
         Assert.Equal("Count: 4", row.Values["Name"]);
         Assert.Equal(4, row.RawValues["Name"]);
     }
@@ -507,7 +507,7 @@ public class ModelEventAndSummaryTests
         });
 
         var rows = f.Source.ComputedBottomSummaries.ToDictionary(r => r.Name);
-        Assert.Equal(162.5d, rows["Stats"].RawValues["Salary"]);
+        Assert.Equal(162.5m, rows["Stats"].RawValues["Salary"]);
         Assert.StartsWith("Avg: ", rows["Stats"].Values["Salary"]);
         Assert.Equal(50m, rows["Min"].RawValues["Salary"]);
         Assert.StartsWith("Min: ", rows["Min"].Values["Salary"]);
@@ -538,7 +538,7 @@ public class ModelEventAndSummaryTests
         var rows = f.Source.ComputedBottomSummaries.ToDictionary(r => r.Name);
         Assert.Equal("$650 total", rows["Fmt"].Values["Salary"]);
         Assert.StartsWith("Total 650", rows["Fixed"].Values["Salary"]);
-        Assert.Equal(650d, rows["Fixed"].RawValues["Salary"]);
+        Assert.Equal(650m, rows["Fixed"].RawValues["Salary"]);
     }
 
     [Fact]
@@ -567,7 +567,7 @@ public class ModelEventAndSummaryTests
 
         f.Source.SetFilter(o => ((Employee)o).Dept == "Ops");
 
-        Assert.Equal(50d, Assert.Single(f.Source.ComputedBottomSummaries).RawValues["Salary"]);
+        Assert.Equal(50m, Assert.Single(f.Source.ComputedBottomSummaries).RawValues["Salary"]);
     }
 
     [Fact]
@@ -601,13 +601,13 @@ public class ModelEventAndSummaryTests
         var oslo = Assert.Single(f.Source.GetGroupSummaries("Dept=Eng|City=Oslo")!);
         Assert.Equal("GT", oslo.Name);
         Assert.Equal("Group", oslo.Title);
-        Assert.Equal(300d, oslo.RawValues["Salary"]);
+        Assert.Equal(300m, oslo.RawValues["Salary"]);
         Assert.Equal("Sum: 300", oslo.Values["Salary"]);
         Assert.Equal(2, oslo.RawValues["Name"]);
         Assert.Equal("Count: 2", oslo.Values["Name"]);
 
-        Assert.Equal(300d, Assert.Single(f.Source.GetGroupSummaries("Dept=Eng|City=Rome")!).RawValues["Salary"]);
-        Assert.Equal(50d, Assert.Single(f.Source.GetGroupSummaries("Dept=Ops|City=Rome")!).RawValues["Salary"]);
+        Assert.Equal(300m, Assert.Single(f.Source.GetGroupSummaries("Dept=Eng|City=Rome")!).RawValues["Salary"]);
+        Assert.Equal(50m, Assert.Single(f.Source.GetGroupSummaries("Dept=Ops|City=Rome")!).RawValues["Salary"]);
         Assert.Null(f.Source.GetGroupSummaries("Dept=Eng")); // outer groups have none
     }
 

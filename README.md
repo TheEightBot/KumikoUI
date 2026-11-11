@@ -72,8 +72,8 @@ Every visual element — cells, headers, editors, scrollbars, popups — is rend
 
 | Category | Highlights |
 |---|---|
-| **Rendering** | 100% SkiaSharp canvas, zero native controls, 60 fps |
-| **Virtual scrolling** | Only visible rows/columns rendered — tested with 100K+ rows |
+| **Rendering** | 100% SkiaSharp canvas, zero native controls, allocation-free steady-state frames ([measured](#measured-performance)) |
+| **Virtual scrolling** | Only visible rows/columns rendered — benchmarked with 100K rows |
 | **Column types** | Text, Numeric, Boolean, Date, ComboBox, Picker, ProgressBar, Image, Template |
 | **Action buttons** | Pill-button columns with `ICommand` / callback support; run on a tap without an editor, honor `CanExecute` (drawn disabled) |
 | **Column sizing** | Fixed, Star (proportional), Auto (content-sized) |
@@ -394,7 +394,7 @@ Pin the first N rows so they remain visible while the rest of the data scrolls:
 
 ### Sorting
 
-Tap any column header to sort. The indicator cycles through **Ascending → Descending → None**. Sort state is set through the data source (column `SortDirection` and `SortOrder` are read-only):
+Tap any column header to sort. The first tap depends on the column type: **Boolean** columns sort checked rows first (`Descending`), **Date** columns newest first (`Descending`), and text, numeric, ComboBox and Picker columns ascending. Later taps switch to the opposite direction and then remove the sort (for example **Ascending → Descending → None**, or checked first → unchecked first → none). Set `KumikoColumn.InitialSortDirection` to choose a column's first direction (`null`, the default, means the type's default); `KumikoColumn.FirstSortDirection` reports the one in effect. The sort arrow and the filter popup follow it: the popup's first sort row is the first-tap direction ("Sort Checked First" / "Sort Unchecked First" for Boolean columns, "Sort Newest to Oldest" first for Date columns). Shift or Ctrl-tap adds a column to a multi-column sort with the same first direction. Sort state is set through the data source (column `SortDirection` and `SortOrder` are read-only):
 
 ```csharp
 // Sort by one column:
@@ -436,7 +436,7 @@ Every column header displays a filter icon. Tapping it opens an **Excel-style fi
 
 - Full-text search across all values in that column
 - Value checklist (check/uncheck individual values)
-- Quick sort buttons (A→Z / Z→A) inside the popup
+- Two sort rows inside the popup whose text follows the column type (A to Z, smallest to largest, newest to oldest, checked first), the first row being the header's first-tap direction
 
 Filters are applied immediately on close and stacked across columns. Remove a filter by opening the popup and selecting all values.
 
@@ -479,6 +479,18 @@ kumiko.DataSource.ClearGroupDescriptions();
 
 Group summaries (aggregate values per group) are declared in the `GroupSummaryRows` collection (or with `AddGroupSummaryRow()`) — see [Summaries](#-summaries) below. `GroupDescriptions` and `GroupSummaryRows` replace whatever grouping was set on `DataSource` directly, so use one or the other.
 
+### Sticky group headers
+
+While a grouped grid scrolls, the header of the group the top rows belong to stays pinned at the top of the data area (below the column header and any top summaries), so you always see which group you are in (#174). With nested grouping, each level's header stacks below the one outside it, the outermost on top. As the next group's header scrolls up, it pushes the pinned header out of the way instead of overlapping it.
+
+A pinned header works like the real one: tapping it (or its chevron) expands or collapses that group. Collapsing a pinned group scrolls the grid so the collapsed header stays where it was pinned, with the next group right below it, rather than jumping to whatever followed the group's rows. Keyboard navigation keeps the current row below the pinned headers.
+
+Sticky headers are on by default. To let group headers scroll away with their rows, turn them off on the grid's style (MAUI and Uno):
+
+```csharp
+kumiko.GridStyle.StickyGroupHeaders = false;
+```
+
 ---
 
 ## Σ Summaries
@@ -503,11 +515,15 @@ Summaries appear as pinned rows at the top or bottom of the grid (table summarie
 </dg:KumikoDataGrid.TableSummaryRows>
 ```
 
+Several aggregates of one property appear together in that property's cell, in declaration order (`Sum: $1,300  |  Avg: $163`); the summary row keeps its one-line height, so make the column wide enough for them. A property that has no column, or a hidden one, can still be aggregated, and property names match case-insensitively.
+
 ### Group summaries (code)
 
 ```csharp
-kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
+kumiko.DataSource.AddGroupSummaryRow(new GroupSummaryRow("Totals")
 {
+    Title = "Total",
+    Levels = GroupSummaryLevels.All, // after every group level; Innermost (the default) only after the innermost
     Columns =
     {
         new SummaryColumnDescription { PropertyName = "Salary", SummaryType = SummaryType.Sum,   Format = "C0" },
@@ -516,9 +532,13 @@ kumiko.DataSource.AddGroupSummaryRow(new SummaryDescription
 });
 ```
 
+With `Levels = All` each group, outer or inner, gets a summary of all the rows beneath it. Read computed values with `GetGroupSummaries(groupPath)` or `ComputedBottomSummaries`: `Values` (display text) and `RawValues` are keyed by property, and `Aggregates` / `GetRawValue(property, type)` give each aggregate when a property has several.
+
 ### Available summary types
 
-`Sum` · `Average` · `Count` · `Min` · `Max`
+`Sum` · `Average` · `Count` · `Min` · `Max` · `Custom`
+
+`Sum` and `Average` of `decimal` values are exact (a `decimal` result); integers and floating-point numbers give a `double`. Values that are not numbers (text, dates, booleans, nulls) are skipped. `Min` and `Max` use the grid's comparer, so mixed types never throw.
 
 ---
 
@@ -973,7 +993,7 @@ public static MauiApp CreateMauiApp()
 }
 ```
 
-> **Note:** `RegisterTypefaceFromStream` takes ownership of the created typeface and disposes it when `SkiaFontRegistrar.Clear()` is called. The stream may be disposed after the call returns. Use `RegisterTypeface(family, typeface)` instead when you want to manage the typeface lifetime yourself.
+> **Note:** `RegisterTypefaceFromStream` takes ownership of the created typeface and disposes it when the family is replaced, unregistered (`SkiaFontRegistrar.Unregister(family)`) or cleared (`SkiaFontRegistrar.Clear()`). Changes are safe while grids are alive: every grid drops the affected family before anything is disposed, and the next frame uses the new registration. All members are thread-safe; registering at startup from a background thread is fine. The stream may be disposed after the call returns. Use `RegisterTypeface(family, typeface)` instead when you want to manage the typeface lifetime yourself.
 
 ### Using registered fonts in the grid
 
@@ -1031,7 +1051,10 @@ new KumikoColumn
 | `SkiaFontRegistrar.RegisterTypefaceFromStream(family, stream)` | Creates a typeface from a stream and registers it. Registrar owns the typeface lifetime. |
 | `SkiaFontRegistrar.RegisterTypeface(family, typeface)` | Registers an existing `SKTypeface`. Caller retains ownership. |
 | `SkiaFontRegistrar.TryGetTypeface(family, out typeface)` | Looks up a registered typeface by family name. |
+| `SkiaFontRegistrar.IsRegistered(typeface)` | Whether a typeface instance is registered under any family. |
+| `SkiaFontRegistrar.Unregister(family)` | Removes one family; disposes its typeface if the registrar owns it. |
 | `SkiaFontRegistrar.Clear()` | Removes all registrations and disposes owned typefaces. |
+| `SkiaFontRegistrar.Version` | Incremented by every change. |
 
 ---
 
@@ -1060,11 +1083,35 @@ Once the visible data has been drawn, redrawing it allocates nothing in the mana
 - **Display text cache** — each drawn cell's value and formatted text is cached per row and column, and read again only when the row shows another item, the item raises `PropertyChanged`, the view is rebuilt, or the culture or the column's format changes. Items that don't implement `INotifyPropertyChanged` need `KumikoSource.Refresh()` after a change (see [Live Data](#-live-data)).
 - **Cell renderers** draw with shared paints passed in `CellRenderContext` (see [Custom cell renderers](#custom-cell-renderers)).
 
-`bench/KumikoUI.Benchmarks` (`RenderBenchmarks`) measures a 30 × 10 visible grid at 0 bytes allocated per frame.
+### Measured performance
+
+Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14 (Release, 2026-11-10). The frame figures are the managed render loop into a no-op drawing context, so they exclude SkiaSharp's own drawing time; the 100K-row figures are one view rebuild.
+
+| Operation | Time | Allocated |
+|---|---:|---:|
+| Render a 30 × 10 visible grid (steady state) | 2.9 µs | 0 B |
+| Same, with sort, filter, grouping, summaries, frozen column and drag handle | 6.3 µs | 0 B |
+| Render while scrolling (one new row per frame) | 3.7 µs | 501 B |
+| Sort 100K rows (int / string / date column) | 54 / 72 / 211 ms | 86 MB / 1 KB / 94 MB |
+| Filter 100K rows (text contains / numeric) | 2.4 / 2.2 ms | 0.5 KB / 5.3 MB |
+| Group 100K rows by 1 / 2 levels, with summaries | 28 / 46 ms | 17.5 / 18.8 MB |
+| Add or remove one item of an `ObservableCollection` of 100K rows | 128 µs | 432 B |
+
+Frame rate on a particular device depends on the device and the Skia backend, so this table makes no fps claim: turn on **`ShowFrameStats`** (a bindable property on both `KumikoDataGrid`s, off by default) to overlay the render time, frames per second and bytes allocated per frame, and read it on your hardware. The budgets each operation is held to, how the allocation budgets are checked in CI, and how to rerun everything are in [bench/README.md](bench/README.md).
 
 ### SkiaDrawingContext caching
 
-`SKTypeface`, `SKFont`, and `SKPaint` instances are cached by value-type keys and disposed at frame end — no GC pressure from native Skia objects.
+`SKTypeface`, `SKFont`, and `SKPaint` instances are cached by value-type keys in a `SkiaResourceCache` that each grid keeps for its lifetime, so steady-state frames create no native Skia objects. The cache is bounded (least recently used eviction) and disposed when the grid is torn down. A custom host does the same:
+
+```csharp
+private readonly SkiaResourceCache _resources = new();   // one per control; Dispose() on teardown
+
+void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
+{
+    using var ctx = new SkiaDrawingContext(e.Surface.Canvas, _resources);
+    renderer.Render(ctx, /* ... */);
+}
+```
 
 ### Incremental collection updates
 
@@ -1192,7 +1239,8 @@ KumikoUI.Maui (net10.0 multi-target: iOS / Android / macOS Catalyst / Windows)
 | `InertialScroller` | Physics-based scroll deceleration with configurable friction |
 | `PopupManager` | Popup z-order and input priority routing (filter, ComboBox, DatePicker) |
 | `IDrawingContext` | Platform-independent drawing API: fill, stroke, text, images, clipping |
-| `SkiaDrawingContext` | `SKCanvas` implementation with 3-tier native object caching |
+| `SkiaDrawingContext` | `SKCanvas` implementation; a thin per-frame wrapper over the canvas |
+| `SkiaResourceCache` | Per-control, bounded cache of `SKPaint` / `SKFont` / `SKTypeface` reused across frames |
 | `KumikoDataGrid` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for an in-depth contributor guide and [docs/RENDERING.md](docs/RENDERING.md) for the full 18-step rendering pipeline.

@@ -2,6 +2,7 @@ using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Components;
+using KumikoUI.Core.Layout;
 
 namespace KumikoUI.Core.Input;
 
@@ -612,7 +613,7 @@ public class KumikoInputController
         if (hit.Region == HitRegion.GroupChevron)
         {
         if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
-            dataSource.ToggleGroupExpansion(hit.RowIndex);
+            ToggleTappedGroup(dataSource, scroll, style, hit.RowIndex);
             Redraw();
             e.Handled = true;
             return;
@@ -622,7 +623,7 @@ public class KumikoInputController
         if (hit.Region == HitRegion.GroupHeaderRow)
         {
         if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
-            dataSource.ToggleGroupExpansion(hit.RowIndex);
+            ToggleTappedGroup(dataSource, scroll, style, hit.RowIndex);
             Redraw();
             e.Handled = true;
             return;
@@ -1258,6 +1259,31 @@ public class KumikoInputController
     }
 
     /// <summary>
+    /// Toggle the group whose header was tapped. When that collapses a group whose header was pinned at the top of the
+    /// data area (#174) — its own row scrolled above its pinned slot — the view scrolls so the collapsed header stays
+    /// where it was pinned, instead of jumping to whatever followed the group's rows.
+    /// </summary>
+    private static void ToggleTappedGroup(KumikoSource dataSource, ScrollState scroll, KumikoStyle style, int headerRow)
+    {
+        bool wasExpanded = dataSource.GetGroupHeaderInfo(headerRow)?.IsExpanded == true;
+        dataSource.ToggleGroupExpansion(headerRow);
+
+        // The header keeps its row: only rows after it change.
+        if (!wasExpanded || !style.StickyGroupHeaders || dataSource.GetGroupHeaderInfo(headerRow) is not { IsExpanded: false } collapsed)
+            return;
+
+        int frozenRowCount = dataSource.EffectiveFrozenRowCount;
+        if (headerRow < frozenRowCount) return;
+
+        float slotOffset = PinnedGroupHeaders.SlotOffset(headerRow, collapsed.Level, frozenRowCount, style.RowHeight);
+        if (scroll.OffsetY > slotOffset)
+        {
+            scroll.OffsetY = Math.Max(0, slotOffset);
+            scroll.ClampOffset();
+        }
+    }
+
+    /// <summary>
     /// Scroll so the current cell is fully visible. Vertically a scrollable row is kept between the fixed bands
     /// (grouping panel, header, top summaries, frozen rows) and the pinned bottom summary footer; a frozen row
     /// needs no scroll. Horizontally a scrollable column is kept between the left-frozen columns and the
@@ -1284,8 +1310,11 @@ public class KumikoInputController
 
             float visibleHeight = Math.Max(style.RowHeight, GetScrollableRowsViewportHeight(scroll, style, dataSource));
 
-            if (scrollableRowTop < scroll.OffsetY)
-                scroll.OffsetY = scrollableRowTop;
+            // Keep the row below the sticky group headers pinned over the top of the rows (#174)
+            float pinnedBand = PinnedGroupHeaders.BandHeightAbove(dataSource, style, row);
+
+            if (scrollableRowTop - pinnedBand < scroll.OffsetY)
+                scroll.OffsetY = scrollableRowTop - pinnedBand;
             else if (scrollableRowBottom > scroll.OffsetY + visibleHeight)
                 scroll.OffsetY = scrollableRowBottom - visibleHeight;
         }
