@@ -29,27 +29,39 @@ public class GroupHeaderInfo
 
     /// <summary>
     /// Unique path identifying this group in the hierarchy.
-    /// Used for persisting expand/collapse state across rebuilds.
+    /// Identifies the group in summaries and row keys. Expand/collapse state is kept by raw key path instead,
+    /// so groups with different keys but the same display text get distinct paths (a numeric suffix is appended).
     /// Example: "Department=Engineering" or "Department=Engineering|City=Seattle"
     /// </summary>
     public string GroupPath { get; init; } = "";
 
-    // The header row's text, composed once and reused every frame while the caption is the same.
-    private string? _label;
-    private string? _labelCaption;
+    /// <summary>The group's identity by raw keys; expand/collapse state is stored under it.</summary>
+    internal GroupKeyPath? KeyPath { get; init; }
+
+    // The header row's text runs, composed once and reused every frame while their inputs are the same.
+    private string? _title;
+    private string? _count;
+    private string? _caption;
+    private string? _captionSource;
+
+    /// <summary>The first text run of the header row: "Header: Display". Composed on first use, then reused.</summary>
+    internal string GetTitle() => _title ??= $"{HeaderText}: {DisplayText}";
+
+    /// <summary>The item count run of the header row: " (count)". Composed on first use, then reused.</summary>
+    internal string GetCountText() => _count ??= $" ({ItemCount})";
 
     /// <summary>
-    /// The text of the group header row: "Header: Display (count)", followed by the caption summary when there
-    /// is one. Composed on the first call and when <paramref name="captionText"/> changes, then reused.
+    /// The caption summary run of the header row ("  —  caption"), or null when there is no caption. Composed on
+    /// the first call and when <paramref name="captionText"/> changes, then reused.
     /// </summary>
-    internal string GetLabel(string? captionText)
+    internal string? GetCaptionLabel(string? captionText)
     {
-        if (_label == null || !ReferenceEquals(captionText, _labelCaption))
+        if (captionText == null) return null;
+        if (_caption == null || !ReferenceEquals(captionText, _captionSource))
         {
-            string label = $"{HeaderText}: {DisplayText} ({ItemCount})";
-            _label = captionText != null ? $"{label}  —  {captionText}" : label;
-            _labelCaption = captionText;
+            _caption = $"  —  {captionText}";
+            _captionSource = captionText;
         }
-        return _label;
+        return _caption;
     }
 }

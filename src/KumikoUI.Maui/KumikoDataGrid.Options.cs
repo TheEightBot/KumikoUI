@@ -91,7 +91,7 @@ public partial class KumikoDataGrid
     {
         if (oldCollection != null)
             oldCollection.CollectionChanged -= OnGroupDescriptionsCollectionChanged;
-        if (newCollection != null)
+        if (newCollection != null && IsObservingCollections)
             newCollection.CollectionChanged += OnGroupDescriptionsCollectionChanged;
 
         _dataSource.SetGroupDescriptions(newCollection);
@@ -132,7 +132,7 @@ public partial class KumikoDataGrid
     {
         if (oldCollection != null)
             oldCollection.CollectionChanged -= OnGroupSummaryRowsCollectionChanged;
-        if (newCollection != null)
+        if (newCollection != null && IsObservingCollections)
             newCollection.CollectionChanged += OnGroupSummaryRowsCollectionChanged;
 
         _dataSource.SetGroupSummaryRows(newCollection);

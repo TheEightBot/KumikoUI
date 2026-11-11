@@ -1,0 +1,44 @@
+<!--
+  Host tests for KumikoUI.Maui: bindable property -> KumikoUI.Core mapping on KumikoDataGrid.
+
+  Why this project compiles the MAUI sources instead of referencing src/KumikoUI.Maui: that library only
+  targets the mobile/desktop heads (android, ios, maccatalyst, windows), none of which an xUnit host can
+  load. Microsoft.Maui.Controls and SkiaSharp.Views.Maui.Controls both ship a plain net10.0 target, and
+  KumikoDataGrid builds there once the platform-specific code (guarded by #if ANDROID / IOS / MACCATALYST /
+  WINDOWS) falls away. So the real source files are linked in and exercised on a plain net10.0 runtime with no
+  handler attached.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>KumikoUI.Maui</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="GitHubActionsTestLogger" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.Maui.Controls" />
+    <PackageReference Include="SkiaSharp.Views.Maui.Controls" />
+    <!-- Native Skia for a Linux CI host. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- System under test: the MAUI host sources, compiled for net10.0. -->
+    <Compile Include="../../src/KumikoUI.Maui/**/*.cs" Exclude="../../src/KumikoUI.Maui/obj/**;../../src/KumikoUI.Maui/bin/**" LinkBase="MauiSource" />
+    <ProjectReference Include="../../src/KumikoUI.Core/KumikoUI.Core.csproj" />
+    <ProjectReference Include="../../src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" />
+  </ItemGroup>
+
+</Project>

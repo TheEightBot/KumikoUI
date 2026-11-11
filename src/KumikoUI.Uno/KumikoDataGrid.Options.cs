@@ -5,6 +5,7 @@ using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
+using KumikoUI.Uno.Input;
 using Microsoft.UI.Xaml;
 using Windows.UI;
 
@@ -99,7 +100,8 @@ public partial class KumikoDataGrid
         if (e.OldValue is ObservableCollection<GroupDescription> oldCollection)
             oldCollection.CollectionChanged -= view.OnGroupDescriptionsCollectionChanged;
         var newCollection = (ObservableCollection<GroupDescription>)e.NewValue;
-        newCollection.CollectionChanged += view.OnGroupDescriptionsCollectionChanged;
+        if (view.IsObservingCollections)
+            newCollection.CollectionChanged += view.OnGroupDescriptionsCollectionChanged;
 
         view._dataSource.SetGroupDescriptions(newCollection);
         view.Invalidate();
@@ -145,7 +147,8 @@ public partial class KumikoDataGrid
         if (e.OldValue is ObservableCollection<GroupSummaryRow> oldCollection)
             oldCollection.CollectionChanged -= view.OnGroupSummaryRowsCollectionChanged;
         var newCollection = (ObservableCollection<GroupSummaryRow>)e.NewValue;
-        newCollection.CollectionChanged += view.OnGroupSummaryRowsCollectionChanged;
+        if (view.IsObservingCollections)
+            newCollection.CollectionChanged += view.OnGroupSummaryRowsCollectionChanged;
 
         view._dataSource.SetGroupSummaryRows(newCollection);
         view.Invalidate();
@@ -263,8 +266,7 @@ public partial class KumikoDataGrid
         set => SetValue(AlternateRowBackgroundProperty, value);
     }
 
-    private static KumikoColor? ToKumikoColor(Color? color)
-        => color is { } c ? new KumikoColor(c.R, c.G, c.B, c.A) : null;
+    private static KumikoColor? ToKumikoColor(Color? color) => PointerGestures.ToKumikoColor(color);
 
     // ── CellValidator ──
 

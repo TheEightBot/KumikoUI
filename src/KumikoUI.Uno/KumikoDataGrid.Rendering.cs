@@ -223,12 +223,14 @@ public partial class KumikoDataGrid
         float frameMs = _frames.BeginFrame(now);
 
         // UpdateInertialScroll and UpdateAutoScroll scroll and raise NeedsRedraw (→ RequestRedraw) on every step that
-        // moves; the animation ends when neither has anything left to do.
+        // moves. The open editor's animation (a scroll picker settling, a held spin button repeating) runs on the same
+        // loop, which stops once none of them moves.
         if (_frames.IsAnimating)
         {
-            bool flinging = _inputController.UpdateInertialScroll(_scroll, frameMs);
+            bool scrolling = _inputController.UpdateInertialScroll(_scroll, frameMs);
             bool autoScrolling = _inputController.UpdateAutoScroll(_scroll, frameMs);
-            if (!flinging && !autoScrolling)
+            bool animating = _editSession.UpdateAnimation(frameMs);
+            if (!scrolling && !autoScrolling && !animating)
                 _frames.StopAnimation();
         }
 

@@ -101,7 +101,7 @@ template — confirm after scaffolding):
 | Keyboard input | native responder / hidden `Entry` | `UIElement.KeyDown`/`KeyUp` + `CharacterReceived` |
 | Inertial tick | `IDispatcherTimer` | `CompositionTarget.Rendering`, subscribed only while animating |
 | Bindable surface | `BindableProperty` | `DependencyProperty` |
-| Host hook | `builder.UseSkiaKumikoUI()` | `builder.UseKumikoUI()` (`IHostBuilder` / `IApplicationBuilder`) |
+| Host hook | `builder.UseKumikoUI()` | none needed (`SKXamlCanvas` self-hosts; register fonts with `KumikoFonts`) |
 
 ### Input wiring contract
 

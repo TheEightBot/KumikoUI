@@ -86,8 +86,11 @@ public class KumikoRendererOverlayTests
         // Row 0 is the Oslo header: below the 40 px panel and the 40 px header.
         Assert.Contains(ctx.Fills, f => f.Color == h.Style.GroupHeaderBackgroundColor && f.Rect.Equals(new KumikoRect(0, 80, 600, 36)));
         var title = Assert.Single(ctx.Texts, t => t.Color == h.Style.GroupHeaderTextColor && Near(t.Rect.Y, 80));
-        Assert.Equal("City: Oslo (10)", title.Text);
+        Assert.Equal("City: Oslo", title.Text);
         Assert.Equal(8 + 14 + 8, title.Rect.X);
+        var count = Assert.Single(ctx.Texts, t => t.Color == h.Style.GroupHeaderCountColor && Near(t.Rect.Y, 80));
+        Assert.Equal(" (10)", count.Text);
+        Assert.Equal(title.Rect.X + "City: Oslo".Length * RecordingDrawingContext.CharWidth, count.Rect.X);
         // Full-width rows are clipped to the data area, below the header.
         Assert.Equal(new KumikoRect(0, 80, 600, 320), title.Clip);
         Assert.Contains(ctx.Fills, f => f.Kind == DrawOpKind.FillRoundRect && f.Color == h.Style.GroupChevronBackgroundColor && f.Rect.Top > 80 && f.Rect.Bottom < 116);
@@ -134,10 +137,13 @@ public class KumikoRendererOverlayTests
         h.Source.CaptionSummary = new CaptionSummaryDescription { Columns = { new SummaryColumnDescription("Salary", SummaryType.Sum) } };
         h.Source.AddGroupDescription(new GroupDescription("City"));
 
-        var title = h.Render().Texts.First(t => t.Color == h.Style.GroupHeaderTextColor);
+        var texts = h.Render().Texts;
+        var caption = texts.First(t => t.Color == h.Style.CaptionSummaryTextColor);
 
-        Assert.StartsWith("City: Oslo (10)  —  ", title.Text);
-        Assert.EndsWith(h.Source.GetCaptionSummaryText(h.Source.GetGroupHeaderInfo(0)!.GroupPath)!, title.Text);
+        Assert.StartsWith("  —  ", caption.Text);
+        Assert.EndsWith(h.Source.GetCaptionSummaryText(h.Source.GetGroupHeaderInfo(0)!.GroupPath)!, caption.Text);
+        var count = texts.First(t => t.Color == h.Style.GroupHeaderCountColor);
+        Assert.Equal(count.Rect.X + count.Text!.Length * RecordingDrawingContext.CharWidth, caption.Rect.X);
     }
 
     [Fact]

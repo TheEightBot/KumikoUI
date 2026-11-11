@@ -13,6 +13,12 @@ public class KumikoHitTester
     private const float FilterIconSize = 12f;
     private const float FilterIconRightMargin = 20f; // Right of sort indicator space
 
+    /// <summary>
+    /// Grid-level switch for the header filter icon: when false no column reports
+    /// <see cref="HitRegion.HeaderFilterIcon"/>, whatever its own <see cref="KumikoColumn.AllowFiltering"/>.
+    /// </summary>
+    public bool AllowFiltering { get; set; } = true;
+
     // Sticky group headers pinned for the scroll offset being hit-tested (#174); reused by every hit test
     private readonly List<PinnedGroupHeader> _pinnedGroupHeaders = new();
 
@@ -322,7 +328,7 @@ public class KumikoHitTester
 
                 if (scrollContentX >= x && scrollContentX < colRight)
                 {
-                    if (col.AllowFiltering)
+                    if (AllowFiltering && col.AllowFiltering)
                     {
                         float filterIconX = colRight - FilterIconRightMargin - FilterIconSize;
                         if (scrollContentX >= filterIconX && scrollContentX <= colRight - ResizeGripWidth)
@@ -352,7 +358,7 @@ public class KumikoHitTester
     }
 
     /// <summary>Check a single column header for resize grip, filter icon, or header cell hit.</summary>
-    private static KumikoHitInfo? CheckHeaderColumn(
+    private KumikoHitInfo? CheckHeaderColumn(
         KumikoColumn col, int index, float colLeft, float colRight,
         float testX, float effectiveContentX, float contentY, KumikoStyle style)
     {
@@ -370,7 +376,7 @@ public class KumikoHitTester
 
         if (testX >= colLeft && testX < colRight)
         {
-            if (col.AllowFiltering)
+            if (AllowFiltering && col.AllowFiltering)
             {
                 float filterIconX = colRight - FilterIconRightMargin - FilterIconSize;
                 if (testX >= filterIconX && testX <= colRight - ResizeGripWidth)

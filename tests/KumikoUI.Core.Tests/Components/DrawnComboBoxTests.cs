@@ -243,15 +243,80 @@ public class DrawnComboBoxTests
     }
 
     [Fact]
-    public void Enter_WithNoHighlight_ChangesNothing()
+    public void Enter_WithNoHighlight_IsNotHandled_AndChangesNothing()
     {
         var combo = Combo();
         combo.OpenDropdown();
 
-        Assert.True(combo.Key(KumikoKey.Enter));
+        Assert.False(combo.Key(KumikoKey.Enter));
 
         Assert.Equal(-1, combo.SelectedIndex);
         Assert.True(combo.IsDropdownOpen);
+    }
+
+    [Theory]
+    [InlineData(KumikoKey.Enter)]
+    [InlineData(KumikoKey.Escape)]
+    public void EnterAndEscape_OnAClosedDropdown_AreNotHandled(KumikoKey key)
+    {
+        var combo = Combo();
+        combo.SetSelectedValue("B");
+
+        Assert.False(combo.Key(key));
+
+        Assert.False(combo.IsDropdownOpen);
+        Assert.Equal(1, combo.SelectedIndex);
+    }
+
+    [Fact]
+    public void Down_InTheOpenDropdown_SelectsTheHighlightedItem()
+    {
+        var combo = Combo();
+        combo.SetSelectedValue("A");
+        var selections = new List<ComboBoxSelectionChangedEventArgs>();
+        combo.SelectionChanged += (_, e) => selections.Add(e);
+        combo.OpenDropdown();
+
+        combo.Key(KumikoKey.Down);
+        combo.Key(KumikoKey.Down);
+
+        Assert.Equal("C", combo.SelectedText);
+        Assert.Equal(new[] { "B", "C" }, selections.Select(e => e.NewItem!.DisplayText));
+        Assert.True(combo.IsDropdownOpen);
+    }
+
+    [Fact]
+    public void Escape_RestoresTheSelectionTheDropdownOpenedWith()
+    {
+        var combo = Combo();
+        combo.SetSelectedValue("B");
+        combo.OpenDropdown();
+        combo.Key(KumikoKey.Down);
+        combo.Key(KumikoKey.Down);
+        Assert.Equal("D", combo.SelectedText);
+
+        Assert.True(combo.Key(KumikoKey.Escape));
+
+        Assert.Equal("B", combo.SelectedText);
+        Assert.False(combo.IsDropdownOpen);
+    }
+
+    [Fact]
+    public void PageDownPageUpHomeEnd_MoveTheSelectionInTheOpenDropdown()
+    {
+        var combo = Combo(Enumerable.Range(0, 20).Select(i => $"Item {i}").ToArray());
+        combo.OpenDropdown();
+
+        combo.Key(KumikoKey.PageDown); // 7 whole items show: a page is 6
+        Assert.Equal(5, combo.SelectedIndex); // from nothing highlighted (-1)
+        combo.Key(KumikoKey.End);
+        Assert.Equal(19, combo.SelectedIndex);
+        Assert.Equal(19 * ItemH + ItemH - 200, combo.DropdownScrollOffset);
+        combo.Key(KumikoKey.PageUp);
+        Assert.Equal(13, combo.SelectedIndex);
+        combo.Key(KumikoKey.Home);
+        Assert.Equal(0, combo.SelectedIndex);
+        Assert.Equal(0, combo.DropdownScrollOffset);
     }
 
     [Fact]
@@ -264,7 +329,7 @@ public class DrawnComboBoxTests
         Assert.False(combo.Key(KumikoKey.Character, 'x'));
     }
 
-    [Fact(Skip = "Known defect: choosing an item with Enter does not raise EditCompleted, while choosing it with the pointer does")]
+    [Fact]
     public void Enter_OnAHighlightedItem_CompletesTheEdit()
     {
         var combo = Combo();
@@ -346,13 +411,56 @@ public class DrawnComboBoxTests
     }
 
     [Fact]
-    public void NotFilterable_IgnoresTypedCharacters()
+    public void NotFilterable_TypingJumpsToTheNextItemStartingWithTheLetter()
+    {
+        var combo = Combo("Apple", "Banana", "Cherry", "Blueberry");
+        combo.OpenDropdown();
+
+        Assert.True(combo.Key(KumikoKey.Character, 'b'));
+        Assert.Equal("Banana", combo.SelectedText);
+        Assert.Equal(4 * ItemH, combo.GetDropdownBounds().Height); // the list is not narrowed
+
+        combo.Key(KumikoKey.Character, 'B'); // again: the next one, case-insensitively
+        Assert.Equal("Blueberry", combo.SelectedText);
+
+        combo.Key(KumikoKey.Character, 'b'); // and around
+        Assert.Equal("Banana", combo.SelectedText);
+        Assert.True(combo.IsDropdownOpen);
+    }
+
+    [Fact]
+    public void NotFilterable_TypingWithTheDropdownClosed_SelectsTheMatchingItem()
+    {
+        var combo = Combo("Apple", "Banana", "Cherry");
+        combo.SetSelectedValue("Banana");
+
+        Assert.True(combo.Key(KumikoKey.Character, 'c'));
+
+        Assert.Equal("Cherry", combo.SelectedText);
+        Assert.False(combo.IsDropdownOpen);
+    }
+
+    [Fact]
+    public void NotFilterable_TypingScrollsTheMatchIntoView()
+    {
+        var combo = Combo(Enumerable.Range(0, 30).Select(i => i == 25 ? "Zulu" : $"Item {i}").ToArray());
+        combo.OpenDropdown();
+
+        combo.Key(KumikoKey.Character, 'z');
+
+        Assert.Equal("Zulu", combo.SelectedText);
+        Assert.Equal(25 * ItemH + ItemH - 200, combo.DropdownScrollOffset);
+    }
+
+    [Fact]
+    public void NotFilterable_ACharacterNoItemStartsWith_IsNotHandled()
     {
         var combo = Combo();
         combo.OpenDropdown();
 
-        Assert.False(combo.Key(KumikoKey.Character, 'a'));
-        Assert.Equal(4 * ItemH, combo.GetDropdownBounds().Height);
+        Assert.False(combo.Key(KumikoKey.Character, 'x'));
+        Assert.False(combo.Key(KumikoKey.Character, 'a', InputModifiers.Control));
+        Assert.Equal(-1, combo.SelectedIndex);
     }
 
     // ── Scrolling ─────────────────────────────────────────────────
@@ -374,16 +482,128 @@ public class DrawnComboBoxTests
     }
 
     [Fact]
-    public void Opening_ResetsTheScrollOffset()
+    public void Opening_ScrollsTheSelectedItemIntoView()
     {
         var combo = Combo(Enumerable.Range(0, 10).Select(i => $"Item {i}").ToArray());
         combo.OpenDropdown();
         for (int i = 0; i < 10; i++) combo.Key(KumikoKey.Down);
         combo.CloseDropdown();
+        combo.DropdownScrollOffset = 0;
 
         combo.OpenDropdown();
 
+        Assert.Equal(80, combo.DropdownScrollOffset);
+
+        var unselected = Combo(Enumerable.Range(0, 10).Select(i => $"Item {i}").ToArray());
+        unselected.DropdownScrollOffset = 40;
+        unselected.OpenDropdown();
+        Assert.Equal(0, unselected.DropdownScrollOffset);
+    }
+
+    private static DrawnComboBox Fifty()
+    {
+        var combo = Combo(Enumerable.Range(0, 50).Select(i => $"Item {i:D2}").ToArray());
+        combo.OpenDropdown();
+        return combo;
+    }
+
+    // 50 items of 28 px in a 200 px dropdown: the list scrolls 1200 px
+    private const float FiftyMaxOffset = 50 * ItemH - 200;
+
+    [Fact]
+    public void DraggingTheList_ScrollsIt_AndPicksNothing()
+    {
+        var combo = Fifty();
+        int completed = 0;
+        combo.EditCompleted += () => completed++;
+
+        combo.Down(100, ItemY(5));
+        combo.Move(100, ItemY(5) - 3); // within the threshold: still a press on the item
         Assert.Equal(0, combo.DropdownScrollOffset);
+        combo.Move(100, ItemY(5) - 100);
+        combo.Up(100, ItemY(5) - 100);
+
+        Assert.Equal(100, combo.DropdownScrollOffset);
+        Assert.Equal(-1, combo.SelectedIndex);
+        Assert.True(combo.IsDropdownOpen);
+        Assert.Equal(0, completed);
+    }
+
+    [Fact]
+    public void DraggingTheList_StopsAtBothEnds_AndReachesTheLastItem()
+    {
+        var combo = Fifty();
+
+        combo.Down(100, ItemY(6));
+        combo.Move(100, ItemY(6) - 5000); // the move may leave the dropdown: a press on the list keeps scrolling it
+        combo.Up(100, ItemY(6) - 5000);
+        Assert.Equal(FiftyMaxOffset, combo.DropdownScrollOffset);
+
+        // The last item now sits at the bottom of the dropdown
+        combo.Tap(100, 30 + 200 - ItemH / 2);
+        Assert.Equal("Item 49", combo.SelectedText);
+
+        combo.OpenDropdown();
+        combo.DropdownScrollOffset = 50;
+        combo.Down(100, ItemY(1));
+        combo.Move(100, ItemY(1) + 500);
+        Assert.Equal(0, combo.DropdownScrollOffset);
+    }
+
+    [Fact]
+    public void Wheel_ScrollsTheOpenList_ThreeItemsPerNotch_WithinItsRange()
+    {
+        var combo = Fifty();
+        var notchDown = new KumikoPointerEventArgs { X = 100, Y = ItemY(2), Action = InputAction.Scroll, ScrollDeltaY = -1 };
+
+        Assert.True(combo.OnScroll(notchDown));
+        Assert.Equal(3 * ItemH, combo.DropdownScrollOffset);
+
+        for (int i = 0; i < 20; i++) combo.OnScroll(notchDown);
+        Assert.Equal(FiftyMaxOffset, combo.DropdownScrollOffset);
+
+        combo.Tap(100, 30 + 200 - ItemH / 2);
+        Assert.Equal("Item 49", combo.SelectedText);
+    }
+
+    [Fact]
+    public void Wheel_OutsideTheOpenDropdown_OrWhileClosed_IsNotHandled()
+    {
+        var combo = Fifty();
+        Assert.False(combo.OnScroll(new KumikoPointerEventArgs { X = 100, Y = 15, Action = InputAction.Scroll, ScrollDeltaY = -1 }));
+
+        combo.CloseDropdown();
+        Assert.False(combo.OnScroll(new KumikoPointerEventArgs { X = 100, Y = ItemY(2), Action = InputAction.Scroll, ScrollDeltaY = -1 }));
+    }
+
+    [Fact]
+    public void Scrollbar_PressJumpsToThePosition_AndDragMovesTheThumb()
+    {
+        var combo = Fifty();
+
+        // A press at the bottom of the track centers the thumb there: the list scrolls to its end
+        combo.Down(195, 30 + 199);
+        Assert.Equal(FiftyMaxOffset, combo.DropdownScrollOffset);
+        Assert.Equal(-1, combo.SelectedIndex);
+
+        // Dragging the thumb back up to the top scrolls back to the start
+        combo.Move(195, -500);
+        Assert.Equal(0, combo.DropdownScrollOffset);
+        combo.Up(195, -500);
+        Assert.Equal(-1, combo.SelectedIndex);
+        Assert.True(combo.IsDropdownOpen);
+    }
+
+    [Fact]
+    public void Draw_AListThatScrolls_ShowsAScrollbarThumb()
+    {
+        var combo = Fifty();
+        var shortList = Combo();
+        shortList.OpenDropdown();
+
+        var thumb = Assert.Single(Draw(combo).Ops, o => o.Kind == DrawOpKind.FillRoundRect);
+        Assert.Equal(195, thumb.Rect.X);
+        Assert.DoesNotContain(Draw(shortList).Ops, o => o.Kind == DrawOpKind.FillRoundRect);
     }
 
     // ── Items and selection ───────────────────────────────────────

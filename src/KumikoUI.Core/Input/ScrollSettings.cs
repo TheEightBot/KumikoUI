@@ -23,6 +23,12 @@ public class ScrollSettings
     /// <summary>Mouse wheel / trackpad scroll multiplier in row-heights. Default 3.</summary>
     public float WheelScrollMultiplier { get; set; } = 3f;
 
+    /// <summary>
+    /// Pause, in milliseconds, between the last move sample and the next sample or the release after which the
+    /// finger counts as stopped: its velocity is dropped and releasing does not fling. Default 100.
+    /// </summary>
+    public long FlingHoldCutoffMs { get; set; } = 100;
+
     /// <summary>Whether inertial scrolling (fling) is enabled. Default true.</summary>
     public bool EnableInertia { get; set; } = true;
 
