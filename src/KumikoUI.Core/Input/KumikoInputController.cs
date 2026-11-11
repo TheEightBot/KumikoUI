@@ -213,7 +213,7 @@ public class KumikoInputController
         int totalCols = dataSource.Columns.Count;
         // One page = the number of scrollable rows that fit between the fixed bands (header, grouping
         // panel, top summaries, frozen rows, pinned footer), so PageUp/PageDown never skip unseen rows.
-        int pageSize = Math.Max(1, (int)(GetScrollableRowsViewportHeight(scroll, style, dataSource) / style.RowHeight));
+        int pageSize = Math.Max(1, (int)(KumikoScroller.GetScrollableRowsViewportHeight(scroll, style, dataSource) / style.RowHeight));
 
         // ── Editing-mode key handling ──
         if (_editSession != null && _editSession.IsEditing)
@@ -1245,20 +1245,6 @@ public class KumikoInputController
     // ── Scroll helpers ──
 
     /// <summary>
-    /// Height available to scrollable rows: the viewport minus the fixed bands drawn over or above
-    /// them — grouping panel, header, top summaries, frozen rows and the pinned bottom summary footer.
-    /// </summary>
-    private static float GetScrollableRowsViewportHeight(ScrollState scroll, KumikoStyle style, KumikoSource? dataSource)
-    {
-        float groupPanelHeight = dataSource != null && dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
-        float topSummaryHeight = dataSource != null ? dataSource.TopSummaryCount * style.SummaryRowHeight : 0;
-        float frozenRowHeight = (dataSource?.EffectiveFrozenRowCount ?? 0) * style.RowHeight;
-        float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(dataSource?.BottomSummaryCount ?? 0);
-        return scroll.ViewportHeight - groupPanelHeight - style.HeaderHeight - topSummaryHeight
-            - frozenRowHeight - pinnedFooterHeight;
-    }
-
-    /// <summary>
     /// Toggle the group whose header was tapped. When that collapses a group whose header was pinned at the top of the
     /// data area (#174) — its own row scrolled above its pinned slot — the view scrolls so the collapsed header stays
     /// where it was pinned, instead of jumping to whatever followed the group's rows.
@@ -1299,70 +1285,11 @@ public class KumikoInputController
         int row = selection.CurrentCell.Row;
         int col = selection.CurrentCell.Column;
 
-        int frozenRowCount = dataSource?.EffectiveFrozenRowCount ?? 0;
-
-        // If the row is a frozen row, no vertical scroll needed for it
-        if (row >= frozenRowCount)
-        {
-            // Scrollable row: ensure visible between the frozen rows and the pinned footer
-            float scrollableRowTop = (row - frozenRowCount) * style.RowHeight;
-            float scrollableRowBottom = scrollableRowTop + style.RowHeight;
-
-            float visibleHeight = Math.Max(style.RowHeight, GetScrollableRowsViewportHeight(scroll, style, dataSource));
-
-            // Keep the row below the sticky group headers pinned over the top of the rows (#174)
-            float pinnedBand = PinnedGroupHeaders.BandHeightAbove(dataSource, style, row);
-
-            if (scrollableRowTop - pinnedBand < scroll.OffsetY)
-                scroll.OffsetY = scrollableRowTop - pinnedBand;
-            else if (scrollableRowBottom > scroll.OffsetY + visibleHeight)
-                scroll.OffsetY = scrollableRowBottom - visibleHeight;
-        }
-
-        // If the column is frozen (left or right), no horizontal scroll needed
-        if (col >= 0 && col < columns.Count && (columns[col].IsFrozen || columns[col].IsFrozenRight))
-        {
-            scroll.ClampOffset();
-            return;
-        }
-
-        // Calculate frozen widths
-        float frozenWidth = 0;
-        float rightFrozenWidth = 0;
-        foreach (var c in columns)
-        {
-            if (!c.IsVisible) continue;
-            if (c.IsFrozen) frozenWidth += c.Width;
-            if (c.IsFrozenRight) rightFrozenWidth += c.Width;
-        }
-
-        // Ensure scrollable column is visible (accounting for frozen areas on both sides)
-        float colLeft = frozenWidth;
-        for (int i = 0; i < columns.Count; i++)
-        {
-            if (!columns[i].IsVisible || columns[i].IsFrozen || columns[i].IsFrozenRight) continue;
-            if (i == col) break;
-            colLeft += columns[i].Width;
-        }
-
-        float colRight = colLeft;
-        if (col >= 0 && col < columns.Count)
-            colRight += columns[col].Width;
-
-        // The row drag handle (left or right) takes viewport width from the columns as well
-        float handleWidth = style.ShowRowDragHandle ? style.RowDragHandleWidth : 0;
-
-        // Scrollable area: starts at frozenWidth, ends at viewportWidth - drag handle - rightFrozenWidth
-        float scrollableWidth = scroll.ViewportWidth - handleWidth - rightFrozenWidth;
-        float scrollableLeft = scroll.OffsetX + frozenWidth;
-        float scrollableRight = scroll.OffsetX + scrollableWidth;
-
-        if (colLeft < scrollableLeft)
-            scroll.OffsetX = colLeft - frozenWidth;
-        else if (colRight > scrollableRight)
-            scroll.OffsetX = colRight - scrollableWidth;
-
-        scroll.ClampOffset();
+        float offsetY = dataSource != null
+            ? KumikoScroller.GetRowOffsetY(dataSource, style, scroll, row)
+            : scroll.OffsetY;
+        float offsetX = KumikoScroller.GetColumnOffsetX(columns, style, scroll, col);
+        scroll.ScrollTo(offsetX, offsetY);
     }
 
     private void Redraw() => NeedsRedraw?.Invoke();

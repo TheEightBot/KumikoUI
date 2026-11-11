@@ -83,6 +83,7 @@ public partial class KumikoDataGrid : UserControl
 
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
+        InitializeScrolling(); // KumikoDataGrid.Scrolling.cs
 
         // Core "invalidate" signals → request a single canvas repaint.
         _dataSource.ViewChanged += OnDataSourceViewChanged;

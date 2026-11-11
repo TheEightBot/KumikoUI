@@ -777,6 +777,77 @@ public class KumikoSource
         GroupExpandedChanged?.Invoke(this, new GroupExpandedChangedEventArgs(rebuilt ?? info, isExpanding));
     }
 
+
+    /// <summary>
+    /// The visible row that shows <paramref name="item"/> in the current sorted, filtered and grouped view, or -1
+    /// when it has none: it is not in the source, a filter hides it, or it sits in a collapsed group (see
+    /// <see cref="ExpandToItem"/>). Items are matched like selection does (by reference, or by value for value
+    /// types and records). Scans the view.
+    /// </summary>
+    /// <param name="item">The item to find.</param>
+    /// <returns>The row, or -1.</returns>
+    public int IndexOfItem(object item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return IndexOfRowKey(item);
+    }
+
+    /// <summary>
+    /// The visible row of <paramref name="item"/>, first expanding the collapsed groups that contain it, outermost
+    /// first, so a row exists for it. Expanding goes through <see cref="ToggleGroupExpansion"/>, so
+    /// <see cref="GroupExpanding"/> and <see cref="GroupExpandedChanged"/> are raised as for a tap and a handler can
+    /// cancel it. Returns -1 when the item has no row even so: it is not in the source, a filter hides it, or a
+    /// handler canceled an expansion. Nothing is expanded for an item a filter hides.
+    /// </summary>
+    /// <param name="item">The item to reveal.</param>
+    /// <returns>The row, or -1.</returns>
+    public int ExpandToItem(object item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        int row = IndexOfItem(item);
+        if (row >= 0 || _flatView == null) return row;
+
+        // Hidden by a filter: no group holds it, so there is nothing to expand.
+        bool inView = false;
+        for (int i = 0; i < _viewIndices.Count && !inView; i++)
+            inView = RowKeyComparer.Instance.Equals(_sourceItems[_viewIndices[i]], item);
+        if (!inView) return -1;
+
+        string parentPath = "";
+        for (int level = 0; level < _groupDescriptions.Count; level++)
+        {
+            var desc = _groupDescriptions[level];
+            var column = _columns.FirstOrDefault(c =>
+                string.Equals(c.PropertyName, desc.PropertyName, StringComparison.OrdinalIgnoreCase));
+            string text = ComputeGroupKey(desc, column, item).DisplayText;
+
+            int header = FindGroupHeaderRow(level, parentPath, text);
+            if (header < 0) return -1;
+            if (!_flatView![header].GroupInfo!.IsExpanded)
+            {
+                ToggleGroupExpansion(header);
+                header = FindGroupHeaderRow(level, parentPath, text);
+                if (header < 0 || _flatView == null || !_flatView[header].GroupInfo!.IsExpanded) return -1;
+            }
+            parentPath = _flatView![header].GroupInfo!.GroupPath;
+        }
+        return IndexOfItem(item);
+    }
+
+    private int FindGroupHeaderRow(int level, string parentPath, string displayText)
+    {
+        if (_flatView == null) return -1;
+        string prefix = parentPath + "|";
+        for (int i = 0; i < _flatView.Count; i++)
+        {
+            var info = _flatView[i].GroupInfo;
+            if (_flatView[i].Kind != FlatRowKind.GroupHeader || info == null || info.Level != level) continue;
+            if (level > 0 && !info.GroupPath.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            if (_comparer.TextComparer.Equals(info.DisplayText, displayText)) return i;
+        }
+        return -1;
+    }
+
     /// <summary>
     /// Expand all groups.
     /// </summary>
@@ -1623,6 +1694,19 @@ public class KumikoSource
         ComputeTableSummaries();
     }
 
+    /// <summary>The group key and display text <paramref name="item"/> falls under for one group description.</summary>
+    private (object? Key, string DisplayText) ComputeGroupKey(GroupDescription groupDesc, KumikoColumn? column, object item)
+    {
+        object? rawValue = column != null ? ReadColumnValue(item, column) : null;
+        object? groupKey = groupDesc.KeySelector != null ? groupDesc.KeySelector(rawValue) : rawValue;
+        string displayText = groupDesc.DisplayTextSelector != null
+            ? groupDesc.DisplayTextSelector(groupKey)
+            : groupKey is null
+                ? _strings.BlankGroupText
+                : _comparer.Format(groupKey, groupDesc.KeySelector == null ? column?.Format : null);
+        return (groupKey, displayText);
+    }
+
     /// <summary>
     /// Recursively build the flat view by grouping source indices at the given level.
     /// </summary>
@@ -1651,22 +1735,7 @@ public class KumikoSource
         {
             if (_sourceItems[sourceIdx] is not { } item)
                 continue; // the view holds no null items; stay safe regardless
-            object? rawValue;
-            if (column != null)
-            {
-                rawValue = ReadColumnValue(item, column);
-            }
-            else
-            {
-                rawValue = null;
-            }
-
-            object? groupKey = groupDesc.KeySelector != null ? groupDesc.KeySelector(rawValue) : rawValue;
-            string displayText = groupDesc.DisplayTextSelector != null
-                ? groupDesc.DisplayTextSelector(groupKey)
-                : groupKey is null
-                    ? _strings.BlankGroupText
-                    : _comparer.Format(groupKey, groupDesc.KeySelector == null ? column?.Format : null);
+            var (groupKey, displayText) = ComputeGroupKey(groupDesc, column, item);
 
             // Use display text as dictionary key for grouping
             if (!groupMap.TryGetValue(displayText, out int groupIdx))
