@@ -175,6 +175,10 @@ family increments `SkiaFontRegistrar.Version` and makes each cache drop that fam
 frame resolves the family again. `new SkiaDrawingContext(canvas)` (no cache) still works: it uses a private
 cache that is disposed with the context, which recreates everything every frame.
 
+## Glyphs: Polygons and Polylines
+
+Small icons (group expand/collapse triangles, sort arrows, dropdown and picker arrows) are not built from separate `DrawLine` strokes, whose butt caps leave notches at the corners. `IDrawingContext.FillPolygon(ReadOnlySpan<KumikoPoint>, KumikoPaint)` fills a closed, anti-aliased polygon, and `DrawPolyline` strokes an open path with round joins and caps. Disclosure triangles and sort arrows use `FillPolygon`; open chevrons, checkmarks and the closed filter funnel outline use `DrawPolyline`. Strokes that are genuinely separate (the "x" remove button, plus and minus, separators) stay `DrawLine`. Call sites build their points in a `stackalloc` span, and `SkiaDrawingContext` reuses a single `SKPath`, so glyphs add no per-frame allocation. Both members are default interface members: an implementer that does not override them still renders the glyphs, as outlines drawn with `DrawLine`.
+
 ## Scroll & Viewport
 
 ### Coordinate System

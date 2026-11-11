@@ -41,6 +41,47 @@ public interface IDrawingContext
     /// <param name="paint">The paint describing color, stroke width, and anti-alias settings.</param>
     void DrawLine(float x1, float y1, float x2, float y2, KumikoPaint paint);
 
+    // ── Polygons & polylines ─────────────────────────────────────
+
+    /// <summary>
+    /// Fills a closed polygon (the last point joins back to the first) with the paint's color, anti-aliased when
+    /// the paint asks for it. Used for solid glyphs such as expand/collapse and sort triangles. Fewer than three
+    /// points draws nothing.
+    /// </summary>
+    /// <remarks>
+    /// This is a default interface member so existing implementers keep compiling: the default draws the polygon's
+    /// outline with <see cref="DrawLine"/>, which is visible but not filled. Override it to fill.
+    /// </remarks>
+    /// <param name="points">The polygon's vertices, in order. Not retained after the call.</param>
+    /// <param name="paint">The paint describing the fill color and anti-alias settings.</param>
+    void FillPolygon(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint)
+    {
+        int n = points.Length;
+        if (n < 3) return;
+        for (int i = 0; i < n; i++)
+        {
+            var a = points[i];
+            var b = points[(i + 1) % n];
+            DrawLine(a.X, a.Y, b.X, b.Y, paint);
+        }
+    }
+
+    /// <summary>
+    /// Strokes an open polyline through the points with round joins and round caps, so the corners of an open
+    /// chevron meet cleanly. Fewer than two points draws nothing.
+    /// </summary>
+    /// <remarks>
+    /// This is a default interface member so existing implementers keep compiling: the default strokes one
+    /// <see cref="DrawLine"/> per segment (butt caps, no joins). Override it for joined strokes.
+    /// </remarks>
+    /// <param name="points">The vertices, in order. Not retained after the call.</param>
+    /// <param name="paint">The paint describing color, stroke width, and anti-alias settings.</param>
+    void DrawPolyline(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint)
+    {
+        for (int i = 0; i + 1 < points.Length; i++)
+            DrawLine(points[i].X, points[i].Y, points[i + 1].X, points[i + 1].Y, paint);
+    }
+
     // ── Text ─────────────────────────────────────────────────────
 
     /// <summary>Draws a text string at the specified position.</summary>

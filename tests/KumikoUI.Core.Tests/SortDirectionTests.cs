@@ -214,17 +214,23 @@ public class SortDirectionTests
         var active = new KumikoColumn { Header = "Active", PropertyName = "Active", Width = 100, ColumnType = KumikoColumnType.Boolean };
         h.Source.SetColumns(h.Source.Columns.Append(active).ToList());
 
-        // Checked first is descending: a downward arrow, flat edge at the top (y 17) and apex at the bottom (y 23).
+        // Checked first is descending: a downward triangle (#118), flat edge on top and the apex below it.
         h.Source.ToggleSort(active);
-        var arrow = h.Render().Lines.Where(l => l.Color == h.Style.SortIndicatorColor).ToList();
-        Assert.Equal(3, arrow.Count);
-        Assert.Single(arrow, l => Near(l.Y1, 17f) && Near(l.Y2, 17f));
+        Assert.True(PointsDown(SortTriangle(h)));
 
-        // Unchecked first is ascending: flat edge at the bottom (y 23).
+        // Unchecked first is ascending: an upward triangle, flat edge at the bottom.
         h.Source.ToggleSort(active);
-        arrow = h.Render().Lines.Where(l => l.Color == h.Style.SortIndicatorColor).ToList();
-        Assert.Equal(3, arrow.Count);
-        Assert.Single(arrow, l => Near(l.Y1, 23f) && Near(l.Y2, 23f));
+        Assert.False(PointsDown(SortTriangle(h)));
+    }
+
+    private static KumikoPoint[] SortTriangle(RenderHarness h) =>
+        h.Render().Polygons.Single(o => o.Color == h.Style.SortIndicatorColor).Points!.ToArray();
+
+    /// <summary>Two corners share the top edge and the third (the apex) is below them.</summary>
+    private static bool PointsDown(KumikoPoint[] triangle)
+    {
+        float top = triangle.Min(p => p.Y), bottom = triangle.Max(p => p.Y);
+        return triangle.Count(p => Near(p.Y, top)) == 2 && triangle.Count(p => Near(p.Y, bottom)) == 1;
     }
 
     private static bool Near(float a, float b) => Math.Abs(a - b) < 0.01f;

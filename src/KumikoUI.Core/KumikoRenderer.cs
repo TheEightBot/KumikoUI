@@ -930,37 +930,26 @@ public class KumikoRenderer : IDisposable
             chevronX - 4f, chevronCenterY - pillH / 2, pillW, pillH);
         ctx.FillRoundRect(pillRect, 4f, _paintCache.GroupChevronBackground);
 
-        // Draw filled triangle using thick lines converging to a solid shape
+        // One filled, anti-aliased triangle: down (expanded) or right (collapsed).
         var chevronPaint = _paintCache.GroupChevron;
 
         if (groupInfo.IsExpanded)
         {
-            // Down-pointing triangle (▼) — three edges
             float triW = chevronSize * 0.7f;
             float triH = chevronSize * 0.45f;
             float cx = chevronX + chevronSize / 2;
-            float topY = chevronCenterY - triH / 2;
-            float botY = chevronCenterY + triH / 2;
-            // left-top to bottom-center
-            ctx.DrawLine(cx - triW / 2, topY, cx, botY, chevronPaint);
-            // bottom-center to right-top
-            ctx.DrawLine(cx, botY, cx + triW / 2, topY, chevronPaint);
-            // top edge
-            ctx.DrawLine(cx - triW / 2, topY, cx + triW / 2, topY, chevronPaint);
+            GlyphDrawing.FillTriangleDown(ctx, cx, chevronCenterY, triW / 2, triH / 2, chevronPaint);
         }
         else
         {
-            // Right-pointing triangle (▶) — three edges
             float triW = chevronSize * 0.45f;
             float triH = chevronSize * 0.7f;
             float leftX = chevronX + chevronSize * 0.3f;
             float rightX = leftX + triW;
-            // top-left to right-center
-            ctx.DrawLine(leftX, chevronCenterY - triH / 2, rightX, chevronCenterY, chevronPaint);
-            // right-center to bottom-left
-            ctx.DrawLine(rightX, chevronCenterY, leftX, chevronCenterY + triH / 2, chevronPaint);
-            // left edge
-            ctx.DrawLine(leftX, chevronCenterY - triH / 2, leftX, chevronCenterY + triH / 2, chevronPaint);
+            GlyphDrawing.FillTriangle(ctx,
+                leftX, chevronCenterY - triH / 2,
+                rightX, chevronCenterY,
+                leftX, chevronCenterY + triH / 2, chevronPaint);
         }
 
         // Draw group text: "Header: DisplayText (count items)"
@@ -1135,17 +1124,9 @@ public class KumikoRenderer : IDisposable
             var paint = _paintCache.SortIndicator;
 
             if (col.SortDirection == KumikoSortDirection.Ascending)
-            {
-                ctx.DrawLine(arrowX, arrowCenterY + 3, arrowX + 4, arrowCenterY - 3, paint);
-                ctx.DrawLine(arrowX + 4, arrowCenterY - 3, arrowX + 8, arrowCenterY + 3, paint);
-                ctx.DrawLine(arrowX + 8, arrowCenterY + 3, arrowX, arrowCenterY + 3, paint);
-            }
+                GlyphDrawing.FillTriangleUp(ctx, arrowX + 4, arrowCenterY, 4, 3, paint);
             else
-            {
-                ctx.DrawLine(arrowX, arrowCenterY - 3, arrowX + 4, arrowCenterY + 3, paint);
-                ctx.DrawLine(arrowX + 4, arrowCenterY + 3, arrowX + 8, arrowCenterY - 3, paint);
-                ctx.DrawLine(arrowX + 8, arrowCenterY - 3, arrowX, arrowCenterY - 3, paint);
-            }
+                GlyphDrawing.FillTriangleDown(ctx, arrowX + 4, arrowCenterY, 4, 3, paint);
 
             // Draw sort order number badge for multi-sort
             if (isMultiSort && col.SortOrder > 0)
@@ -1177,6 +1158,7 @@ public class KumikoRenderer : IDisposable
         ColumnFreezeMode freezeMode,
         float frozenWidth)
     {
+        Span<KumikoPoint> outline = stackalloc KumikoPoint[7];
         foreach (var (col, colX, _) in visibleCols)
         {
             if (!col.AllowFiltering) continue;
@@ -1197,17 +1179,16 @@ public class KumikoRenderer : IDisposable
             float bottom = iconCenterY + iconSize / 2;
             float mid = top + iconSize * 0.45f;
 
-            // Top wide part of funnel
-            ctx.DrawLine(iconX, top, iconX + iconSize, top, paint);
-            // Left slope
-            ctx.DrawLine(iconX, top, iconX + iconSize * 0.35f, mid, paint);
-            // Right slope
-            ctx.DrawLine(iconX + iconSize, top, iconX + iconSize * 0.65f, mid, paint);
-            // Stem
-            ctx.DrawLine(iconX + iconSize * 0.35f, mid, iconX + iconSize * 0.35f, bottom, paint);
-            ctx.DrawLine(iconX + iconSize * 0.65f, mid, iconX + iconSize * 0.65f, bottom, paint);
-            // Bottom
-            ctx.DrawLine(iconX + iconSize * 0.35f, bottom, iconX + iconSize * 0.65f, bottom, paint);
+            // One closed outline (top edge, right slope, right stem, bottom, left stem, left slope), joined at
+            // every corner: the last point repeats the first.
+            outline[0] = new KumikoPoint(iconX, top);
+            outline[1] = new KumikoPoint(iconX + iconSize, top);
+            outline[2] = new KumikoPoint(iconX + iconSize * 0.65f, mid);
+            outline[3] = new KumikoPoint(iconX + iconSize * 0.65f, bottom);
+            outline[4] = new KumikoPoint(iconX + iconSize * 0.35f, bottom);
+            outline[5] = new KumikoPoint(iconX + iconSize * 0.35f, mid);
+            outline[6] = outline[0];
+            ctx.DrawPolyline(outline, paint);
 
             // Fill the funnel if filter is active
             if (hasActiveFilter)
@@ -1307,22 +1288,11 @@ public class KumikoRenderer : IDisposable
             float arrowX = textStartX + textSize.Width + 4;
             float arrowCY = chipY + chipHeight / 2;
             var arrowPaint = _paintCache.GroupChipArrow;
+            float ax = arrowX + 6;
             if (group.GroupSortDirection == KumikoSortDirection.Ascending)
-            {
-                // Up arrow
-                float ax = arrowX + 6;
-                ctx.DrawLine(ax, arrowCY + 4, ax, arrowCY - 4, arrowPaint);
-                ctx.DrawLine(ax - 3, arrowCY - 1, ax, arrowCY - 4, arrowPaint);
-                ctx.DrawLine(ax + 3, arrowCY - 1, ax, arrowCY - 4, arrowPaint);
-            }
+                GlyphDrawing.FillTriangleUp(ctx, ax, arrowCY, 4, 4, arrowPaint);
             else
-            {
-                // Down arrow
-                float ax = arrowX + 6;
-                ctx.DrawLine(ax, arrowCY - 4, ax, arrowCY + 4, arrowPaint);
-                ctx.DrawLine(ax - 3, arrowCY + 1, ax, arrowCY + 4, arrowPaint);
-                ctx.DrawLine(ax + 3, arrowCY + 1, ax, arrowCY + 4, arrowPaint);
-            }
+                GlyphDrawing.FillTriangleDown(ctx, ax, arrowCY, 4, 4, arrowPaint);
 
             // Draw "×" remove button (circle + x)
             float removeX = chipX + chipWidth - removeButtonSize - chipPadding / 2 + removeButtonSize / 2;
@@ -1350,8 +1320,7 @@ public class KumikoRenderer : IDisposable
                 float sepCY = chipY + chipHeight / 2;
                 var sepPaint = _paintCache.GroupChipSeparator;
                 // Right-pointing chevron >
-                ctx.DrawLine(sepX, sepCY - 4, sepX + 5, sepCY, sepPaint);
-                ctx.DrawLine(sepX + 5, sepCY, sepX, sepCY + 4, sepPaint);
+                GlyphDrawing.Chevron(ctx, sepX, sepCY - 4, sepX + 5, sepCY, sepX, sepCY + 4, sepPaint);
                 chipX += 14 + chipGap;
             }
         }

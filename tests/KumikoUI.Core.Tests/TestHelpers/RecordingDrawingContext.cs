@@ -10,6 +10,8 @@ internal enum DrawOpKind
     FillRoundRect,
     DrawRoundRect,
     Line,
+    FillPolygon,
+    Polyline,
     Text,
     TextInRect,
     Image,
@@ -38,6 +40,7 @@ internal enum DrawOpKind
 /// <param name="Y1">Line start Y (viewport).</param>
 /// <param name="X2">Line end X (viewport).</param>
 /// <param name="Y2">Line end Y (viewport).</param>
+/// <param name="Points">Vertices (viewport) of a <see cref="DrawOpKind.FillPolygon"/> or <see cref="DrawOpKind.Polyline"/>.</param>
 internal sealed record DrawOp(
     int Index,
     DrawOpKind Kind,
@@ -50,7 +53,8 @@ internal sealed record DrawOp(
     string? Text = null,
     KumikoTextAlignment HAlign = KumikoTextAlignment.Left,
     bool ClipsToRect = false,
-    float X1 = 0, float Y1 = 0, float X2 = 0, float Y2 = 0)
+    float X1 = 0, float Y1 = 0, float X2 = 0, float Y2 = 0,
+    KumikoPoint[]? Points = null)
 {
     /// <summary>
     /// The part of <see cref="Rect"/> that can reach the screen: <see cref="Rect"/> intersected with
@@ -116,6 +120,8 @@ internal sealed class RecordingDrawingContext : IDrawingContext
     // ── Queries ───────────────────────────────────────────────────
 
     public IEnumerable<DrawOp> Fills => Ops.Where(o => o.Kind is DrawOpKind.FillRect or DrawOpKind.FillRoundRect);
+    public IEnumerable<DrawOp> Polygons => Ops.Where(o => o.Kind == DrawOpKind.FillPolygon);
+    public IEnumerable<DrawOp> Polylines => Ops.Where(o => o.Kind == DrawOpKind.Polyline);
     public IEnumerable<DrawOp> Lines => Ops.Where(o => o.Kind == DrawOpKind.Line);
     public IEnumerable<DrawOp> Texts => Ops.Where(o => o.IsText);
 
@@ -137,10 +143,10 @@ internal sealed class RecordingDrawingContext : IDrawingContext
 
     private void Record(DrawOpKind kind, KumikoRect rect, KumikoPaint paint, string? text = null,
         KumikoTextAlignment hAlign = KumikoTextAlignment.Left, bool clipsToRect = false,
-        float x1 = 0, float y1 = 0, float x2 = 0, float y2 = 0)
+        float x1 = 0, float y1 = 0, float x2 = 0, float y2 = 0, KumikoPoint[]? points = null)
     {
         Ops.Add(new DrawOp(Ops.Count, kind, rect, paint.Color, paint.Style, paint.StrokeWidth, paint.Font, _clip,
-            text, hAlign, clipsToRect, x1, y1, x2, y2));
+            text, hAlign, clipsToRect, x1, y1, x2, y2, points));
     }
 
     public void FillRect(KumikoRect rect, KumikoPaint paint) => Record(DrawOpKind.FillRect, Map(rect), paint);
@@ -153,6 +159,26 @@ internal sealed class RecordingDrawingContext : IDrawingContext
         x1 += _tx; x2 += _tx; y1 += _ty; y2 += _ty;
         var box = new KumikoRect(Math.Min(x1, x2), Math.Min(y1, y2), Math.Abs(x2 - x1), Math.Abs(y2 - y1));
         Record(DrawOpKind.Line, box, paint, x1: x1, y1: y1, x2: x2, y2: y2);
+    }
+
+    public void FillPolygon(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint) =>
+        RecordPoints(DrawOpKind.FillPolygon, points, paint);
+
+    public void DrawPolyline(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint) =>
+        RecordPoints(DrawOpKind.Polyline, points, paint);
+
+    private void RecordPoints(DrawOpKind kind, ReadOnlySpan<KumikoPoint> points, KumikoPaint paint)
+    {
+        var mapped = new KumikoPoint[points.Length];
+        float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+        for (int i = 0; i < points.Length; i++)
+        {
+            mapped[i] = new KumikoPoint(points[i].X + _tx, points[i].Y + _ty);
+            minX = Math.Min(minX, mapped[i].X); maxX = Math.Max(maxX, mapped[i].X);
+            minY = Math.Min(minY, mapped[i].Y); maxY = Math.Max(maxY, mapped[i].Y);
+        }
+        var box = points.Length == 0 ? default : new KumikoRect(minX, minY, maxX - minX, maxY - minY);
+        Record(kind, box, paint, points: mapped);
     }
 
     public void DrawText(string text, float x, float y, KumikoPaint paint)

@@ -22,6 +22,11 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     private readonly bool _ownsCache;
     private bool _disposed;
 
+    // Reused for every FillPolygon / DrawPolyline call, so glyphs allocate nothing per call.
+    // Created on first use and released by Dispose.
+    private SKPath? _path;
+    private SKPaint? _polylinePaint;
+
     /// <summary>
     /// Initializes a new <see cref="SkiaDrawingContext"/> that renders onto the specified <see cref="SKCanvas"/>
     /// with a private <see cref="SkiaResourceCache"/> that is disposed with the context. Every frame drawn
@@ -99,6 +104,50 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Stroke);
         _canvas.DrawLine(x1, y1, x2, y2, skPaint);
     }
+
+    // ── Polygons & polylines ─────────────────────────────────────
+
+    /// <inheritdoc />
+    public void FillPolygon(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint)
+    {
+        if (points.Length < 3) return;
+        var path = BuildPath(points, close: true);
+        var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
+        _canvas.DrawPath(path, skPaint);
+    }
+
+    /// <inheritdoc />
+    public void DrawPolyline(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint)
+    {
+        if (points.Length < 2) return;
+        var path = BuildPath(points, close: false);
+        // Joins and caps are not part of the shared paint cache key, so strokes use their own paint.
+        var skPaint = _polylinePaint ??= new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            StrokeJoin = SKStrokeJoin.Round,
+            StrokeCap = SKStrokeCap.Round
+        };
+        skPaint.Color = new SKColor(paint.Color.R, paint.Color.G, paint.Color.B, paint.Color.A);
+        skPaint.StrokeWidth = paint.StrokeWidth;
+        skPaint.IsAntialias = paint.IsAntiAlias;
+        _canvas.DrawPath(path, skPaint);
+    }
+
+    // SkiaSharp 4 marks SKPath's mutators obsolete in favor of SKPathBuilder, but SKPathBuilder.Detach/Snapshot
+    // create a new SKPath per call; one reused, rewound SKPath keeps glyph drawing allocation-free.
+#pragma warning disable CS0618
+    private SKPath BuildPath(ReadOnlySpan<KumikoPoint> points, bool close)
+    {
+        var path = _path ??= new SKPath();
+        path.Rewind();
+        path.MoveTo(points[0].X, points[0].Y);
+        for (int i = 1; i < points.Length; i++)
+            path.LineTo(points[i].X, points[i].Y);
+        if (close) path.Close();
+        return path;
+    }
+#pragma warning restore CS0618
 
     // ── Text ─────────────────────────────────────────────────────
 
@@ -296,6 +345,10 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _path?.Dispose();
+        _path = null;
+        _polylinePaint?.Dispose();
+        _polylinePaint = null;
         _cache.EndFrame();
         if (_ownsCache)
             _cache.Dispose();

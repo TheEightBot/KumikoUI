@@ -103,7 +103,8 @@ public class DrawnCheckBox : DrawnComponent
         {
             Color = CheckMarkColor,
             Style = PaintStyle.Stroke,
-            StrokeWidth = CheckStrokeWidth
+            StrokeWidth = CheckStrokeWidth,
+            IsAntiAlias = true
         };
 
         // Draw a checkmark (√) shape
@@ -114,8 +115,7 @@ public class DrawnCheckBox : DrawnComponent
         float x3 = boxX + BoxSize * 0.8f;
         float y3 = boxY + BoxSize * 0.25f;
 
-        ctx.DrawLine(x1, y1, x2, y2, paint);
-        ctx.DrawLine(x2, y2, x3, y3, paint);
+        GlyphDrawing.Chevron(ctx, x1, y1, x2, y2, x3, y3, paint);
     }
 
     private void DrawIndeterminate(IDrawingContext ctx, float boxX, float boxY)

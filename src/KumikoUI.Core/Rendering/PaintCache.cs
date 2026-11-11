@@ -343,7 +343,7 @@ public class PaintCache
             IsAntiAlias = true
         };
         GroupChipAccent = new KumikoPaint { Color = style.GroupPanelChipAccentColor };
-        GroupChipArrow = Stroke(style.GroupPanelChipAccentColor, 2f);
+        GroupChipArrow = new KumikoPaint { Color = style.GroupPanelChipAccentColor, Style = PaintStyle.Fill, IsAntiAlias = true };
         GroupChipRemoveBackground = new KumikoPaint { Color = style.GroupPanelChipRemoveColor.WithAlpha(40) };
         GroupChipRemove = Stroke(style.GroupPanelChipRemoveColor, 1.5f);
         GroupChipSeparator = Stroke(style.GroupPanelLabelColor, 1.5f);
@@ -351,7 +351,7 @@ public class PaintCache
         // Group header rows
         GroupHeaderBackground = new KumikoPaint { Color = style.GroupHeaderBackgroundColor };
         GroupChevronBackground = new KumikoPaint { Color = style.GroupChevronBackgroundColor, IsAntiAlias = true };
-        GroupChevron = Stroke(style.GroupChevronColor, 2.5f);
+        GroupChevron = new KumikoPaint { Color = style.GroupChevronColor, Style = PaintStyle.Fill, IsAntiAlias = true };
         GroupHeaderText = new KumikoPaint
         {
             Color = style.GroupHeaderTextColor,
