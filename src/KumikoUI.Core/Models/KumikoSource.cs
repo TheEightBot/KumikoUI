@@ -69,6 +69,13 @@ public class KumikoSource : IDisposable
     private EventHandler<KumikoViewChangedEventArgs>? _viewChanged;
     private bool _isMultiSortActive;
 
+    // ── Display column order and row-key index ───────────────────
+    private KumikoColumn[] _displayColumns = Array.Empty<KumikoColumn>();
+    private int[] _displayColumnIndices = Array.Empty<int>();
+    private IReadOnlyList<KumikoColumn> _displayColumnsView = Array.Empty<KumikoColumn>();
+    private int _columnLayoutVersion;
+    private Dictionary<object, int>? _rowKeyIndex;   // visible row of each row key; built on first use, dropped when the view changes
+
     // ── Comparison ───────────────────────────────────────────────
     private CultureInfo? _culture;
     private KumikoStrings _strings = KumikoStrings.Default;
@@ -319,6 +326,133 @@ public class KumikoSource : IDisposable
     public IReadOnlyList<KumikoColumn> Columns => _columns;
 
     /// <summary>
+    /// The visible columns in on-screen order: left-frozen columns, then scrolling columns, then right-frozen
+    /// columns, each group in <see cref="Columns"/> order. Hidden columns are left out. Keyboard navigation
+    /// moves through this order. The list is cached and rebuilt only when the order changes; it is a snapshot,
+    /// so read it again after changing the columns.
+    /// </summary>
+    public IReadOnlyList<KumikoColumn> DisplayColumns
+    {
+        get
+        {
+            EnsureDisplayColumns();
+            return _displayColumnsView;
+        }
+    }
+
+    /// <summary>
+    /// Incremented whenever <see cref="DisplayColumns"/> changes: a column was hidden, shown, frozen,
+    /// unfrozen or reordered, or the columns were replaced. Compare it to a stored value to find out whether
+    /// anything derived from the on-screen order is stale.
+    /// </summary>
+    public int ColumnLayoutVersion
+    {
+        get
+        {
+            EnsureDisplayColumns();
+            return _columnLayoutVersion;
+        }
+    }
+
+    /// <summary>
+    /// The position of <paramref name="column"/> in <see cref="DisplayColumns"/>, or -1 when it is hidden or
+    /// not one of this source's columns.
+    /// </summary>
+    /// <param name="column">The column to find.</param>
+    public int GetDisplayIndex(KumikoColumn column)
+    {
+        EnsureDisplayColumns();
+        for (int i = 0; i < _displayColumns.Length; i++)
+        {
+            if (ReferenceEquals(_displayColumns[i], column)) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// The position in <see cref="DisplayColumns"/> of <c>Columns[columnIndex]</c>, or -1 when the index is
+    /// out of range or the column is hidden.
+    /// </summary>
+    /// <param name="columnIndex">An index into <see cref="Columns"/>.</param>
+    public int ToDisplayIndex(int columnIndex)
+    {
+        EnsureDisplayColumns();
+        for (int i = 0; i < _displayColumnIndices.Length; i++)
+        {
+            if (_displayColumnIndices[i] == columnIndex) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// The index into <see cref="Columns"/> of the column at <paramref name="displayIndex"/> in
+    /// <see cref="DisplayColumns"/>, or -1 when the position is out of range.
+    /// </summary>
+    /// <param name="displayIndex">A position in <see cref="DisplayColumns"/>.</param>
+    public int ToColumnIndex(int displayIndex)
+    {
+        EnsureDisplayColumns();
+        return displayIndex >= 0 && displayIndex < _displayColumnIndices.Length
+            ? _displayColumnIndices[displayIndex]
+            : -1;
+    }
+
+    /// <summary>
+    /// Keep the cached display order current. A pass over the columns compares them with the cache and
+    /// allocates only when the order differs, so calling this on every read is cheap in steady state.
+    /// </summary>
+    private void EnsureDisplayColumns()
+    {
+        if (DisplayOrderMatchesCache()) return;
+
+        var columns = new List<KumikoColumn>(_columns.Count);
+        var indices = new List<int>(_columns.Count);
+        for (int pass = 0; pass < 3; pass++)
+        {
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                if (_columns[i].IsVisible && PaneOf(_columns[i]) == pass)
+                {
+                    columns.Add(_columns[i]);
+                    indices.Add(i);
+                }
+            }
+        }
+
+        _displayColumns = columns.ToArray();
+        _displayColumnIndices = indices.ToArray();
+        _displayColumnsView = Array.AsReadOnly(_displayColumns);
+        _columnLayoutVersion++;
+    }
+
+    /// <summary>Whether the visible columns, in pane order, are exactly the cached display columns.</summary>
+    private bool DisplayOrderMatchesCache()
+    {
+        int n = 0;
+        for (int pass = 0; pass < 3; pass++)
+        {
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                var column = _columns[i];
+                if (!column.IsVisible || PaneOf(column) != pass) continue;
+                if (n >= _displayColumns.Length || !ReferenceEquals(_displayColumns[n], column) ||
+                    _displayColumnIndices[n] != i)
+                    return false;
+                n++;
+            }
+        }
+        return n == _displayColumns.Length;
+    }
+
+    /// <summary>The pane a column draws in: 0 left-frozen, 1 scrolling, 2 right-frozen.</summary>
+    private static int PaneOf(KumikoColumn column) => column.FreezeMode switch
+    {
+        ColumnFreezeMode.Left => 0,
+        ColumnFreezeMode.Right => 2,
+        _ => 1,
+    };
+
+    /// <summary>
     /// Get all columns that are actively sorted, ordered by SortOrder.
     /// </summary>
     public IReadOnlyList<KumikoColumn> ActiveSortColumns =>
@@ -525,6 +659,7 @@ public class KumikoSource : IDisposable
         // The collection has already changed, so the old rows come from the record kept since the last
         // notification, not from the (now stale) view.
         var oldRowKeys = _rowKeys;
+        _rowKeyIndex = null; // the rows move; the index is rebuilt on the next lookup
         bool incremental = TryIncrementalUpdate(e, out int viewIndex, out bool rowsChanged);
         if (!incremental)
             RebuildCore();
@@ -981,6 +1116,7 @@ public class KumikoSource : IDisposable
         _groupDescriptions.Clear();
         PruneGroupExpandedState();
         _flatView = null;
+        _rowKeyIndex = null;
         RequestRebuild();
     }
 
@@ -1328,16 +1464,24 @@ public class KumikoSource : IDisposable
         };
     }
 
-    /// <summary>The visible row whose key matches <paramref name="key"/>, or -1. Scans the view.</summary>
+    /// <summary>
+    /// The visible row whose key matches <paramref name="key"/> (an item by reference, a group row by value),
+    /// or -1. Constant time: it reads a dictionary that is built on first use after the view changes.
+    /// </summary>
     internal int IndexOfRowKey(object key)
     {
-        int count = RowCount;
-        for (int i = 0; i < count; i++)
+        var index = _rowKeyIndex;
+        if (index == null)
         {
-            if (GetRowKey(i) is { } candidate && RowKeyComparer.Instance.Equals(candidate, key))
-                return i;
+            int count = RowCount;
+            index = new Dictionary<object, int>(count, RowKeyComparer.Instance);
+            for (int i = 0; i < count; i++)
+            {
+                if (GetRowKey(i) is { } candidate) index.TryAdd(candidate, i);
+            }
+            _rowKeyIndex = index;
         }
-        return -1;
+        return index.TryGetValue(key, out int row) ? row : -1;
     }
 
     /// <summary>
@@ -1711,6 +1855,7 @@ public class KumikoSource : IDisposable
     /// <summary>Rebuild the visible rows from the source items and the current state. Raises nothing.</summary>
     private void RebuildCore()
     {
+        _rowKeyIndex = null;
         InvalidateCellText();
         _viewIndices.Clear();
         var filters = PrepareFilters();
