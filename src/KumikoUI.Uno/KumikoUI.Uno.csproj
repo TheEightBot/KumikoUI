@@ -50,7 +50,8 @@
     <IsPackable>true</IsPackable>
     <PackageId>KumikoUI.Uno</PackageId>
     <Description>A high-performance, fully custom-drawn KumikoUI DataGrid control for the Uno Platform. Renders via SkiaSharp (SKXamlCanvas) on Windows (WinUI), desktop (Windows, macOS, Linux), WebAssembly, Android and iOS, reusing the same engine as KumikoUI.Maui.</Description>
-    <PackageTags>uno;unoplatform;winui;datagrid;grid;table;skiasharp;dotnet;cross-platform;wasm;webassembly;desktop;android;ios</PackageTags>
+    <PackageTags>uno;unoplatform;uno-platform;winui;datagrid;data-grid;grid;table;skiasharp;cross-platform;wasm;webassembly;desktop;android;ios</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <!--
@@ -160,5 +161,9 @@
       <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'Uno.Resizetizer.Generators'" />
     </ItemGroup>
   </Target>
+  <!-- The package README shown on nuget.org: plain Markdown with absolute image URLs (#95). -->
+  <ItemGroup>
+    <None Include="../../docs/nuget/README.KumikoUI.Uno.md" Pack="true" PackagePath="README.md" Visible="false" />
+  </ItemGroup>
 
 </Project>
