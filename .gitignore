@@ -43,3 +43,6 @@ Thumbs.db
 
 # BenchmarkDotNet output (bench/)
 BenchmarkDotNet.Artifacts/
+
+# Documentation snippets extracted from the Markdown by eng/DocsSnippets (#87)
+tests/KumikoUI.Docs.Snippets.*/Generated/

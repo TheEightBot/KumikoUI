@@ -1,0 +1,52 @@
+<!--
+  Compiles every Uno Platform documentation snippet (#87): the C# and XAML blocks of README.md and the other
+  Markdown files eng/DocsSnippets reads. Never run, never packed, and not part of KumikoUI.sln.
+
+      1. Run the extractor, eng/DocsSnippets (a console project; `dotnet run` it in Release).
+      2. dotnet build tests/KumikoUI.Docs.Snippets.Uno -f net10.0-desktop -c Release
+
+  The extractor writes Generated/ (git-ignored). The exact commands are in CONTRIBUTING.md. The XAML goes through Uno's XAML generator, which rejects
+  unknown types, properties and namespaces. One head (net10.0-desktop) is enough: the snippets are
+  platform-neutral, and it builds on Linux, macOS and Windows without extra workloads.
+-->
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-desktop</TargetFramework>
+    <UnoSingleProject>true</UnoSingleProject>
+    <OutputType>Library</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IncludeSymbols>false</IncludeSymbols>
+    <DefineConstants>$(DefineConstants);DOCS_UNO</DefineConstants>
+    <!-- Same SkiaRenderer feature the README tells an app to enable; SkiaSharpVersion comes from Directory.Packages.props. -->
+    <UnoFeatures>
+      SkiaRenderer;
+    </UnoFeatures>
+    <!-- Snippets declare variables they never read and members they never call. -->
+    <NoWarn>$(NoWarn);CS0168;CS0219;CS8321;CS1998;CS0414;CS0649;CS0169;CS8618</NoWarn>
+  </PropertyGroup>
+
+  <!-- No version stamping (Directory.Build.props adds MinVer to every project). -->
+  <ItemGroup>
+    <PackageReference Remove="MinVer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/KumikoUI.Uno/KumikoUI.Uno.csproj" />
+    <!-- The KumikoUI.Core package ships the [KumikoGridItem] generator; a project reference has to wire it up. -->
+    <ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <Compile Include="../KumikoUI.Docs.Snippets.Shared/Fixtures.cs" Link="Fixtures.cs" />
+  </ItemGroup>
+
+  <!-- An empty Generated/ would compile nothing and pass; fail instead. -->
+  <Target Name="RequireGeneratedSnippets" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_GeneratedSnippet Include="$(MSBuildProjectDirectory)/Generated/*.cs" />
+    </ItemGroup>
+    <Error Condition="'@(_GeneratedSnippet)' == ''"
+           Text="No generated snippets in Generated/. Run the extractor first: dotnet run --project eng/DocsSnippets -c Release" />
+  </Target>
+
+</Project>

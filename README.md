@@ -153,6 +153,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
 
 2. Register SkiaSharp in `MauiProgram.cs`:
 
+   <!-- snippet: maui -->
    ```csharp
    using KumikoUI.Maui;
 
@@ -204,6 +205,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
 
 2. In the app project, make Uno use the SkiaSharp major KumikoUI is built with, and turn on the SkiaSharp canvas (Uno.Sdk defaults to SkiaSharp 3.x, and the app must resolve one SkiaSharp major):
 
+   <!-- snippet: skip project file fragment, not C# or XAML -->
    ```xml
    <PropertyGroup>
      <SkiaSharpVersion>4.153.1</SkiaSharpVersion>
@@ -246,6 +248,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
 
 From here on, XAML uses the `kumiko` prefix for the host's namespace (as above) plus `core` for `KumikoUI.Core.Models` and `render` for `KumikoUI.Core.Rendering`, so a snippet works on both hosts unless it says otherwise. C# snippets assume these `using` directives and a grid named `kumiko`:
 
+<!-- snippet: usings -->
 ```csharp
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -447,6 +450,7 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
 
 `MauiActionButtonDefinition` is a `BindableObject`, so every property, including `Command`, can be bound. It is not in the visual tree and does not inherit `BindingContext`, so point bindings at a source with `x:Reference` or `RelativeSource`:
 
+<!-- snippet: maui -->
 ```xml
 <kumiko:KumikoDataGrid x:Name="actionsGrid" ItemsSource="{Binding Employees}">
     <core:KumikoColumn Header="Actions" PropertyName="" ColumnType="Template" Width="200"
@@ -1241,6 +1245,7 @@ The library ships no fonts; your app supplies them.
 
 Put the font files in `Resources/Raw/` and register them in `MauiProgram.CreateMauiApp`, before the first grid draws:
 
+<!-- snippet: maui -->
 ```csharp
 using KumikoUI.Maui;
 using KumikoUI.SkiaSharp;
@@ -1271,6 +1276,7 @@ public static class MauiProgram
 
 Put the font files in the app project as `Content` (for example `Assets/Fonts/*.ttf`) and register them with `KumikoFonts` in `App.OnLaunched`, before the window is activated:
 
+<!-- snippet: uno members=Microsoft.UI.Xaml.Application -->
 ```csharp
 protected override async void OnLaunched(LaunchActivatedEventArgs args)
 {
@@ -1297,6 +1303,7 @@ kumiko.GridStyle = style;
 
 For an icon font, store the glyph's code point as the cell value and draw it with a renderer that uses the icon family:
 
+<!-- snippet: shared -->
 ```csharp
 public sealed class IconFontCellRenderer(string fontFamily, float fontSize) : ICellRenderer
 {
