@@ -29,6 +29,17 @@ public interface IInteractiveCellRenderer
     bool OnCellActivate(object? value);
 
     /// <summary>
+    /// Whether a tap at (<paramref name="x"/>, <paramref name="y"/>) would act on something (for an
+    /// <see cref="ActionButtonsCellRenderer"/>, an enabled button). The grid shows a hand cursor there.
+    /// Called on every hover move over the cell, so it should not allocate. The default is <c>false</c>.
+    /// </summary>
+    /// <param name="cellRect">The cell rectangle, as for <see cref="OnCellTap"/>.</param>
+    /// <param name="x">Pointer X, in the same coordinates as <paramref name="cellRect"/>.</param>
+    /// <param name="y">Pointer Y.</param>
+    /// <param name="value">The cell value, as for <see cref="OnCellTap"/>.</param>
+    bool HasControlAt(KumikoRect cellRect, float x, float y, object? value) => false;
+
+    /// <summary>
     /// Raised when the cell's appearance changed without the grid knowing (for example a command's
     /// <c>CanExecuteChanged</c>). The grid redraws.
     /// </summary>

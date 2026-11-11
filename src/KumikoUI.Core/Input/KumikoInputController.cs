@@ -39,6 +39,9 @@ public class KumikoInputController
     // Tracks the original press position for more accurate first-move
     private float _pressOriginX, _pressOriginY;
 
+    // A press is in progress (Pressed seen, Released/Cancelled not yet): a Moved without one is a hover.
+    private bool _isPointerDown;
+
     // The Boolean cell that the first tap of a possible double-tap toggled, so the second tap doesn't
     // toggle it back.
     private CellPosition _lastTapToggledCell = CellPosition.Invalid;
@@ -68,8 +71,17 @@ public class KumikoInputController
     // ── Events ──
     /// <summary>Raised when the grid surface needs to be redrawn.</summary>
     public event Action? NeedsRedraw;
-    /// <summary>Raised when the mouse cursor style should change. <c>true</c> indicates a resize cursor; <c>false</c> restores the default cursor.</summary>
-    public event Action<bool>? CursorChanged;  // true = resize cursor, false = default
+    /// <summary>
+    /// The mouse cursor the grid wants over the pointer's position: <see cref="KumikoCursor.ResizeHorizontal"/>
+    /// over a column resize grip and for the whole of a resize drag, <see cref="KumikoCursor.Hand"/> over
+    /// something a click acts on directly, else <see cref="KumikoCursor.Default"/>. Hover moves
+    /// (<see cref="InputAction.Hover"/>) update it, a release re-evaluates it, and leaving the grid
+    /// (<see cref="InputAction.Exited"/>) resets it.
+    /// </summary>
+    public KumikoCursor Cursor { get; private set; }
+
+    /// <summary>Raised when <see cref="Cursor"/> changes (only when it changes), with the new cursor.</summary>
+    public event Action<KumikoCursor>? CursorChanged;
     /// <summary>Raised when the user finishes resizing a column by dragging its header edge.</summary>
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized;
     /// <summary>Raised when the user drops a dragged column header at a new position.</summary>
@@ -131,14 +143,30 @@ public class KumikoInputController
     {
         EnsurePopupRedrawWired();
 
+        // Leaving the grid only affects the cursor; it is not a position popups or the grid act on.
+        if (e.Action == InputAction.Exited)
+        {
+            SetCursor(_isResizingColumn ? KumikoCursor.ResizeHorizontal : KumikoCursor.Default);
+            return;
+        }
+
+        // A move with no press in progress is a hover, whatever the host called it.
+        bool wasPointerDown = _isPointerDown;
+        if (e.Action == InputAction.Pressed) _isPointerDown = true;
+        else if (e.Action is InputAction.Released or InputAction.Cancelled) _isPointerDown = false;
+        var action = e.Action == InputAction.Moved && !wasPointerDown ? InputAction.Hover : e.Action;
+
         // ── Popup priority: popups always get first crack at input ──
         if (_popupManager.HandlePointer(e))
+        {
+            if (action == InputAction.Hover) SetCursor(KumikoCursor.Default);
             return;
+        }
 
         var columns = dataSource.Columns;
         int totalRows = dataSource.RowCount;
 
-        switch (e.Action)
+        switch (action)
         {
             case InputAction.Pressed:
                 HandlePointerDown(e, scroll, selection, style, columns, totalRows, dataSource);
@@ -146,8 +174,14 @@ public class KumikoInputController
             case InputAction.Moved:
                 HandlePointerMove(e, scroll, selection, style, columns, totalRows, dataSource);
                 break;
+            case InputAction.Hover:
+                HandleHover(e, scroll, style, dataSource);
+                break;
             case InputAction.Released:
                 HandlePointerUp(e, scroll, selection, style, columns, totalRows, dataSource);
+                // The release may end a resize or change what is under the pointer (a column resized, a
+                // group collapsed, a row removed): the cursor follows.
+                SetCursor(ComputeCursor(e.X, e.Y, scroll, style, dataSource));
                 break;
             case InputAction.Scroll:
                 HandleScroll(e, scroll, style);
@@ -602,7 +636,6 @@ public class KumikoInputController
             {
                 AutoFitColumnRequested?.Invoke(this, new AutoFitColumnEventArgs(
                     hit.ColumnIndex, hit.Column));
-                CursorChanged?.Invoke(false);
                 e.Handled = true;
                 return;
             }
@@ -611,7 +644,7 @@ public class KumikoInputController
             _resizeColumnIndex = hit.ColumnIndex;
             _resizeStartX = e.X;
             _resizeStartWidth = hit.Column.Width;
-            CursorChanged?.Invoke(true);
+            SetCursor(KumikoCursor.ResizeHorizontal);
             e.Handled = true;
             return;
         }
@@ -735,12 +768,73 @@ public class KumikoInputController
             Redraw();
             e.Handled = true;
         }
-        else
+    }
+
+    /// <summary>
+    /// A pointer moving with no button pressed: hover feedback for an open editor (its dropdown items), then
+    /// the cursor for what is under the pointer. Never scrolls, drags or selects.
+    /// </summary>
+    private void HandleHover(KumikoPointerEventArgs e, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    {
+        if (_editSession != null && _editSession.IsEditing && _editSession.HandlePointerEvent(e))
         {
-            // Hover: update cursor for resize grips
-            var hit = _hitTester.HitTest(e.X, e.Y, scroll, style, columns, totalRows);
-            CursorChanged?.Invoke(hit.Region == HitRegion.HeaderResizeGrip);
+            Redraw();
+            SetCursor(_isResizingColumn ? KumikoCursor.ResizeHorizontal : KumikoCursor.Default);
+            return;
         }
+
+        SetCursor(ComputeCursor(e.X, e.Y, scroll, style, dataSource));
+    }
+
+    /// <summary>
+    /// The cursor for viewport point (<paramref name="x"/>, <paramref name="y"/>): resize during a resize drag
+    /// and over a resize grip, a hand over something a click acts on directly, else the default. It allocates
+    /// nothing beyond what reading an interactive cell's value does. It reads the columns and row count afresh:
+    /// a release may just have removed rows.
+    /// </summary>
+    private KumikoCursor ComputeCursor(float x, float y, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    {
+        if (_isResizingColumn) return KumikoCursor.ResizeHorizontal;
+
+        var hit = _hitTester.HitTestCore(x, y, scroll, style, dataSource.Columns, dataSource.RowCount, dataSource);
+        switch (hit.Region)
+        {
+            case HitRegion.HeaderResizeGrip:
+                return KumikoCursor.ResizeHorizontal;
+
+            case HitRegion.HeaderFilterIcon:
+            case HitRegion.GroupChevron:
+            case HitRegion.GroupPanelChip:
+            case HitRegion.GroupPanelChipRemove:
+            case HitRegion.RowDragHandle:
+                return KumikoCursor.Hand;
+
+            case HitRegion.Cell when hit.Column != null && hit.RowIndex >= 0 && !dataSource.IsNonDataRow(hit.RowIndex):
+                if (GetInteractiveRenderer(hit.Column) is { } interactive)
+                {
+                    var bounds = GetInteractiveCellBounds(hit.RowIndex, hit.ColumnIndex, scroll, style, dataSource);
+                    var value = dataSource.GetCellValue(hit.RowIndex, hit.Column);
+                    return interactive.HasControlAt(bounds, x, y, value) ? KumikoCursor.Hand : KumikoCursor.Default;
+                }
+
+                var cell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
+                return hit.Column.ColumnType == KumikoColumnType.Boolean &&
+                       CanToggleBooleanCell(cell, dataSource) &&
+                       IsOnCheckBox(x, y, cell, scroll, style, dataSource)
+                    ? KumikoCursor.Hand
+                    : KumikoCursor.Default;
+
+            default:
+                return KumikoCursor.Default;
+        }
+    }
+
+    /// <summary>Sets <see cref="Cursor"/>, raising <see cref="CursorChanged"/> only when it changes.</summary>
+    private void SetCursor(KumikoCursor cursor)
+    {
+        if (Cursor == cursor) return;
+        Cursor = cursor;
+        CursorChanged?.Invoke(cursor);
     }
 
     private void HandlePointerUp(
@@ -752,7 +846,6 @@ public class KumikoInputController
         if (_isResizingColumn)
         {
             _isResizingColumn = false;
-            CursorChanged?.Invoke(false);
 
             if (_resizeColumnIndex >= 0 && _resizeColumnIndex < columns.Count)
             {
@@ -968,7 +1061,7 @@ public class KumikoInputController
         if (_isResizingColumn)
         {
             _isResizingColumn = false;
-            CursorChanged?.Invoke(false);
+            SetCursor(KumikoCursor.Default);
             e.Handled = true;
             return;
         }

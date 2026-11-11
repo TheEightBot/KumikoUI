@@ -747,7 +747,7 @@ public class PointerGestureTests
         Assert.Equal(0, g.Scroll.OffsetY);
     }
 
-    [Fact(Skip = "Known defect (#60): the controller keeps no pointer-down state, so a hover move far from the origin starts a pan")]
+    [Fact]
     public void HoverMoveWithoutPress_DoesNotScroll()
     {
         var g = new InputGrid();
@@ -765,11 +765,10 @@ public class PointerGestureTests
     public void Hover_OverAResizeGrip_RequestsTheResizeCursor()
     {
         var g = new InputGrid();
-        g.Tap(110, InputGrid.HeaderY); // sets the pointer origin next to the Name/Age edge
 
-        g.Move(116, InputGrid.HeaderY); // on the grip at x 120
-        g.Move(110, InputGrid.HeaderY); // back on the header cell
+        g.Move(116, InputGrid.HeaderY); // a move with no press is a hover: on the grip at x 120
+        g.Move(60, InputGrid.HeaderY);  // back on the header cell
 
-        Assert.Equal(new[] { true, false }, g.Cursors.TakeLast(2));
+        Assert.Equal(new[] { KumikoCursor.ResizeHorizontal, KumikoCursor.Default }, g.Cursors.TakeLast(2));
     }
 }

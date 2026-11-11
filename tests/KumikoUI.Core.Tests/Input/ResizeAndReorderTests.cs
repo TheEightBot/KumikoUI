@@ -83,9 +83,12 @@ public class ResizeAndReorderTests
         var g = new InputGrid();
 
         g.Press(AgeGripX, InputGrid.HeaderY);
-        Assert.True(g.Cursors[^1]);
-        g.Release(AgeGripX, InputGrid.HeaderY);
-        Assert.False(g.Cursors[^1]);
+        Assert.Equal(KumikoCursor.ResizeHorizontal, g.Input.Cursor);
+        g.Move(AgeGripX + 60, InputGrid.HeaderY + 100); // far off the grip, below the header
+        Assert.Equal(KumikoCursor.ResizeHorizontal, g.Input.Cursor);
+        g.Release(AgeGripX + 60, InputGrid.HeaderY + 100);
+        Assert.Equal(KumikoCursor.Default, g.Input.Cursor);
+        Assert.Equal(new[] { KumikoCursor.ResizeHorizontal, KumikoCursor.Default }, g.Cursors);
     }
 
     [Fact]
@@ -113,7 +116,7 @@ public class ResizeAndReorderTests
 
         Assert.True(e.Handled);
         Assert.Equal(0, resized);
-        Assert.False(g.Cursors[^1]);
+        Assert.Equal(KumikoCursor.Default, g.Cursors[^1]);
     }
 
     [Fact]
@@ -140,7 +143,6 @@ public class ResizeAndReorderTests
         Assert.True(press.Handled);
         Assert.Equal(1, e.ColumnIndex);
         Assert.Same(g.Age, e.Column);
-        Assert.False(g.Cursors[^1]);
         Assert.Equal(80, g.Age.Width); // the host does the fitting
     }
 

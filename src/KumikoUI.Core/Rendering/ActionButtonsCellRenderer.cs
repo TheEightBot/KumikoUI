@@ -103,6 +103,14 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider, IIn
     }
 
     /// <inheritdoc />
+    /// <remarks>True over an enabled button; a disabled button gets the default cursor.</remarks>
+    public bool HasControlAt(KumikoRect cellRect, float x, float y, object? value)
+    {
+        int index = ActionButtonLayout.IndexAt(cellRect, Buttons.Count, CellPadding, ButtonSpacing, x, y);
+        return index >= 0 && ActionButtonPainter.IsEnabled(Buttons[index], value);
+    }
+
+    /// <inheritdoc />
     /// <remarks>Runs the first button when it is enabled; a disabled first button does nothing.</remarks>
     public bool OnCellActivate(object? value)
         => Buttons.Count > 0 && ActionButtonPainter.TryInvoke(Buttons[0], value);

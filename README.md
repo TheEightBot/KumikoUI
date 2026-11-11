@@ -364,6 +364,20 @@ Modes can be mixed freely — the layout engine resolves them every frame.
 - Star columns share the remaining width by weight. A Star column whose share is below its minimum (its `MinWidth` and header-fit width) or above its `MaxWidth` is held there, and the others share what is left. When the viewport is too narrow for every column's minimum, columns keep their minimums and the grid scrolls horizontally instead of truncating headers.
 - Header widths are measured once per header text and font and cached; changing a column's `Header`, its `HeaderCellStyle.Font` or the grid's `HeaderFont` (or a property of that font) measures it again.
 
+### Resizing and hover cursors
+
+Drag the right edge of a column header to resize the column, or double-click it to request an auto-fit (`AutoFitColumnRequested`). The edge is a resize grip only when the column has `AllowResize` set (the default) and room to change (`MaxWidth` above `MinWidth`).
+
+With a mouse, the cursor shows what a click does:
+
+| Over | Cursor |
+|---|---|
+| A column resize grip, and for the whole of a resize drag | Left-right resize |
+| A filter icon, a group chevron, a grouping chip or its ×, the row drag handle, an editable check box, an enabled action button | Hand |
+| Anything else | Arrow |
+
+The grid's `InputController.Cursor` holds the current value (`KumikoCursor`) and `CursorChanged` reports changes. The Uno control applies it on the Windows, desktop and WebAssembly heads, and the MAUI control on Windows and Mac Catalyst; touch platforms ignore it. Moving the mouse with no button pressed never scrolls or selects.
+
 ---
 
 ## 📌 Frozen Columns & Rows

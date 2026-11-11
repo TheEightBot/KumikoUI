@@ -98,7 +98,7 @@ public class DrawnFocusManager
                 {
                     InputAction.Pressed => comp.OnPointerDown(e),
                     InputAction.Released => comp.OnPointerUp(e),
-                    InputAction.Moved => comp.OnPointerMove(e),
+                    InputAction.Moved or InputAction.Hover => comp.OnPointerMove(e),
                     _ => false
                 };
 

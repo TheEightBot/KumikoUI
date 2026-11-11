@@ -133,7 +133,8 @@ public class PopupManager
     ///  • A press outside all popups closes them and is consumed, with its moves and release, so the grid
     ///    does nothing with it.
     ///  • Wheel input over a popup goes to it; elsewhere it reaches the grid.
-    ///  • Hover moves outside every popup go to the topmost one (for hover-exit feedback) and reach the grid.
+    ///  • Hover moves (<see cref="InputAction.Hover"/>, or a move with no press) over a popup go to it and are
+    ///    consumed; outside every popup they go to the topmost one (for hover-exit feedback) and reach the grid.
     /// </summary>
     public bool HandlePointer(KumikoPointerEventArgs e)
     {
@@ -174,13 +175,14 @@ public class PopupManager
                     _captured = hitPopup;
                     hitPopup.OnPointerDown(e);
                     // The popup may have closed itself (a button): swallow the rest of the press
-                    if (!_popups.Exists(p => p.Component == hitPopup))
+                    if (!IsOpen(hitPopup))
                     {
                         _captured = null;
                         _swallowUntilRelease = true;
                     }
                     break;
                 case InputAction.Moved:
+                case InputAction.Hover:
                     hitPopup.OnPointerMove(e);
                     break;
                 case InputAction.Released:
@@ -207,7 +209,7 @@ public class PopupManager
             return true;
         }
 
-        if (e.Action == InputAction.Moved)
+        if (e.Action is InputAction.Moved or InputAction.Hover)
         {
             // Still send move events to topmost popup for hover-exit feedback
             var topmost = GetTopmostPopup();
@@ -218,6 +220,17 @@ public class PopupManager
             }
         }
 
+        return false;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="component"/> is still open. A loop rather than <c>Exists</c> with a lambda: the
+    /// lambda's closure would be allocated on every <see cref="HandlePointer"/> call, hover moves included.
+    /// </summary>
+    private bool IsOpen(DrawnComponent component)
+    {
+        for (int i = 0; i < _popups.Count; i++)
+            if (_popups[i].Component == component) return true;
         return false;
     }
 
