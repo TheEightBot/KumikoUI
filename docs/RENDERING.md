@@ -175,6 +175,21 @@ family increments `SkiaFontRegistrar.Version` and makes each cache drop that fam
 frame resolves the family again. `new SkiaDrawingContext(canvas)` (no cache) still works: it uses a private
 cache that is disposed with the context, which recreates everything every frame.
 
+### Text measurement cache
+
+The same `SkiaResourceCache` also keeps text measurements across frames (#23), so redrawing unchanged text measures nothing with Skia:
+
+- **Widths** — keyed by `(text, family, size, bold, italic)`: the advance width of the text, used by `MeasureText` and by `DrawTextInRect` to decide whether the text fits.
+- **Layouts** — keyed by `(text, font, width, wrap mode, line count)`: the immutable `KumikoTextLines` a text is drawn as when it does not fit as is (cut with an ellipsis, wrapped, or holding line breaks or tabs).
+
+Each is a least-recently-used map with `MaxTextMeasurements` entries (default 4096). Keys hold the font's values, not its instance, so a style change that picks another font simply stops using the old entries; a changed cell value is a new text and a new key. Any `SkiaFontRegistrar` change and `Clear()` drop every text entry. A hit allocates nothing; a miss measures, and lays out, once. (`SKCanvas.DrawText` still allocates a small managed wrapper inside SkiaSharp per call.)
+
+### Ellipsis and wrapping
+
+`KumikoTextLayout` (Core) lays text out for any `IDrawingContext`. Every cut falls between two text elements (`StringInfo.GetNextTextElementLength`), so emoji, surrogate pairs and combining sequences are never split; the cut point is found by a binary search over those boundaries. Text wider than its rectangle ends with "…" at any width (there is no minimum width anymore); just the ellipsis is drawn when no character fits beside it. On one line, line breaks and tabs are drawn as spaces and other control characters are dropped, instead of as missing-glyph boxes.
+
+`IDrawingContext.DrawTextInRect(…, KumikoTextWrap wrap)` and `MeasureText(text, paint, maxWidth, wrap)` add wrapping (`None`, `Word`, `Character`): line breaks start new lines, as many lines as fit the rectangle's height are drawn, and the last ends with an ellipsis when there is more. Both are default interface members, so other implementations keep compiling (the defaults lay out through `MeasureText` and allocate per call). Text cells wrap when `KumikoColumn.TextWrap` is set; rows keep their fixed height (#102 adds variable row heights).
+
 ## Glyphs: Polygons and Polylines
 
 Small icons (group expand/collapse triangles, sort arrows, dropdown and picker arrows) are not built from separate `DrawLine` strokes, whose butt caps leave notches at the corners. `IDrawingContext.FillPolygon(ReadOnlySpan<KumikoPoint>, KumikoPaint)` fills a closed, anti-aliased polygon, and `DrawPolyline` strokes an open path with round joins and caps. Disclosure triangles and sort arrows use `FillPolygon`; open chevrons, checkmarks and the closed filter funnel outline use `DrawPolyline`. Strokes that are genuinely separate (the "x" remove button, plus and minus, separators) stay `DrawLine`. Call sites build their points in a `stackalloc` span, and `SkiaDrawingContext` reuses a single `SKPath`, so glyphs add no per-frame allocation. Both members are default interface members: an implementer that does not override them still renders the glyphs, as outlines drawn with `DrawLine`.

@@ -134,6 +134,17 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_WrappedTextColumns_AllocatesNothing()
+    {
+        // Text cells of wrapping columns take the wrapping DrawTextInRect overload (#23); choosing it allocates nothing.
+        var grid = CreateGrid(featured: false);
+        grid.Source.Columns[0].TextWrap = KumikoTextWrap.Word;
+        grid.Source.Columns[9].TextWrap = KumikoTextWrap.Character;
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
     public void ChangingTheStyle_RebuildsThePaintsOnce_ThenAllocatesNothingAgain()
     {
         var grid = CreateGrid(featured: false);

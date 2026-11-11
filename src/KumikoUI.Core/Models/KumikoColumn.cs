@@ -222,6 +222,16 @@ public class KumikoColumn
     /// <summary>Horizontal alignment of cell content.</summary>
     public Rendering.KumikoTextAlignment TextAlignment { get; set; } = Rendering.KumikoTextAlignment.Left;
 
+    /// <summary>
+    /// How the text of this column's cells is laid out when it is wider than the cell. With
+    /// <see cref="Rendering.KumikoTextWrap.None"/> (the default) a cell shows one line, cut with an ellipsis; with
+    /// <see cref="Rendering.KumikoTextWrap.Word"/> or <see cref="Rendering.KumikoTextWrap.Character"/> it shows as
+    /// many wrapped lines as fit the row height (line breaks in the value start a new line), and the last one ends
+    /// with an ellipsis when there is more. Rows keep their height (<see cref="KumikoStyle.RowHeight"/>), so
+    /// raise it to show more lines. Applies to the built-in text cells (Text, Numeric and Date columns).
+    /// </summary>
+    public Rendering.KumikoTextWrap TextWrap { get; set; } = Rendering.KumikoTextWrap.None;
+
     // ── Editor configuration ─────────────────────────────────────
 
     /// <summary>

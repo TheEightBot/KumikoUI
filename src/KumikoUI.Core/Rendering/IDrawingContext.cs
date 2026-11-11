@@ -106,6 +106,67 @@ public interface IDrawingContext
         KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center,
         bool clip = true);
 
+    /// <summary>
+    /// Draws a text string inside the specified rectangle on one line or wrapped onto several, with alignment and
+    /// optional clipping. See <see cref="KumikoTextWrap"/> for how each mode lays the text out; the block of lines
+    /// is aligned vertically as a whole and each line horizontally on its own. Only as many lines as fit the
+    /// rectangle's height are drawn (at least one); when the text needs more, the last drawn line ends with an
+    /// ellipsis.
+    /// </summary>
+    /// <remarks>
+    /// This is a default interface member so existing implementers keep compiling. With
+    /// <see cref="KumikoTextWrap.None"/> the default calls
+    /// <see cref="DrawTextInRect(string, KumikoRect, KumikoPaint, KumikoTextAlignment, KumikoVerticalAlignment, bool)"/>;
+    /// otherwise it lays the text out with <see cref="KumikoTextLayout"/>, measuring through
+    /// <see cref="MeasureText(string, KumikoPaint)"/>, and draws one
+    /// <see cref="DrawTextInRect(string, KumikoRect, KumikoPaint, KumikoTextAlignment, KumikoVerticalAlignment, bool)"/>
+    /// per line. That allocates on every call; an implementation used in the render loop should override it and
+    /// cache the <see cref="KumikoTextLines"/> it lays out.
+    /// </remarks>
+    /// <param name="text">The text to draw.</param>
+    /// <param name="rect">The bounding rectangle for the text.</param>
+    /// <param name="paint">The paint describing font, color, and anti-alias settings.</param>
+    /// <param name="hAlign">Horizontal alignment of each line within the rectangle.</param>
+    /// <param name="vAlign">Vertical alignment of the block of lines within the rectangle.</param>
+    /// <param name="clip">Whether to clip rendering to the rectangle bounds.</param>
+    /// <param name="wrap">Whether and where long lines are wrapped.</param>
+    void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
+        KumikoTextAlignment hAlign, KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap)
+    {
+        if (wrap == KumikoTextWrap.None)
+        {
+            DrawTextInRect(text, rect, paint, hAlign, vAlign, clip);
+            return;
+        }
+        if (string.IsNullOrEmpty(text)) return;
+
+        var metrics = GetFontMetrics(paint);
+        var lines = KumikoTextLayout.LayOut(text, rect.Width, wrap,
+            KumikoTextLayout.GetMaxLines(rect.Height, metrics), MeasurerFor(paint));
+        if (lines.Count == 0) return;
+
+        float height = lines.GetHeight(metrics);
+        float top = vAlign switch
+        {
+            KumikoVerticalAlignment.Top => rect.Y,
+            KumikoVerticalAlignment.Bottom => rect.Bottom - height,
+            _ => rect.Y + (rect.Height - height) / 2,
+        };
+
+        if (clip)
+        {
+            Save();
+            ClipRect(rect);
+        }
+        for (int i = 0; i < lines.Count; i++)
+        {
+            var lineRect = new KumikoRect(rect.X, top + i * metrics.LineHeight, rect.Width, metrics.TextHeight);
+            DrawTextInRect(lines.GetLine(i), lineRect, paint, hAlign, KumikoVerticalAlignment.Top, clip: false);
+        }
+        if (clip)
+            Restore();
+    }
+
     // ── Text measuring ───────────────────────────────────────────
 
     /// <summary>Measures the size of the specified text string using the given paint's font settings.</summary>
@@ -113,6 +174,35 @@ public interface IDrawingContext
     /// <param name="paint">The paint whose font settings determine text size.</param>
     /// <returns>The width and height of the measured text.</returns>
     KumikoSize MeasureText(string text, KumikoPaint paint);
+
+    /// <summary>
+    /// Measures text as
+    /// <see cref="DrawTextInRect(string, KumikoRect, KumikoPaint, KumikoTextAlignment, KumikoVerticalAlignment, bool, KumikoTextWrap)"/>
+    /// lays it out in a rectangle <paramref name="maxWidth"/> wide and tall enough for every line: the width of
+    /// the widest line as drawn (an ellipsized line with its ellipsis) and the height of all the lines.
+    /// </summary>
+    /// <remarks>
+    /// With <see cref="KumikoTextWrap.None"/> and <see cref="float.PositiveInfinity"/> as
+    /// <paramref name="maxWidth"/> this is the natural one-line size of the text (with line breaks shown as
+    /// spaces). This is a default interface member so existing implementers keep compiling: the default lays the
+    /// text out with <see cref="KumikoTextLayout"/>, measuring through <see cref="MeasureText(string, KumikoPaint)"/>,
+    /// and allocates on every call.
+    /// </remarks>
+    /// <param name="text">The text to measure.</param>
+    /// <param name="paint">The paint whose font settings determine text size.</param>
+    /// <param name="maxWidth">The available width, in pixels; <see cref="float.PositiveInfinity"/> for no limit.</param>
+    /// <param name="wrap">Whether and where long lines are wrapped.</param>
+    /// <returns>The width and height of the laid-out text; <see cref="KumikoSize.Empty"/> for empty text.</returns>
+    KumikoSize MeasureText(string text, KumikoPaint paint, float maxWidth, KumikoTextWrap wrap)
+    {
+        if (string.IsNullOrEmpty(text)) return KumikoSize.Empty;
+        var lines = KumikoTextLayout.LayOut(text, maxWidth, wrap, int.MaxValue, MeasurerFor(paint));
+        return new KumikoSize(lines.Width, lines.GetHeight(GetFontMetrics(paint)));
+    }
+
+    /// <summary>Measures spans through <see cref="MeasureText(string, KumikoPaint)"/> for the default members.</summary>
+    private KumikoTextMeasurer MeasurerFor(KumikoPaint paint) =>
+        span => span.IsEmpty ? 0f : MeasureText(span.ToString(), paint).Width;
 
     /// <summary>Get font metrics (ascent, descent, leading) for the given paint settings.</summary>
     KumikoFontMetrics GetFontMetrics(KumikoPaint paint);
