@@ -395,8 +395,5 @@ jobs:
           workloads: wasm-tools android
           cache-nuget: 'true'
 
-      # Non-blocking until #184: the Emscripten relink of Uno's C shim fails with '-std=c++20 not allowed with C'
-      # (the sample's WebAssembly head doesn't build yet). Drop continue-on-error when #184 is fixed.
       - name: Build sample — Uno WebAssembly
-        continue-on-error: true
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-browserwasm -c Release

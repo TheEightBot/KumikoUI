@@ -100,10 +100,6 @@ public partial class KumikoDataGrid : ContentView
         _selection = new KumikoSelectionModel(_dataSource);
         InitializeSelectionBinding();
 
-        // Accessibility: set semantic description for screen readers
-        SemanticProperties.SetDescription(this, "Data grid");
-        AutomationProperties.SetIsInAccessibleTree(this, true);
-
         // Set up the hidden keyboard proxy entry (fallback for Android/Windows)
         _keyboardProxy = new Entry
         {
@@ -126,6 +122,7 @@ public partial class KumikoDataGrid : ContentView
 
         _root.Children.Add(_canvasView);
         _root.Children.Add(_keyboardProxy);
+        InitializeAccessibility();
         Content = _root;
         _contentSealed = true;
 
@@ -401,9 +398,18 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="IsReadOnly"/> bindable property.</summary>
     public static readonly BindableProperty IsReadOnlyProperty = BindableProperty.Create(
-        nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid), false);
+        nameof(IsReadOnly), typeof(bool), typeof(KumikoDataGrid), false,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._editSession.IsReadOnly = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When true, cells cannot be edited.</summary>
+    /// <summary>
+    /// When true, no cell can be edited, Boolean cells do not toggle and Tab skips every cell; combines with
+    /// the per-column <c>IsReadOnly</c> (either one makes a cell read-only).
+    /// </summary>
     public bool IsReadOnly
     {
         get => (bool)GetValue(IsReadOnlyProperty);
@@ -490,9 +496,15 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="AllowSorting"/> bindable property.</summary>
     public static readonly BindableProperty AllowSortingProperty = BindableProperty.Create(
-        nameof(AllowSorting), typeof(bool), typeof(KumikoDataGrid), true);
+        nameof(AllowSorting), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._inputController.AllowSorting = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When false, column header taps do not sort.</summary>
+    /// <summary>When false, column header taps do not sort (a column's own <c>AllowSorting</c> also applies).</summary>
     public bool AllowSorting
     {
         get => (bool)GetValue(AllowSortingProperty);
@@ -503,9 +515,19 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="AllowFiltering"/> bindable property.</summary>
     public static readonly BindableProperty AllowFilteringProperty = BindableProperty.Create(
-        nameof(AllowFiltering), typeof(bool), typeof(KumikoDataGrid), true);
+        nameof(AllowFiltering), typeof(bool), typeof(KumikoDataGrid), true,
+        propertyChanged: (b, _, n) =>
+        {
+            var grid = (KumikoDataGrid)b;
+            grid._inputController.AllowFiltering = (bool)n;
+            grid._renderer.AllowFiltering = (bool)n;
+            grid.InvalidateSurface();
+        });
 
-    /// <summary>When false, filter icons are not shown in column headers.</summary>
+    /// <summary>
+    /// When false, filter icons are not shown in column headers and cannot be tapped (a column's own
+    /// <c>AllowFiltering</c> also applies).
+    /// </summary>
     public bool AllowFiltering
     {
         get => (bool)GetValue(AllowFilteringProperty);
@@ -554,17 +576,16 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Identifies the <see cref="GridDescription"/> bindable property.</summary>
     public static readonly BindableProperty GridDescriptionProperty = BindableProperty.Create(
-        nameof(GridDescription), typeof(string), typeof(KumikoDataGrid), "Data grid",
-        propertyChanged: (b, _, n) =>
-        {
-            var view = (KumikoDataGrid)b;
-            SemanticProperties.SetDescription(view, (string)n);
-        });
+        nameof(GridDescription), typeof(string), typeof(KumikoDataGrid), null,
+        propertyChanged: (b, _, _) => ((KumikoDataGrid)b).UpdateAccessibilityHint());
 
-    /// <summary>Accessible description for screen readers.</summary>
-    public string GridDescription
+    /// <summary>
+    /// Accessible description for screen readers. Null (the default) uses the localized
+    /// <see cref="KumikoStrings.AccessibleGridName"/> ("Data grid").
+    /// </summary>
+    public string? GridDescription
     {
-        get => (string)GetValue(GridDescriptionProperty);
+        get => (string?)GetValue(GridDescriptionProperty);
         set => SetValue(GridDescriptionProperty, value);
     }
 
@@ -672,19 +693,6 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Invalidate the canvas surface to trigger a repaint.</summary>
     private void InvalidateSurface() => _canvasView.InvalidateSurface();
-
-    /// <summary>Update the accessibility hint with current grid dimensions.</summary>
-    private void UpdateAccessibilityHint()
-    {
-        int rows = _dataSource.RowCount;
-        int cols = _dataSource.Columns.Count;
-        string hint = $"{rows} rows, {cols} columns";
-
-        if (_selection.CurrentCell.IsValid)
-            hint += $", current cell row {_selection.CurrentCell.Row + 1} column {_selection.CurrentCell.Column + 1}";
-
-        SemanticProperties.SetHint(this, hint);
-    }
 
     // ── Rendering ────────────────────────────────────────────────
 
@@ -1019,6 +1027,9 @@ public partial class KumikoDataGrid : ContentView
         StopInertialScrollTimer();
         StopCursorBlinkTimer();
 
+        // Stop observing the app's collection and its items (the source lives on; Reconnect re-attaches it)
+        _dataSource.Detach();
+
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
         _inputController.NeedsRedraw -= OnInputControllerNeedsRedraw;
@@ -1034,6 +1045,7 @@ public partial class KumikoDataGrid : ContentView
         _editSession.NeedsRedraw -= OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit -= OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit -= OnEditSessionCellEndEdit;
+        UnsubscribeAccessibility();
 
         // Unsubscribe canvas events
         _canvasView.PaintSurface -= OnPaintSurface;
@@ -1094,6 +1106,8 @@ public partial class KumikoDataGrid : ContentView
     private void Reconnect()
     {
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
+        _dataSource.Attach();
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
@@ -1106,6 +1120,7 @@ public partial class KumikoDataGrid : ContentView
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
+        SubscribeAccessibility();
 
         _canvasView.PaintSurface += OnPaintSurface;
         _canvasView.Touch += OnCanvasTouch;
