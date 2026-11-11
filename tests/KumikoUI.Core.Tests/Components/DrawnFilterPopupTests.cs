@@ -92,6 +92,19 @@ public class DrawnFilterPopupTests
     }
 
     [Fact]
+    public void ATrackpad_ScrollsTheListByItsPixels()
+    {
+        var (popup, manager, _, _) = Open(100);
+
+        manager.HandlePointer(new KumikoPointerEventArgs
+        {
+            X = ItemX, Y = RowY(2), Action = InputAction.Scroll, ScrollDeltaY = -7, ScrollUnit = KumikoScrollUnit.Pixels,
+        });
+
+        Assert.Equal(7, popup.ListScrollOffset);
+    }
+
+    [Fact]
     public void Dragging_ScrollsTheList_EvenOutsideThePopup_AndTogglesNothing()
     {
         var (popup, manager, _, _) = Open(1_000);

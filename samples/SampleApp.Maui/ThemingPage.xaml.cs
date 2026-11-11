@@ -239,6 +239,7 @@ public class ThemingPageViewModel
 
 // --- Model ---
 
+[KumikoUI.Core.Data.KumikoGridItem]
 public class ThemingProduct : INotifyPropertyChanged
 {
     private string _sku = string.Empty;

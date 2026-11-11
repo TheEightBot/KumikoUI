@@ -9,7 +9,7 @@ applyTo: "src/KumikoUI.Maui/**,samples/**"
 ```csharp
 builder
     .UseMauiApp<App>()
-    .UseSkiaKumikoUI();   // required — registers SkiaSharp drawing services
+    .UseKumikoUI();   // required — SkiaSharp, canvas handler, ConfigureFonts aliases for GridFont/KumikoFont.Family
 ```
 
 ---

@@ -42,6 +42,7 @@ public sealed partial class BasicGridPage : Page
                 Salary = _random.Next(45000, 180000),
                 HireDate = DateTime.Today.AddDays(-_random.Next(100, 3000)),
                 IsActive = _random.NextDouble() > 0.15,
+                Approved = _random.Next(3) switch { 0 => true, 1 => false, _ => null },
                 City = Cities[_random.Next(Cities.Length)],
                 Level = Levels[_random.Next(Levels.Length)],
                 Performance = Math.Round(_random.NextDouble() * 100, 1),

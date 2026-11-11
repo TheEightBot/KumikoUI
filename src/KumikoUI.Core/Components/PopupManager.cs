@@ -25,6 +25,14 @@ public class PopupManager
     private DrawnComponent? _captured;
     private bool _swallowUntilRelease;
 
+    /// <summary>
+    /// The visible area popups must stay inside. A popup placed <see cref="PopupPlacement.Below"/> or
+    /// <see cref="PopupPlacement.Above"/> opens on the other side of its anchor when it does not fit on the
+    /// requested one, and every popup slides into the area. Empty (the default) leaves popups where the anchor
+    /// puts them.
+    /// </summary>
+    public KumikoRect Viewport { get; set; }
+
     /// <summary>Are there any active popups?</summary>
     public bool HasActivePopups => _popups.Count > 0;
 
@@ -48,7 +56,7 @@ public class PopupManager
     public void Show(DrawnComponent component, Func<KumikoRect> anchor, PopupPlacement placement = PopupPlacement.Below)
     {
         var entry = new PopupEntry(component, anchor, placement);
-        component.Bounds = CalculatePopupBounds(component, anchor(), placement);
+        component.Bounds = CalculatePopupBounds(component, anchor(), placement, Viewport);
         component.IsVisible = true;
         component.ZOrder = _nextZOrder++; // above normal components, and above every earlier popup
 
@@ -85,7 +93,7 @@ public class PopupManager
     public void UpdateAnchors()
     {
         foreach (var entry in _popups)
-            entry.Component.Bounds = CalculatePopupBounds(entry.Component, entry.Anchor(), entry.Placement);
+            entry.Component.Bounds = CalculatePopupBounds(entry.Component, entry.Anchor(), entry.Placement, Viewport);
     }
 
     /// <summary>Draw all active popups (call after main grid rendering).</summary>
@@ -270,19 +278,21 @@ public class PopupManager
     }
 
     private static KumikoRect CalculatePopupBounds(
-        DrawnComponent component, KumikoRect anchor, PopupPlacement placement)
+        DrawnComponent component, KumikoRect anchor, PopupPlacement placement, KumikoRect viewport)
     {
         float width = component.Bounds.Width > 0 ? component.Bounds.Width : anchor.Width;
         float height = component.Bounds.Height > 0 ? component.Bounds.Height : 200; // Default height
 
-        return placement switch
+        if (placement is PopupPlacement.Below or PopupPlacement.Above)
+            return PopupLayout.Place(anchor, width, height, viewport, preferAbove: placement == PopupPlacement.Above, mayCoverAnchor: false);
+
+        var bounds = placement switch
         {
-            PopupPlacement.Below => new KumikoRect(anchor.X, anchor.Y + anchor.Height, width, height),
-            PopupPlacement.Above => new KumikoRect(anchor.X, anchor.Y - height, width, height),
             PopupPlacement.Right => new KumikoRect(anchor.X + anchor.Width, anchor.Y, width, height),
             PopupPlacement.Left => new KumikoRect(anchor.X - width, anchor.Y, width, height),
             _ => new KumikoRect(anchor.X, anchor.Y + anchor.Height, width, height)
         };
+        return PopupLayout.Clamp(bounds, viewport);
     }
 
     private static void DrawPopupShadow(IDrawingContext ctx, KumikoRect bounds)

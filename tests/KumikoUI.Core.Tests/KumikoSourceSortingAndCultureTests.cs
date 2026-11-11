@@ -399,18 +399,18 @@ public class KumikoSourceSortingAndCultureTests
     }
 
     [Fact]
-    public void GroupKeys_ThatDisplayTheSame_AreOneGroupEvenWhenTheRawKeysDiffer()
+    public void GroupKeys_ThatDisplayTheSame_AreSeparateGroupsWhenTheRawKeysDiffer()
     {
-        // Groups are keyed by display text (documented behavior; keyed-by-raw-key is #29).
+        // Groups are keyed by the raw key; display text is presentation only (#29).
         var source = MakeSource(new Item { Id = "a", Score = 1.001 }, new Item { Id = "b", Score = 1.004 });
         Col(source, "Score").Format = "F1";
         source.AddGroupDescription(new GroupDescription("Score"));
 
-        Assert.Equal(new[] { "1.0" }, GroupTexts(source));
-        Assert.Equal(2, source.GetGroupHeaderInfo(0)!.ItemCount);
+        Assert.Equal(new[] { "1.0", "1.0" }, GroupTexts(source));
+        Assert.Equal(1, source.GetGroupHeaderInfo(0)!.ItemCount);
     }
 
-    [Fact(Skip = "Known defect: collapsing one of two groups that share display text collapses both because expand state is keyed by display text (#29)")]
+    [Fact]
     public void CollapsingAGroup_DoesNotCollapseAnotherGroupWithTheSameDisplayText()
     {
         var source = MakeSource(new Item { Id = "a", Rank = 1 }, new Item { Id = "b", Rank = 2 });
@@ -420,8 +420,12 @@ public class KumikoSourceSortingAndCultureTests
             DisplayTextSelector = _ => "same",
         });
 
-        // Two distinct keys, one header text: they must stay two groups with independent state.
+        // Two distinct keys, one header text: they stay two groups with independent state.
         Assert.Equal(2, GroupTexts(source).Length);
+        source.ToggleGroupExpansion(0);
+        Assert.False(source.GetGroupHeaderInfo(0)!.IsExpanded);
+        int other = Enumerable.Range(1, source.RowCount - 1).First(source.IsGroupHeaderRow);
+        Assert.True(source.GetGroupHeaderInfo(other)!.IsExpanded);
     }
 
     private static string[] GroupTexts(KumikoSource s) =>
