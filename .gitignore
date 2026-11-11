@@ -46,10 +46,13 @@ BenchmarkDotNet.Artifacts/
 
 # Documentation snippets extracted from the Markdown by eng/DocsSnippets (#87)
 tests/KumikoUI.Docs.Snippets.*/Generated/
+
 # Test and coverage output
 TestResults/
 *.trx
-coverage*
+# Coverage results and reports (not coverage.runsettings or eng/coverage/, which are tracked)
+coverage.cobertura.xml
+CoverageReport/
 *.binlog
 
 # Local agent tooling
