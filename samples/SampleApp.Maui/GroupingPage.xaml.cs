@@ -143,6 +143,7 @@ public class GroupingPageViewModel
 }
 
 /// <summary>Employee model for the Grouping page demo.</summary>
+[KumikoUI.Core.Data.KumikoGridItem]
 public class GroupingEmployee : INotifyPropertyChanged
 {
     private int _id;

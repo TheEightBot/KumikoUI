@@ -2,6 +2,14 @@
   <assembly fullname="SampleApp.Uno" />
 
   <!--
+    No entry for KumikoUI.Core, KumikoUI.SkiaSharp or KumikoUI.Uno (UNO-22, #76). The libraries are trim-safe
+    (IsAotCompatible): item properties are read through accessors the [KumikoGridItem] source generator emits at
+    build time, not through reflection, so the trimmer needs no hint to keep them. The sample's row types carry
+    [KumikoGridItem], and a PublishTrimmed build with TrimMode=full (the CI job) turns the reflection fallback off,
+    so a missing accessor would show up as empty cells instead of being hidden by a preserved assembly.
+  -->
+
+  <!--
   Uncomment this section when using JSON.NET
   <assembly fullname="System.Core">
     <type fullname="System.Linq.Expressions*" />

@@ -33,6 +33,15 @@
 
 	</PropertyGroup>
 
+	<!--
+		Native AOT publish check (#76): CI passes -p:KumikoPublishAot=true. A property of its own, not PublishAot
+		on the command line, because a global PublishAot would also flow to the plain net10.0 library projects,
+		which cannot be AOT-compiled for an iOS or Mac Catalyst runtime identifier.
+	-->
+	<PropertyGroup Condition="'$(KumikoPublishAot)' == 'true'">
+		<PublishAot>true</PublishAot>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
@@ -59,6 +68,17 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="../../src/KumikoUI.Maui/KumikoUI.Maui.csproj" />
+	</ItemGroup>
+
+	<!--
+		The KumikoUI.Core package delivers the [KumikoGridItem] source generator as an analyzer; a project reference
+		does not, so the sample references it directly. The sample's row types then read through generated accessors,
+		which is what Native AOT and full trimming need (#76).
+	-->
+	<ItemGroup>
+		<ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 </Project>

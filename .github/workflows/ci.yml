@@ -374,6 +374,103 @@ jobs:
       - name: Build sample — Uno Android
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-android -c Release
 
+  # ─── Native AOT: the grid engine, published ahead of time and run (#76) ───
+  # eng/AotSmoke builds a grid source (generated accessors, sort, filter, grouping, summaries) and renders a frame
+  # to an SKSurface through Core + SkiaSharp. It is published with PublishAot and TreatWarningsAsErrors, so a
+  # trimming or AOT warning in the app or the KumikoUI assemblies fails the job, and the published binary runs.
+  aot-smoke:
+    name: Native AOT smoke (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  rid: linux-x64,  exe: AotSmoke }
+          - { os: windows-latest, rid: win-x64,    exe: AotSmoke.exe }
+          - { os: macos-15,       rid: osx-arm64,  exe: AotSmoke }   # macos-15: arm64
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version of the referenced libraries from git tags
+
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
+        with:
+          cache-nuget: 'true'
+
+      - name: Publish — Native AOT
+        run: dotnet publish eng/AotSmoke/AotSmoke.csproj -c Release -r ${{ matrix.rid }} -o aot-smoke-out
+
+      - name: Run the published binary
+        shell: bash
+        run: ./aot-smoke-out/${{ matrix.exe }}
+
+  # ─── Native AOT: MAUI sample on iOS and Mac Catalyst (macOS, Xcode) ───
+  # KumikoPublishAot=true sets PublishAot in the sample only (see SampleApp.Maui.csproj). iOS publishes for a device
+  # runtime identifier (the SDK refuses simulator ones) without an archive or signing, so no certificates are needed.
+  # MAUI itself and the sample's XAML pages still raise IL2026/IL3050 trim and AOT warnings, so warnings are not
+  # errors here: the job proves the AOT compile and native link succeed.
+  aot-maui-apple:
+    name: Native AOT publish (MAUI sample — iOS + Mac Catalyst)
+    runs-on: xcode-27   # Xcode pinned below; see build-apple-maui
+    timeout-minutes: 60
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+    env:
+      XCODE_VERSION: '27.1'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+
+      - name: Setup .NET + MAUI workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          workloads: maui
+          cache-nuget: 'true'
+
+      - name: Publish sample — iOS (Native AOT)
+        run: dotnet publish samples/SampleApp.Maui/SampleApp.Maui.csproj -f net10.0-ios -c Release
+          -r ios-arm64 -p:KumikoPublishAot=true -p:EnableCodeSigning=false -p:BuildIpa=false -p:ArchiveOnBuild=false
+
+      - name: Publish sample — Mac Catalyst (Native AOT)
+        run: dotnet publish samples/SampleApp.Maui/SampleApp.Maui.csproj -f net10.0-maccatalyst -c Release
+          -r maccatalyst-arm64 -p:KumikoPublishAot=true -p:EnableCodeSigning=false -p:CreatePackage=false
+
+  # ─── Native AOT: MAUI sample on Windows ───
+  # Non-blocking: .NET MAUI does not support Native AOT on Windows (WinUI 3) yet, so the publish is expected to fail
+  # or warn until the platform does. The job records where it stands; drop continue-on-error if it turns green.
+  aot-maui-windows:
+    name: Native AOT publish (MAUI sample — Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from git tags
+
+      - name: Setup .NET + MAUI workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          workloads: maui
+          cache-nuget: 'true'
+
+      - name: Publish sample — Windows (Native AOT)
+        continue-on-error: true
+        run: dotnet publish samples/SampleApp.Maui/SampleApp.Maui.csproj -f net10.0-windows10.0.19041.0 -c Release
+          -r win-x64 -p:KumikoPublishAot=true
+
   # ─── WebAssembly sample head (Linux: the Emscripten native relink of Uno's Skia shims fails on Windows) ───
   build-sample-wasm:
     name: Build (Sample — Uno WebAssembly)
@@ -400,3 +497,33 @@ jobs:
       - name: Build sample — Uno WebAssembly
         continue-on-error: true
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-browserwasm -c Release
+
+  # ─── Uno WebAssembly sample, trimmed (UNO-22, #76) ───
+  # PublishTrimmed with TrimMode=full: the trimmer removes everything unreferenced, and the KumikoUI.Core targets
+  # switch the reflection fallback off, so only generated accessors work. Nothing preserves the KumikoUI
+  # assemblies (LinkerConfig.xml names the sample only).
+  publish-sample-wasm-trimmed:
+    name: Publish trimmed (Sample — Uno WebAssembly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [changes, build-core]
+    if: needs.changes.outputs.code == 'true'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # MinVer computes the version from tags
+
+      # Same workloads as build-sample-wasm.
+      - name: Setup .NET + wasm-tools and android workloads (pinned)
+        uses: ./.github/actions/setup-dotnet
+        with:
+          workloads: wasm-tools android
+          cache-nuget: 'true'
+
+      # Non-blocking until #184, like build-sample-wasm: the WebAssembly head doesn't build yet (Emscripten relink of
+      # Uno's C shim). Drop continue-on-error when #184 is fixed.
+      - name: Publish sample — Uno WebAssembly (trimmed)
+        continue-on-error: true
+        run: dotnet publish samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-browserwasm -c Release
+          -p:PublishTrimmed=true -p:TrimMode=full
