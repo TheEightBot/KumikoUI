@@ -164,8 +164,8 @@ Each column is a `KumikoColumn` with a `ColumnType` that controls both the read-
 | `Numeric` | Formatted number | `DrawnTextBox` (numeric) | Set `Format` (e.g. `"C0"`, `"N2"`) |
 | `Boolean` | Checkbox glyph | `DrawnCheckBox` | Three-state (checked / unchecked / indeterminate) |
 | `Date` | Formatted date | `DrawnDatePicker` | Calendar popup with month navigation |
-| `ComboBox` | Selected value | `DrawnComboBox` | Dropdown with typeahead, searchable with `EditorIsFilterable`; set `EditorItemsString` |
-| `Picker` | Selected value | `DrawnScrollPicker` | Mobile-style scroll wheel that coasts and snaps; confirms once it settles |
+| `ComboBox` | Selected value | `DrawnComboBox` | Searchable dropdown; set `EditorItemsString` |
+| `Picker` | Selected value | `DrawnScrollPicker` | Mobile-style scroll wheel with physics snap |
 | `Image` | Centered image | — (read-only) | Aspect-ratio preserving |
 | `ProgressBar` | Progress bar | `DrawnProgressBar` | Interactive slider when editable |
 | `Template` | Custom | Custom (`EditorDescriptor`) | Provide your own `ICellRenderer` |
@@ -821,8 +821,6 @@ Full keyboard navigation is supported on all platforms (iOS/macOS via `UIKeyComm
 | `Page Up` / `Page Down` | Move one page of visible rows |
 | `Ctrl+A` | Select all rows |
 | Typing a character | Open the editor with that character (if `Typing` trigger enabled) |
-
-While a cell is being edited, the editor sees every key first. In an open ComboBox dropdown, Up/Down (and Page Up/Down, Home, End) move the selection, Enter picks the item and commits it, Escape closes the dropdown and restores the value it opened with, and a typed letter jumps to the next item starting with it (or narrows the list when the column sets `EditorIsFilterable`); the dropdown also scrolls by drag, mouse wheel and its scrollbar. A key the editor does not use goes to the grid's edit keys (Enter, Escape, Tab and the arrows commit or cancel as above) and otherwise stops there: typing never restarts the edit and Space never toggles the row's selection inside an editor. The Picker's scroll wheel confirms an item when a drag or tap leaves it settled on that item, or on Enter.
 
 The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, and the pinned bottom summary footer. Tab stops at every visible column that is not read-only, whatever its type (text, numeric, date, Boolean, ComboBox, picker, template, action buttons), unless the column sets `AllowTabStop = false`; Tab moves to a column whose `EditTriggers` is `None` without opening its editor. When Tab or Shift+Tab has no further cell to go to, or nothing is current, the grid leaves the key unhandled and the host moves focus to the next control, so the grid is never a keyboard trap. Enter and Escape are also left to the page when the grid has nothing to do with them.
 
