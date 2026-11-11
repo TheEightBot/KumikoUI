@@ -13,7 +13,7 @@ namespace KumikoUI.Core.Models;
 /// for dynamic data updates. Items may be of mixed runtime types; <c>null</c> items are skipped
 /// (see <see cref="SetItems"/>).
 /// </summary>
-public class KumikoSource
+public class KumikoSource : IDisposable
 {
     private IList _sourceItems = Array.Empty<object>();
     private List<int> _viewIndices = new();          // filtered + sorted mapping
@@ -34,7 +34,12 @@ public class KumikoSource
     private bool _isReordering;
 
     // ── Item property change tracking ────────────────────────────
-    private readonly List<WeakReference<INotifyPropertyChanged>> _trackedItems = new();
+    // Reference equality (items may override Equals); a set so track/untrack are O(1) and a duplicate is subscribed once.
+    private readonly HashSet<INotifyPropertyChanged> _trackedItems = new(ReferenceEqualityComparer.Instance);
+
+    // ── Lifecycle ────────────────────────────────────────────────
+    private bool _disposed;
+    private bool _detached;
 
     // ── Grouping state ───────────────────────────────────────────
     private readonly List<GroupDescription> _groupDescriptions = new();
@@ -353,6 +358,9 @@ public class KumikoSource
     /// </summary>
     public void SetItems(IEnumerable items)
     {
+        if (_disposed) return;
+        _detached = false;
+
         // Unsubscribe from previous observable collection
         UnsubscribeFromCollection();
         UnsubscribeFromItemPropertyChanged();
@@ -392,8 +400,63 @@ public class KumikoSource
         }
     }
 
+    /// <summary>
+    /// Stops observing the bound collection and every item (so a collection that outlives the grid does not keep
+    /// the source and its view alive) while keeping the items, view and settings. Call <see cref="Attach"/> to
+    /// resume. Does nothing when already detached or disposed.
+    /// </summary>
+    public void Detach()
+    {
+        if (_disposed || _detached) return;
+        _detached = true;
+        UnsubscribeFromCollection();
+        UnsubscribeFromItemPropertyChanged();
+    }
+
+    /// <summary>
+    /// Resumes observing the collection set by <see cref="SetItems"/> after <see cref="Detach"/>. The collection
+    /// may have changed meanwhile, so the view is rebuilt. Does nothing unless the source is detached.
+    /// </summary>
+    public void Attach()
+    {
+        if (_disposed || !_detached) return;
+        _detached = false;
+        if (_sourceItems is INotifyCollectionChanged incc)
+        {
+            _observableCollection = incc;
+            incc.CollectionChanged += OnSourceCollectionChanged;
+        }
+        SubscribeToItemPropertyChanged();
+        InvalidateCellText();
+        RequestRebuild();
+    }
+
+    /// <summary>
+    /// Unsubscribes from the bound collection and from every tracked item, releases the items, caches and
+    /// <see cref="ViewChanged"/> handlers, and leaves an empty source. Later changes to the old collection raise
+    /// nothing, and later calls are safe no-ops. Calling it more than once is harmless.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        UnsubscribeFromCollection();
+        UnsubscribeFromItemPropertyChanged();
+        _viewChanged = null;
+        _sourceItems = Array.Empty<object>();
+        InvalidateCellText();
+        foreach (var col in _columns.Where(c => ReferenceEquals(c.TextCache?.Owner, this)))
+            col.TextCache = null;
+        _rowKeys = null;
+        _updateDepth = 0;
+        _pendingRebuild = false;
+        _pendingStructural = false;
+        RebuildCore();
+    }
+
     private void OnSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (_disposed || _detached) return;
         ContentVersion++;
         // During ReorderRow we do RemoveAt+Insert on the source list;
         // skip the intermediate rebuilds; ReorderRow rebuilds once afterwards.
@@ -494,24 +557,21 @@ public class KumikoSource
 
     private void UnsubscribeFromItemPropertyChanged()
     {
-        foreach (var weakRef in _trackedItems)
-        {
-            if (weakRef.TryGetTarget(out var inpc))
-                inpc.PropertyChanged -= OnItemPropertyChanged;
-        }
+        foreach (var inpc in _trackedItems)
+            inpc.PropertyChanged -= OnItemPropertyChanged;
         _trackedItems.Clear();
     }
 
     private void TrackItem(INotifyPropertyChanged inpc)
     {
-        inpc.PropertyChanged += OnItemPropertyChanged;
-        _trackedItems.Add(new WeakReference<INotifyPropertyChanged>(inpc));
+        if (_trackedItems.Add(inpc))
+            inpc.PropertyChanged += OnItemPropertyChanged;
     }
 
     private void UntrackItem(INotifyPropertyChanged inpc)
     {
-        inpc.PropertyChanged -= OnItemPropertyChanged;
-        _trackedItems.RemoveAll(wr => !wr.TryGetTarget(out var target) || ReferenceEquals(target, inpc));
+        if (_trackedItems.Remove(inpc))
+            inpc.PropertyChanged -= OnItemPropertyChanged;
     }
 
     /// <summary>
@@ -525,6 +585,7 @@ public class KumikoSource
     /// </summary>
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (_disposed || _detached) return;
         if (sender != null)
             InvalidateCellText(sender, e.PropertyName);
         if (ItemPropertyAffectsView(e.PropertyName))
