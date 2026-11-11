@@ -238,7 +238,16 @@ internal static class Parser
             for (var t = 0; t < tokens.Length; t++)
             {
                 var token = tokens[t];
-                if (token == "skip") { skip = string.Join(' ', tokens.Skip(t + 1)); if (skip.Length == 0) skip = "skipped"; break; }
+                if (token == "skip")
+                {
+                    skip = string.Join(' ', tokens.Skip(t + 1));
+                    if (skip.Length == 0)
+                    {
+                        skip = "skipped";
+                    }
+
+                    break;
+                }
                 else if (token is "maui" or "uno") hosts = token;
                 else if (token == "both") hosts = null;
                 else if (token == "shared") shared = true;
@@ -353,7 +362,7 @@ internal static class Emitter
 
     // Compiler errors point at the README line, not at the generated file.
     private static void Line(StringBuilder sb, int line, string source) =>
-        sb.AppendLine($"#line {line} \"{Path.Combine(Root, source).Replace('\\', '/')}\"");
+        sb.AppendLine($"#line {line} \"{Path.Join(Root, source).Replace('\\', '/')}\"");
 
     /// <summary>Collects the leading using directives (and blank/comment lines between them).</summary>
     private static (List<string> Usings, int BodyStart) HoistUsings(List<string> code, Host host, bool rewriteHost)
