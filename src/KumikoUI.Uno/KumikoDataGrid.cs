@@ -82,6 +82,9 @@ public partial class KumikoDataGrid : UserControl
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
 
+        // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
+        InitializeAccessibility();
+
         // Core "invalidate" signals → request a single canvas repaint.
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
@@ -307,6 +310,9 @@ public partial class KumikoDataGrid : UserControl
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
 
+        // Resume following the app's collection if Unloaded detached it (no-op on first load).
+        _dataSource.Attach();
+
         // (Re)attach pointer + keyboard handlers and enable focusability. Idempotent —
         // see AttachInputHandlers in KumikoDataGrid.Input.cs.
         AttachInputHandlers();
@@ -319,6 +325,10 @@ public partial class KumikoDataGrid : UserControl
         // subscriptions target owned objects (this control owns _dataSource/_inputController/
         // _editSession), so they don't leak the page.
         DetachSurface();
+
+        // Stop observing the app's collection and its items so they do not keep this grid's source alive;
+        // OnLoaded re-attaches (the control can be reloaded, so the source is detached, not disposed).
+        _dataSource.Detach();
 
         // Stop listening to action-button commands (a cell renderer can outlive this grid). The renderer
         // re-attaches to them on the next paint after a reload.

@@ -70,6 +70,12 @@ public class KumikoRenderer : IDisposable
     /// </summary>
     public bool ShowFrameStats { get; set; }
 
+    /// <summary>
+    /// Grid-level switch for the header filter icons: when false none is drawn and no header width is reserved
+    /// for it, whatever a column's own <see cref="KumikoColumn.AllowFiltering"/>. Default true.
+    /// </summary>
+    public bool AllowFiltering { get; set; } = true;
+
     /// <summary>The overlay's counters, readable for logging; they update only while <see cref="ShowFrameStats"/> is true.</summary>
     public KumikoFrameStats FrameStats => _frameStats ??= new KumikoFrameStats();
 
@@ -642,7 +648,7 @@ public class KumikoRenderer : IDisposable
     private static float SortGlyphSpace(KumikoColumn col) => col.SortDirection != KumikoSortDirection.None ? KumikoLayoutEngine.SortGlyphSpace : 0f;
 
     // Header width the filter icon takes when it is drawn (the column allows filtering): icon (10) + gap (4).
-    private static float FilterGlyphSpace(KumikoColumn col) => col.AllowFiltering ? KumikoLayoutEngine.FilterGlyphSpace : 0f;
+    private float FilterGlyphSpace(KumikoColumn col) => AllowFiltering && col.AllowFiltering ? KumikoLayoutEngine.FilterGlyphSpace : 0f;
 
     private void DrawRows(
         IDrawingContext ctx,
@@ -1161,7 +1167,7 @@ public class KumikoRenderer : IDisposable
         Span<KumikoPoint> outline = stackalloc KumikoPoint[7];
         foreach (var (col, colX, _) in visibleCols)
         {
-            if (!col.AllowFiltering) continue;
+            if (!AllowFiltering || !col.AllowFiltering) continue;
 
             float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
             bool hasActiveFilter = col.ActiveFilter != null && col.ActiveFilter.IsActive;
