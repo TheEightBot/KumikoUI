@@ -654,8 +654,18 @@ public class EditSessionTests
         Assert.Single(f.Ended);
     }
 
+    private static (float X, float Y) PickerItemPoint(DrawnScrollPicker picker, int itemsBelowCenter) =>
+        (picker.Bounds.X + picker.Bounds.Width / 2,
+         picker.Bounds.Y + picker.Bounds.Height / 2 + itemsBelowCenter * picker.ItemHeight);
+
+    private static void PickerTap(Fixture f, (float X, float Y) point)
+    {
+        f.Session.HandlePointerEvent(new KumikoPointerEventArgs { X = point.X, Y = point.Y, Action = InputAction.Pressed });
+        f.Session.HandlePointerEvent(new KumikoPointerEventArgs { X = point.X, Y = point.Y, Action = InputAction.Released });
+    }
+
     [Fact]
-    public void ScrollPickerEditor_CompletesTheEditWhenItIsReleased()
+    public void ScrollPickerEditor_ATapOnTheCenteredItem_CompletesTheEdit()
     {
         var f = new Fixture();
         f.Name.ColumnType = KumikoColumnType.Picker;
@@ -663,12 +673,121 @@ public class EditSessionTests
         f.Begin(0, 0);
         var picker = Assert.IsType<DrawnScrollPicker>(f.Session.ActiveEditor);
         picker.SelectedIndex = 2;
-        var center = new KumikoPointerEventArgs { X = picker.Bounds.X + 5, Y = picker.Bounds.Y + 5, Action = InputAction.Pressed };
 
-        f.Session.HandlePointerEvent(center);
-        f.Session.HandlePointerEvent(new KumikoPointerEventArgs { X = center.X, Y = center.Y, Action = InputAction.Released });
+        PickerTap(f, PickerItemPoint(picker, 0));
 
         Assert.False(f.Session.IsEditing);
+        Assert.Equal("Dave", f.Rows[0].Name);
+    }
+
+    [Fact]
+    public void ScrollPickerEditor_ATapOnAnotherItem_CommitsItOnlyOnceTheFrameLoopSettlesTheWheel()
+    {
+        var f = new Fixture();
+        f.Name.ColumnType = KumikoColumnType.Picker;
+        f.Name.EditorItemsString = "Alice,Carol,Dave";
+        f.Begin(0, 0); // "Alice": the first item is centered
+        var picker = Assert.IsType<DrawnScrollPicker>(f.Session.ActiveEditor);
+
+        PickerTap(f, PickerItemPoint(picker, 1));
+
+        Assert.True(f.Session.IsEditing);
+        Assert.True(f.Session.IsAnimating);
+        Assert.Equal("Alice", f.Rows[0].Name);
+
+        int frames = 0;
+        while (f.Session.UpdateAnimation(16f) && frames < 1000) frames++;
+
+        Assert.False(f.Session.IsEditing);
+        Assert.False(f.Session.IsAnimating);
+        Assert.False(f.Session.UpdateAnimation(16f));
+        Assert.Equal("Carol", f.Rows[0].Name);
+    }
+
+    [Fact]
+    public void ScrollPickerEditor_UsesTheColumnsDisplayAndValueSelectors()
+    {
+        var f = new Fixture();
+        f.Name.ColumnType = KumikoColumnType.Picker;
+        f.Name.EditorItems = new[] { 1, 2, 3 };
+        f.Name.EditorDisplaySelector = o => $"#{o}";
+        f.Name.EditorValueSelector = o => $"Value {o}";
+        f.Rows[0].Name = "Value 2";
+        f.Begin(0, 0);
+        var picker = Assert.IsType<DrawnScrollPicker>(f.Session.ActiveEditor);
+
+        Assert.Equal(new[] { "#1", "#2", "#3" }, picker.Items);
+        Assert.Equal(1, picker.SelectedIndex);
+
+        picker.SelectedIndex = 2;
+        Assert.True(f.Session.CommitEdit(f.Source));
+        Assert.Equal("Value 3", f.Rows[0].Name);
+    }
+
+    [Fact]
+    public void UpdateAnimation_WithoutAnAnimatingEditor_DoesNothing()
+    {
+        var f = new Fixture();
+        Assert.False(f.Session.IsAnimating);
+        Assert.False(f.Session.UpdateAnimation(16f));
+
+        f.Begin(0, 0);
+        Assert.False(f.Session.IsAnimating);
+        Assert.False(f.Session.UpdateAnimation(16f));
+    }
+
+    [Fact]
+    public void ComboBoxEditor_IsFilterableFromTheColumn()
+    {
+        var f = new Fixture();
+        f.Name.ColumnType = KumikoColumnType.ComboBox;
+        f.Name.EditorItemsString = "Alice,Bob";
+        f.Begin(0, 0);
+        Assert.False(Assert.IsType<DrawnComboBox>(f.Session.ActiveEditor).IsFilterable);
+        f.Session.CancelEdit();
+
+        f.Name.EditorIsFilterable = true;
+        f.Begin(0, 0);
+
+        Assert.True(Assert.IsType<DrawnComboBox>(f.Session.ActiveEditor).IsFilterable);
+    }
+
+    [Fact]
+    public void ComboBoxEditor_OpenedByTyping_JumpsToTheItemStartingWithTheCharacter()
+    {
+        var f = new Fixture();
+        f.Name.ColumnType = KumikoColumnType.ComboBox;
+        f.Name.EditorItemsString = "Alice,Bob,Carol";
+        f.Begin(0, 0, 'c');
+
+        var combo = Assert.IsType<DrawnComboBox>(f.Session.ActiveEditor);
+        Assert.Equal("Carol", combo.SelectedText);
+        Assert.True(combo.IsDropdownOpen);
+        Assert.True(f.Session.CommitEdit(f.Source));
+        Assert.Equal("Carol", f.Rows[0].Name);
+    }
+
+    [Fact]
+    public void HandlePointerEvent_APressTheEditorTook_CapturesTheMovesAndTheRelease()
+    {
+        var f = new Fixture();
+        f.Name.ColumnType = KumikoColumnType.ComboBox;
+        f.Name.EditorItemsString = string.Join(",", Enumerable.Range(0, 50).Select(i => $"Item {i:D2}"));
+        f.Begin(0, 0);
+        var combo = Assert.IsType<DrawnComboBox>(f.Session.ActiveEditor);
+        var drop = combo.GetDropdownBounds();
+        float x = drop.X + 20, y = drop.Bottom - 10;
+
+        Assert.True(f.Session.HandlePointerEvent(new KumikoPointerEventArgs { X = x, Y = y, Action = InputAction.Pressed }));
+        // Far outside the editor, yet the drag still belongs to it
+        Assert.True(f.Session.HandlePointerEvent(new KumikoPointerEventArgs { X = x, Y = y - 5000, Action = InputAction.Moved }));
+        Assert.True(f.Session.HandlePointerEvent(new KumikoPointerEventArgs { X = x, Y = y - 5000, Action = InputAction.Released }));
+
+        Assert.Equal(50 * combo.ItemHeight - drop.Height, combo.DropdownScrollOffset);
+        Assert.True(f.Session.IsEditing);
+
+        // The capture ended with the release: a move outside is no longer the editor's
+        Assert.False(f.Session.HandlePointerEvent(new KumikoPointerEventArgs { X = x, Y = y - 5000, Action = InputAction.Moved }));
     }
 
     [Fact]

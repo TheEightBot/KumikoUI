@@ -8,9 +8,9 @@ using static KumikoUI.Core.Tests.Components.ComponentInput;
 namespace KumikoUI.Core.Tests.Components;
 
 /// <summary>
-/// The drawn scroll-wheel picker: drag to scroll, snap to the nearest item on release, keyboard
-/// stepping, coasting and snapping animation, and what the wheel draws
-/// (<see cref="PickerSelectionChangedEventArgs"/>).
+/// The drawn scroll-wheel picker: drag to scroll, coast and snap to the nearest item once released,
+/// confirm on an explicit gesture or when the wheel settles (never on a mere tap), keyboard and mouse
+/// wheel stepping, and what the wheel draws (<see cref="PickerSelectionChangedEventArgs"/>).
 /// </summary>
 public class DrawnScrollPickerTests
 {
@@ -30,10 +30,22 @@ public class DrawnScrollPickerTests
         p.Move(50, from - distance);
     }
 
+    /// <summary>Runs the animation frame by frame, as a host's frame timer does, until the wheel rests.</summary>
+    private static int Settle(DrawnScrollPicker p)
+    {
+        int frames = 0;
+        while (p.UpdateAnimation(16) && frames < 1000) frames++;
+        Assert.False(p.IsAnimating);
+        return frames;
+    }
+
+    private static KumikoPointerEventArgs Timed(InputAction action, float y, long ms) =>
+        new() { X = 50, Y = y, Action = action, TimestampMs = ms };
+
     // ── Drag and snap ─────────────────────────────────────────────
 
     [Fact]
-    public void DragAndRelease_SnapsToTheNearestItem_AndReportsTheChange()
+    public void DragAndRelease_SnapsToTheNearestItem_AndConfirmsItOnceSettled()
     {
         var p = Picker();
         var picks = new List<PickerSelectionChangedEventArgs>();
@@ -47,15 +59,23 @@ public class DrawnScrollPickerTests
         Assert.Equal(0, p.SelectedIndex);
         Assert.True(p.Up(50, 65));
 
+        // Released: the wheel is still settling, nothing is chosen yet
+        Assert.True(p.IsAnimating);
+        Assert.Equal(0, p.SelectedIndex);
+        Assert.Equal(0, completed);
+
+        Assert.True(Settle(p) > 0);
+
         Assert.Equal(2, p.SelectedIndex);
         Assert.Equal("Item 2", p.SelectedValue);
         Assert.Equal(2, Assert.Single(picks).SelectedIndex);
         Assert.Equal(("Item 0", "Item 2"), ((string)values[0].OldValue!, (string)values[0].NewValue!));
         Assert.Equal(1, completed);
+        Assert.Equal(86, Draw(p).SingleText("Item 2").Rect.Y, 2);
     }
 
     [Fact]
-    public void ReleaseOnTheSameItem_ChangesNothing_ButStillCompletesTheEdit()
+    public void ReleaseOnTheSameItem_ChangesNothing_ButConfirmsItOnceSettled()
     {
         var p = Picker(selected: 3);
         int picks = 0, completed = 0;
@@ -64,6 +84,7 @@ public class DrawnScrollPickerTests
 
         DragUp(p, 10);
         p.Up(50, 140);
+        Settle(p);
 
         Assert.Equal(3, p.SelectedIndex);
         Assert.Equal(0, picks);
@@ -77,12 +98,114 @@ public class DrawnScrollPickerTests
 
         DragUp(p, 5000);
         p.Up(50, 0);
+        Settle(p);
         Assert.Equal(4, p.SelectedIndex);
 
         p.Down(50, 0);
         p.Move(50, 5000);
         p.Up(50, 5000);
+        Settle(p);
         Assert.Equal(0, p.SelectedIndex);
+    }
+
+    [Fact]
+    public void ATapOnTheCenteredItem_ConfirmsItAtOnce()
+    {
+        var p = Picker(selected: 3);
+        int completed = 0;
+        p.EditCompleted += () => completed++;
+
+        p.Tap(50, 104); // inside the selection band
+
+        Assert.Equal(1, completed);
+        Assert.Equal(3, p.SelectedIndex);
+        Assert.False(p.IsAnimating);
+    }
+
+    [Fact]
+    public void ATapOnTheCenteredItem_WithNothingSelected_SelectsAndConfirmsIt()
+    {
+        var p = Picker();
+        p.ClearSelection();
+        int completed = 0;
+        p.EditCompleted += () => completed++;
+
+        p.Tap(50, 100);
+
+        Assert.Equal(0, p.SelectedIndex);
+        Assert.Equal(1, completed);
+    }
+
+    [Fact]
+    public void ATapOnAnotherItem_DoesNotConfirmAtOnce_ItScrollsThereAndConfirmsOnceSettled()
+    {
+        var p = Picker(selected: 3);
+        int completed = 0;
+        p.EditCompleted += () => completed++;
+
+        p.Tap(50, 100 + 2 * 40); // two items below the center
+
+        Assert.Equal(0, completed);
+        Assert.Equal(3, p.SelectedIndex);
+        Assert.True(p.IsAnimating);
+
+        Settle(p);
+
+        Assert.Equal(5, p.SelectedIndex);
+        Assert.Equal(1, completed);
+    }
+
+    [Fact]
+    public void ATapOutsideTheItems_ConfirmsNothing()
+    {
+        var p = Picker(count: 2);
+        int completed = 0;
+        p.EditCompleted += () => completed++;
+
+        p.Tap(50, 10); // above the first item: nothing there
+
+        Assert.False(p.IsAnimating);
+        Assert.Equal(0, completed);
+    }
+
+    [Fact]
+    public void APressWhileSettling_StopsTheWheel_AndDropsThePendingConfirmation()
+    {
+        var p = Picker();
+        int completed = 0;
+        p.EditCompleted += () => completed++;
+        DragUp(p, 85);
+        p.Up(50, 65);
+        p.UpdateAnimation(16);
+
+        p.Down(50, 100);
+
+        Assert.False(p.IsAnimating);
+        Assert.False(p.UpdateAnimation(16));
+        Assert.Equal(0, completed);
+    }
+
+    [Fact]
+    public void AFastFlick_CoastsPastWhereItWasReleased_ThenSnapsAndConfirms()
+    {
+        var p = Picker(count: 50);
+        int completed = 0;
+        p.EditCompleted += () => completed++;
+
+        p.OnPointerDown(Timed(InputAction.Pressed, 190, 1000));
+        p.OnPointerMove(Timed(InputAction.Moved, 170, 1016));
+        p.OnPointerMove(Timed(InputAction.Moved, 140, 1032));
+        p.OnPointerMove(Timed(InputAction.Moved, 110, 1048)); // 80 px up in 48 ms: about 2 items
+        p.OnPointerUp(Timed(InputAction.Released, 110, 1050));
+
+        Assert.True(p.IsAnimating);
+        Assert.Equal(0, completed);
+
+        Settle(p);
+
+        Assert.True(p.SelectedIndex > 3, $"coasted only to {p.SelectedIndex}");
+        Assert.Equal(1, completed);
+        Assert.Equal(86, Draw(p).SingleText($"Item {p.SelectedIndex}").Rect.Y, 2); // rests on an item
     }
 
     [Fact]
@@ -139,6 +262,42 @@ public class DrawnScrollPickerTests
         p.Key(KumikoKey.Down);
         p.Key(KumikoKey.Down);
         Assert.Equal(2, p.SelectedIndex);
+    }
+
+    [Fact]
+    public void Wheel_StepsTheSelectionOneItemPerNotch_WithoutConfirming()
+    {
+        var p = Picker(count: 5, selected: 1);
+        int completed = 0;
+        p.EditCompleted += () => completed++;
+
+        Assert.True(p.OnScroll(new KumikoPointerEventArgs { X = 50, Y = 100, Action = InputAction.Scroll, ScrollDeltaY = -1 }));
+        Assert.Equal(2, p.SelectedIndex);
+
+        p.OnScroll(new KumikoPointerEventArgs { X = 50, Y = 100, Action = InputAction.Scroll, ScrollDeltaY = 0.5f });
+        Assert.Equal(2, p.SelectedIndex); // half a notch: not yet
+        p.OnScroll(new KumikoPointerEventArgs { X = 50, Y = 100, Action = InputAction.Scroll, ScrollDeltaY = 0.5f });
+        Assert.Equal(1, p.SelectedIndex);
+
+        p.OnScroll(new KumikoPointerEventArgs { X = 50, Y = 100, Action = InputAction.Scroll, ScrollDeltaY = 10 });
+        Assert.Equal(0, p.SelectedIndex);
+        Assert.Equal(0, completed);
+    }
+
+    [Fact]
+    public void Enter_WhileSettling_ConfirmsTheItemTheWheelIsSettlingOn()
+    {
+        var p = Picker();
+        int completed = 0;
+        p.EditCompleted += () => completed++;
+        DragUp(p, 85);
+        p.Up(50, 65);
+
+        Assert.True(p.Key(KumikoKey.Enter));
+
+        Assert.Equal(2, p.SelectedIndex);
+        Assert.Equal(1, completed);
+        Assert.False(p.IsAnimating);
     }
 
     [Fact]
@@ -200,13 +359,15 @@ public class DrawnScrollPickerTests
     }
 
     [Fact]
-    public void Release_AfterAFlick_StopsOnTheConfirmedItem_WithoutCoasting()
+    public void Release_WithoutVelocity_SnapsWithoutCoasting_AndTheConfirmedItemIsWhereItRests()
     {
         var p = Picker();
         int completed = 0;
         p.EditCompleted += () => completed++;
-        DragUp(p, 30);
+        DragUp(p, 30); // no timestamps: no velocity
         p.Up(50, 120);
+
+        Settle(p);
 
         // The confirmed item is the one the wheel rests on: nothing moves afterward
         Assert.Equal(1, completed);
