@@ -152,12 +152,17 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     // ── Text ─────────────────────────────────────────────────────
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Characters the font's typeface has no glyph for are drawn with a fallback typeface (see
+    /// <see cref="SkiaFontRegistrar.FallbackFamilies"/>); the runs come from the <see cref="ResourceCache"/>.
+    /// </remarks>
     public void DrawText(string text, float x, float y, KumikoPaint paint)
     {
         if (string.IsNullOrEmpty(text)) return;
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
         var skFont = GetOrCreateFont(paint);
-        _canvas.DrawText(text, x, y, SKTextAlign.Left, skFont, skPaint);
+        _cache.MeasureTextWidth(text, paint.Font, out _, out var runs);
+        DrawRuns(text, runs, x, y, paint.Font, skFont, skPaint);
     }
 
     /// <inheritdoc />
@@ -178,13 +183,14 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         var skFont = _cache.GetFont(paint.Font, out var metrics);
 
         string line = text;
-        float width = _cache.MeasureTextWidth(text, paint.Font, out bool hasControlCharacters);
+        float width = _cache.MeasureTextWidth(text, paint.Font, out bool hasControlCharacters, out var runs);
         if (hasControlCharacters || width > rect.Width)
         {
-            var lines = _cache.GetTextLayout(text, paint.Font, rect.Width, KumikoTextWrap.None, 1);
+            var lines = _cache.GetTextLayout(text, paint.Font, rect.Width, KumikoTextWrap.None, 1, out var lineRuns);
             if (lines.Count == 0) return;
             line = lines.GetLine(0);
             width = lines.GetLineWidth(0);
+            runs = lineRuns[0];
         }
 
         float textHeight = metrics.Descent - metrics.Ascent;
@@ -201,7 +207,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
             _canvas.ClipRect(ToSKRect(rect));
         }
 
-        _canvas.DrawText(line, AlignX(rect, width, hAlign), top - metrics.Ascent, SKTextAlign.Left, skFont, skPaint);
+        DrawRuns(line, runs, AlignX(rect, width, hAlign), top - metrics.Ascent, paint.Font, skFont, skPaint);
 
         if (clip)
             _canvas.Restore();
@@ -228,7 +234,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         var metrics = new KumikoFontMetrics(skMetrics.Ascent, skMetrics.Descent, skMetrics.Leading);
 
         var lines = _cache.GetTextLayout(text, paint.Font, rect.Width, wrap,
-            KumikoTextLayout.GetMaxLines(rect.Height, metrics));
+            KumikoTextLayout.GetMaxLines(rect.Height, metrics), out var lineRuns);
         if (lines.Count == 0) return;
 
         float height = lines.GetHeight(metrics);
@@ -252,12 +258,48 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
             if (line.Length > 0)
             {
                 float x = AlignX(rect, lines.GetLineWidth(i), hAlign);
-                _canvas.DrawText(line, x, baseline + i * metrics.LineHeight, SKTextAlign.Left, skFont, skPaint);
+                DrawRuns(line, lineRuns[i], x, baseline + i * metrics.LineHeight, paint.Font, skFont, skPaint);
             }
         }
 
         if (clip)
             _canvas.Restore();
+    }
+
+    /// <summary>
+    /// Draws one line of text run by run: each run in its typeface (the requested font, or a fallback for glyphs
+    /// it lacks), advancing by the run widths measured with the runs.
+    /// </summary>
+    private void DrawRuns(string line, FontRuns runs, float x, float baseline, KumikoFont? font, SKFont skFont,
+        SKPaint skPaint)
+    {
+        if (runs.IsPrimaryOnly)
+        {
+            _canvas.DrawText(line, x, baseline, SKTextAlign.Left, skFont, skPaint);
+            return;
+        }
+
+        int start = 0;
+        for (int i = 0; i < runs.Count; i++)
+        {
+            int end = runs.GetEnd(i);
+            int face = runs.GetFace(i);
+            var runFont = face == FontRuns.PrimaryFace ? skFont : _cache.GetFallbackFont(face, runs.Generation, font);
+            if (runs.Count == 1)
+            {
+                _canvas.DrawText(line, x, baseline, SKTextAlign.Left, runFont, skPaint);
+                return;
+            }
+
+            // Like DrawText(string, ...), which builds a text blob for every call.
+            using (var blob = SKTextBlob.Create(line.AsSpan(start, end - start), runFont, default))
+            {
+                if (blob is not null)
+                    _canvas.DrawText(blob, x, baseline, skPaint);
+            }
+            x += runs.GetWidth(i);
+            start = end;
+        }
     }
 
     private static float AlignX(KumikoRect rect, float width, KumikoTextAlignment hAlign) => hAlign switch
@@ -351,6 +393,13 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     /// </summary>
     internal static Func<string, SKFontStyle, SKTypeface?> FamilyMatcher { get; set; } =
         static (family, style) => SKFontManager.Default.MatchFamily(family, style);
+
+    /// <summary>
+    /// Finds a typeface that has a glyph for a code point (family hint, style, BCP 47 language tags, code point), or
+    /// <c>null</c> when no installed font has one. A seam so tests can simulate platforms without fallback fonts.
+    /// </summary>
+    internal static Func<string?, SKFontStyle, string[]?, int, SKTypeface?> CharacterMatcher { get; set; } =
+        static (family, style, bcp47, codepoint) => SKFontManager.Default.MatchCharacter(family, style, bcp47, codepoint);
 
     private static readonly HashSet<string> _reportedUnknownFamilies = new(StringComparer.OrdinalIgnoreCase);
 

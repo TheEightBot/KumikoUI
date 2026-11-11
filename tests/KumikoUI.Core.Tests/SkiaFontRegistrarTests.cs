@@ -232,4 +232,164 @@ public class SkiaFontRegistrarTests : IDisposable
         Assert.True(DrawFrame(_canvas, cache, Paint("Shared", 16)) > 0);
         Assert.Same(shared, cache.GetTypeface("Shared", false, false));
     }
+
+    // ── Styles (#74) ──────────────────────────────────────────────
+
+    [Fact]
+    public void A_registered_bold_variant_is_used_for_a_bold_header()
+    {
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansStream());
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansSemiboldStream(), SKFontStyle.Bold);
+        Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, out var regular));
+        Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, SKFontStyle.Bold, out var bold));
+        Assert.NotSame(regular, bold);
+        Assert.Equal(600, bold!.FontWeight);
+
+        var h = TestHelpers.RenderHarness.Create(width: 400, height: 200);
+        h.Style.HeaderFont = new KumikoUI.Core.Rendering.KumikoFont(Family, 14, bold: true);
+        h.Style.CellFont = new KumikoUI.Core.Rendering.KumikoFont(Family, 13);
+        using var cache = new SkiaResourceCache();
+        using var bitmap = new SKBitmap(400, 200);
+        using var canvas = new SKCanvas(bitmap);
+        using (var ctx = new SkiaDrawingContext(canvas, cache))
+            h.Renderer.Render(ctx, h.Source, h.Scroll, h.Selection, h.Style);
+
+        var headerFont = cache.GetFont(h.Style.HeaderFont);
+        Assert.Same(bold, headerFont.Typeface);
+        Assert.False(headerFont.Embolden);      // a real bold face: no synthetic bold on top
+        Assert.Same(regular, cache.GetFont(h.Style.CellFont).Typeface);
+    }
+
+    [Fact]
+    public void Bold_and_italic_text_in_a_family_registered_only_regular_is_synthesized()
+    {
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansStream());
+        var regular = Registered(Family);
+        using var cache = new SkiaResourceCache();
+
+        var boldFont = cache.GetFont(new KumikoUI.Core.Rendering.KumikoFont(Family, 20, bold: true));
+        var italicFont = cache.GetFont(new KumikoUI.Core.Rendering.KumikoFont(Family, 20, italic: true));
+        var regularFont = cache.GetFont(new KumikoUI.Core.Rendering.KumikoFont(Family, 20));
+
+        Assert.Same(regular, boldFont.Typeface);
+        Assert.True(boldFont.Embolden);
+        Assert.Equal(0f, boldFont.SkewX);
+        Assert.Same(regular, italicFont.Typeface);
+        Assert.False(italicFont.Embolden);
+        Assert.Equal(-0.25f, italicFont.SkewX);
+        Assert.False(regularFont.Embolden);
+        Assert.Equal(0f, regularFont.SkewX);
+
+        // Synthetic bold draws heavier strokes (how much heavier depends on the platform's glyph rasterizer).
+        var rect = new KumikoUI.Core.Rendering.KumikoRect(0, 0, 400, 80);
+        using var plain = Render(400, 80, ctx => ctx.DrawTextInRect("Header", rect, Paint(Family, 48)));
+        using var heavy = Render(400, 80, ctx => ctx.DrawTextInRect("Header", rect, Paint(Family, 48, bold: true)));
+        Assert.True(Ink(heavy) > Ink(plain) * 1.05, $"bold ink {Ink(heavy)} vs regular {Ink(plain)}");
+    }
+
+    [Fact]
+    public void A_registered_italic_variant_is_preferred_to_a_bold_one_for_bold_italic_text()
+    {
+        using var regular = CreateOpenSans();
+        using var bold = CreateOpenSans();
+        using var italic = CreateOpenSans();
+        SkiaFontRegistrar.RegisterTypeface(Family, regular, SKFontStyle.Normal);
+        SkiaFontRegistrar.RegisterTypeface(Family, bold, SKFontStyle.Bold);
+        SkiaFontRegistrar.RegisterTypeface(Family, italic, SKFontStyle.Italic);
+        using var cache = new SkiaResourceCache();
+
+        // Slant is matched before weight, so bold italic is the italic face emboldened.
+        var boldItalic = cache.GetFont(new KumikoUI.Core.Rendering.KumikoFont(Family, 14, bold: true, italic: true));
+        Assert.Same(italic, boldItalic.Typeface);
+        Assert.True(boldItalic.Embolden);
+        Assert.Equal(0f, boldItalic.SkewX);
+
+        using var semibold = new SKFontStyle(SKFontStyleWeight.SemiBold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright);
+        using var light = new SKFontStyle(SKFontStyleWeight.Light, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright);
+        Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, semibold, out var heavier));
+        Assert.Same(bold, heavier);             // above 500, heavier faces first
+        Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, light, out var lighter));
+        Assert.Same(regular, lighter);          // the closest one
+        Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, out var plain));
+        Assert.Same(regular, plain);
+        Assert.False(SkiaFontRegistrar.TryGetTypeface("KumikoNotRegistered", SKFontStyle.Bold, out var none));
+        Assert.Null(none);
+    }
+
+    [Fact]
+    public void Registering_without_a_style_replaces_every_variant_and_disposes_the_owned_ones()
+    {
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansStream());
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansSemiboldStream(), SKFontStyle.Bold);
+        var regular = Registered(Family);
+        Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, SKFontStyle.Bold, out var bold));
+        using var replacement = CreateOpenSans();
+        long version = SkiaFontRegistrar.Version;
+
+        SkiaFontRegistrar.RegisterTypeface(Family, replacement);
+
+        Assert.True(SkiaFontRegistrar.Version > version);
+        Assert.True(IsDisposed(regular));
+        Assert.True(IsDisposed(bold!));
+        Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, SKFontStyle.Bold, out var now));
+        Assert.Same(replacement, now);
+        Assert.False(SkiaFontRegistrar.IsRegistered(regular));
+    }
+
+    [Fact]
+    public void Replacing_a_variant_keeps_the_others_and_Unregister_removes_them_all()
+    {
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansStream());
+        var regular = Registered(Family);
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansSemiboldStream(), SKFontStyle.Bold);
+        Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, SKFontStyle.Bold, out var firstBold));
+        using var cache = new SkiaResourceCache();
+        Assert.Same(firstBold, cache.GetTypeface(Family, true, false));
+
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansSemiboldStream(), SKFontStyle.Bold);
+
+        Assert.True(IsDisposed(firstBold!));
+        Assert.False(IsDisposed(regular));
+        Assert.True(SkiaFontRegistrar.TryGetTypeface(Family, SKFontStyle.Bold, out var secondBold));
+        Assert.Same(secondBold, cache.GetTypeface(Family, true, false));
+        Assert.Same(regular, cache.GetTypeface(Family, false, false));
+
+        Assert.True(SkiaFontRegistrar.Unregister(Family));
+        Assert.True(IsDisposed(regular));
+        Assert.True(IsDisposed(secondBold!));
+        Assert.False(SkiaFontRegistrar.TryGetTypeface(Family, out _));
+    }
+
+    [Fact]
+    public void Registering_the_same_typeface_again_for_another_style_never_disposes_it()
+    {
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, OpenSansStream());
+        var typeface = Registered(Family);
+        SkiaFontRegistrar.RegisterTypeface(Family, typeface, SKFontStyle.Bold);
+
+        SkiaFontRegistrar.RegisterTypeface(Family, typeface);   // replaces both registrations with itself
+
+        Assert.False(IsDisposed(typeface));
+        Assert.True(SkiaFontRegistrar.IsRegistered(typeface));
+        Assert.True(SkiaFontRegistrar.Unregister(Family));
+        Assert.True(IsDisposed(typeface));                      // still owned by the registrar
+    }
+
+    [Fact]
+    public void Fallback_families_are_validated_versioned_and_emptied_by_Clear()
+    {
+        long version = SkiaFontRegistrar.Version;
+
+        SkiaFontRegistrar.SetFallbackFamilies("NotoSansJP", "Noto Color Emoji");
+
+        Assert.Equal(["NotoSansJP", "Noto Color Emoji"], SkiaFontRegistrar.FallbackFamilies);
+        Assert.True(SkiaFontRegistrar.Version > version);
+        Assert.Throws<ArgumentNullException>(() => SkiaFontRegistrar.SetFallbackFamilies(null!));
+        Assert.Throws<ArgumentException>(() => SkiaFontRegistrar.SetFallbackFamilies("A", " "));
+        Assert.Equal(2, SkiaFontRegistrar.FallbackFamilies.Count);
+
+        SkiaFontRegistrar.Clear();
+
+        Assert.Empty(SkiaFontRegistrar.FallbackFamilies);
+    }
 }

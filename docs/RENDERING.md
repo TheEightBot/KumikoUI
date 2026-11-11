@@ -159,8 +159,8 @@ live in a `SkiaResourceCache` that the host control owns for its lifetime (the M
 one per control, pass it to `new SkiaDrawingContext(canvas, cache)` every frame, and dispose it when the
 MAUI handler disconnects or the Uno control unloads). The cache has 3 tiers:
 
-1. **SKTypeface cache** — Keyed by `(family, bold, italic)`. Resolved from `SkiaFontRegistrar` first, then the font manager (falling back to the default family in the same style). Font-manager typefaces are reference counted across caches; `SKTypeface.Default` and registered typefaces are never disposed by the cache.
-2. **SKFont cache** — Keyed by `(family, size, bold, italic)`; each font belongs to its typeface entry and is dropped with it.
+1. **SKTypeface cache** — Keyed by `(family, bold, italic)`. Resolved from `SkiaFontRegistrar` first (the registered face closest to the style), then the font manager (falling back to the default family in the same style). Font-manager typefaces are reference counted across caches; `SKTypeface.Default` and registered typefaces are never disposed by the cache.
+2. **SKFont cache** — Keyed by `(family, size, bold, italic)`; each font belongs to its typeface entry and is dropped with it. A bold font on a face lighter than semibold gets `SKFont.Embolden`, an italic font on an upright face gets `SKFont.SkewX = -0.25` (synthetic styles).
 3. **SKPaint cache** — Keyed by `(color, strokeWidth, style, isAntialias)`.
 
 Each `IDrawingContext` method (e.g., `FillRect`, `DrawText`) resolves its `KumikoPaint` to an `SKPaint`
@@ -189,6 +189,22 @@ Each is a least-recently-used map with `MaxTextMeasurements` entries (default 40
 `KumikoTextLayout` (Core) lays text out for any `IDrawingContext`. Every cut falls between two text elements (`StringInfo.GetNextTextElementLength`), so emoji, surrogate pairs and combining sequences are never split; the cut point is found by a binary search over those boundaries. Text wider than its rectangle ends with "…" at any width (there is no minimum width anymore); just the ellipsis is drawn when no character fits beside it. On one line, line breaks and tabs are drawn as spaces and other control characters are dropped, instead of as missing-glyph boxes.
 
 `IDrawingContext.DrawTextInRect(…, KumikoTextWrap wrap)` and `MeasureText(text, paint, maxWidth, wrap)` add wrapping (`None`, `Word`, `Character`): line breaks start new lines, as many lines as fit the rectangle's height are drawn, and the last ends with an ellipsis when there is more. Both are default interface members, so other implementations keep compiling (the defaults lay out through `MeasureText` and allocate per call). Text cells wrap when `KumikoColumn.TextWrap` is set; rows keep their fixed height (#102 adds variable row heights).
+
+### Font fallback
+
+A typeface rarely has every glyph a grid shows: Latin fonts have no CJK or emoji, and Android's default font manager surfaces neither through the family name. `SkiaDrawingContext` therefore draws each line run by run (#74):
+
+- **Segmentation** — the line is walked one text element (grapheme cluster) at a time, so an emoji ZWJ sequence, a flag, a skin tone or a letter with combining marks always stays in one run. An element goes to the requested typeface when it has the element's glyphs (`SKFont.ContainsGlyph`), else to the first of `SkiaFontRegistrar.FallbackFamilies` that has them (registered or installed families, in order), else to `SKFontManager.MatchCharacter(family, style, [UI language], codepoint)`. Controls and default-ignorable characters (joiners, variation selectors) stay in the run around them. A character no typeface has stays in the requested typeface (drawn as its missing glyph).
+- **Fast path** — text the requested typeface covers entirely is one `ContainsGlyphs` check the first time it is measured, and is drawn with one `DrawText` as before.
+- **Caching** — the face chosen for each `(family, bold, italic, codepoint)` is cached, the fallback typefaces live in a small per-cache table (at most 64; font-manager typefaces are leased from the same pool as primary ones), and the runs of a text (their ends, faces and widths) are stored with its width and with each line of its layout. A steady-state frame segments and measures nothing; a run's font is a cache hit. Fallback fonts use the requested size and synthesize bold or italic like primary fonts.
+- **Measuring** — widths are the sum of the runs' widths, and `KumikoTextLayout` measures through the same run-aware measurer, so ellipsis cuts and wrapping work across runs.
+- **Invalidation** — any `SkiaFontRegistrar` change (including `SetFallbackFamilies`) and `Clear()` empty the fallback table together with the text entries whose runs refer to it.
+
+Runs are drawn without shaping: glyphs come from each font's character map, so ligatures, Arabic joining, Indic reordering and multi-code-point emoji (ZWJ families, flags) are drawn as their component glyphs. Shaping with `SkiaSharp.HarfBuzz` is tracked in #111. Text that needs several runs builds a small `SKTextBlob` per run when drawn, as `SKCanvas.DrawText` does for every call.
+
+### Registered styles
+
+`SkiaFontRegistrar.RegisterTypeface(family, typeface, SKFontStyle)` and `RegisterTypefaceFromStream(family, stream, SKFontStyle)` register one face per weight, width and slant under a family (for example NotoSansJP regular and bold). A font resolves to the closest registered face, matching width, then slant, then weight (lighter first up to 500, heavier first above), and synthesizes a weight or slant the face lacks. The two-argument overloads keep their behavior: they replace every face of the family with one typeface, used in its own style.
 
 ## Glyphs: Polygons and Polylines
 
