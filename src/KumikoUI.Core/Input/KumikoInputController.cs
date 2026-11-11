@@ -1360,7 +1360,7 @@ public class KumikoInputController
         // Below the column header, following it as the grid scrolls, and kept inside the viewport
         KumikoRect Anchor()
         {
-            float x = HeaderScreenX(column, scroll, dataSource);
+            float x = HeaderScreenX(column, scroll, dataSource, style);
             float popupWidth = popup.Bounds.Width;
             if (x + popupWidth > scroll.ViewportWidth)
                 x = scroll.ViewportWidth - popupWidth - 4;
@@ -1406,14 +1406,29 @@ public class KumikoInputController
             _popupManager.Close(_activeFilterPopup); // OnPopupClosed clears it and raises FilterPopupClosed
     }
 
-    /// <summary>The viewport x of a column's header, by its freeze pane.</summary>
-    private static float HeaderScreenX(KumikoColumn column, ScrollState scroll, KumikoSource dataSource)
+    /// <summary>
+    /// The viewport x of a column's header, by its freeze pane. The row drag handle takes width at the start
+    /// (<see cref="Models.DragHandlePosition.Left"/>) or the end of the viewport, and the columns sit beside it.
+    /// </summary>
+    /// <remarks>Allocation-free: it runs per anchor update while a filter popup is open.</remarks>
+    internal static float HeaderScreenX(KumikoColumn column, ScrollState scroll, KumikoSource dataSource, KumikoStyle style)
     {
+        float handleOffset = 0, rightHandleOffset = 0;
+        if (style.ShowRowDragHandle)
+        {
+            if (style.RowDragHandlePosition == Models.DragHandlePosition.Left)
+                handleOffset = style.RowDragHandleWidth;
+            else
+                rightHandleOffset = style.RowDragHandleWidth;
+        }
+
+        var columns = dataSource.Columns;
         if (column.IsFrozen)
         {
-            float x = 0;
-            foreach (var c in dataSource.Columns)
+            float x = handleOffset;
+            for (int i = 0; i < columns.Count; i++)
             {
+                var c = columns[i];
                 if (c == column) break;
                 if (c.IsVisible && c.IsFrozen) x += c.Width;
             }
@@ -1422,17 +1437,31 @@ public class KumikoInputController
 
         if (column.IsFrozenRight)
         {
-            var rightFrozen = dataSource.Columns.Where(c => c.IsVisible && c.IsFrozenRight).ToList();
-            float x = scroll.ViewportWidth - rightFrozen.Sum(c => c.Width);
-            return x + rightFrozen.TakeWhile(c => c != column).Sum(c => c.Width);
+            float rightFrozenWidth = 0, before = 0;
+            bool found = false;
+            for (int i = 0; i < columns.Count; i++)
+            {
+                var c = columns[i];
+                if (!c.IsVisible || !c.IsFrozenRight) continue;
+                if (c == column) found = true;
+                if (!found) before += c.Width;
+                rightFrozenWidth += c.Width;
+            }
+            return scroll.ViewportWidth - rightHandleOffset - rightFrozenWidth + before;
         }
 
-        float frozenWidth = dataSource.Columns.Where(c => c.IsVisible && c.IsFrozen).Sum(c => c.Width);
-        float scrollableBefore = dataSource.Columns
-            .Where(c => c.IsVisible && !c.IsFrozen && !c.IsFrozenRight)
-            .TakeWhile(c => c != column)
-            .Sum(c => c.Width);
-        return frozenWidth + scrollableBefore - scroll.OffsetX;
+        float frozenWidth = 0, scrollableBefore = 0;
+        bool reached = false;
+        for (int i = 0; i < columns.Count; i++)
+        {
+            var c = columns[i];
+            if (!c.IsVisible) continue;
+            if (c.IsFrozen) { frozenWidth += c.Width; continue; }
+            if (c.IsFrozenRight) continue;
+            if (c == column) reached = true;
+            if (!reached) scrollableBefore += c.Width;
+        }
+        return handleOffset + frozenWidth + scrollableBefore - scroll.OffsetX;
     }
 
     // ── Edit helpers ──────────────────────────────────────────────

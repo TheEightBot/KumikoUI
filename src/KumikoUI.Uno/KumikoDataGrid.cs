@@ -64,6 +64,8 @@ public partial class KumikoDataGrid : UserControl
         // Layout: the canvas fills the grid (mirrors MAUI's LayoutOptions.Fill).
         _canvasView.HorizontalAlignment = HorizontalAlignment.Stretch;
         _canvasView.VerticalAlignment = VerticalAlignment.Stretch;
+        // The grid draws left-to-right whatever its ancestors' direction (RTL is unsupported in 1.0, #80, #228)
+        _canvasView.FlowDirection = FlowDirection.LeftToRight;
         _root.Children.Add(_canvasView);
         Content = _root;
         UseSystemFocusVisuals = false; // the grid draws its own focus (the current cell)
