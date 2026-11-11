@@ -694,11 +694,11 @@ public class DrawnFilterPopup : DrawnComponent
         return true;
     }
 
-    /// <summary>The mouse wheel scrolls the value list.</summary>
+    /// <summary>The mouse wheel or a trackpad scrolls the value list.</summary>
     public override bool OnScroll(KumikoPointerEventArgs e)
     {
         EnsureSearchApplied();
-        ScrollTo(_scrollOffset - e.ScrollDeltaY * CheckboxItemHeight * WheelRowsPerNotch);
+        ScrollTo(_scrollOffset - e.GetScrollPixelsY(CheckboxItemHeight * WheelRowsPerNotch));
         UpdateHover(Layout(), e.X, e.Y);
         return true;
     }

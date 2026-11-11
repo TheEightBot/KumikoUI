@@ -42,6 +42,14 @@ public partial class KumikoInputController
     // A press is in progress (Pressed seen, Released/Cancelled not yet): a Moved without one is a hover.
     private bool _isPointerDown;
 
+    // The pointer that pressed last (KumikoPointerEventArgs.PointerId) and when it was last heard from: while it
+    // is down, other pointers are ignored, unless it has gone silent long enough that its release was lost.
+    private long _activePointerId;
+    private long _activePointerLastMs;
+    private const long StalePointerMs = 1000;
+
+    private bool _isEnabled = true;
+
     // The Boolean cell that the first tap of a possible double-tap toggled, so the second tap doesn't
     // toggle it back.
     private CellPosition _lastTapToggledCell = CellPosition.Invalid;
@@ -155,6 +163,23 @@ public partial class KumikoInputController
     /// <summary>Is the inertial scroller still animating?</summary>
     public bool IsInertialScrolling => _inertialScroller.IsActive;
 
+    /// <summary>
+    /// Whether the grid responds to the user. While false, pointer and key events are ignored (the grid does
+    /// not select, sort, scroll, drag or edit, and leaves every event unhandled) and the cursor stays the
+    /// default. Turning it off ends whatever is in progress: a drag or pan stops, a fling stops, popups close
+    /// and an open edit is canceled. Hosts mirror their own <c>IsEnabled</c> here. Default: true.
+    /// </summary>
+    public bool IsEnabled
+    {
+        get => _isEnabled;
+        set
+        {
+            if (_isEnabled == value) return;
+            _isEnabled = value;
+            if (!value) StopInteraction();
+        }
+    }
+
     /// <summary>Column being dragged for reorder (-1 if none).</summary>
     public int DragColumnIndex => _dragColumnIndex;
 
@@ -183,6 +208,14 @@ public partial class KumikoInputController
             SetCursor(_isResizingColumn ? KumikoCursor.ResizeHorizontal : KumikoCursor.Default);
             return;
         }
+
+        // A disabled grid does nothing, and leaves the event to the page.
+        if (!_isEnabled) return;
+
+        // A position the host could not compute (a touch before the first layout) is nowhere.
+        if (!float.IsFinite(e.X) || !float.IsFinite(e.Y)) return;
+
+        if (!AcceptPointer(e)) return;
 
         // A move with no press in progress is a hover, whatever the host called it.
         bool wasPointerDown = _isPointerDown;
@@ -237,6 +270,60 @@ public partial class KumikoInputController
     }
 
     /// <summary>
+    /// Whether the event comes from the pointer the controller follows. A press is followed by its own moves,
+    /// long press and release; another pointer pressing, moving or long-pressing meanwhile (a second finger) is
+    /// ignored, and so is a release or cancel from a pointer other than the last one to press. Those are marked
+    /// handled, so the page does not act on half of a two-finger gesture either. A press from another pointer
+    /// is accepted when the followed one has been silent for <see cref="StalePointerMs"/>, in case its release
+    /// was lost. A cancel with no press in progress (WinUI's capture loss after a release) is ignored and left
+    /// unhandled. Wheel, hover and double-tap events are not tied to a press and always pass.
+    /// </summary>
+    private bool AcceptPointer(KumikoPointerEventArgs e)
+    {
+        bool fromActive = e.PointerId == _activePointerId;
+        bool accept = e.Action switch
+        {
+            InputAction.Pressed => !_isPointerDown || fromActive || IsActivePointerStale(e.TimestampMs),
+            InputAction.Moved or InputAction.LongPress => !_isPointerDown || fromActive,
+            InputAction.Released => fromActive,
+            InputAction.Cancelled => fromActive || !_isPointerDown,
+            _ => true,
+        };
+        if (!accept)
+        {
+            e.Handled = true;
+            return false;
+        }
+
+        if (e.Action == InputAction.Cancelled && !_isPointerDown) return false; // nothing to cancel
+
+        if (e.Action == InputAction.Pressed) _activePointerId = e.PointerId;
+        if (e.PointerId == _activePointerId) _activePointerLastMs = e.TimestampMs;
+        return true;
+    }
+
+    private bool IsActivePointerStale(long nowMs) =>
+        nowMs > 0 && _activePointerLastMs > 0 && nowMs - _activePointerLastMs > StalePointerMs;
+
+    /// <summary>Ends every gesture in progress, for <see cref="IsEnabled"/> turning off.</summary>
+    private void StopInteraction()
+    {
+        _isPointerDown = false;
+        _isPanning = false;
+        _isResizingColumn = false;
+        _isDraggingColumn = false;
+        _isDraggingRow = false;
+        _dragColumnIndex = -1;
+        _dragRowIndex = -1;
+        _editorConsumedPointerDown = false;
+        _inertialScroller.Reset();
+        if (_popupManager.HasActivePopups) _popupManager.CloseAll();
+        if (_editSession is { IsEditing: true }) _editSession.CancelEdit();
+        SetCursor(KumikoCursor.Default);
+        Redraw();
+    }
+
+    /// <summary>
     /// Handle a keyboard event.
     /// </summary>
     public void HandleKey(
@@ -244,6 +331,7 @@ public partial class KumikoInputController
         ScrollState scroll, KumikoSelectionModel selection, KumikoStyle style,
         KumikoSource dataSource)
     {
+        if (!_isEnabled) return;
         if (!e.IsKeyDown)
         {
             // A key release only matters to an open editor (a held arrow key repeating a spin button)
@@ -1153,11 +1241,27 @@ public partial class KumikoInputController
         }
     }
 
+    /// <summary>
+    /// The wheel or a trackpad scrolls the grid: notches by <see cref="ScrollSettings.WheelScrollMultiplier"/>
+    /// rows, pixels as they are, and with Shift held a vertical-only wheel scrolls horizontally. The event is
+    /// handled only when the grid actually moved, so at the end of its content the page around it scrolls on.
+    /// </summary>
     private void HandleScroll(KumikoPointerEventArgs e, ScrollState scroll, KumikoStyle style)
     {
         _inertialScroller.Reset();
-        float scrollAmount = style.RowHeight * _inertialScroller.Settings.WheelScrollMultiplier;
-        scroll.ScrollBy(-e.ScrollDeltaX * scrollAmount, -e.ScrollDeltaY * scrollAmount);
+        float pixelsPerNotch = style.RowHeight * _inertialScroller.Settings.WheelScrollMultiplier;
+        float dx = e.GetScrollPixelsX(pixelsPerNotch);
+        float dy = e.GetScrollPixelsY(pixelsPerNotch);
+        if ((e.Modifiers & InputModifiers.Shift) != 0 && Math.Abs(dx) < 0.01f)
+        {
+            dx = dy;
+            dy = 0;
+        }
+
+        float oldX = scroll.OffsetX, oldY = scroll.OffsetY;
+        scroll.ScrollBy(-dx, -dy);
+        if (Math.Abs(scroll.OffsetX - oldX) <= 0.01f && Math.Abs(scroll.OffsetY - oldY) <= 0.01f) return;
+
         Redraw();
         e.Handled = true;
     }

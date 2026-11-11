@@ -99,6 +99,9 @@ public partial class KumikoDataGrid : UserControl
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
 
+        // IsEnabled=false stops all input in Core (KumikoDataGrid.Input.cs). Own event: wired once, no leak.
+        IsEnabledChanged += OnIsEnabledChanged;
+
         // Wire edit session to input controller and style (mirrors MAUI).
         _inputController.EditSession = _editSession;
         InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
