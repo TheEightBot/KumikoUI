@@ -535,13 +535,13 @@ public class KumikoInputController
         if (!_inertialScroller.IsActive) return false;
 
         var (dx, dy) = _inertialScroller.Update(frameIntervalMs);
-        if (dx == 0 && dy == 0) return _inertialScroller.IsActive;
+        if (InertialScroller.IsZero(dx) && InertialScroller.IsZero(dy)) return _inertialScroller.IsActive;
 
         float beforeX = scroll.OffsetX, beforeY = scroll.OffsetY;
         scroll.ScrollBy(dx, dy);
         float movedX = scroll.OffsetX - beforeX, movedY = scroll.OffsetY - beforeY;
         _inertialScroller.ReportApplied(dx, dy, movedX, movedY);
-        if (movedX != 0 || movedY != 0) Redraw();
+        if (!InertialScroller.IsZero(movedX) || !InertialScroller.IsZero(movedY)) Redraw();
         return _inertialScroller.IsActive;
     }
 

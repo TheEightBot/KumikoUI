@@ -156,12 +156,15 @@ public class InertialScroller
     {
         if (!_isActive) return;
 
-        if (requestedDx != 0 && appliedDx == 0) { _velocityX = 0; _smoothVelocityX = 0; }
-        if (requestedDy != 0 && appliedDy == 0) { _velocityY = 0; _smoothVelocityY = 0; }
+        if (!IsZero(requestedDx) && IsZero(appliedDx)) { _velocityX = 0; _smoothVelocityX = 0; }
+        if (!IsZero(requestedDy) && IsZero(appliedDy)) { _velocityY = 0; _smoothVelocityY = 0; }
 
-        if (_velocityX == 0 && _velocityY == 0)
+        if (IsZero(_velocityX) && IsZero(_velocityY))
             _isActive = false;
     }
+
+    /// <summary>Exact zero test written as a magnitude comparison so no floating point equality is used.</summary>
+    internal static bool IsZero(float value) => MathF.Abs(value) < float.Epsilon;
 
     /// <summary>
     /// Call each frame to get the scroll delta.
@@ -173,7 +176,7 @@ public class InertialScroller
     public (float dx, float dy) Update(float frameIntervalMs = 16f)
     {
         if (!_isActive) return (0, 0);
-        if (!(frameIntervalMs > 0f) || !float.IsFinite(frameIntervalMs)) return (0, 0);
+        if (float.IsNaN(frameIntervalMs) || frameIntervalMs <= 0f || !float.IsFinite(frameIntervalMs)) return (0, 0);
         if (frameIntervalMs > MaxFrameIntervalMs) frameIntervalMs = MaxFrameIntervalMs;
 
         float factor = frameIntervalMs / 16f; // Normalize to 60fps baseline

@@ -392,7 +392,7 @@ public class InertialScrollerTests
     {
         g.Pointer(InputAction.Pressed, 100, 220, timestampMs: 100);
         for (int i = 1; i <= 4; i++)
-            g.Pointer(InputAction.Moved, 100, 220 - 40 * i, timestampMs: 100 + i * 16);
+            g.Pointer(InputAction.Moved, 100, 220f - 40f * i, timestampMs: 100 + i * 16);
         g.Pointer(InputAction.Released, 100, 60, timestampMs: releaseMs);
     }
 
@@ -418,7 +418,7 @@ public class InertialScrollerTests
         var g = new Input.InputGrid(rows: 40);
         g.Pointer(InputAction.Pressed, 100, 60, timestampMs: 100);
         for (int i = 1; i <= 4; i++)
-            g.Pointer(InputAction.Moved, 100, 60 + 40 * i, timestampMs: 100 + i * 16);
+            g.Pointer(InputAction.Moved, 100, 60f + 40f * i, timestampMs: 100 + i * 16);
         g.Pointer(InputAction.Released, 100, 220, timestampMs: 180);
         Assert.True(g.Input.IsInertialScrolling);
         Assert.Equal(0f, g.Scroll.OffsetY);
