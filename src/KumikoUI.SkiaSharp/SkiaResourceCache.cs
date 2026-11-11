@@ -24,6 +24,11 @@ namespace KumikoUI.SkiaSharp;
 /// <see cref="SkiaFontRegistrar"/> drops that family's typefaces and fonts from every live cache before
 /// the registrar disposes anything, so a cache never holds a disposed typeface and the next frame uses
 /// the new registration.</para>
+/// <para><b>Text:</b> the width of each text measured in a font, and the lines each text was laid out into
+/// for a width (cut with an ellipsis or wrapped), are cached as well (<see cref="MaxTextMeasurements"/>), so
+/// redrawing unchanged text measures nothing. Entries are keyed by the text and the font's family, size and style,
+/// so a style change that picks another font simply stops using them; any <see cref="SkiaFontRegistrar"/> change
+/// and <see cref="Clear"/> drop them all.</para>
 /// <para><b>Threading:</b> a cache is meant to be used by one render thread at a time. Its members take a
 /// lock, so the registrar can invalidate it from another thread safely.</para>
 /// </remarks>
@@ -38,10 +43,19 @@ public sealed class SkiaResourceCache : IDisposable
     /// <summary>Default value of <see cref="MaxTypefaces"/>.</summary>
     public const int DefaultMaxTypefaces = 32;
 
+    /// <summary>Default value of <see cref="MaxTextMeasurements"/>.</summary>
+    public const int DefaultMaxTextMeasurements = 4096;
+
     private readonly object _gate = new();
     private readonly LruMap<PaintKey, SKPaint> _paints;
     private readonly LruMap<FontKey, FontEntry> _fonts;
     private readonly LruMap<TypefaceKey, TypefaceEntry> _typefaces;
+    private readonly LruMap<TextKey, TextMeasurement> _textWidths;
+    private readonly LruMap<TextLayoutKey, KumikoTextLines> _textLayouts;
+
+    // Incremented whenever the text entries are dropped, so a measurement taken across a drop is not stored.
+    private long _textGeneration;
+    private long _nativeTextMeasureCount;
 
     // Objects retired while a frame is being drawn; released when the outermost frame ends.
     private readonly List<object> _retired = new();
@@ -60,10 +74,23 @@ public sealed class SkiaResourceCache : IDisposable
     /// <param name="maxTypefaces">Most typefaces kept, one per family, weight and slant; at least 1.</param>
     /// <exception cref="ArgumentOutOfRangeException">A capacity is less than 1.</exception>
     public SkiaResourceCache(int maxPaints, int maxFonts, int maxTypefaces)
+        : this(maxPaints, maxFonts, maxTypefaces, DefaultMaxTextMeasurements)
+    {
+    }
+
+    /// <summary>Creates a cache with the given capacities, including the text measurement capacity.</summary>
+    /// <param name="maxPaints">Most <see cref="SKPaint"/> objects kept; at least 1.</param>
+    /// <param name="maxFonts">Most <see cref="SKFont"/> objects kept; at least 1.</param>
+    /// <param name="maxTypefaces">Most typefaces kept, one per family, weight and slant; at least 1.</param>
+    /// <param name="maxTextMeasurements">Most text widths kept, and separately most text layouts kept; at least 1.</param>
+    /// <exception cref="ArgumentOutOfRangeException">A capacity is less than 1.</exception>
+    public SkiaResourceCache(int maxPaints, int maxFonts, int maxTypefaces, int maxTextMeasurements)
     {
         _paints = new LruMap<PaintKey, SKPaint>(maxPaints);
         _fonts = new LruMap<FontKey, FontEntry>(maxFonts);
         _typefaces = new LruMap<TypefaceKey, TypefaceEntry>(maxTypefaces);
+        _textWidths = new LruMap<TextKey, TextMeasurement>(maxTextMeasurements);
+        _textLayouts = new LruMap<TextLayoutKey, KumikoTextLines>(maxTextMeasurements);
         SkiaFontRegistrar.Attach(this);
     }
 
@@ -75,6 +102,15 @@ public sealed class SkiaResourceCache : IDisposable
 
     /// <summary>Most typefaces the cache keeps (one per family, weight and slant).</summary>
     public int MaxTypefaces => _typefaces.Capacity;
+
+    /// <summary>
+    /// Most text measurements the cache keeps: up to this many measured text widths and, separately, up to this
+    /// many text layouts (text cut with an ellipsis or wrapped for a width).
+    /// </summary>
+    public int MaxTextMeasurements => _textWidths.Capacity;
+
+    /// <summary>Number of cached text measurements: measured widths plus laid-out texts.</summary>
+    public int TextMeasurementCount { get { lock (_gate) return _textWidths.Count + _textLayouts.Count; } }
 
     /// <summary>Number of cached <see cref="SKPaint"/> objects.</summary>
     public int PaintCount { get { lock (_gate) return _paints.Count; } }
@@ -166,31 +202,125 @@ public sealed class SkiaResourceCache : IDisposable
     }
 
     /// <summary>Returns the cached <see cref="SKFont"/> for <paramref name="font"/> (<c>null</c> = default 14 pt).</summary>
-    internal SKFont GetFont(KumikoFont? font)
-    {
-        var family = font?.Family ?? "Default";
-        var size = font?.Size ?? 14f;
-        var isBold = font?.IsBold ?? false;
-        var isItalic = font?.IsItalic ?? false;
+    internal SKFont GetFont(KumikoFont? font) => GetFont(font, out _);
 
-        var key = new FontKey(family, size, isBold, isItalic);
+    /// <summary>
+    /// Returns the cached <see cref="SKFont"/> for <paramref name="font"/> (<c>null</c> = default 14 pt) and its
+    /// metrics, read once when the font was created.
+    /// </summary>
+    internal SKFont GetFont(KumikoFont? font, out SKFontMetrics metrics)
+    {
+        var key = ToFontKey(font);
         lock (_gate)
         {
             if (_fonts.TryGet(key, out var entry))
+            {
+                metrics = entry.Metrics;
                 return entry.Font;
+            }
 
             ThrowIfDisposed();
-            var typefaceKey = new TypefaceKey(family, isBold, isItalic);
+            var typefaceKey = new TypefaceKey(key.Family, key.IsBold, key.IsItalic);
             var typeface = GetTypefaceLocked(typefaceKey);
-            var skFont = new SKFont(typeface, size)
+            var skFont = new SKFont(typeface, key.Size)
             {
                 Edging = SKFontEdging.SubpixelAntialias,
                 Subpixel = true
             };
-            if (_fonts.Add(key, new FontEntry(skFont, typefaceKey), out var evicted))
+            metrics = skFont.Metrics;
+            if (_fonts.Add(key, new FontEntry(skFont, typefaceKey, metrics), out var evicted))
                 Retire(evicted.Value.Font);
             return skFont;
         }
+    }
+
+    private static FontKey ToFontKey(KumikoFont? font) => new(
+        font?.Family ?? "Default", font?.Size ?? 14f, font?.IsBold ?? false, font?.IsItalic ?? false);
+
+    // ── Text ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The advance width of <paramref name="text"/> (not empty) in <paramref name="font"/>, measured once and then
+    /// read from the cache; <paramref name="hasControlCharacters"/> tells whether the text holds line breaks, tabs
+    /// or other control characters that cannot be drawn as they are.
+    /// </summary>
+    internal float MeasureTextWidth(string text, KumikoFont? font, out bool hasControlCharacters)
+    {
+        var key = new TextKey(text, ToFontKey(font));
+        long generation;
+        lock (_gate)
+        {
+            if (_textWidths.TryGet(key, out var cached))
+            {
+                hasControlCharacters = cached.HasControlCharacters;
+                return cached.Width;
+            }
+            ThrowIfDisposed();
+            generation = _textGeneration;
+        }
+
+        var skFont = GetFont(font);
+        float width = MeasureNative(skFont, text);
+        hasControlCharacters = KumikoTextLayout.ContainsControlCharacters(text);
+
+        lock (_gate)
+        {
+            if (generation == _textGeneration && !_textWidths.TryGet(key, out _))
+                _textWidths.Add(key, new TextMeasurement(width, hasControlCharacters), out _);
+        }
+        return width;
+    }
+
+    /// <summary>
+    /// The lines <paramref name="text"/> (not empty) is drawn as in <paramref name="font"/> within
+    /// <paramref name="maxWidth"/> (see <see cref="KumikoTextLayout.LayOut"/>), laid out once and then read from
+    /// the cache.
+    /// </summary>
+    internal KumikoTextLines GetTextLayout(string text, KumikoFont? font, float maxWidth, KumikoTextWrap wrap,
+        int maxLines)
+    {
+        if (float.IsNaN(maxWidth)) maxWidth = float.PositiveInfinity;
+        if (maxWidth < 0f) maxWidth = 0f;
+        if (wrap == KumikoTextWrap.None) maxLines = 1;
+
+        var key = new TextLayoutKey(text, ToFontKey(font), maxWidth, wrap, maxLines);
+        long generation;
+        lock (_gate)
+        {
+            if (_textLayouts.TryGet(key, out var cached))
+                return cached;
+            ThrowIfDisposed();
+            generation = _textGeneration;
+        }
+
+        var lines = LayOutText(text, GetFont(font), maxWidth, wrap, maxLines);
+
+        lock (_gate)
+        {
+            if (generation == _textGeneration && !_textLayouts.TryGet(key, out _))
+                _textLayouts.Add(key, lines, out _);
+        }
+        return lines;
+    }
+
+    // A separate method so the measuring closure is allocated only on a miss, not on every lookup.
+    private KumikoTextLines LayOutText(string text, SKFont skFont, float maxWidth, KumikoTextWrap wrap, int maxLines) =>
+        KumikoTextLayout.LayOut(text, maxWidth, wrap, maxLines, span => MeasureNative(skFont, span));
+
+    /// <summary>The number of times the cache has measured text with Skia (tests and diagnostics).</summary>
+    internal long NativeTextMeasureCount => Interlocked.Read(ref _nativeTextMeasureCount);
+
+    private float MeasureNative(SKFont font, ReadOnlySpan<char> text)
+    {
+        Interlocked.Increment(ref _nativeTextMeasureCount);
+        return text.IsEmpty ? 0f : font.MeasureText(text);
+    }
+
+    private void ClearTextLocked()
+    {
+        _textGeneration++;
+        _textWidths.Clear();
+        _textLayouts.Clear();
     }
 
     /// <summary>Returns the cached typeface for a family and style (tests and diagnostics).</summary>
@@ -272,6 +402,10 @@ public sealed class SkiaResourceCache : IDisposable
         {
             if (_disposed) return;
 
+            // A family's text may have been measured in a fallback typeface before it was registered, or in a
+            // typeface that is now replaced; registrar changes are rare, so every text entry goes.
+            ClearTextLocked();
+
             var stale = new List<TypefaceKey>();
             if (family is null)
                 _typefaces.CollectKeys(static (_, entry) => entry.Source == TypefaceSource.Registrar, stale);
@@ -309,6 +443,8 @@ public sealed class SkiaResourceCache : IDisposable
 
     private void RetireAll()
     {
+        ClearTextLocked();
+
         var fonts = new List<FontEntry>();
         _fonts.Clear(fonts);
         foreach (var font in fonts)
@@ -365,7 +501,16 @@ public sealed class SkiaResourceCache : IDisposable
     /// <summary>Cache key for typefaces.</summary>
     private readonly record struct TypefaceKey(string Family, bool IsBold, bool IsItalic);
 
-    private readonly record struct FontEntry(SKFont Font, TypefaceKey TypefaceKey);
+    private readonly record struct FontEntry(SKFont Font, TypefaceKey TypefaceKey, SKFontMetrics Metrics);
+
+    /// <summary>Cache key for text widths: the text and the font it is measured in.</summary>
+    private readonly record struct TextKey(string Text, FontKey Font);
+
+    /// <summary>Cache key for text layouts.</summary>
+    private readonly record struct TextLayoutKey(string Text, FontKey Font, float MaxWidth, KumikoTextWrap Wrap, int MaxLines);
+
+    /// <summary>A measured text width, and whether the text holds control characters.</summary>
+    private readonly record struct TextMeasurement(float Width, bool HasControlCharacters);
 
     private readonly record struct TypefaceEntry(SKTypeface Typeface, TypefaceSource Source);
 

@@ -162,8 +162,10 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
 
     /// <inheritdoc />
     /// <remarks>
-    /// Text that exceeds the rectangle width is truncated with an ellipsis ("…") using a binary search
-    /// to find the optimal truncation point.
+    /// Line breaks and tabs are drawn as spaces, and text wider than the rectangle is cut between two whole text
+    /// elements (an emoji or a letter with combining marks is never split) and ends with an ellipsis ("…"); just
+    /// the ellipsis is drawn when no character fits beside it. The measured width and the cut text come from the
+    /// <see cref="ResourceCache"/>, so unchanged text is measured only the first time it is drawn.
     /// </remarks>
     public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
         KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
@@ -173,7 +175,25 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         if (string.IsNullOrEmpty(text)) return;
 
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
-        var skFont = GetOrCreateFont(paint);
+        var skFont = _cache.GetFont(paint.Font, out var metrics);
+
+        string line = text;
+        float width = _cache.MeasureTextWidth(text, paint.Font, out bool hasControlCharacters);
+        if (hasControlCharacters || width > rect.Width)
+        {
+            var lines = _cache.GetTextLayout(text, paint.Font, rect.Width, KumikoTextWrap.None, 1);
+            if (lines.Count == 0) return;
+            line = lines.GetLine(0);
+            width = lines.GetLineWidth(0);
+        }
+
+        float textHeight = metrics.Descent - metrics.Ascent;
+        float top = vAlign switch
+        {
+            KumikoVerticalAlignment.Top => rect.Y,
+            KumikoVerticalAlignment.Bottom => rect.Bottom - textHeight,
+            _ => rect.Y + (rect.Height - textHeight) / 2
+        };
 
         if (clip)
         {
@@ -181,64 +201,104 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
             _canvas.ClipRect(ToSKRect(rect));
         }
 
-        // Measure text using SKFont
-        float textWidth = skFont.MeasureText(text, out var bounds, skPaint);
-        var metrics = skFont.Metrics;
-        float textHeight = metrics.Descent - metrics.Ascent;
+        _canvas.DrawText(line, AlignX(rect, width, hAlign), top - metrics.Ascent, SKTextAlign.Left, skFont, skPaint);
 
-        // Horizontal alignment
-        float x = hAlign switch
-        {
-            KumikoTextAlignment.Center => rect.X + (rect.Width - textWidth) / 2,
-            KumikoTextAlignment.Right => rect.Right - textWidth,
-            _ => rect.X
-        };
+        if (clip)
+            _canvas.Restore();
+    }
 
-        // Vertical alignment (baseline)
-        float y = vAlign switch
+    /// <inheritdoc />
+    /// <remarks>
+    /// The lines come from the <see cref="ResourceCache"/>, keyed by the text, the font, the rectangle's width,
+    /// the wrap mode and the number of lines that fit its height, so unchanged text is laid out only the first
+    /// time it is drawn and later frames allocate nothing.
+    /// </remarks>
+    public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
+        KumikoTextAlignment hAlign, KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap)
+    {
+        if (wrap == KumikoTextWrap.None)
         {
-            KumikoVerticalAlignment.Top => rect.Y - metrics.Ascent,
-            KumikoVerticalAlignment.Bottom => rect.Bottom - metrics.Descent,
-            _ => rect.Y + (rect.Height - textHeight) / 2 - metrics.Ascent
-        };
-
-        // Truncate with ellipsis if too wide
-        if (textWidth > rect.Width && rect.Width > 20)
-        {
-            var truncated = TruncateTextWithEllipsis(text, skFont, skPaint, rect.Width);
-            _canvas.DrawText(truncated, x, y, SKTextAlign.Left, skFont, skPaint);
+            DrawTextInRect(text, rect, paint, hAlign, vAlign, clip);
+            return;
         }
-        else
+        if (string.IsNullOrEmpty(text)) return;
+
+        var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
+        var skFont = _cache.GetFont(paint.Font, out var skMetrics);
+        var metrics = new KumikoFontMetrics(skMetrics.Ascent, skMetrics.Descent, skMetrics.Leading);
+
+        var lines = _cache.GetTextLayout(text, paint.Font, rect.Width, wrap,
+            KumikoTextLayout.GetMaxLines(rect.Height, metrics));
+        if (lines.Count == 0) return;
+
+        float height = lines.GetHeight(metrics);
+        float top = vAlign switch
         {
-            _canvas.DrawText(text, x, y, SKTextAlign.Left, skFont, skPaint);
+            KumikoVerticalAlignment.Top => rect.Y,
+            KumikoVerticalAlignment.Bottom => rect.Bottom - height,
+            _ => rect.Y + (rect.Height - height) / 2
+        };
+
+        if (clip)
+        {
+            _canvas.Save();
+            _canvas.ClipRect(ToSKRect(rect));
+        }
+
+        float baseline = top - metrics.Ascent;
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines.GetLine(i);
+            if (line.Length > 0)
+            {
+                float x = AlignX(rect, lines.GetLineWidth(i), hAlign);
+                _canvas.DrawText(line, x, baseline + i * metrics.LineHeight, SKTextAlign.Left, skFont, skPaint);
+            }
         }
 
         if (clip)
             _canvas.Restore();
     }
 
+    private static float AlignX(KumikoRect rect, float width, KumikoTextAlignment hAlign) => hAlign switch
+    {
+        KumikoTextAlignment.Center => rect.X + (rect.Width - width) / 2,
+        KumikoTextAlignment.Right => rect.Right - width,
+        _ => rect.X
+    };
+
     // ── Text measuring ───────────────────────────────────────────
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The width is cached in the <see cref="ResourceCache"/> by text and font, so measuring the same text again
+    /// (on this or a later frame) does not measure it with Skia again.
+    /// </remarks>
     public KumikoSize MeasureText(string text, KumikoPaint paint)
     {
         if (string.IsNullOrEmpty(text)) return KumikoSize.Empty;
 
-        var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
-        var skFont = GetOrCreateFont(paint);
+        _cache.GetFont(paint.Font, out var metrics);
+        float textWidth = _cache.MeasureTextWidth(text, paint.Font, out _);
+        return new KumikoSize(textWidth, metrics.Descent - metrics.Ascent);
+    }
 
-        float textWidth = skFont.MeasureText(text, out _, skPaint);
-        var metrics = skFont.Metrics;
-        float height = metrics.Descent - metrics.Ascent;
+    /// <inheritdoc />
+    /// <remarks>The layout is cached in the <see cref="ResourceCache"/>, as it is for drawing.</remarks>
+    public KumikoSize MeasureText(string text, KumikoPaint paint, float maxWidth, KumikoTextWrap wrap)
+    {
+        if (string.IsNullOrEmpty(text)) return KumikoSize.Empty;
 
-        return new KumikoSize(textWidth, height);
+        _cache.GetFont(paint.Font, out var skMetrics);
+        var metrics = new KumikoFontMetrics(skMetrics.Ascent, skMetrics.Descent, skMetrics.Leading);
+        var lines = _cache.GetTextLayout(text, paint.Font, maxWidth, wrap, int.MaxValue);
+        return new KumikoSize(lines.Width, lines.GetHeight(metrics));
     }
 
     /// <inheritdoc />
     public KumikoFontMetrics GetFontMetrics(KumikoPaint paint)
     {
-        var skFont = GetOrCreateFont(paint);
-        var metrics = skFont.Metrics;
+        _cache.GetFont(paint.Font, out var metrics);
         return new KumikoFontMetrics(metrics.Ascent, metrics.Descent, metrics.Leading);
     }
 
@@ -310,28 +370,6 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     internal static void ResetUnknownFamilyReports()
     {
         lock (_reportedUnknownFamilies) _reportedUnknownFamilies.Clear();
-    }
-
-    private static string TruncateTextWithEllipsis(string text, SKFont font, SKPaint paint, float maxWidth)
-    {
-        const string ellipsis = "…";
-        float ellipsisWidth = font.MeasureText(ellipsis, out _, paint);
-        float targetWidth = maxWidth - ellipsisWidth;
-
-        if (targetWidth <= 0) return ellipsis;
-
-        // Binary search for the right truncation point
-        int lo = 0, hi = text.Length;
-        while (lo < hi)
-        {
-            int mid = (lo + hi + 1) / 2;
-            if (font.MeasureText(text[..mid], out _, paint) <= targetWidth)
-                lo = mid;
-            else
-                hi = mid - 1;
-        }
-
-        return lo > 0 ? text[..lo] + ellipsis : ellipsis;
     }
 
     // ── IDisposable ──────────────────────────────────────────────
