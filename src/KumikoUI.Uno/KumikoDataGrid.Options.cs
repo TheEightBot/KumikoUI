@@ -100,7 +100,8 @@ public partial class KumikoDataGrid
         if (e.OldValue is ObservableCollection<GroupDescription> oldCollection)
             oldCollection.CollectionChanged -= view.OnGroupDescriptionsCollectionChanged;
         var newCollection = (ObservableCollection<GroupDescription>)e.NewValue;
-        newCollection.CollectionChanged += view.OnGroupDescriptionsCollectionChanged;
+        if (view.IsObservingCollections)
+            newCollection.CollectionChanged += view.OnGroupDescriptionsCollectionChanged;
 
         view._dataSource.SetGroupDescriptions(newCollection);
         view.Invalidate();
@@ -146,7 +147,8 @@ public partial class KumikoDataGrid
         if (e.OldValue is ObservableCollection<GroupSummaryRow> oldCollection)
             oldCollection.CollectionChanged -= view.OnGroupSummaryRowsCollectionChanged;
         var newCollection = (ObservableCollection<GroupSummaryRow>)e.NewValue;
-        newCollection.CollectionChanged += view.OnGroupSummaryRowsCollectionChanged;
+        if (view.IsObservingCollections)
+            newCollection.CollectionChanged += view.OnGroupSummaryRowsCollectionChanged;
 
         view._dataSource.SetGroupSummaryRows(newCollection);
         view.Invalidate();

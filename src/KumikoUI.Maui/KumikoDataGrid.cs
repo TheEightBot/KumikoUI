@@ -319,8 +319,13 @@ public partial class KumikoDataGrid : ContentView
         {
             _dataSource.SetItems(newValue);
 
+            if (!IsObservingCollections)
+            {
+                // Set while disconnected: SetItems subscribed, so release it; Reconnect re-attaches
+                _dataSource.Detach();
+            }
             // Subscribe at MAUI layer for thread-safe invalidation
-            if (newValue is INotifyCollectionChanged incc)
+            else if (newValue is INotifyCollectionChanged incc)
             {
                 _boundCollectionChangedSource = incc;
                 _boundCollectionChangedSource.CollectionChanged += OnBoundItemsCollectionChanged;
@@ -624,7 +629,8 @@ public partial class KumikoDataGrid : ContentView
 
         if (newCollection != null)
         {
-            newCollection.CollectionChanged += OnColumnsCollectionChanged;
+            if (IsObservingCollections)
+                newCollection.CollectionChanged += OnColumnsCollectionChanged;
             _dataSource.SetColumns(newCollection);
         }
         else
@@ -673,7 +679,8 @@ public partial class KumikoDataGrid : ContentView
 
         if (newCollection != null)
         {
-            newCollection.CollectionChanged += OnTableSummaryRowsCollectionChanged;
+            if (IsObservingCollections)
+                newCollection.CollectionChanged += OnTableSummaryRowsCollectionChanged;
             SyncTableSummaryRows(newCollection);
         }
         else
@@ -945,12 +952,10 @@ public partial class KumikoDataGrid : ContentView
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
         using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
-        var layoutEngine = new KumikoLayoutEngine();
 
-        float optimalWidth = layoutEngine.CalculateAutoFitWidth(
-            e.Column, _dataSource, measureCtx, _style);
-
-        e.Column.Width = optimalWidth;
+        // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
+        // Auto column becomes Fixed at the fitted width so it keeps it.
+        _renderer.AutoFitColumn(e.Column, _dataSource, measureCtx, _style);
         InvalidateSurface();
     }
 
@@ -1024,6 +1029,7 @@ public partial class KumikoDataGrid : ContentView
         // Stop timers first (they capture 'this' via Tick delegates)
         StopInertialScrollTimer();
         StopCursorBlinkTimer();
+        CancelLongPressTimer();
 
         // Stop observing the app's collection and its items (the source lives on; Reconnect re-attaches it)
         _dataSource.Detach();
@@ -1057,12 +1063,9 @@ public partial class KumikoDataGrid : ContentView
         _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed -= OnKeyboardProxyCompleted;
 
-        // Unsubscribe bound collection
-        if (_boundCollectionChangedSource != null)
-        {
-            _boundCollectionChangedSource.CollectionChanged -= OnBoundItemsCollectionChanged;
-            _boundCollectionChangedSource = null;
-        }
+        // Unsubscribe the bound items and the Columns/summary/grouping collections (Reconnect restores them)
+        UnsubscribeObservedCollections();
+        _selectionBinder.Detach(); // the app's SelectedItems list, when it supplied one
 
 #if MACCATALYST || IOS
         // Remove native keyboard input
@@ -1071,6 +1074,9 @@ public partial class KumikoDataGrid : ContentView
             _nativeKeyInput.TextInserted -= OnNativeTextInserted;
             _nativeKeyInput.BackspaceDeleted -= OnNativeBackspace;
             _nativeKeyInput.KeyPressed -= OnNativeKeyPress;
+            _nativeKeyInput.TabKeyReceived -= OnNativeTabKey;
+            _nativeKeyInput.NavigationKeyReceived -= OnNativeNavigationKey;
+            _nativeKeyInput.CanHandleTab = null;
             _nativeKeyInput.RemoveFromSuperview();
             _nativeKeyInput = null;
             _useNativeKeyInput = false;
@@ -1106,6 +1112,8 @@ public partial class KumikoDataGrid : ContentView
         _dataSource.ViewChanged += OnDataSourceViewChanged;
         // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
         _dataSource.Attach();
+        ResubscribeObservedCollections();
+        _selectionBinder.Attach();
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;

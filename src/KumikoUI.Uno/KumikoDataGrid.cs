@@ -257,12 +257,10 @@ public partial class KumikoDataGrid : UserControl
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
         using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
-        var layoutEngine = new KumikoLayoutEngine();
 
-        float optimalWidth = layoutEngine.CalculateAutoFitWidth(
-            e.Column, _dataSource, measureCtx, _style);
-
-        e.Column.Width = optimalWidth;
+        // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
+        // Auto column becomes Fixed at the fitted width so it keeps it.
+        _renderer.AutoFitColumn(e.Column, _dataSource, measureCtx, _style);
         InvalidateSurface();
     }
 
@@ -375,8 +373,13 @@ public partial class KumikoDataGrid : UserControl
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
 
-        // Resume following the app's collection if Unloaded detached it (no-op on first load).
+        _isUnloaded = false;
+
+        // Resume following the app's collection if Unloaded detached it (no-op on first load), then the
+        // collections the grid observes, then the app's SelectedItems list.
         _dataSource.Attach();
+        ResubscribeObservedCollections();
+        _selectionBinder.Attach();
 
         // Re-render with the current DPI now that we are in the visual tree.
         InvalidateSurface();
@@ -397,6 +400,12 @@ public partial class KumikoDataGrid : UserControl
         // Stop observing the app's collection and its items so they do not keep this grid's source alive;
         // OnLoaded re-attaches (the control can be reloaded, so the source is detached, not disposed).
         _dataSource.Detach();
+
+        // Unsubscribe the bound items, the Columns/summary/grouping collections and the app's SelectedItems
+        // list, which can outlive the page; OnLoaded restores them.
+        _isUnloaded = true;
+        UnsubscribeObservedCollections();
+        _selectionBinder.Detach();
 
         // Stop listening to action-button commands (a cell renderer can outlive this grid). The renderer
         // re-attaches to them on the next paint after a reload.

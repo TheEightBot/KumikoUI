@@ -64,10 +64,11 @@ The grid calls `InvalidateSurface()` in response to:
 `KumikoLayoutEngine.ComputeColumnWidths()` resolves column widths in order:
 
 0. **Header fit** — each visible column's `HeaderFitWidth` is updated: header text measured in the header font through the frame's drawing context, plus header padding on both sides, the sort-arrow slot (12) when sortable, the filter-icon slot (14) when filterable, and a 4 px margin. The text width is cached on the column per (header text, font instance and font properties), so a steady-state frame measures nothing (#182).
-1. **Fixed / Auto** — an explicit `Width` (`HasExplicitWidth`) is used directly (DIP). Without one, the column is `DefaultWidth` (120) or its header-fit width when wider, within `MinWidth`/`MaxWidth`. Auto is laid out like Fixed for now (#24).
-2. **Star** — the width Fixed and Auto columns leave is shared by `StarWeight`. A Star column whose share falls outside its minimum (`MinWidth`, and the header-fit width capped at `MaxWidth` when it has no explicit `Width`) or its `MaxWidth` is held at that bound and the rest is shared again among the others. When the minimums don't fit the viewport, the content is wider than the viewport and the grid scrolls horizontally.
+1. **Content fit (Auto)** — each visible Auto column's `ContentFitWidth` is the wider of its header-fit width and its widest sampled cell text plus the cell padding on both sides and a 16 px buffer. The sample is the rows on screen plus the first and last `KumikoLayoutEngine.AutoFitSampleRows` (100) rows of the view, so it costs the same on any row count. The text width is cached on the column per (source, source content version, cell font), so it is measured on the first frame and on the first frame after a data or view change (anything that raises `ViewChanged`) or a cell-font change; steady frames and scrolling measure nothing (#24).
+2. **Fixed / Auto** — a measured Auto column is its `ContentFitWidth` within `MinWidth`/`MaxWidth`. Otherwise an explicit `Width` (`HasExplicitWidth`) is used directly (DIP); without one, the column is `DefaultWidth` (120) or its header-fit width when wider, within `MinWidth`/`MaxWidth`.
+3. **Star** — the width Fixed and Auto columns leave is shared by `StarWeight`. A Star column whose share falls outside its minimum (`MinWidth`, and the header-fit width capped at `MaxWidth` when it has no explicit `Width`) or its `MaxWidth` is held at that bound and the rest is shared again among the others. When the minimums don't fit the viewport, the content is wider than the viewport and the grid scrolls horizontally.
 
-The resolved width is written back to each `KumikoColumn.Width` (layout writes don't make it explicit) and consumed by all subsequent draw and hit-test operations.
+The resolved width is written back to each `KumikoColumn.Width` (layout writes don't make it explicit) and consumed by all subsequent draw and hit-test operations. A resize drag or an auto-fit (`KumikoRenderer.AutoFitColumn`, which samples like Auto) of a Star or Auto column switches it to Fixed at the chosen width, so the next pass keeps it.
 
 ## 3-Pass Frozen Column Rendering
 
@@ -159,8 +160,8 @@ live in a `SkiaResourceCache` that the host control owns for its lifetime (the M
 one per control, pass it to `new SkiaDrawingContext(canvas, cache)` every frame, and dispose it when the
 MAUI handler disconnects or the Uno control unloads). The cache has 3 tiers:
 
-1. **SKTypeface cache** — Keyed by `(family, bold, italic)`. Resolved from `SkiaFontRegistrar` first, then the font manager (falling back to the default family in the same style). Font-manager typefaces are reference counted across caches; `SKTypeface.Default` and registered typefaces are never disposed by the cache.
-2. **SKFont cache** — Keyed by `(family, size, bold, italic)`; each font belongs to its typeface entry and is dropped with it.
+1. **SKTypeface cache** — Keyed by `(family, bold, italic)`. Resolved from `SkiaFontRegistrar` first (the registered face closest to the style), then the font manager (falling back to the default family in the same style). Font-manager typefaces are reference counted across caches; `SKTypeface.Default` and registered typefaces are never disposed by the cache.
+2. **SKFont cache** — Keyed by `(family, size, bold, italic)`; each font belongs to its typeface entry and is dropped with it. A bold font on a face lighter than semibold gets `SKFont.Embolden`, an italic font on an upright face gets `SKFont.SkewX = -0.25` (synthetic styles).
 3. **SKPaint cache** — Keyed by `(color, strokeWidth, style, isAntialias)`.
 
 Each `IDrawingContext` method (e.g., `FillRect`, `DrawText`) resolves its `KumikoPaint` to an `SKPaint`
@@ -174,6 +175,37 @@ family increments `SkiaFontRegistrar.Version` and makes each cache drop that fam
 *before* the registrar disposes anything it owned, so a cache never holds a disposed typeface and the next
 frame resolves the family again. `new SkiaDrawingContext(canvas)` (no cache) still works: it uses a private
 cache that is disposed with the context, which recreates everything every frame.
+
+### Text measurement cache
+
+The same `SkiaResourceCache` also keeps text measurements across frames (#23), so redrawing unchanged text measures nothing with Skia:
+
+- **Widths** — keyed by `(text, family, size, bold, italic)`: the advance width of the text, used by `MeasureText` and by `DrawTextInRect` to decide whether the text fits.
+- **Layouts** — keyed by `(text, font, width, wrap mode, line count)`: the immutable `KumikoTextLines` a text is drawn as when it does not fit as is (cut with an ellipsis, wrapped, or holding line breaks or tabs).
+
+Each is a least-recently-used map with `MaxTextMeasurements` entries (default 4096). Keys hold the font's values, not its instance, so a style change that picks another font simply stops using the old entries; a changed cell value is a new text and a new key. Any `SkiaFontRegistrar` change and `Clear()` drop every text entry. A hit allocates nothing; a miss measures, and lays out, once. (`SKCanvas.DrawText` still allocates a small managed wrapper inside SkiaSharp per call.)
+
+### Ellipsis and wrapping
+
+`KumikoTextLayout` (Core) lays text out for any `IDrawingContext`. Every cut falls between two text elements (`StringInfo.GetNextTextElementLength`), so emoji, surrogate pairs and combining sequences are never split; the cut point is found by a binary search over those boundaries. Text wider than its rectangle ends with "…" at any width (there is no minimum width anymore); just the ellipsis is drawn when no character fits beside it. On one line, line breaks and tabs are drawn as spaces and other control characters are dropped, instead of as missing-glyph boxes.
+
+`IDrawingContext.DrawTextInRect(…, KumikoTextWrap wrap)` and `MeasureText(text, paint, maxWidth, wrap)` add wrapping (`None`, `Word`, `Character`): line breaks start new lines, as many lines as fit the rectangle's height are drawn, and the last ends with an ellipsis when there is more. Both are default interface members, so other implementations keep compiling (the defaults lay out through `MeasureText` and allocate per call). Text cells wrap when `KumikoColumn.TextWrap` is set; rows keep their fixed height (#102 adds variable row heights).
+
+### Font fallback
+
+A typeface rarely has every glyph a grid shows: Latin fonts have no CJK or emoji, and Android's default font manager surfaces neither through the family name. `SkiaDrawingContext` therefore draws each line run by run (#74):
+
+- **Segmentation** — the line is walked one text element (grapheme cluster) at a time, so an emoji ZWJ sequence, a flag, a skin tone or a letter with combining marks always stays in one run. An element goes to the requested typeface when it has the element's glyphs (`SKFont.ContainsGlyph`), else to the first of `SkiaFontRegistrar.FallbackFamilies` that has them (registered or installed families, in order), else to `SKFontManager.MatchCharacter(family, style, [UI language], codepoint)`. Controls and default-ignorable characters (joiners, variation selectors) stay in the run around them. A character no typeface has stays in the requested typeface (drawn as its missing glyph).
+- **Fast path** — text the requested typeface covers entirely is one `ContainsGlyphs` check the first time it is measured, and is drawn with one `DrawText` as before.
+- **Caching** — the face chosen for each `(family, bold, italic, codepoint)` is cached, the fallback typefaces live in a small per-cache table (at most 64; font-manager typefaces are leased from the same pool as primary ones), and the runs of a text (their ends, faces and widths) are stored with its width and with each line of its layout. A steady-state frame segments and measures nothing; a run's font is a cache hit. Fallback fonts use the requested size and synthesize bold or italic like primary fonts.
+- **Measuring** — widths are the sum of the runs' widths, and `KumikoTextLayout` measures through the same run-aware measurer, so ellipsis cuts and wrapping work across runs.
+- **Invalidation** — any `SkiaFontRegistrar` change (including `SetFallbackFamilies`) and `Clear()` empty the fallback table together with the text entries whose runs refer to it.
+
+Runs are drawn without shaping: glyphs come from each font's character map, so ligatures, Arabic joining, Indic reordering and multi-code-point emoji (ZWJ families, flags) are drawn as their component glyphs. Shaping with `SkiaSharp.HarfBuzz` is tracked in #111. Text that needs several runs builds a small `SKTextBlob` per run when drawn, as `SKCanvas.DrawText` does for every call.
+
+### Registered styles
+
+`SkiaFontRegistrar.RegisterTypeface(family, typeface, SKFontStyle)` and `RegisterTypefaceFromStream(family, stream, SKFontStyle)` register one face per weight, width and slant under a family (for example NotoSansJP regular and bold). A font resolves to the closest registered face, matching width, then slant, then weight (lighter first up to 500, heavier first above), and synthesizes a weight or slant the face lacks. The two-argument overloads keep their behavior: they replace every face of the family with one typeface, used in its own style.
 
 ## Glyphs: Polygons and Polylines
 
