@@ -48,8 +48,10 @@ public class KumikoStyle
     /// <see cref="CellStyleResolver"/>, the column's <see cref="KumikoColumn.CellStyle"/> or
     /// <see cref="RowStyleResolver"/> takes precedence, so a cell that sets its own color keeps it when
     /// selected. Custom cell renderers read it through <see cref="Rendering.CellRenderContext.TextPaint"/>.
+    /// Default: dark text (30, 30, 30), readable on the light preset's translucent selection; the dark and
+    /// high-contrast presets use white.
     /// </summary>
-    public KumikoColor SelectionTextColor { get; set => Set(ref field, value); } = new(255, 255, 255);
+    public KumikoColor SelectionTextColor { get; set => Set(ref field, value); } = new(30, 30, 30);
     /// <summary>Subtle highlight color for the focused/current row.</summary>
     public KumikoColor FocusedRowColor { get; set => Set(ref field, value); } = new(0, 120, 215, 30);
     /// <summary>Background color of alternate (even) rows.</summary>
