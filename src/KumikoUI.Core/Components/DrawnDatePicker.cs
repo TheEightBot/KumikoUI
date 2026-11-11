@@ -98,11 +98,25 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Sets the font of the date text and calendar header; the day numbers are one pixel smaller, so the editor draws and measures its text like the grid's cells.
+    /// <see cref="ApplyTheme"/> calls it with the grid's cell font; the grid calls it again with the column's
+    /// own font when the column has one.
+    /// </summary>
+    /// <param name="font">The font to use: family, size, bold and italic.</param>
+    public void ApplyFont(KumikoFont font)
+    {
+        Font = font;
+        DayFont = new KumikoFont(font.Family, Math.Max(1f, font.Size - 1f), font.IsBold, font.IsItalic);
+        InvalidateVisual();
+    }
+
+    /// <summary>
     /// Applies theme colors from a <see cref="KumikoStyle"/> so the date picker
     /// visually matches the current grid theme.
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
 
@@ -288,11 +302,8 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
 
     private void DrawCalendar(IDrawingContext ctx)
     {
-        float calWidth = DaysPerWeek * DayCellSize + 8;
-        float calHeight = NavRowHeight + HeaderHeight + MaxWeeks * DayCellSize + 8;
-        if (ShowTimePicker) calHeight += NavRowHeight + 8;
-
-        var calRect = new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height + 2, calWidth, calHeight);
+        var calRect = GetCalendarBounds();
+        float calWidth = calRect.Width;
 
         // Shadow + background
         ctx.FillRect(new KumikoRect(calRect.X + 2, calRect.Y + 2, calRect.Width, calRect.Height),
@@ -448,13 +459,16 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         }
     }
 
-    /// <summary>Get the bounding rect of the calendar popup.</summary>
+    /// <summary>
+    /// Get the bounding rect of the calendar popup: below the date field, above it when there is no room
+    /// below, and inside <see cref="DrawnComponent.PopupViewport"/>.
+    /// </summary>
     public KumikoRect GetCalendarBounds()
     {
         float calWidth = DaysPerWeek * DayCellSize + 8;
         float calHeight = NavRowHeight + HeaderHeight + MaxWeeks * DayCellSize + 8;
         if (ShowTimePicker) calHeight += NavRowHeight + 8;
-        return new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height + 2, calWidth, calHeight);
+        return PopupLayout.Place(Bounds, calWidth, calHeight, PopupViewport, gap: 2);
     }
 
     // ── Input ───────────────────────────────────────────────────

@@ -31,6 +31,15 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     // Grapheme boundaries of _text and the measured width of the text before each one (NaN: not measured yet)
     private int[]? _boundaries;
     private float[]? _prefixWidths;
+
+    // Paints reused by every frame (a render pass allocates nothing); the colors and font are set before each use
+    private readonly KumikoPaint _bgPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _borderPaint = new() { Style = PaintStyle.Stroke, IsAntiAlias = true };
+    private readonly KumikoPaint _textPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _placeholderPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _selectionPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _underlinePaint = new() { Style = PaintStyle.Stroke, StrokeWidth = 1f };
+    private readonly KumikoPaint _cursorPaint = new() { Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
     private (string Family, float Size, bool Bold, bool Italic, IDrawingContext? Context) _widthKey;
 
     // Undo history: states before each edit; consecutive typing or deleting coalesce into one step
@@ -87,11 +96,24 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Sets the font of the text, so the editor draws and measures its text like the grid's cells.
+    /// <see cref="ApplyTheme"/> calls it with the grid's cell font; the grid calls it again with the column's
+    /// own font when the column has one.
+    /// </summary>
+    /// <param name="font">The font to use: family, size, bold and italic.</param>
+    public void ApplyFont(KumikoFont font)
+    {
+        Font = font;
+        InvalidateVisual();
+    }
+
+    /// <summary>
     /// Applies theme colors from a <see cref="KumikoStyle"/> so the text box
     /// visually matches the current grid theme.
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
 
@@ -304,18 +326,15 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         var bgColor = IsFocused ? EditingBackgroundColor : BackgroundColor;
 
         // Background
-        ctx.FillRect(b, new KumikoPaint { Color = bgColor, Style = PaintStyle.Fill });
+        _bgPaint.Color = bgColor;
+        ctx.FillRect(b, _bgPaint);
 
         // Border — thicker when focused
         float bw = IsFocused ? BorderWidth + 1f : BorderWidth;
         if (Validation == ValidationState.Error) bw = BorderWidth + 1.5f;
-        ctx.DrawRect(b, new KumikoPaint
-        {
-            Color = borderColor,
-            Style = PaintStyle.Stroke,
-            StrokeWidth = bw,
-            IsAntiAlias = true
-        });
+        _borderPaint.Color = borderColor;
+        _borderPaint.StrokeWidth = bw;
+        ctx.DrawRect(b, _borderPaint);
 
         // Clip to inner area
         float innerX = b.X + Padding;
@@ -328,7 +347,9 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         ctx.Translate(-_scrollOffset, 0);
 
         // Compute properly centered text baseline using font metrics
-        var textPaint = new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
+        var textPaint = _textPaint;
+        textPaint.Color = TextColor;
+        textPaint.Font = Font;
         var fontMetrics = ctx.GetFontMetrics(textPaint);
         float textHeight = fontMetrics.TextHeight;
         float textBaseline = b.Y + (b.Height - textHeight) / 2 - fontMetrics.Ascent;
@@ -338,8 +359,8 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         {
             float startX = innerX + XAt(Selection.Start);
             float endX = innerX + XAt(Selection.End);
-            ctx.FillRect(new KumikoRect(startX, b.Y + 2, endX - startX, b.Height - 4),
-                new KumikoPaint { Color = SelectionHighlightColor, Style = PaintStyle.Fill });
+            _selectionPaint.Color = SelectionHighlightColor;
+            ctx.FillRect(new KumikoRect(startX, b.Y + 2, endX - startX, b.Height - 4), _selectionPaint);
         }
 
         // Text or placeholder
@@ -349,7 +370,9 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         }
         else if (!IsFocused && !string.IsNullOrEmpty(Placeholder))
         {
-            var phPaint = new KumikoPaint { Color = PlaceholderColor, Style = PaintStyle.Fill, Font = Font };
+            var phPaint = _placeholderPaint;
+            phPaint.Color = PlaceholderColor;
+            phPaint.Font = Font;
             ctx.DrawText(Placeholder, innerX, textBaseline, phPaint);
         }
 
@@ -359,8 +382,8 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
             float startX = innerX + XAt(_compositionStart);
             float endX = innerX + XAt(_compositionStart + _compositionLength);
             float underlineY = textBaseline + Math.Max(1f, fontMetrics.Descent / 2);
-            ctx.DrawLine(startX, underlineY, endX, underlineY,
-                new KumikoPaint { Color = TextColor, Style = PaintStyle.Stroke, StrokeWidth = 1f });
+            _underlinePaint.Color = TextColor;
+            ctx.DrawLine(startX, underlineY, endX, underlineY, _underlinePaint);
         }
 
         // Cursor
@@ -386,8 +409,8 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         float cursorTop = textTop + 1f;
         float cursorBottom = textTop + textHeight - 1f;
 
-        var paint = new KumikoPaint { Color = CursorColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
-        ctx.DrawLine(cursorX, cursorTop, cursorX, cursorBottom, paint);
+        _cursorPaint.Color = CursorColor;
+        ctx.DrawLine(cursorX, cursorTop, cursorX, cursorBottom, _cursorPaint);
     }
 
     // ── Focus ───────────────────────────────────────────────────

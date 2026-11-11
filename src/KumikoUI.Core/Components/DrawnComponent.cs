@@ -10,6 +10,7 @@ namespace KumikoUI.Core.Components;
 public abstract class DrawnComponent
 {
     private KumikoRect _bounds;
+    private KumikoRect _popupViewport;
     private bool _isFocused;
     private bool _isEnabled = true;
     private bool _isVisible = true;
@@ -26,6 +27,23 @@ public abstract class DrawnComponent
                 _bounds = value;
                 OnBoundsChanged();
             }
+        }
+    }
+
+    /// <summary>
+    /// The visible area, in the same coordinates as <see cref="Bounds"/>, that the component's popups (a
+    /// dropdown list, a calendar) must stay inside: they open above the editor when there is no room below,
+    /// slide sideways into view, and a list shrinks to the room left. The grid sets it to its viewport when
+    /// an editor opens; an empty rectangle (the default) puts no limit on the popups.
+    /// </summary>
+    public KumikoRect PopupViewport
+    {
+        get => _popupViewport;
+        set
+        {
+            if (_popupViewport.Equals(value)) return;
+            _popupViewport = value;
+            InvalidateVisual();
         }
     }
 
