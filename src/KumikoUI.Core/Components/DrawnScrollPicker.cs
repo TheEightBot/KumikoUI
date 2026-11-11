@@ -69,11 +69,25 @@ public class DrawnScrollPicker : DrawnComponent, IValueEditor
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Sets the font of the items; the selected item is bold and two pixels larger, so the editor draws and measures its text like the grid's cells.
+    /// <see cref="ApplyTheme"/> calls it with the grid's cell font; the grid calls it again with the column's
+    /// own font when the column has one.
+    /// </summary>
+    /// <param name="font">The font to use: family, size, bold and italic.</param>
+    public void ApplyFont(KumikoFont font)
+    {
+        Font = font;
+        SelectedFont = new KumikoFont(font.Family, font.Size + 2f, bold: true, italic: font.IsItalic);
+        InvalidateVisual();
+    }
+
+    /// <summary>
     /// Applies theme colors from a <see cref="KumikoStyle"/> so the scroll picker
     /// visually matches the current grid theme.
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
 

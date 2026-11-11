@@ -50,11 +50,24 @@ public class DrawnNumericUpDown : DrawnComponent, IValueEditor
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Sets the font of the number, so the editor draws and measures its text like the grid's cells.
+    /// <see cref="ApplyTheme"/> calls it with the grid's cell font; the grid calls it again with the column's
+    /// own font when the column has one.
+    /// </summary>
+    /// <param name="font">The font to use: family, size, bold and italic.</param>
+    public void ApplyFont(KumikoFont font)
+    {
+        Font = font;
+        InvalidateVisual();
+    }
+
+    /// <summary>
     /// Applies theme colors from a <see cref="KumikoStyle"/> so the numeric
     /// up/down visually matches the current grid theme.
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
 

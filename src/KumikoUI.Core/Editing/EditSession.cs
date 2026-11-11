@@ -108,6 +108,14 @@ public class EditSession
     /// </summary>
     public KumikoStyle? Style { get; set; }
 
+    /// <summary>
+    /// The visible area of the grid, in the coordinates of the cell bounds passed to <see cref="BeginEdit"/>.
+    /// New editors get it as their <see cref="DrawnComponent.PopupViewport"/>, so a dropdown or calendar opens
+    /// above the cell when there is no room below, slides sideways into view, and a list shrinks to the room
+    /// left. Empty (the default) leaves popups unconstrained.
+    /// </summary>
+    public KumikoRect Viewport { get; set; }
+
     // ── Events ──────────────────────────────────────────────────
 
     /// <summary>Fires before a cell enters edit mode. Set Cancel to prevent.</summary>
@@ -198,7 +206,16 @@ public class EditSession
 
         // Apply theme colors to the new editor
         if (Style != null)
+        {
             CellEditorFactory.ApplyThemeToEditor(_activeEditor, Style);
+
+            // The font the cell is drawn with: a dynamic style, the column's style, the grid's cell font
+            var cellFont = Style.CellStyleResolver?.Invoke(item, column)?.Font ?? column.CellStyle?.Font;
+            if (cellFont != null)
+                CellEditorFactory.ApplyFontToEditor(_activeEditor, cellFont);
+        }
+
+        CellEditorFactory.ApplyViewportToEditor(_activeEditor, Viewport);
 
         _activeEditor.RedrawRequested += OnEditorRedrawRequested;
         _activeEditor.EditCompleted += OnEditorEditCompleted;

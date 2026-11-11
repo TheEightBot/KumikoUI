@@ -74,6 +74,38 @@ public static class CellEditorFactory
         }
     }
 
+    /// <summary>
+    /// Sets the font of an editor that shows text (text box, combo box, numeric up/down, date picker, scroll
+    /// picker), so it draws and measures like the cell it replaces. Other editors are left alone.
+    /// </summary>
+    /// <param name="editor">The editor component.</param>
+    /// <param name="font">The font of the cell: family, size, bold and italic.</param>
+    public static void ApplyFontToEditor(DrawnComponent editor, KumikoFont font)
+    {
+        switch (editor)
+        {
+            case DrawnTextBox textBox: textBox.ApplyFont(font); break;
+            case DrawnComboBox comboBox: comboBox.ApplyFont(font); break;
+            case DrawnNumericUpDown numeric: numeric.ApplyFont(font); break;
+            case DrawnDatePicker datePicker: datePicker.ApplyFont(font); break;
+            case DrawnScrollPicker picker: picker.ApplyFont(font); break;
+        }
+    }
+
+    /// <summary>
+    /// Tells an editor the visible area its popups must stay inside (<see cref="DrawnComponent.PopupViewport"/>),
+    /// and slides a scroll picker, which is drawn over the cell instead of beside it, into that area.
+    /// </summary>
+    /// <param name="editor">The editor component.</param>
+    /// <param name="viewport">The grid's visible area; empty for no limit.</param>
+    public static void ApplyViewportToEditor(DrawnComponent editor, KumikoRect viewport)
+    {
+        if (viewport.Width <= 0 || viewport.Height <= 0) return;
+        editor.PopupViewport = viewport;
+        if (editor is DrawnScrollPicker picker)
+            picker.Bounds = PopupLayout.Clamp(picker.Bounds, viewport);
+    }
+
     // ── Editor creation ─────────────────────────────────────────
 
     /// <summary>A value as editable text: no display format, in the grid's culture, so it parses back.</summary>

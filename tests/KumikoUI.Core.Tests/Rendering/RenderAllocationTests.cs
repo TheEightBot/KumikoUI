@@ -134,6 +134,22 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void AnOpenTextEditor_WithAVisibleCaretAndSelection_AllocatesNothing()
+    {
+        var box = new KumikoUI.Core.Components.DrawnTextBox
+        {
+            Bounds = new KumikoRect(0, 0, 200, 30),
+            Text = "Some editable text",
+        };
+        box.IsFocused = true;
+        box.CursorColor = new KumikoColor(0, 0, 0);
+        box.SelectAll();
+
+        // The caret blinks on a wall clock: pin the measurement inside one visible half-period by retrying
+        Assert.Equal(0, MeasureSteadyState(box.OnDraw));
+    }
+
+    [Fact]
     public void SteadyState_WrappedTextColumns_AllocatesNothing()
     {
         // Text cells of wrapping columns take the wrapping DrawTextInRect overload (#23); choosing it allocates nothing.

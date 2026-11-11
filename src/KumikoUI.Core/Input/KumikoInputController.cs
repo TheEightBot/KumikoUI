@@ -1369,6 +1369,7 @@ public class KumikoInputController
         // Below the column header, following it as the grid scrolls, and kept inside the viewport
         KumikoRect Anchor()
         {
+            _popupManager.Viewport = new KumikoRect(0, 0, scroll.ViewportWidth, scroll.ViewportHeight);
             float x = HeaderScreenX(column, scroll, dataSource, style);
             float popupWidth = popup.Bounds.Width;
             if (x + popupWidth > scroll.ViewportWidth)
@@ -1578,6 +1579,8 @@ public class KumikoInputController
         var cellBounds = GetCellScreenBounds(row, col, scroll, style, dataSource.Columns, groupPanelOffset, topSummaryHeight, dataSource);
         if (cellBounds.Width <= 0 || cellBounds.Height <= 0) return false;
 
+        // Popups of the editor (dropdown, calendar) stay inside the grid's visible area
+        _editSession.Viewport = new KumikoRect(0, 0, scroll.ViewportWidth, scroll.ViewportHeight);
         if (!_editSession.BeginEdit(row, col, column, dataSource, cellBounds, initialCharacter))
             return false;
 

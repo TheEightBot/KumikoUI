@@ -67,11 +67,24 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Sets the font of the selected text and the dropdown items, so the editor draws and measures its text like the grid's cells.
+    /// <see cref="ApplyTheme"/> calls it with the grid's cell font; the grid calls it again with the column's
+    /// own font when the column has one.
+    /// </summary>
+    /// <param name="font">The font to use: family, size, bold and italic.</param>
+    public void ApplyFont(KumikoFont font)
+    {
+        Font = font;
+        InvalidateVisual();
+    }
+
+    /// <summary>
     /// Applies theme colors from a <see cref="KumikoStyle"/> so the combo box
     /// visually matches the current grid theme.
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
 
@@ -339,8 +352,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
         var items = GetVisibleItems();
         if (items.Count == 0) return;
 
-        float dropdownHeight = Math.Min(items.Count * ItemHeight, MaxDropdownHeight);
-        var dropRect = new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height, Bounds.Width, dropdownHeight);
+        var dropRect = GetDropdownBounds();
 
         // Shadow
         ctx.FillRect(new KumikoRect(dropRect.X + 2, dropRect.Y + 2, dropRect.Width, dropRect.Height),
@@ -392,10 +404,15 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     /// <summary>Get the bounding rect of the dropdown area (for popup hit testing).</summary>
     public KumikoRect GetDropdownBounds()
     {
-        var items = GetVisibleItems();
-        float dropdownHeight = Math.Min(items.Count * ItemHeight, MaxDropdownHeight);
-        return new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height, Bounds.Width, dropdownHeight);
+        return PopupLayout.Place(Bounds, Bounds.Width, DropdownHeight, PopupViewport);
     }
+
+    /// <summary>
+    /// The height of the open dropdown: its items, up to <see cref="MaxDropdownHeight"/>, and no more than
+    /// the room the viewport (<see cref="DrawnComponent.PopupViewport"/>) leaves above or below the combo box.
+    /// </summary>
+    private float DropdownHeight =>
+        Math.Min(Math.Min(GetVisibleItems().Count * ItemHeight, MaxDropdownHeight), PopupLayout.RoomFor(Bounds, PopupViewport));
 
     /// <summary>
     /// Override HitTest to include the dropdown area when the dropdown is open.
@@ -686,7 +703,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
 
     /// <summary>The number of whole items the open dropdown shows at once.</summary>
     private int VisibleItemSlots =>
-        ItemHeight > 0 ? (int)(Math.Min(GetVisibleItems().Count * ItemHeight, MaxDropdownHeight) / ItemHeight) : 1;
+        ItemHeight > 0 ? Math.Max(1, (int)(DropdownHeight / ItemHeight)) : 1;
 
     private void MoveHighlight(int delta)
     {
@@ -716,7 +733,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     {
         if (_highlightedIndex < 0) return;
         float itemTop = _highlightedIndex * ItemHeight;
-        float dropdownHeight = Math.Min(GetVisibleItems().Count * ItemHeight, MaxDropdownHeight);
+        float dropdownHeight = DropdownHeight;
 
         if (itemTop < DropdownScrollOffset)
             DropdownScrollOffset = itemTop;
@@ -732,7 +749,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
         get
         {
             float content = GetVisibleItems().Count * ItemHeight;
-            return Math.Max(0, content - Math.Min(content, MaxDropdownHeight));
+            return Math.Max(0, content - Math.Min(content, DropdownHeight));
         }
     }
 
