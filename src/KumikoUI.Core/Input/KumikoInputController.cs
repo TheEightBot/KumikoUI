@@ -1194,7 +1194,7 @@ public class KumikoInputController
         float pixelsPerNotch = style.RowHeight * _inertialScroller.Settings.WheelScrollMultiplier;
         float dx = e.GetScrollPixelsX(pixelsPerNotch);
         float dy = e.GetScrollPixelsY(pixelsPerNotch);
-        if ((e.Modifiers & InputModifiers.Shift) != 0 && dx == 0)
+        if ((e.Modifiers & InputModifiers.Shift) != 0 && Math.Abs(dx) < 0.01f)
         {
             dx = dy;
             dy = 0;
@@ -1202,7 +1202,7 @@ public class KumikoInputController
 
         float oldX = scroll.OffsetX, oldY = scroll.OffsetY;
         scroll.ScrollBy(-dx, -dy);
-        if (scroll.OffsetX == oldX && scroll.OffsetY == oldY) return;
+        if (Math.Abs(scroll.OffsetX - oldX) <= 0.01f && Math.Abs(scroll.OffsetY - oldY) <= 0.01f) return;
 
         Redraw();
         e.Handled = true;
