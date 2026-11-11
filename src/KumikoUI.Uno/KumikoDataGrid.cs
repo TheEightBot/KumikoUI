@@ -10,24 +10,24 @@ using KumikoUI.SkiaSharp;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
-using SkiaSharp.Views.Windows; // SKXamlCanvas + SKPaintSurfaceEventArgs
 
 namespace KumikoUI.Uno;
 
 /// <summary>
 /// Uno Platform / WinUI KumikoUI DataGrid control backed by SkiaSharp rendering.
-/// Drop this into any Uno page. The entire grid is drawn onto a single
-/// <see cref="SKXamlCanvas"/> — there are no templated parts or visual
-/// states. The canvas and the keyboard proxy are the control's private content: it has no
+/// Drop this into any Uno page. The entire grid is drawn onto a single Skia surface (see
+/// <see cref="RenderMode"/>) — there are no templated parts or visual
+/// states. The surface and the keyboard proxy are the control's private content: it has no
 /// layout API, and its XAML content is <see cref="Columns"/>. Mirrors
 /// <c>KumikoUI.Maui.KumikoDataGrid</c> (a <c>ContentView</c> with private content) so the reused
 /// <see cref="KumikoRenderer"/> / <see cref="KumikoInputController"/> drive the
 /// same way on both platforms.
 /// </summary>
 /// <remarks>
-/// Layout host + paint loop + DependencyProperty surface + lifecycle live in this file and
-/// <c>KumikoDataGrid.Properties.cs</c>. Pointer / keyboard / focus event wiring and the
-/// input-driven repaint timers live in <c>KumikoDataGrid.Input.cs</c> (attached from
+/// Layout host + DependencyProperty surface + lifecycle live in this file and
+/// <c>KumikoDataGrid.Properties.cs</c>; the drawing surface, frame loop, caret blink and DPI handling in
+/// <c>KumikoDataGrid.Rendering.cs</c>. Pointer / keyboard / focus event wiring lives in
+/// <c>KumikoDataGrid.Input.cs</c> (attached from
 /// <see cref="OnLoaded"/>, detached from <see cref="OnUnloaded"/>) and the mapping helpers in
 /// <c>Input/InputMapping.cs</c>.
 /// </remarks>
@@ -35,7 +35,6 @@ namespace KumikoUI.Uno;
 public partial class KumikoDataGrid : UserControl
 {
     private readonly Grid _root = new();
-    private readonly SKXamlCanvas _canvasView = new();
     private readonly KumikoRenderer _renderer = new();
     private readonly KumikoSource _dataSource = new();
     private readonly ScrollState _scroll = new();
@@ -51,7 +50,7 @@ public partial class KumikoDataGrid : UserControl
     private SkiaResourceCache ResourceCache => _resourceCache ??= new SkiaResourceCache();
 
     /// <summary>
-    /// Creates a new <see cref="KumikoDataGrid"/>, adds the Skia canvas child, and
+    /// Creates a new <see cref="KumikoDataGrid"/>, adds the Skia surface child, and
     /// wires the Core redraw signals. Pointer / keyboard handlers are attached in
     /// <see cref="OnLoaded"/> (see <c>KumikoDataGrid.Input.cs</c>).
     /// </summary>
@@ -61,10 +60,9 @@ public partial class KumikoDataGrid : UserControl
         _selection = new KumikoSelectionModel(_dataSource);
         InitializeSelectionBinding();
 
-        // Layout: the canvas fills the grid (mirrors MAUI's LayoutOptions.Fill).
-        _canvasView.HorizontalAlignment = HorizontalAlignment.Stretch;
-        _canvasView.VerticalAlignment = VerticalAlignment.Stretch;
-        _root.Children.Add(_canvasView);
+        // Layout: the drawing surface fills the grid (mirrors MAUI's LayoutOptions.Fill); see
+        // KumikoDataGrid.Rendering.cs for how the surface is chosen.
+        InitializeSurface();
         Content = _root;
         UseSystemFocusVisuals = false; // the grid draws its own focus (the current cell)
 
@@ -106,9 +104,6 @@ public partial class KumikoDataGrid : UserControl
         // owned _editSession, so they're wired once in the ctor and don't leak the page.
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
-
-        // Canvas paint loop.
-        _canvasView.PaintSurface += OnPaintSurface;
 
         // Loaded/Unloaded attach/detach the paint loop and the pointer/keyboard handlers
         // idempotently — Uno raises these on navigation (wiring in KumikoDataGrid.Input.cs).
@@ -176,67 +171,6 @@ public partial class KumikoDataGrid : UserControl
         Content = _root;
         throw new InvalidOperationException(
             "KumikoDataGrid draws its own content; it cannot be replaced. Add columns through Columns.");
-    }
-
-    // ── Rendering ─────────────────────────────────────────────────
-
-    /// <summary>
-    /// Paints the entire grid onto the Skia surface. The renderer is fed logical
-    /// (DIP) units; a single <c>canvas.Scale(scale)</c> bridges device pixels
-    /// (<c>e.Info</c>) to logical units (<see cref="FrameworkElement.ActualWidth"/>).
-    /// </summary>
-    private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
-    {
-        var canvas = e.Surface.Canvas;
-        var info = e.Info;
-
-        var bg = _style.BackgroundColor;
-        canvas.Clear(new SKColor(bg.R, bg.G, bg.B, bg.A));
-
-        // DPI: e.Info is in physical pixels; ActualWidth/Height are logical DIPs.
-        // KumikoUI's renderer is resolution-independent and fed logical units.
-        float scale = ActualWidth > 0 ? (float)(info.Width / ActualWidth) : 1f;
-        float viewportWidth = (float)(ActualWidth > 0 ? ActualWidth : info.Width / scale);
-        float viewportHeight = (float)(ActualHeight > 0 ? ActualHeight : info.Height / scale);
-
-        _scroll.ViewportWidth = viewportWidth;
-        _scroll.ViewportHeight = viewportHeight;
-
-        canvas.Save();
-        canvas.Scale(scale);
-
-        using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
-
-        _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
-            _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
-            _inputController.DragRowIndex, _inputController.DragRowScreenY,
-            _editSession, _inputController.PopupManager);
-
-        canvas.Restore();
-    }
-
-    /// <summary>Invalidate the canvas surface to trigger a repaint (MAUI: <c>InvalidateSurface()</c>).</summary>
-    private void InvalidateSurface() => _canvasView.Invalidate();
-
-    // ── Core redraw signal handlers ───────────────────────────────
-    // Named handlers (not lambdas) so they unsubscribe cleanly in OnUnloaded.
-
-    private void OnDataSourceViewChanged(object? sender, KumikoViewChangedEventArgs e)
-    {
-        _canvasView.Invalidate();
-    }
-
-    private void OnInputControllerNeedsRedraw() => _canvasView.Invalidate();
-
-    private void OnEditSessionNeedsRedraw() => _canvasView.Invalidate();
-
-    // An action button's command raised CanExecuteChanged: that can happen on any thread.
-    private void OnRendererRedrawRequested()
-    {
-        if (DispatcherQueue is { } queue && !queue.HasThreadAccess)
-            queue.TryEnqueue(() => _canvasView.Invalidate());
-        else
-            _canvasView.Invalidate();
     }
 
     // ── Core structural event handlers (forwarded into the data source) ──
@@ -364,15 +298,11 @@ public partial class KumikoDataGrid : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // Re-attach the paint loop in case Unloaded detached it on a prior
-        // navigation. Idempotent: detach first to avoid a double subscription.
-        _canvasView.PaintSurface -= OnPaintSurface;
-        _canvasView.PaintSurface += OnPaintSurface;
+        // Re-attach the surface's renderer, DPI tracking and any pending frame work (redraws at the
+        // current DPI) in case Unloaded detached them on a prior navigation. Idempotent.
+        AttachSurface();
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
-
-        // Re-render with the current DPI now that we are in the visual tree.
-        InvalidateSurface();
 
         // (Re)attach pointer + keyboard handlers and enable focusability. Idempotent —
         // see AttachInputHandlers in KumikoDataGrid.Input.cs.
@@ -381,11 +311,11 @@ public partial class KumikoDataGrid : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        // Detach the paint loop. The Core redraw-signal subscriptions target
-        // owned objects (this control owns _dataSource/_inputController/
-        // _editSession), so they don't leak the page — but the canvas's
-        // PaintSurface delegate roots `this`, so it must be released.
-        _canvasView.PaintSurface -= OnPaintSurface;
+        // Stop the frame loop (a static CompositionTarget.Rendering subscription that would root `this`),
+        // the caret timer and DPI tracking, and release the surface's renderer. The Core redraw-signal
+        // subscriptions target owned objects (this control owns _dataSource/_inputController/
+        // _editSession), so they don't leak the page.
+        DetachSurface();
 
         // Stop listening to action-button commands (a cell renderer can outlive this grid). The renderer
         // re-attaches to them on the next paint after a reload.
@@ -396,8 +326,7 @@ public partial class KumikoDataGrid : UserControl
         _resourceCache?.Dispose();
         _resourceCache = null;
 
-        // Detach pointer + keyboard handlers and stop input-driven timers
-        // (inertial scroll, cursor blink) — see DetachInputHandlers in KumikoDataGrid.Input.cs.
+        // Detach pointer + keyboard handlers — see DetachInputHandlers in KumikoDataGrid.Input.cs.
         DetachInputHandlers();
     }
 }

@@ -59,9 +59,9 @@ public partial class KumikoDataGrid
     public void Invalidate()
     {
         if (DispatcherQueue is { } queue && !queue.HasThreadAccess)
-            queue.TryEnqueue(() => _canvasView.Invalidate());
+            queue.TryEnqueue(RequestRedraw);
         else
-            _canvasView.Invalidate();
+            RequestRedraw();
     }
 
     // ── GroupDescriptions ──

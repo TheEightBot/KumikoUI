@@ -348,6 +348,13 @@ else
 
 ## 5. Inertial scroll timer
 
+> **Update (#65):** both `DispatcherTimer`s are gone. A fling now starts the frame loop in
+> `KumikoDataGrid.Rendering.cs`, which steps `UpdateInertialScroll` from `CompositionTarget.Rendering` by the
+> measured time between frames and unsubscribes on the first idle frame. The caret blink uses one reusable
+> one-shot `DispatcherTimer` that fires just after each blink transition (`KumikoCaretBlink`), so an open
+> editor costs two redraws per blink cycle. Pointer positions are measured against the drawing surface
+> (`GetCurrentPoint(PointerOrigin)`). The checklist below records the original Phase 04 implementation.
+
 - [x] A `Microsoft.UI.Xaml.DispatcherTimer` (~16 ms) pumps Core's physics and stops when it returns
   `false` (mirrors MAUI's `_scrollTimer`):
   ```csharp

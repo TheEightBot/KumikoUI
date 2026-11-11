@@ -92,14 +92,14 @@ template — confirm after scaffolding):
 
 | Concern | `KumikoUI.Maui` (existing) | `KumikoUI.Uno` (new) |
 |---|---|---|
-| Render surface | `SKCanvasView` | `SKXamlCanvas` |
-| Paint event | `PaintSurface` → `e.Surface.Canvas` | `PaintSurface` → `e.Surface.Canvas` (**identical**) |
+| Render surface | `SKCanvasView` | `SKCanvasElement` on the Skia heads, `SKXamlCanvas` elsewhere (`RenderMode`, #65) |
+| Paint event | `PaintSurface` → `e.Surface.Canvas` | `SKCanvasElement.RenderOverride(canvas, area)` (logical units) / `SKXamlCanvas.PaintSurface` (device pixels, scaled to logical) |
 | Drawing bridge | `new SkiaDrawingContext(canvas, cache)` | `new SkiaDrawingContext(canvas, cache)` (**reused**; one `SkiaResourceCache` per control) |
 | Render call | `KumikoRenderer.Render(ctx, …)` | `KumikoRenderer.Render(ctx, …)` (**reused**) |
-| Request redraw | `InvalidateSurface()` | `SKXamlCanvas.Invalidate()` |
+| Request redraw | `InvalidateSurface()` | coalesced to one paint per frame (`KumikoDataGrid.Rendering.cs`) |
 | Pointer input | `SKCanvasView.Touch` | `UIElement.PointerPressed/Moved/Released`, `PointerWheelChanged` |
 | Keyboard input | native responder / hidden `Entry` | `UIElement.KeyDown`/`KeyUp` + `CharacterReceived` |
-| Inertial tick | `IDispatcherTimer` | `DispatcherQueue` / `DispatcherTimer` |
+| Inertial tick | `IDispatcherTimer` | `CompositionTarget.Rendering`, subscribed only while animating |
 | Bindable surface | `BindableProperty` | `DependencyProperty` |
 | Host hook | `builder.UseSkiaKumikoUI()` | `builder.UseKumikoUI()` (`IHostBuilder` / `IApplicationBuilder`) |
 
@@ -136,7 +136,7 @@ These are the exact members exercised by [`src/KumikoUI.Maui/KumikoDataGrid.cs`]
 - Uno — [How to Create Control Libraries](https://platform.uno/docs/articles/guides/how-to-create-control-libraries.html)
 - Uno — [Creating Custom Controls](https://platform.uno/docs/articles/guides/creating-custom-controls.html)
 - Uno — [`dotnet new` templates](https://platform.uno/docs/articles/get-started-dotnet-new.html)
-- Uno — [`SKCanvasElement`](https://platform.uno/docs/articles/controls/SKCanvasElement.html) (a hardware-accelerated alternative to `SKXamlCanvas` on Skia heads; noted as a future optimization)
+- Uno — [`SKCanvasElement`](https://platform.uno/docs/articles/controls/SKCanvasElement.html) (a hardware-accelerated alternative to `SKXamlCanvas` on Skia heads; the default surface there since #65)
 - Uno blog — [Porting a custom-drawn Xamarin.Forms control to Uno Platform](https://platform.uno/blog/porting-a-custom-drawn-xamarin-forms-control-to-uno-platform/) (the same SkiaSharp-reuse scenario)
 - Uno sample — [Uno.Samples / UI / ControlLibrary](https://github.com/unoplatform/Uno.Samples/tree/master/UI/ControlLibrary)
 - Microsoft Learn — [Templated controls with C# (WinUI 3)](https://learn.microsoft.com/windows/apps/winui/winui3/xaml-templated-controls-csharp-winui-3), [Dependency properties overview](https://learn.microsoft.com/windows/uwp/xaml-platform/dependency-properties-overview)
