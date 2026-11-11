@@ -445,9 +445,8 @@ public class KumikoSource : IDisposable
         _viewChanged = null;
         _sourceItems = Array.Empty<object>();
         InvalidateCellText();
-        foreach (var col in _columns)
-            if (ReferenceEquals(col.TextCache?.Owner, this))
-                col.TextCache = null;
+        foreach (var col in _columns.Where(c => ReferenceEquals(c.TextCache?.Owner, this)))
+            col.TextCache = null;
         _rowKeys = null;
         _updateDepth = 0;
         _pendingRebuild = false;

@@ -49,7 +49,7 @@ public class KumikoSourceLifecycleTests
     public void Dispose_UnsubscribesCollectionAndItems_AndLaterChangesAreInert()
     {
         var list = MakeList(3);
-        var src = new KumikoSource();
+        using var src = new KumikoSource();
         int events = 0;
         src.ViewChanged += (_, _) => events++;
         src.SetItems(list);
@@ -74,7 +74,7 @@ public class KumikoSourceLifecycleTests
     public void Dispose_IsIdempotent_AndSetItemsAfterwardsIsIgnored()
     {
         var list = MakeList(2);
-        var src = new KumikoSource();
+        using var src = new KumikoSource();
         src.Dispose();
         src.Dispose();
         src.SetItems(list);
@@ -86,7 +86,7 @@ public class KumikoSourceLifecycleTests
     public void DetachThenAttach_ResumesFollowingTheCollection()
     {
         var list = MakeList(3);
-        var src = new KumikoSource();
+        using var src = new KumikoSource();
         src.SetItems(list);
 
         src.Detach();
@@ -108,7 +108,7 @@ public class KumikoSourceLifecycleTests
     {
         var shared = new Row();
         var list = new CountingList { shared, shared };
-        var src = new KumikoSource();
+        using var src = new KumikoSource();
         src.SetItems(list);
         Assert.Equal(1, shared.Subscribers);
         src.Dispose();
@@ -120,7 +120,7 @@ public class KumikoSourceLifecycleTests
     {
         var list = MakeList(2);
         var removed = list[0];
-        var src = new KumikoSource();
+        using var src = new KumikoSource();
         src.SetItems(list);
         list.RemoveAt(0);
         list.RaiseReset();
@@ -133,7 +133,7 @@ public class KumikoSourceLifecycleTests
     {
         const int n = 100_000;
         var list = MakeList(n);
-        var src = new KumikoSource();
+        using var src = new KumikoSource();
         var sw = Stopwatch.StartNew();
         src.SetItems(list); // tracks 100K
         // Untrack one by one through collection events (the old list-based untrack was O(n) each).
