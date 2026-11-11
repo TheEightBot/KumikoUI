@@ -110,6 +110,30 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_HeaderFittedAndStarColumns_AllocatesNothing()
+    {
+        // Columns without an explicit width are fitted to their headers (#182), and star columns are shared out
+        // around their header minimums every frame; neither measures nor allocates once the headers are measured.
+        var grid = CreateGrid(featured: false);
+        var columns = grid.Source.Columns;
+        columns[0].Header = "A header much too long for the default width";
+        columns[0].HeaderCellStyle = new KumikoCellStyle { Font = new KumikoFont("Default", 15, bold: true) };
+        grid.Source.SetColumns(columns.Select((c, i) => new KumikoColumn
+        {
+            Header = c.Header,
+            PropertyName = c.PropertyName,
+            ColumnType = c.ColumnType,
+            Format = c.Format,
+            HeaderCellStyle = c.HeaderCellStyle,
+            SizeMode = i % 3 == 0 ? ColumnSizeMode.Star : ColumnSizeMode.Fixed,
+        }).ToList());
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+        Assert.All(grid.Source.Columns, c => Assert.False(c.HasExplicitWidth));
+        Assert.True(grid.Source.Columns[0].Width >= grid.Source.Columns[0].HeaderFitWidth);
+    }
+
+    [Fact]
     public void ChangingTheStyle_RebuildsThePaintsOnce_ThenAllocatesNothingAgain()
     {
         var grid = CreateGrid(featured: false);

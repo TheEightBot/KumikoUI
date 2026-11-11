@@ -74,9 +74,9 @@
                                      Format="C2" ColumnType="Numeric" TextAlignment="Right" />
                 <core:KumikoColumn Header="Stock" PropertyName="Stock" Width="90"
                                      ColumnType="Numeric" TextAlignment="Right" />
-                <core:KumikoColumn Header="In Stock" PropertyName="InStock" Width="80"
+                <core:KumikoColumn Header="In Stock" PropertyName="InStock"
                                      ColumnType="Boolean" />
-                <core:KumikoColumn Header="Rating" PropertyName="Rating" Width="90"
+                <core:KumikoColumn Header="Rating" PropertyName="Rating"
                                      Format="N1" ColumnType="Numeric" TextAlignment="Right" />
                 <core:KumikoColumn Header="Supplier" PropertyName="Supplier" Width="140" />
             </kumiko:KumikoDataGrid.Columns>

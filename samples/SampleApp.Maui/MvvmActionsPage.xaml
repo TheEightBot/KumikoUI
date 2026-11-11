@@ -82,7 +82,7 @@
                 <core:KumikoColumn Header="Id"
                                      PropertyName="Id"
                                      ColumnType="Numeric"
-                                     Width="52"
+                                     Width="72"
                                      IsReadOnly="True"
                                      AllowTabStop="False" />
 
@@ -136,8 +136,7 @@
                 -->
                 <core:KumikoColumn Header="Active"
                                      PropertyName="IsActive"
-                                     ColumnType="Boolean"
-                                     Width="60" />
+                                     ColumnType="Boolean" />
 
                 <!--
                     Actions column — Template with inline action buttons.

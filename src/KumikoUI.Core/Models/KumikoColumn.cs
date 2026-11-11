@@ -55,8 +55,46 @@ public class KumikoColumn
     /// <summary>Type of column for rendering dispatch.</summary>
     public KumikoColumnType ColumnType { get; set; } = KumikoColumnType.Text;
 
-    /// <summary>Current width in pixels (after layout).</summary>
-    public float Width { get; set; } = 120f;
+    /// <summary>The width a column starts with when <see cref="Width"/> is never set: 120 pixels.</summary>
+    public const float DefaultWidth = 120f;
+
+    /// <summary>
+    /// Current width in pixels (after layout). Setting it, in code, in XAML, by dragging the column's resize
+    /// grip or by auto-fit, makes the width explicit (<see cref="HasExplicitWidth"/>): the column is drawn at that
+    /// width and a header that does not fit is truncated with an ellipsis. A column whose width was never set is
+    /// at least wide enough for its whole header (see <see cref="HeaderFitWidth"/>), unless <see cref="MaxWidth"/>
+    /// is smaller.
+    /// </summary>
+    public float Width
+    {
+        get => _width;
+        set
+        {
+            _width = value;
+            HasExplicitWidth = true;
+        }
+    }
+    private float _width = DefaultWidth;
+
+    /// <summary>
+    /// True once <see cref="Width"/> has been set (in code, in XAML, by a resize drag or by auto-fit). An explicit
+    /// width turns off the header-fit minimum: the column keeps its width and truncates a header that does not fit.
+    /// </summary>
+    public bool HasExplicitWidth { get; private set; }
+
+    /// <summary>
+    /// The narrowest width that shows the whole header: the header text measured in the header font, the header
+    /// padding on both sides, room for the sort arrow when the column can be sorted and for the filter icon when
+    /// it can be filtered, and a small margin. Zero until the renderer has measured the header. It is the minimum
+    /// width of a column without an explicit <see cref="Width"/>; see <see cref="Layout.KumikoLayoutEngine"/>.
+    /// </summary>
+    public float HeaderFitWidth { get; internal set; }
+
+    // The header text width last measured, and the text and font it was measured for (#182).
+    internal readonly Layout.HeaderMeasurement HeaderMeasure = new();
+
+    /// <summary>Sets the width layout computed, without making it explicit.</summary>
+    internal void SetLayoutWidth(float width) => _width = width;
 
     /// <summary>Minimum allowed width.</summary>
     public float MinWidth { get; set; } = 40f;

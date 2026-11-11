@@ -341,11 +341,28 @@ Columns support three sizing modes controlled by the `SizeMode` property.
 
 | `SizeMode` | Behavior |
 |---|---|
-| `Fixed` | Exact pixel width set via `Width` (default) |
-| `Auto` | Measures header text + visible cell content; respects a `MinWidth`/`MaxWidth` clamp |
-| `Star` | Weighted share of remaining space after Fixed and Auto columns; set `Width="*"` or `"2*"` |
+| `Fixed` | The pixel width set via `Width` (default mode) |
+| `Auto` | Laid out like `Fixed` for now; content measurement is planned (#24). Double-click a header's resize grip to auto-fit a column to its header and cells |
+| `Star` | Weighted share (`StarWeight`, default `1`) of the width Fixed and Auto columns leave, within `MinWidth`/`MaxWidth` |
 
-Modes can be mixed freely — the layout engine resolves them in a single pass per frame.
+Modes can be mixed freely — the layout engine resolves them every frame.
+
+**Headers fit unless you set a width.** A column whose `Width` is never set is at least wide enough to show its whole header: the header text measured in the header font, the header padding on both sides, room for the sort arrow when the column can be sorted and for the filter icon when it can be filtered, and a small margin (`KumikoColumn.HeaderFitWidth`). Fixed and Auto columns without a `Width` are 120 px (`KumikoColumn.DefaultWidth`) or their header-fit width when that is wider; Star columns never shrink below it.
+
+```xml
+<!-- No Width: at least wide enough for "Customer Account Number" -->
+<core:KumikoColumn Header="Customer Account Number" PropertyName="Account" />
+
+<!-- Explicit Width: kept as set; the header is truncated with an ellipsis if it doesn't fit -->
+<core:KumikoColumn Header="Customer Account Number" PropertyName="Account" Width="100" />
+
+<!-- A smaller MaxWidth also wins over the header fit -->
+<core:KumikoColumn Header="Customer Account Number" PropertyName="Account" MaxWidth="100" />
+```
+
+- Setting `Width` in code or XAML, dragging the column's resize grip, or auto-fitting it makes the width explicit (`HasExplicitWidth`); from then on the column keeps its width, even below the header-fit width.
+- Star columns share the remaining width by weight. A Star column whose share is below its minimum (its `MinWidth` and header-fit width) or above its `MaxWidth` is held there, and the others share what is left. When the viewport is too narrow for every column's minimum, columns keep their minimums and the grid scrolls horizontally instead of truncating headers.
+- Header widths are measured once per header text and font and cached; changing a column's `Header`, its `HeaderCellStyle.Font` or the grid's `HeaderFont` (or a property of that font) measures it again.
 
 ---
 

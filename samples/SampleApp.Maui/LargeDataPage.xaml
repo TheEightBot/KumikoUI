@@ -41,7 +41,7 @@
             <dg:KumikoDataGrid.Columns>
                 <core:KumikoColumn Header="Row #"
                                      PropertyName="RowNumber"
-                                     Width="80"
+                                     Width="100"
                                      ColumnType="Numeric"
                                      TextAlignment="Right"
                                      IsReadOnly="True"
@@ -77,7 +77,6 @@
 
                 <core:KumikoColumn Header="Enabled"
                                      PropertyName="IsEnabled"
-                                     Width="80"
                                      ColumnType="Boolean" />
 
                 <core:KumikoColumn Header="Region"
@@ -86,7 +85,6 @@
 
                 <core:KumikoColumn Header="Score"
                                      PropertyName="Score"
-                                     Width="80"
                                      Format="N1"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />

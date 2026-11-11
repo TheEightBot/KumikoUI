@@ -439,9 +439,11 @@ public class KumikoLayoutEngineEdgeTests
         var (source, column) = NameColumn("a", "b");
         column.Header = "A long column header";
 
-        float width = Engine.CalculateAutoFitWidth(column, source, new RecordingDrawingContext(), Style);
+        var ctx = new RecordingDrawingContext();
+        float width = Engine.CalculateAutoFitWidth(column, source, ctx, Style);
 
-        Assert.Equal(column.Header.Length * RecordingDrawingContext.CharWidth + 32, width);
+        // Never narrower than the header with its sort and filter space (#182)
+        Assert.Equal(Engine.MeasureHeaderFitWidth(column, ctx, Style), width);
     }
 
     [Fact]
@@ -449,9 +451,10 @@ public class KumikoLayoutEngineEdgeTests
     {
         var (source, column) = NameColumn();
 
-        float width = Engine.CalculateAutoFitWidth(column, source, new RecordingDrawingContext(), Style);
+        var ctx = new RecordingDrawingContext();
+        float width = Engine.CalculateAutoFitWidth(column, source, ctx, Style);
 
-        Assert.Equal("Name".Length * RecordingDrawingContext.CharWidth + 32, width);
+        Assert.Equal(Engine.MeasureHeaderFitWidth(column, ctx, Style), width);
     }
 
     [Fact]
@@ -486,9 +489,10 @@ public class KumikoLayoutEngineEdgeTests
         var (source, column) = NameColumn("a", "b");
         source.AddGroupDescription(new GroupDescription("Name") { DisplayTextSelector = _ => "a very long group header text" });
 
-        float width = Engine.CalculateAutoFitWidth(column, source, new RecordingDrawingContext(), Style);
+        var ctx = new RecordingDrawingContext();
+        float width = Engine.CalculateAutoFitWidth(column, source, ctx, Style);
 
-        Assert.Equal("Name".Length * RecordingDrawingContext.CharWidth + 32, width);
+        Assert.Equal(Engine.MeasureHeaderFitWidth(column, ctx, Style), width);
     }
 
     [Fact]
@@ -496,8 +500,9 @@ public class KumikoLayoutEngineEdgeTests
     {
         var (source, column) = NameColumn("", "xy");
 
-        float width = Engine.CalculateAutoFitWidth(column, source, new RecordingDrawingContext(), Style);
+        var ctx = new RecordingDrawingContext();
+        float width = Engine.CalculateAutoFitWidth(column, source, ctx, Style);
 
-        Assert.Equal("Name".Length * RecordingDrawingContext.CharWidth + 32, width); // the header is wider than "xy"
+        Assert.Equal(Engine.MeasureHeaderFitWidth(column, ctx, Style), width); // the header (with its glyph space) is wider than "xy"
     }
 }

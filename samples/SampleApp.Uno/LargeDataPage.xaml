@@ -63,7 +63,7 @@
                                      Format="C0" ColumnType="Numeric" TextAlignment="Right" />
                 <core:KumikoColumn Header="Created" PropertyName="CreatedDate" Width="120"
                                      Format="yyyy-MM-dd" ColumnType="Date" />
-                <core:KumikoColumn Header="Enabled" PropertyName="IsEnabled" Width="80"
+                <core:KumikoColumn Header="Enabled" PropertyName="IsEnabled"
                                      ColumnType="Boolean" />
                 <core:KumikoColumn Header="Region" PropertyName="Region" Width="120" />
                 <core:KumikoColumn Header="Score" PropertyName="Score" Width="90"
