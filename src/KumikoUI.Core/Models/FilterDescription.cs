@@ -36,6 +36,8 @@ public class FilterDescription
     public bool IsActive =>
         SelectedValues != null || Condition1 != null;
 
+    /// <summary>Creates an empty filter (no criteria) for a column.</summary>
+    /// <param name="column">Column the filter applies to.</param>
     public FilterDescription(KumikoColumn column)
     {
         Column = column;

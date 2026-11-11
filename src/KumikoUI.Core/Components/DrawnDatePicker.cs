@@ -39,6 +39,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private const int YearRangeBefore = 50;
     private const int YearRangeAfter = 10;
 
+    /// <summary>Creates a date picker showing the current month with no date selected.</summary>
     public DrawnDatePicker()
     {
         _displayMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -935,6 +936,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         }
     }
 
+    /// <summary>Closes the calendar popup when the picker loses focus.</summary>
     protected override void OnLostFocus()
     {
         CloseCalendar();

@@ -29,6 +29,11 @@ public readonly struct KumikoRect
     /// <summary>Y-coordinate of the bottom edge (Y + Height).</summary>
     public float Bottom => Y + Height;
 
+    /// <summary>Creates a rectangle.</summary>
+    /// <param name="x">X-coordinate of the left edge.</param>
+    /// <param name="y">Y-coordinate of the top edge.</param>
+    /// <param name="width">Width of the rectangle.</param>
+    /// <param name="height">Height of the rectangle.</param>
     public KumikoRect(float x, float y, float width, float height)
     {
         X = x;

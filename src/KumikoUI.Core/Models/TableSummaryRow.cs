@@ -22,8 +22,12 @@ public class TableSummaryRow
     /// </summary>
     public List<SummaryColumnDescription> Columns { get; set; } = new();
 
+    /// <summary>Creates an empty summary row at the bottom of the grid.</summary>
     public TableSummaryRow() { }
 
+    /// <summary>Creates a summary row with a name and position.</summary>
+    /// <param name="name">Unique name for identification.</param>
+    /// <param name="position">Whether the row appears at the top or bottom of the grid.</param>
     public TableSummaryRow(string name, SummaryPosition position = SummaryPosition.Bottom)
     {
         Name = name;

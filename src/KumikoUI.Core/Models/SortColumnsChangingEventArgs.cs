@@ -22,6 +22,10 @@ public class SortColumnsChangingEventArgs : EventArgs
     /// <summary>Set to true to cancel the sort operation.</summary>
     public bool Cancel { get; set; }
 
+    /// <summary>Initializes the event data.</summary>
+    /// <param name="column">The column whose sort state is being toggled.</param>
+    /// <param name="isMultiSort">Whether this is a multi-sort operation (modifier key held).</param>
+    /// <param name="newDirection">The new sort direction that will be applied.</param>
     public SortColumnsChangingEventArgs(KumikoColumn column, bool isMultiSort, KumikoSortDirection newDirection)
     {
         Column = column;

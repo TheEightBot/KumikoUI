@@ -16,6 +16,9 @@ public class SortColumnsChangedEventArgs : EventArgs
     /// <summary>All columns that currently have an active sort, ordered by SortOrder.</summary>
     public IReadOnlyList<KumikoColumn> ActiveSortColumns { get; }
 
+    /// <summary>Initializes the event data.</summary>
+    /// <param name="column">The column whose sort state was toggled.</param>
+    /// <param name="activeSortColumns">All columns that currently have an active sort, ordered by sort order.</param>
     public SortColumnsChangedEventArgs(KumikoColumn column, IReadOnlyList<KumikoColumn> activeSortColumns)
     {
         Column = column;

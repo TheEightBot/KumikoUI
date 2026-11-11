@@ -30,13 +30,19 @@ public class GroupDescription
     /// </summary>
     public KumikoSortDirection GroupSortDirection { get; set; } = KumikoSortDirection.Ascending;
 
+    /// <summary>Creates an empty description; set <see cref="PropertyName"/> before use.</summary>
     public GroupDescription() { }
 
+    /// <summary>Creates a description that groups by a column property.</summary>
+    /// <param name="propertyName">The column property name to group by.</param>
     public GroupDescription(string propertyName)
     {
         PropertyName = propertyName;
     }
 
+    /// <summary>Creates a description that groups by a column property with a custom header.</summary>
+    /// <param name="propertyName">The column property name to group by.</param>
+    /// <param name="header">Display header override for the group.</param>
     public GroupDescription(string propertyName, string header)
     {
         PropertyName = propertyName;

@@ -576,6 +576,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
         InvalidateVisual();
     }
 
+    /// <summary>Closes the dropdown when the combo box loses focus.</summary>
     protected override void OnLostFocus()
     {
         CloseDropdown();

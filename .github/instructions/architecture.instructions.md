@@ -63,7 +63,7 @@ KumikoUI.Core  ←  KumikoUI.SkiaSharp  ←  KumikoUI.Maui
 ## Code Style (applies everywhere)
 
 - **C# 12+**, nullable reference types enabled project-wide.
-- All public API members have `/// <summary>` XML doc comments.
+- All public API members have `/// <summary>` XML doc comments (`<inheritdoc/>` for overrides, one per enum member). The libraries build with doc warnings as errors (`Directory.Build.targets`), so an undocumented public member or a broken `cref` fails the build.
 - `readonly struct` for value types (`KumikoRect`, `KumikoSize`, `CellPosition`).
 - `record struct` for cache keys in `SkiaDrawingContext`.
 - Prefer `switch` expressions over `if/else` chains for type dispatch.

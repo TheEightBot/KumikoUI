@@ -11,6 +11,7 @@ public class TextEditorDescriptor : EditorDescriptor
     /// <summary>Restrict to numeric characters only.</summary>
     public bool NumericOnly { get; set; }
 
+    /// <inheritdoc/>
     public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
     {
         return new DrawnTextBox

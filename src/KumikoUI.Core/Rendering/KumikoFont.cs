@@ -17,8 +17,14 @@ public class KumikoFont
     /// <summary>Whether the font is italic.</summary>
     public bool IsItalic { get; set; }
 
+    /// <summary>Creates the default font (14 px, regular).</summary>
     public KumikoFont() { }
 
+    /// <summary>Creates a font.</summary>
+    /// <param name="family">Font family name.</param>
+    /// <param name="size">Font size in pixels.</param>
+    /// <param name="bold">Whether the font is bold.</param>
+    /// <param name="italic">Whether the font is italic.</param>
     public KumikoFont(string family, float size, bool bold = false, bool italic = false)
     {
         Family = family;
