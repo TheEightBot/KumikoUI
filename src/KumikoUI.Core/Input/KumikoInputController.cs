@@ -328,6 +328,13 @@ public class KumikoInputController
                     break;
                 }
 
+                // Enter on an editable Boolean cell toggles it: a check box has no editor to open (#179).
+                if (TryToggleCurrentBooleanCell(selection, dataSource))
+                {
+                    e.Handled = true;
+                    break;
+                }
+
                 // Enter opens the editor of the current cell, like F2 (column- or grid-level F2Key trigger).
                 // Otherwise it is left unhandled, so the page's default button still works.
                 if (_editSession != null && selection.CurrentCell.IsValid &&
@@ -337,6 +344,13 @@ public class KumikoInputController
                 }
                 break;
             case KumikoKey.F2:
+                // F2 on an editable Boolean cell toggles it, like Enter: there is no editor to open (#179).
+                if (TryToggleCurrentBooleanCell(selection, dataSource))
+                {
+                    e.Handled = true;
+                    break;
+                }
+
                 // F2 → begin editing the current cell (honors column- and grid-level F2Key flag)
                 if (_editSession != null && selection.CurrentCell.IsValid)
                 {
@@ -445,6 +459,15 @@ public class KumikoInputController
                 break;
 
             default:
+                // A typed space on an editable Boolean cell is Space: hosts that capture the keyboard through a
+                // hidden text box (Uno's proxy TextBox, MAUI's Entry) can deliver it as text, not as Space (#179).
+                if (e.Character == ' ' && !e.HasControl && !e.HasAlt && !e.HasShift &&
+                    TryToggleCurrentBooleanCell(selection, dataSource))
+                {
+                    e.Handled = true;
+                    break;
+                }
+
                 // Typing trigger: printable character starts editing
                 if (_editSession != null && e.Character.HasValue && selection.CurrentCell.IsValid &&
                     !e.HasControl && !e.HasAlt)
@@ -1680,6 +1703,19 @@ public class KumikoInputController
         var column = ColumnAt(dataSource, cell.Column);
         return column is { ColumnType: KumikoColumnType.Boolean, IsReadOnly: false } &&
                GetEffectiveEditTriggers(column) != EditTrigger.None;
+    }
+
+    /// <summary>
+    /// Toggles the current cell when it is an editable Boolean cell (see <see cref="CanToggleBooleanCell"/>) and
+    /// redraws. Returns whether it did; the toggle itself may still be refused by validation.
+    /// </summary>
+    private bool TryToggleCurrentBooleanCell(KumikoSelectionModel selection, KumikoSource dataSource)
+    {
+        var current = selection.CurrentCell;
+        if (!CanToggleBooleanCell(current, dataSource)) return false;
+        _editSession!.ToggleBooleanCell(current.Row, current.Column, dataSource.Columns[current.Column], dataSource);
+        Redraw();
+        return true;
     }
 
     /// <summary>Whether viewport point (<paramref name="x"/>, <paramref name="y"/>) is on the check box of a Boolean cell.</summary>

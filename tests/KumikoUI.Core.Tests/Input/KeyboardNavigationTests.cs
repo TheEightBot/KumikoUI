@@ -1269,6 +1269,63 @@ public class KeyboardNavigationTests
         Assert.False(g.Items[0].On);
     }
 
+    [Fact]
+    public void ATypedSpace_TogglesTheCurrentBooleanCell_LikeTheSpaceKey()
+    {
+        // Hosts that capture the keyboard through a hidden text box deliver Space as text (#179)
+        var g = BooleanColumnGrid.Create();
+        g.Select(0, 0);
+
+        Assert.True(g.Type(' ').Handled);
+        Assert.True(g.Items[0].On);
+        g.Type(' ');
+        Assert.False(g.Items[0].On);
+        Assert.False(g.Edit.IsEditing);
+    }
+
+    [Theory]
+    [InlineData(KumikoKey.Enter)]
+    [InlineData(KumikoKey.F2)]
+    public void EnterAndF2_ToggleTheCurrentBooleanCell(KumikoKey key)
+    {
+        var g = BooleanColumnGrid.Create();
+        g.Select(0, 0);
+
+        Assert.True(g.Key(key).Handled);
+        Assert.True(g.Items[0].On);
+        Assert.Equal(new CellPosition(0, 0), g.Selection.CurrentCell); // the current cell stays put
+        g.Key(key);
+        Assert.False(g.Items[0].On);
+    }
+
+    [Fact]
+    public void TheKeyboardToggles_LeaveAReadOnlyOrDisabledBooleanCellAlone()
+    {
+        foreach (var g in new[]
+                 {
+                     BooleanColumnGrid.Create(configure: c => c.IsReadOnly = true),
+                     BooleanColumnGrid.Create(EditTrigger.None),
+                 })
+        {
+            g.Select(0, 0);
+            g.Type(' ');
+            g.Key(KumikoKey.Enter);
+            g.Key(KumikoKey.F2);
+            Assert.False(g.Items[0].On);
+        }
+    }
+
+    [Fact]
+    public void ATypedSpace_OnATextCell_StillStartsAnEdit()
+    {
+        var g = Grid();
+        g.Select(0, 1);
+
+        g.Type(' ');
+
+        Assert.True(g.Edit.IsEditing);
+    }
+
     // ── Group header keys ──
 
     private static InputGrid Grouped() =>

@@ -296,6 +296,14 @@ internal sealed class BooleanColumnGrid
         return e;
     }
 
+    /// <summary>A character typed as text, the way hosts with a hidden text box deliver it.</summary>
+    public KumikoKeyEventArgs Type(char c)
+    {
+        var e = new KumikoKeyEventArgs { Key = KumikoKey.Character, Character = c };
+        Input.HandleKey(e, Scroll, Selection, Style, Source);
+        return e;
+    }
+
     public void Tap(float x, float y, int clicks = 1)
     {
         foreach (var action in new[] { InputAction.Pressed, InputAction.Released })
