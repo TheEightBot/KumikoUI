@@ -238,7 +238,13 @@ public class KumikoInputController
         ScrollState scroll, KumikoSelectionModel selection, KumikoStyle style,
         KumikoSource dataSource)
     {
-        if (!e.IsKeyDown) return;
+        if (!e.IsKeyDown)
+        {
+            // A key release only matters to an open editor (a held arrow key repeating a spin button)
+            if (_editSession is { IsEditing: true })
+                _editSession.HandleKeyEvent(e);
+            return;
+        }
 
         // ── Popup priority: popups always get first crack at keyboard ──
         if (_popupManager.HandleKey(e))

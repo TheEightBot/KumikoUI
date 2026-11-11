@@ -639,6 +639,8 @@ public class EditSession
                 _pointerCaptured = false;
                 if (e.Action == InputAction.Released)
                     editor.OnPointerUp(e);
+                else
+                    editor.OnPointerCancel(e);
             }
             return true;
         }

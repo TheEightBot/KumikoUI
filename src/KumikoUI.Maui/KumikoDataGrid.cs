@@ -809,6 +809,8 @@ public partial class KumikoDataGrid : ContentView
         if ((e.ActionType == SKTouchAction.Released || e.ActionType == SKTouchAction.Cancelled)
             && (_inputController.IsInertialScrolling || _editSession.IsAnimating))
             StartInertialScrollTimer();
+        else if (_editSession.IsAnimating)
+            StartInertialScrollTimer(); // a spin button pressed and held repeats from the frame loop
 
         e.Handled = gridEvent.Handled;
     }
@@ -1307,6 +1309,8 @@ public partial class KumikoDataGrid : ContentView
         };
 
         _inputController.HandleKey(keyEvent, _scroll, _selection, _style, _dataSource);
+        if (_editSession.IsAnimating)
+            StartInertialScrollTimer(); // a held arrow key repeats a spin button from the frame loop
     }
 
 #if ANDROID

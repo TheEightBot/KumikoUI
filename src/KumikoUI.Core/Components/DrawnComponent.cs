@@ -22,13 +22,17 @@ public abstract class DrawnComponent
         get => _bounds;
         set
         {
-            if (!_bounds.Equals(value))
+            if (!SameRect(_bounds, value))
             {
                 _bounds = value;
                 OnBoundsChanged();
             }
         }
     }
+
+    /// <summary>Whether two rectangles are the same; compared by field, because the struct's own equality boxes.</summary>
+    private static bool SameRect(KumikoRect a, KumikoRect b) =>
+        a.X == b.X && a.Y == b.Y && a.Width == b.Width && a.Height == b.Height;
 
     /// <summary>
     /// The visible area, in the same coordinates as <see cref="Bounds"/>, that the component's popups (a
@@ -41,7 +45,7 @@ public abstract class DrawnComponent
         get => _popupViewport;
         set
         {
-            if (_popupViewport.Equals(value)) return;
+            if (SameRect(_popupViewport, value)) return;
             _popupViewport = value;
             InvalidateVisual();
         }
@@ -143,6 +147,14 @@ public abstract class DrawnComponent
 
     /// <summary>Handle pointer move. Return true if handled.</summary>
     public virtual bool OnPointerMove(KumikoPointerEventArgs e) => false;
+
+    /// <summary>
+    /// The system canceled a press this component handled (a gesture such as a scroll took the pointer
+    /// over), so no release will follow. A component that started something on the press (a held spin
+    /// button repeating, a day waiting for its release) ends it here without completing it.
+    /// </summary>
+    /// <param name="e">The cancel event.</param>
+    public virtual void OnPointerCancel(KumikoPointerEventArgs e) { }
 
     /// <summary>
     /// Handle mouse-wheel or trackpad scrolling (<see cref="KumikoPointerEventArgs.ScrollDeltaX"/>/<see cref="KumikoPointerEventArgs.ScrollDeltaY"/>,

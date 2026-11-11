@@ -141,6 +141,8 @@ public partial class KumikoDataGrid
         _pendingClickCount = clickCount;
 
         DispatchPointer(e, point, InputAction.Pressed, clickCount);
+        if (_editSession.IsAnimating)
+            StartInertialScrollTimer(); // a spin button pressed and held repeats from the frame loop
 
         // Route the keyboard to the hidden TextBox proxy for non-touch input (mouse/pen). The proxy
         // is a real focusable element on every head, unlike this control, whose KeyDown/
@@ -318,6 +320,8 @@ public partial class KumikoDataGrid
             IsKeyDown = true,
         };
         _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
+        if (_editSession.IsAnimating)
+            StartInertialScrollTimer(); // a held arrow key repeats a spin button from the frame loop
         if (evt.Handled)
         {
             e.Handled = true;

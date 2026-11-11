@@ -33,7 +33,7 @@ public static class CellEditorFactory
         {
             KumikoColumnType.Text => CreateTextEditor(column, currentValue, cellBounds, initialCharacter, selectionMode, culture),
             KumikoColumnType.Numeric => CreateNumericEditor(column, currentValue, cellBounds, initialCharacter, selectionMode, culture),
-            KumikoColumnType.Date => CreateDateEditor(column, currentValue, cellBounds, culture),
+            KumikoColumnType.Date => CreateDateEditor(column, currentValue, cellBounds, initialCharacter, culture),
             KumikoColumnType.Boolean => null, // Toggled directly, no overlay editor
             KumikoColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds, initialCharacter),
             KumikoColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
@@ -180,13 +180,16 @@ public static class CellEditorFactory
     }
 
     private static DrawnDatePicker CreateDateEditor(
-        KumikoColumn column, object? value, KumikoRect cellBounds, CultureInfo culture)
+        KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter, CultureInfo culture)
     {
         var picker = new DrawnDatePicker
         {
             Bounds = cellBounds,
             IsVisible = true,
-            Culture = culture
+            Culture = culture,
+            DateFormat = column.Format,
+            MinDate = column.EditorMinDate,
+            MaxDate = column.EditorMaxDate,
         };
 
         DateTime? initial = value switch
@@ -204,6 +207,13 @@ public static class CellEditorFactory
 
         // Auto-open the calendar when the editor is created
         picker.OpenCalendar();
+
+        // The typed character that opened the edit starts typing a date: a change by the user
+        if (initialCharacter is { } typed && !char.IsControl(typed) && !char.IsWhiteSpace(typed))
+        {
+            picker.StartTrackingChanges();
+            picker.OnKeyDown(new Input.KumikoKeyEventArgs { Key = Input.KumikoKey.Character, Character = typed });
+        }
 
         return picker;
     }
