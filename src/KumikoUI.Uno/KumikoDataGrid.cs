@@ -371,6 +371,9 @@ public partial class KumikoDataGrid : UserControl
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
 
+        // Resume following the app's collection if Unloaded detached it (no-op on first load).
+        _dataSource.Attach();
+
         // Re-render with the current DPI now that we are in the visual tree.
         InvalidateSurface();
 
@@ -386,6 +389,10 @@ public partial class KumikoDataGrid : UserControl
         // _editSession), so they don't leak the page — but the canvas's
         // PaintSurface delegate roots `this`, so it must be released.
         _canvasView.PaintSurface -= OnPaintSurface;
+
+        // Stop observing the app's collection and its items so they do not keep this grid's source alive;
+        // OnLoaded re-attaches (the control can be reloaded, so the source is detached, not disposed).
+        _dataSource.Detach();
 
         // Stop listening to action-button commands (a cell renderer can outlive this grid). The renderer
         // re-attaches to them on the next paint after a reload.
