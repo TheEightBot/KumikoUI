@@ -56,6 +56,19 @@ public class LocalizationTests
         EnterOneOf = "Geben Sie einen dieser Werte ein: {0}.",
         EnterValidValue = "Geben Sie einen gültigen Wert ein.",
         ValueCouldNotBeSaved = "Der Wert konnte nicht gespeichert werden.",
+        AccessibleGridName = "Datentabelle",
+        AccessibleGridHint = "{0} Zeilen, {1} Spalten",
+        AccessibleGridHintWithCell = "{0} Zeilen, {1} Spalten, aktuelle Zelle Zeile {2} Spalte {3}",
+        AnnounceCurrentCell = "{0}: {1}, Zeile {2}, Spalte {3}",
+        AnnounceEmptyValue = "leer",
+        AnnounceUnnamedColumn = "Spalte {0}",
+        AnnounceSortedAscending = "Sortiert nach {0}, aufsteigend",
+        AnnounceSortedDescending = "Sortiert nach {0}, absteigend",
+        AnnounceSortRemoved = "Sortierung von {0} entfernt",
+        AnnounceEditStarted = "{0} wird bearbeitet: {1}",
+        AnnounceEditCommitted = "{0} geändert in {1}",
+        AnnounceEditCanceled = "Bearbeitung von {0} beendet",
+        AnnounceValidationFailed = "{0} ist ungültig: {1}",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>
@@ -384,6 +397,7 @@ public class LocalizationTests
         {
             Bounds = new KumikoRect(0, 0, 200, 30),
             Culture = culture,
+            DateFormat = "yyyy-MM-dd",
             SelectedDate = new DateTime(2024, 3, 15),
             ShowTimePicker = true,
             SelectedHour = 15,

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq;
 using KumikoUI.Core.Rendering;
 using SkiaSharp;
@@ -24,6 +25,17 @@ namespace KumikoUI.SkiaSharp;
 /// <see cref="SkiaFontRegistrar"/> drops that family's typefaces and fonts from every live cache before
 /// the registrar disposes anything, so a cache never holds a disposed typeface and the next frame uses
 /// the new registration.</para>
+/// <para><b>Text:</b> the width of each text measured in a font, and the lines each text was laid out into
+/// for a width (cut with an ellipsis or wrapped), are cached as well (<see cref="MaxTextMeasurements"/>), so
+/// redrawing unchanged text measures nothing. Entries are keyed by the text and the font's family, size and style,
+/// so a style change that picks another font simply stops using them; any <see cref="SkiaFontRegistrar"/> change
+/// and <see cref="Clear"/> drop them all.</para>
+/// <para><b>Font fallback:</b> characters the requested typeface has no glyph for are drawn with a fallback typeface
+/// (the <see cref="SkiaFontRegistrar.FallbackFamilies"/> in order, then the font manager's choice for the character).
+/// The choice is cached per family, style and code point, and the runs a text splits into are cached with its
+/// measurement, so text that needs fallback is segmented once; text the requested typeface covers costs one glyph
+/// check when it is first measured. Bold and italic fonts whose typeface is lighter or upright are emboldened or
+/// slanted synthetically.</para>
 /// <para><b>Threading:</b> a cache is meant to be used by one render thread at a time. Its members take a
 /// lock, so the registrar can invalidate it from another thread safely.</para>
 /// </remarks>
@@ -38,10 +50,30 @@ public sealed class SkiaResourceCache : IDisposable
     /// <summary>Default value of <see cref="MaxTypefaces"/>.</summary>
     public const int DefaultMaxTypefaces = 32;
 
+    /// <summary>Default value of <see cref="MaxTextMeasurements"/>.</summary>
+    public const int DefaultMaxTextMeasurements = 4096;
+
     private readonly object _gate = new();
     private readonly LruMap<PaintKey, SKPaint> _paints;
     private readonly LruMap<FontKey, FontEntry> _fonts;
     private readonly LruMap<TypefaceKey, TypefaceEntry> _typefaces;
+    private readonly LruMap<TextKey, TextMeasurement> _textWidths;
+    private readonly LruMap<TextLayoutKey, TextLayoutEntry> _textLayouts;
+
+    // Font fallback. Faces are never evicted on their own: runs cached with text measurements refer to them by
+    // index, so the table is emptied only together with the text entries (ClearTextLocked).
+    internal const int MaxFallbackFaces = 64;
+    internal const int MaxCharacterFaces = 4096;
+    private const float SyntheticItalicSkew = -0.25f;
+    private readonly List<FallbackFace> _fallbackFaces = new();
+    private readonly Dictionary<SKTypeface, int> _fallbackFaceIndex = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<FallbackFamilyKey, int> _fallbackFamilyFaces = new();
+    private readonly LruMap<CharFaceKey, int> _charFaces = new(MaxCharacterFaces);
+    private readonly LruMap<FallbackFontKey, SKFont> _fallbackFonts;
+
+    // Incremented whenever the text entries are dropped, so a measurement taken across a drop is not stored.
+    private long _textGeneration;
+    private long _nativeTextMeasureCount;
 
     // Objects retired while a frame is being drawn; released when the outermost frame ends.
     private readonly List<object> _retired = new();
@@ -60,10 +92,24 @@ public sealed class SkiaResourceCache : IDisposable
     /// <param name="maxTypefaces">Most typefaces kept, one per family, weight and slant; at least 1.</param>
     /// <exception cref="ArgumentOutOfRangeException">A capacity is less than 1.</exception>
     public SkiaResourceCache(int maxPaints, int maxFonts, int maxTypefaces)
+        : this(maxPaints, maxFonts, maxTypefaces, DefaultMaxTextMeasurements)
+    {
+    }
+
+    /// <summary>Creates a cache with the given capacities, including the text measurement capacity.</summary>
+    /// <param name="maxPaints">Most <see cref="SKPaint"/> objects kept; at least 1.</param>
+    /// <param name="maxFonts">Most <see cref="SKFont"/> objects kept; at least 1.</param>
+    /// <param name="maxTypefaces">Most typefaces kept, one per family, weight and slant; at least 1.</param>
+    /// <param name="maxTextMeasurements">Most text widths kept, and separately most text layouts kept; at least 1.</param>
+    /// <exception cref="ArgumentOutOfRangeException">A capacity is less than 1.</exception>
+    public SkiaResourceCache(int maxPaints, int maxFonts, int maxTypefaces, int maxTextMeasurements)
     {
         _paints = new LruMap<PaintKey, SKPaint>(maxPaints);
         _fonts = new LruMap<FontKey, FontEntry>(maxFonts);
         _typefaces = new LruMap<TypefaceKey, TypefaceEntry>(maxTypefaces);
+        _textWidths = new LruMap<TextKey, TextMeasurement>(maxTextMeasurements);
+        _textLayouts = new LruMap<TextLayoutKey, TextLayoutEntry>(maxTextMeasurements);
+        _fallbackFonts = new LruMap<FallbackFontKey, SKFont>(maxFonts);
         SkiaFontRegistrar.Attach(this);
     }
 
@@ -75,6 +121,15 @@ public sealed class SkiaResourceCache : IDisposable
 
     /// <summary>Most typefaces the cache keeps (one per family, weight and slant).</summary>
     public int MaxTypefaces => _typefaces.Capacity;
+
+    /// <summary>
+    /// Most text measurements the cache keeps: up to this many measured text widths and, separately, up to this
+    /// many text layouts (text cut with an ellipsis or wrapped for a width).
+    /// </summary>
+    public int MaxTextMeasurements => _textWidths.Capacity;
+
+    /// <summary>Number of cached text measurements: measured widths plus laid-out texts.</summary>
+    public int TextMeasurementCount { get { lock (_gate) return _textWidths.Count + _textLayouts.Count; } }
 
     /// <summary>Number of cached <see cref="SKPaint"/> objects.</summary>
     public int PaintCount { get { lock (_gate) return _paints.Count; } }
@@ -166,32 +221,483 @@ public sealed class SkiaResourceCache : IDisposable
     }
 
     /// <summary>Returns the cached <see cref="SKFont"/> for <paramref name="font"/> (<c>null</c> = default 14 pt).</summary>
-    internal SKFont GetFont(KumikoFont? font)
-    {
-        var family = font?.Family ?? "Default";
-        var size = font?.Size ?? 14f;
-        var isBold = font?.IsBold ?? false;
-        var isItalic = font?.IsItalic ?? false;
+    internal SKFont GetFont(KumikoFont? font) => GetFont(font, out _);
 
-        var key = new FontKey(family, size, isBold, isItalic);
+    /// <summary>
+    /// Returns the cached <see cref="SKFont"/> for <paramref name="font"/> (<c>null</c> = default 14 pt) and its
+    /// metrics, read once when the font was created.
+    /// </summary>
+    internal SKFont GetFont(KumikoFont? font, out SKFontMetrics metrics)
+    {
+        var key = ToFontKey(font);
         lock (_gate)
         {
             if (_fonts.TryGet(key, out var entry))
+            {
+                metrics = entry.Metrics;
                 return entry.Font;
+            }
 
             ThrowIfDisposed();
-            var typefaceKey = new TypefaceKey(family, isBold, isItalic);
-            var typeface = GetTypefaceLocked(typefaceKey);
-            var skFont = new SKFont(typeface, size)
-            {
-                Edging = SKFontEdging.SubpixelAntialias,
-                Subpixel = true
-            };
-            if (_fonts.Add(key, new FontEntry(skFont, typefaceKey), out var evicted))
+            var typefaceKey = new TypefaceKey(key.Family, key.IsBold, key.IsItalic);
+            var typeface = GetTypefaceEntryLocked(typefaceKey);
+            var skFont = CreateFont(typeface.Typeface, key.Size, key.IsBold, key.IsItalic, typeface.Weight, typeface.Slant);
+            metrics = skFont.Metrics;
+            if (_fonts.Add(key, new FontEntry(skFont, typefaceKey, metrics), out var evicted))
                 Retire(evicted.Value.Font);
             return skFont;
         }
     }
+
+    private static FontKey ToFontKey(KumikoFont? font) => new(
+        font?.Family ?? "Default", font?.Size ?? 14f, font?.IsBold ?? false, font?.IsItalic ?? false);
+
+    /// <summary>
+    /// A font on <paramref name="typeface"/>, emboldened when a bold font gets a face lighter than semibold and
+    /// slanted when an italic font gets an upright face (<paramref name="weight"/> and <paramref name="slant"/> are
+    /// the face's style).
+    /// </summary>
+    private static SKFont CreateFont(SKTypeface typeface, float size, bool isBold, bool isItalic, int weight,
+        SKFontStyleSlant slant) => new(typeface, size)
+    {
+        Edging = SKFontEdging.SubpixelAntialias,
+        Subpixel = true,
+        Embolden = isBold && weight < (int)SKFontStyleWeight.SemiBold,
+        SkewX = isItalic && slant == SKFontStyleSlant.Upright ? SyntheticItalicSkew : 0f,
+    };
+
+    // ── Text ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The advance width of <paramref name="text"/> (not empty) in <paramref name="font"/>, measured once and then
+    /// read from the cache; <paramref name="hasControlCharacters"/> tells whether the text holds line breaks, tabs
+    /// or other control characters that cannot be drawn as they are.
+    /// </summary>
+    internal float MeasureTextWidth(string text, KumikoFont? font, out bool hasControlCharacters) =>
+        MeasureTextWidth(text, font, out hasControlCharacters, out _);
+
+    /// <summary>
+    /// <see cref="MeasureTextWidth(string, KumikoFont?, out bool)"/>, and the typeface runs
+    /// <paramref name="text"/> is drawn in (<see cref="FontRuns.Primary"/> when the requested typeface has every
+    /// glyph), cached with the width.
+    /// </summary>
+    internal float MeasureTextWidth(string text, KumikoFont? font, out bool hasControlCharacters, out FontRuns runs)
+    {
+        var key = new TextKey(text, ToFontKey(font));
+        long generation;
+        lock (_gate)
+        {
+            if (_textWidths.TryGet(key, out var cached))
+            {
+                hasControlCharacters = cached.HasControlCharacters;
+                runs = cached.Runs;
+                return cached.Width;
+            }
+            ThrowIfDisposed();
+            generation = _textGeneration;
+        }
+
+        runs = BuildRuns(text, font, generation, measure: true, out float width);
+        hasControlCharacters = KumikoTextLayout.ContainsControlCharacters(text);
+
+        lock (_gate)
+        {
+            if (generation == _textGeneration && !_textWidths.TryGet(key, out _))
+                _textWidths.Add(key, new TextMeasurement(width, hasControlCharacters, runs), out _);
+        }
+        return width;
+    }
+
+    /// <summary>
+    /// The lines <paramref name="text"/> (not empty) is drawn as in <paramref name="font"/> within
+    /// <paramref name="maxWidth"/> (see <see cref="KumikoTextLayout.LayOut"/>), laid out once and then read from
+    /// the cache.
+    /// </summary>
+    internal KumikoTextLines GetTextLayout(string text, KumikoFont? font, float maxWidth, KumikoTextWrap wrap,
+        int maxLines) => GetTextLayout(text, font, maxWidth, wrap, maxLines, out _);
+
+    /// <summary>
+    /// <see cref="GetTextLayout(string, KumikoFont?, float, KumikoTextWrap, int)"/>, and the typeface runs each line
+    /// is drawn in, cached with the lines.
+    /// </summary>
+    internal KumikoTextLines GetTextLayout(string text, KumikoFont? font, float maxWidth, KumikoTextWrap wrap,
+        int maxLines, out FontRuns[] lineRuns)
+    {
+        if (float.IsNaN(maxWidth)) maxWidth = float.PositiveInfinity;
+        if (maxWidth < 0f) maxWidth = 0f;
+        if (wrap == KumikoTextWrap.None) maxLines = 1;
+
+        var key = new TextLayoutKey(text, ToFontKey(font), maxWidth, wrap, maxLines);
+        long generation;
+        lock (_gate)
+        {
+            if (_textLayouts.TryGet(key, out var cached))
+            {
+                lineRuns = cached.Runs;
+                return cached.Lines;
+            }
+            ThrowIfDisposed();
+            generation = _textGeneration;
+        }
+
+        var lines = LayOutText(text, font, GetFont(font), generation, maxWidth, wrap, maxLines);
+        lineRuns = new FontRuns[lines.Count];
+        for (int i = 0; i < lineRuns.Length; i++)
+            lineRuns[i] = BuildRuns(lines.GetLine(i), font, generation, measure: false, out _);
+
+        lock (_gate)
+        {
+            if (generation == _textGeneration && !_textLayouts.TryGet(key, out _))
+                _textLayouts.Add(key, new TextLayoutEntry(lines, lineRuns), out _);
+        }
+        return lines;
+    }
+
+    // A separate method so the measuring closure is allocated only on a miss, not on every lookup.
+    private KumikoTextLines LayOutText(string text, KumikoFont? font, SKFont primary, long generation, float maxWidth,
+        KumikoTextWrap wrap, int maxLines) =>
+        KumikoTextLayout.LayOut(text, maxWidth, wrap, maxLines, span => MeasureRuns(span, font, primary, generation));
+
+    /// <summary>The number of times the cache has measured text with Skia (tests and diagnostics).</summary>
+    internal long NativeTextMeasureCount => Interlocked.Read(ref _nativeTextMeasureCount);
+
+    private float MeasureNative(SKFont font, ReadOnlySpan<char> text)
+    {
+        Interlocked.Increment(ref _nativeTextMeasureCount);
+        return text.IsEmpty ? 0f : font.MeasureText(text);
+    }
+
+    private void ClearTextLocked()
+    {
+        _textGeneration++;
+        _textWidths.Clear();
+        _textLayouts.Clear();
+        ClearFallbackLocked();
+    }
+
+    // ── Font fallback ────────────────────────────────────────────
+
+    /// <summary>
+    /// The runs <paramref name="text"/> is drawn in and, when <paramref name="measure"/>, its width. Text the
+    /// requested typeface covers (the common case) costs one glyph check and one measurement.
+    /// </summary>
+    private FontRuns BuildRuns(ReadOnlySpan<char> text, KumikoFont? font, long generation, bool measure,
+        out float width)
+    {
+        var primary = GetFont(font);
+        width = 0f;
+        if (text.IsEmpty || primary.ContainsGlyphs(text))
+        {
+            if (measure) width = MeasureNative(primary, text);
+            return FontRuns.Primary;
+        }
+
+        var ends = new List<int>();
+        var faces = new List<int>();
+        Segment(text, ToFontKey(font), primary, ends, faces);
+        if (faces.Count == 1 && faces[0] == FontRuns.PrimaryFace)
+        {
+            if (measure) width = MeasureNative(primary, text);
+            return FontRuns.Primary;
+        }
+
+        var widths = new float[faces.Count];
+        int start = 0;
+        for (int i = 0; i < widths.Length; i++)
+        {
+            var runFont = faces[i] == FontRuns.PrimaryFace ? primary : GetFallbackFont(faces[i], generation, font);
+            widths[i] = MeasureNative(runFont, text[start..ends[i]]);
+            width += widths[i];
+            start = ends[i];
+        }
+        return new FontRuns([.. ends], [.. faces], widths, generation);
+    }
+
+    /// <summary>The width of <paramref name="text"/> drawn run by run, for <see cref="KumikoTextLayout"/>.</summary>
+    private float MeasureRuns(ReadOnlySpan<char> text, KumikoFont? font, SKFont primary, long generation)
+    {
+        if (text.IsEmpty || primary.ContainsGlyphs(text))
+            return MeasureNative(primary, text);
+
+        var ends = new List<int>();
+        var faces = new List<int>();
+        Segment(text, ToFontKey(font), primary, ends, faces);
+        float width = 0f;
+        int start = 0;
+        for (int i = 0; i < faces.Count; i++)
+        {
+            var runFont = faces[i] == FontRuns.PrimaryFace ? primary : GetFallbackFont(faces[i], generation, font);
+            width += MeasureNative(runFont, text[start..ends[i]]);
+            start = ends[i];
+        }
+        return width;
+    }
+
+    /// <summary>
+    /// Splits <paramref name="text"/> into runs of whole text elements drawn with the same face: adds the end of
+    /// each run to <paramref name="ends"/> and its face to <paramref name="faces"/>.
+    /// </summary>
+    private void Segment(ReadOnlySpan<char> text, FontKey font, SKFont primary, List<int> ends, List<int> faces)
+    {
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            int current = int.MinValue;
+            int pos = 0;
+            while (pos < text.Length)
+            {
+                int length = Math.Max(1, StringInfo.GetNextTextElementLength(text[pos..]));
+                int face = ElementFaceLocked(text.Slice(pos, length), font, primary, current);
+                if (face != current)
+                {
+                    if (current != int.MinValue) ends.Add(pos);
+                    faces.Add(face);
+                    current = face;
+                }
+                pos += length;
+            }
+            ends.Add(text.Length);
+        }
+    }
+
+    /// <summary>
+    /// The face a text element is drawn with: the face of its first visible code point, unless that face lacks
+    /// another of the element's code points and the face of one of those has them all. Elements with no visible
+    /// code point (controls, joiners, variation selectors) stay in the current run.
+    /// </summary>
+    private int ElementFaceLocked(ReadOnlySpan<char> element, FontKey font, SKFont primary, int current)
+    {
+        int first = -1;
+        bool more = false;
+        foreach (var rune in element.EnumerateRunes())
+        {
+            if (IsNeutral(rune.Value)) continue;
+            if (first < 0)
+            {
+                first = rune.Value;
+            }
+            else
+            {
+                more = true;
+                break;
+            }
+        }
+        if (first < 0)
+            return current == int.MinValue ? FontRuns.PrimaryFace : current;
+
+        int face = CharFaceLocked(font, primary, first);
+        if (!more || FaceCovers(face, primary, element))
+            return face;
+
+        foreach (var rune in element.EnumerateRunes())
+        {
+            if (IsNeutral(rune.Value) || rune.Value == first) continue;
+            int other = CharFaceLocked(font, primary, rune.Value);
+            if (other != face && FaceCovers(other, primary, element))
+                return other;
+        }
+        return face;
+    }
+
+    private bool FaceCovers(int face, SKFont primary, ReadOnlySpan<char> element)
+    {
+        var font = face == FontRuns.PrimaryFace ? primary : _fallbackFaces[face].Probe;
+        foreach (var rune in element.EnumerateRunes())
+        {
+            if (!IsNeutral(rune.Value) && !font.ContainsGlyph(rune.Value))
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Code points that never pick a typeface: controls and default-ignorable characters (joiners, variation
+    /// selectors, bidi marks, tags). They are drawn with whatever face the text element around them uses.
+    /// </summary>
+    private static bool IsNeutral(int c) =>
+        c < 0x20 || c is >= 0x7F and <= 0x9F
+        || c is 0x00AD or 0x034F or 0xFEFF
+        || c is >= 0x180B and <= 0x180F
+        || c is >= 0x200B and <= 0x200F
+        || c is >= 0x202A and <= 0x202E
+        || c is >= 0x2060 and <= 0x206F
+        || c is >= 0xFE00 and <= 0xFE0F
+        || c is >= 0xE0000 and <= 0xE0FFF;
+
+    /// <summary>The face that draws <paramref name="codepoint"/> in <paramref name="font"/>'s family and style; cached.</summary>
+    private int CharFaceLocked(FontKey font, SKFont primary, int codepoint)
+    {
+        var key = new CharFaceKey(font.Family, font.IsBold, font.IsItalic, codepoint);
+        if (_charFaces.TryGet(key, out int face))
+            return face;
+
+        face = primary.ContainsGlyph(codepoint) ? FontRuns.PrimaryFace : FindFallbackLocked(font, codepoint);
+        _charFaces.Add(key, face, out _);
+        return face;
+    }
+
+    /// <summary>
+    /// The first of the registrar's fallback families that has <paramref name="codepoint"/>, else the font
+    /// manager's choice for it; <see cref="FontRuns.PrimaryFace"/> when no typeface has it (it is drawn missing).
+    /// </summary>
+    private int FindFallbackLocked(FontKey font, int codepoint)
+    {
+        foreach (var family in SkiaFontRegistrar.FallbackFamilySnapshot)
+        {
+            int face = FallbackFamilyFaceLocked(family, font.IsBold, font.IsItalic);
+            if (face >= 0 && _fallbackFaces[face].Probe.ContainsGlyph(codepoint))
+                return face;
+        }
+
+        using var style = StyleOf(font.IsBold, font.IsItalic);
+        // The family is a hint; the UI language picks between Han glyph variants (Japanese, Chinese, Korean).
+        string? hint = font.Family == "Default" ? null : font.Family;
+        string language = CultureInfo.CurrentUICulture.Name;
+        var typeface = SystemTypefacePool.MatchCharacter(hint, style,
+            string.IsNullOrEmpty(language) ? null : [language], codepoint, out bool leased);
+        if (typeface is null)
+            return FontRuns.PrimaryFace;
+
+        int index = AddFallbackFaceLocked(typeface, SourceOf(typeface, leased), typeface.FontWeight, typeface.FontSlant);
+        return index >= 0 && _fallbackFaces[index].Probe.ContainsGlyph(codepoint) ? index : FontRuns.PrimaryFace;
+    }
+
+    /// <summary>The face of a fallback family in a style, or -1 when the family is neither registered nor installed.</summary>
+    private int FallbackFamilyFaceLocked(string family, bool isBold, bool isItalic)
+    {
+        var key = new FallbackFamilyKey(family, isBold, isItalic);
+        if (_fallbackFamilyFaces.TryGetValue(key, out int face))
+            return face;
+
+        if (SkiaFontRegistrar.TryResolve(family, WeightOf(isBold), SlantOf(isItalic), out var registered,
+                out int weight, out var slant))
+        {
+            face = AddFallbackFaceLocked(registered, TypefaceSource.Registrar, weight, slant);
+        }
+        else
+        {
+            using var style = StyleOf(isBold, isItalic);
+            var typeface = SystemTypefacePool.Match(family, style, out bool leased);
+            face = typeface is null
+                ? -1
+                : AddFallbackFaceLocked(typeface, SourceOf(typeface, leased), typeface.FontWeight, typeface.FontSlant);
+        }
+        _fallbackFamilyFaces[key] = face;
+        return face;
+    }
+
+    /// <summary>
+    /// Adds a fallback face, or finds it and gives back the extra lease; -1 when the table is full (the lease is
+    /// given back too, and the character is drawn with the primary typeface).
+    /// </summary>
+    private int AddFallbackFaceLocked(SKTypeface typeface, TypefaceSource source, int weight, SKFontStyleSlant slant)
+    {
+        bool known = _fallbackFaceIndex.TryGetValue(typeface, out int index);
+        if (known || _fallbackFaces.Count >= MaxFallbackFaces)
+        {
+            // Never the last lease when the face is already held.
+            if (source == TypefaceSource.FontManager)
+                SystemTypefacePool.Release(typeface);
+            return known ? index : -1;
+        }
+
+        index = _fallbackFaces.Count;
+
+        // The probe font is owned by the fallback table (disposed with it when the table is emptied); it is
+        // disposed here only when the entry could not be stored.
+        var probe = new SKFont(typeface, 12f);
+        try
+        {
+            _fallbackFaces.Add(new FallbackFace(typeface, source, probe, weight, slant));
+            _fallbackFaceIndex.Add(typeface, index);
+        }
+        catch
+        {
+            _fallbackFaceIndex.Remove(typeface);
+            if (_fallbackFaces.Count > index)
+                _fallbackFaces.RemoveAt(index);
+            probe.Dispose();
+            throw;
+        }
+        return index;
+    }
+
+    /// <summary>
+    /// The font that draws runs of fallback face <paramref name="face"/> in <paramref name="font"/>'s size and
+    /// style, cached; the primary font when the face belongs to an earlier generation (the fallback table was
+    /// emptied after the runs were made).
+    /// </summary>
+    internal SKFont GetFallbackFont(int face, long generation, KumikoFont? font)
+    {
+        var fontKey = ToFontKey(font);
+        lock (_gate)
+        {
+            if (face < 0 || generation != _textGeneration || face >= _fallbackFaces.Count)
+                return GetFont(font);
+
+            var key = new FallbackFontKey(face, fontKey.Size, fontKey.IsBold, fontKey.IsItalic);
+            if (_fallbackFonts.TryGet(key, out var skFont))
+                return skFont;
+
+            ThrowIfDisposed();
+            var entry = _fallbackFaces[face];
+            skFont = CreateFont(entry.Typeface, fontKey.Size, fontKey.IsBold, fontKey.IsItalic, entry.Weight, entry.Slant);
+            if (_fallbackFonts.Add(key, skFont, out var evicted))
+                Retire(evicted.Value);
+            return skFont;
+        }
+    }
+
+    /// <summary>The typeface of fallback face <paramref name="face"/> (tests and diagnostics).</summary>
+    internal SKTypeface GetFallbackTypeface(int face)
+    {
+        lock (_gate)
+            return _fallbackFaces[face].Typeface;
+    }
+
+    /// <summary>Number of fallback faces in use (tests and diagnostics).</summary>
+    internal int FallbackFaceCount { get { lock (_gate) return _fallbackFaces.Count; } }
+
+    /// <summary>Called by <see cref="SkiaFontRegistrar.SetFallbackFamilies"/>: drops the text entries and fallback choices.</summary>
+    internal void OnFallbackFamiliesChanged()
+    {
+        lock (_gate)
+        {
+            if (_disposed) return;
+            ClearTextLocked();
+        }
+    }
+
+    /// <summary>Empties the fallback tables; only together with the text entries, whose runs refer to the faces by index.</summary>
+    private void ClearFallbackLocked()
+    {
+        var fonts = new List<SKFont>();
+        _fallbackFonts.Clear(fonts);
+        foreach (var font in fonts)
+            Retire(font);
+        foreach (var face in _fallbackFaces)
+        {
+            Retire(face.Probe);
+            if (face.Source == TypefaceSource.FontManager)
+                Retire(face.Typeface);
+        }
+        _fallbackFaces.Clear();
+        _fallbackFaceIndex.Clear();
+        _fallbackFamilyFaces.Clear();
+        _charFaces.Clear();
+    }
+
+    private static int WeightOf(bool isBold) => (int)(isBold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal);
+
+    private static SKFontStyleSlant SlantOf(bool isItalic) => isItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
+
+    private static SKFontStyle StyleOf(bool isBold, bool isItalic) =>
+        new((SKFontStyleWeight)WeightOf(isBold), SKFontStyleWidth.Normal, SlantOf(isItalic));
+
+    private static TypefaceSource SourceOf(SKTypeface typeface, bool leased) =>
+        leased ? TypefaceSource.FontManager
+        : ReferenceEquals(typeface, SKTypeface.Default) ? TypefaceSource.Shared
+        : TypefaceSource.Registrar;
 
     /// <summary>Returns the cached typeface for a family and style (tests and diagnostics).</summary>
     internal SKTypeface GetTypeface(string family, bool isBold, bool isItalic)
@@ -199,36 +705,40 @@ public sealed class SkiaResourceCache : IDisposable
         lock (_gate)
         {
             ThrowIfDisposed();
-            return GetTypefaceLocked(new TypefaceKey(family, isBold, isItalic));
+            return GetTypefaceEntryLocked(new TypefaceKey(family, isBold, isItalic)).Typeface;
         }
     }
 
-    private SKTypeface GetTypefaceLocked(TypefaceKey key)
+    private TypefaceEntry GetTypefaceEntryLocked(TypefaceKey key)
     {
         if (_typefaces.TryGet(key, out var entry))
-            return entry.Typeface;
+            return entry;
 
         entry = Resolve(key);
         if (_typefaces.Add(key, entry, out var evicted))
             RetireTypeface(evicted.Key, evicted.Value);
-        return entry.Typeface;
+        return entry;
     }
 
     /// <summary>
-    /// Resolves a typeface: a family registered with <see cref="SkiaFontRegistrar"/> wins, then the font
-    /// manager in the requested weight and slant, then the default family in that style, then
-    /// <see cref="SKTypeface.Default"/>. Runs under the cache lock, so a registrar change waits for it and
+    /// Resolves a typeface: a family registered with <see cref="SkiaFontRegistrar"/> wins (its face closest to the
+    /// requested style), then the font manager in the requested weight and slant, then the default family in that
+    /// style, then <see cref="SKTypeface.Default"/>. The entry carries the face's own weight and slant, so fonts on
+    /// it synthesize what it lacks. Runs under the cache lock, so a registrar change waits for it and
     /// then sees (and drops) the typeface this returns.
     /// </summary>
     private static TypefaceEntry Resolve(TypefaceKey key)
     {
         // Custom fonts first: host apps supply fonts the system font manager cannot resolve
-        // (e.g. CJK fonts on Android, icon fonts).
-        if (SkiaFontRegistrar.TryGetTypeface(key.Family, out var registered) && registered is not null)
-            return new TypefaceEntry(registered, TypefaceSource.Registrar);
+        // (e.g. CJK fonts on Android, icon fonts). The registered face closest to the requested style wins;
+        // a weight or slant it lacks is synthesized (CreateFont).
+        if (SkiaFontRegistrar.TryResolve(key.Family, WeightOf(key.IsBold), SlantOf(key.IsItalic), out var registered,
+                out int registeredWeight, out var registeredSlant))
+            return new TypefaceEntry(registered, TypefaceSource.Registrar, registeredWeight, registeredSlant);
 
         if (!key.IsBold && !key.IsItalic && key.Family == "Default")
-            return new TypefaceEntry(SKTypeface.Default, TypefaceSource.Shared);
+            return new TypefaceEntry(SKTypeface.Default, TypefaceSource.Shared,
+                (int)SKFontStyleWeight.Normal, SKFontStyleSlant.Upright);
 
         using var style = new SKFontStyle(
             key.IsBold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal,
@@ -251,12 +761,9 @@ public sealed class SkiaResourceCache : IDisposable
             typeface = SystemTypefacePool.Match(defaultFamily, style, out leased);
         }
 
-        if (typeface is null)
-            return new TypefaceEntry(SKTypeface.Default, TypefaceSource.Shared);
-        if (leased)
-            return new TypefaceEntry(typeface, TypefaceSource.FontManager);
-        return new TypefaceEntry(typeface,
-            ReferenceEquals(typeface, SKTypeface.Default) ? TypefaceSource.Shared : TypefaceSource.Registrar);
+        // The style of the face found, so a bold or italic request the platform has no face for is synthesized.
+        typeface ??= SKTypeface.Default;
+        return new TypefaceEntry(typeface, SourceOf(typeface, leased), typeface.FontWeight, typeface.FontSlant);
     }
 
     // ── Registrar coordination ───────────────────────────────────
@@ -271,6 +778,10 @@ public sealed class SkiaResourceCache : IDisposable
         lock (_gate)
         {
             if (_disposed) return;
+
+            // A family's text may have been measured in a fallback typeface before it was registered, or in a
+            // typeface that is now replaced; registrar changes are rare, so every text entry goes.
+            ClearTextLocked();
 
             var stale = new List<TypefaceKey>();
             if (family is null)
@@ -309,6 +820,8 @@ public sealed class SkiaResourceCache : IDisposable
 
     private void RetireAll()
     {
+        ClearTextLocked();
+
         var fonts = new List<FontEntry>();
         _fonts.Clear(fonts);
         foreach (var font in fonts)
@@ -365,9 +878,38 @@ public sealed class SkiaResourceCache : IDisposable
     /// <summary>Cache key for typefaces.</summary>
     private readonly record struct TypefaceKey(string Family, bool IsBold, bool IsItalic);
 
-    private readonly record struct FontEntry(SKFont Font, TypefaceKey TypefaceKey);
+    private readonly record struct FontEntry(SKFont Font, TypefaceKey TypefaceKey, SKFontMetrics Metrics);
 
-    private readonly record struct TypefaceEntry(SKTypeface Typeface, TypefaceSource Source);
+    /// <summary>Cache key for text widths: the text and the font it is measured in.</summary>
+    private readonly record struct TextKey(string Text, FontKey Font);
+
+    /// <summary>Cache key for text layouts.</summary>
+    private readonly record struct TextLayoutKey(string Text, FontKey Font, float MaxWidth, KumikoTextWrap Wrap, int MaxLines);
+
+    /// <summary>A measured text width, whether the text holds control characters, and the runs it is drawn in.</summary>
+    private readonly record struct TextMeasurement(float Width, bool HasControlCharacters, FontRuns Runs);
+
+    /// <summary>A text's lines and the runs each line is drawn in.</summary>
+    private readonly record struct TextLayoutEntry(KumikoTextLines Lines, FontRuns[] Runs);
+
+    /// <summary>
+    /// A resolved typeface, where it came from, and the weight and slant it has (as registered, for a registered
+    /// face), which decide whether a bold or italic font on it is synthesized.
+    /// </summary>
+    private readonly record struct TypefaceEntry(SKTypeface Typeface, TypefaceSource Source, int Weight, SKFontStyleSlant Slant);
+
+    /// <summary>Cache key for the face chosen for a code point in a family and style.</summary>
+    private readonly record struct CharFaceKey(string Family, bool IsBold, bool IsItalic, int Codepoint);
+
+    /// <summary>Cache key for the face of a registrar fallback family in a style.</summary>
+    private readonly record struct FallbackFamilyKey(string Family, bool IsBold, bool IsItalic);
+
+    /// <summary>Cache key for the font that draws a fallback face in a size and requested style.</summary>
+    private readonly record struct FallbackFontKey(int Face, float Size, bool IsBold, bool IsItalic);
+
+    /// <summary>A fallback typeface, where it came from, a font for glyph checks, and its weight and slant.</summary>
+    private readonly record struct FallbackFace(SKTypeface Typeface, TypefaceSource Source, SKFont Probe, int Weight,
+        SKFontStyleSlant Slant);
 
     private enum TypefaceSource
     {
