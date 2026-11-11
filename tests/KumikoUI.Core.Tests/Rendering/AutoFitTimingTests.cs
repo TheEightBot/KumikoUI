@@ -56,6 +56,7 @@ public class AutoFitTimingTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [Fact]
+    [Trait("Category", "Performance")]
     public void AutoFit_On100KRows_CompletesWithin50Milliseconds()
     {
         var (source, column) = CreateSource();

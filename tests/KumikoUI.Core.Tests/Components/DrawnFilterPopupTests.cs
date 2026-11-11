@@ -64,6 +64,7 @@ public class DrawnFilterPopupTests
     // ── Large value lists ─────────────────────────────────────────
 
     [Fact]
+    [Trait("Category", "Performance")]
     public void TenThousandValues_OpenQuickly_AndDrawOnlyTheVisibleRows()
     {
         var stopwatch = Stopwatch.StartNew();
