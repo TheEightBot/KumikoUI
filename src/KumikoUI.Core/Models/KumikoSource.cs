@@ -876,11 +876,9 @@ public class KumikoSource
     private void PruneGroupExpandedState()
     {
         if (_groupExpandedState.Count == 0) return;
-        List<GroupKeyPath>? stale = null;
-        foreach (var path in _groupExpandedState.Keys)
-            if (!path.IsValidFor(_groupDescriptions)) (stale ??= new()).Add(path);
-        if (stale != null)
-            foreach (var path in stale) _groupExpandedState.Remove(path);
+        // Runs only when the group descriptions change, so the LINQ allocation is fine here.
+        var stale = _groupExpandedState.Keys.Where(path => !path.IsValidFor(_groupDescriptions)).ToList();
+        foreach (var path in stale) _groupExpandedState.Remove(path);
     }
 
     /// <summary>
