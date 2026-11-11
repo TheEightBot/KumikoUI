@@ -178,8 +178,8 @@ public class ColumnSizingTests
     {
         var h = AutoNameGrid();
         h.People[0].Name = LongName;
-        foreach (var column in h.Source.Columns)
-            if (column.PropertyName != "Name") column.SizeMode = ColumnSizeMode.Star;
+        foreach (var column in h.Source.Columns.Where(c => c.PropertyName != "Name"))
+            column.SizeMode = ColumnSizeMode.Star;
 
         h.Render();
 
