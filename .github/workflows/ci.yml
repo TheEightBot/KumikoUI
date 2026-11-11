@@ -81,6 +81,7 @@ jobs:
           && dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
           && dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           && dotnet restore tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
+          && dotnet restore tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj
 
       - name: Build — Core
         run: dotnet build src/KumikoUI.Core/KumikoUI.Core.csproj
@@ -106,6 +107,11 @@ jobs:
 
       - name: Test — source generator
         run: dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
+          --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+
+      # MAUI host: bindable property -> Core mapping, on plain net10.0 (sources linked in, no handler).
+      - name: Test — MAUI host
+        run: dotnet test tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj
           --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
 
       # Merges the coverage files, writes the summary to the job summary (needs no token permissions) and fails when
@@ -416,8 +422,5 @@ jobs:
           workloads: wasm-tools android
           cache-nuget: 'true'
 
-      # Non-blocking until #184: the Emscripten relink of Uno's C shim fails with '-std=c++20 not allowed with C'
-      # (the sample's WebAssembly head doesn't build yet). Drop continue-on-error when #184 is fixed.
       - name: Build sample — Uno WebAssembly
-        continue-on-error: true
         run: dotnet build samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-browserwasm -c Release
