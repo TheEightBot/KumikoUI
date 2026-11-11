@@ -148,6 +148,9 @@ it on theme change.
 - Text widths and laid-out lines (ellipsis cuts, wrapped lines) are cached in the `SkiaResourceCache` across
   frames, keyed by text and font values; a steady-state frame measures no text. Ellipsis cuts and wraps use
   `KumikoTextLayout` (Core), which never splits a text element (emoji, combining sequence).
+- Glyphs the requested typeface lacks are drawn run by run with fallback typefaces (`SkiaFontRegistrar.FallbackFamilies`,
+  then `SKFontManager.MatchCharacter`); the runs are cached with the text's measurement, so measure through the cache
+  (never `SKFont.MeasureText` directly) to get widths that match what is drawn. See docs/RENDERING.md "Font fallback".
 - If a new `IDrawingContext` method is needed: **add to the interface in Core first**, then implement in `SkiaDrawingContext`.
 
 ---
