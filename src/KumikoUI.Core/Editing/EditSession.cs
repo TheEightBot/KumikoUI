@@ -57,6 +57,23 @@ public class EditSession
     public EditTrigger EditTriggers { get; set; } = EditTrigger.Default;
 
     /// <summary>
+    /// Grid-level read-only switch. While true no cell can be edited: <see cref="BeginEdit"/> returns false
+    /// and Boolean cells do not toggle. It combines with the per-column <see cref="KumikoColumn.IsReadOnly"/>:
+    /// a cell is editable only when neither is set. Setting it to true cancels an edit that is open.
+    /// </summary>
+    public bool IsReadOnly
+    {
+        get => _isReadOnly;
+        set
+        {
+            if (_isReadOnly == value) return;
+            _isReadOnly = value;
+            if (value && _isEditing) CancelEdit();
+        }
+    }
+    private bool _isReadOnly;
+
+    /// <summary>
     /// Controls how text is selected when a cell enters edit mode.
     /// Default: SelectAll.
     /// </summary>
@@ -139,6 +156,8 @@ public class EditSession
         KumikoColumn column, KumikoSource dataSource,
         KumikoRect cellBounds, char? initialCharacter = null)
     {
+        if (_isReadOnly) return false;
+
         if (_isEditing && !CommitEdit(_editDataSource ?? dataSource))
             return false;
 
