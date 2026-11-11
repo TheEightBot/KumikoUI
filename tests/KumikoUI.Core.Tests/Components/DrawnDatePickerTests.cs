@@ -564,8 +564,10 @@ public class DrawnDatePickerTests
 
         var ctx = Draw(p);
 
-        foreach (var day in new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" })
-            Assert.Single(ctx.TextsEqual(day));
+        // The header names come from the culture's own data, which differs between ICU and Windows NLS ("Su" vs "S")
+        var format = p.Culture!.DateTimeFormat;
+        foreach (var day in Enum.GetValues<DayOfWeek>())
+            Assert.NotEmpty(ctx.TextsEqual(format.GetShortestDayName(day)));
         var (x, y) = Cell(Mar15);
         var highlight = ctx.Fills.Single(o => o.Kind == DrawOpKind.FillRoundRect && o.Color.Equals(p.SelectedDayColor));
         Assert.True(highlight.Rect.Contains(x, y));
@@ -620,7 +622,9 @@ public class DrawnDatePickerTests
     {
         int lead = ((int)new DateTime(date.Year, date.Month, 1).DayOfWeek - (int)firstDay + 7) % 7;
         int index = lead + date.Day - 1;
-        return (4 + index % 7 * 32f + 16, 104 + index / 7 * 32f + 16);
+        int column = index % 7;
+        int row = index / 7;
+        return (4 + column * 32f + 16, 104 + row * 32f + 16);
     }
 
     /// <summary>The weekday headers, left to right.</summary>
@@ -1103,7 +1107,7 @@ public class DrawnDatePickerTests
         Assert.Equal(1, completed);                    // reported complete: the session shows its validation message
         Assert.Equal(Mar15, p.SelectedDate);
         Assert.True(p.IsCalendarOpen);
-        Assert.Contains(Draw(p).Ops, o => o.Kind == DrawOpKind.DrawRect && o.Color.Equals(p.ErrorBorderColor) && o.Rect.Y == 0);
+        Assert.Contains(Draw(p).Ops, o => o.Kind == DrawOpKind.DrawRect && o.Color.Equals(p.ErrorBorderColor) && Math.Abs(o.Rect.Y) < 0.001f);
     }
 
     [Fact]
@@ -1118,7 +1122,7 @@ public class DrawnDatePickerTests
         Assert.IsNotType<string>(value);
         Assert.True(p.Key(KumikoKey.Enter));
         Assert.Equal(Mar15, p.SelectedDate);
-        Assert.Contains(Draw(p).Ops, o => o.Kind == DrawOpKind.DrawRect && o.Color.Equals(p.ErrorBorderColor) && o.Rect.Y == 0);
+        Assert.Contains(Draw(p).Ops, o => o.Kind == DrawOpKind.DrawRect && o.Color.Equals(p.ErrorBorderColor) && Math.Abs(o.Rect.Y) < 0.001f);
     }
 
     [Fact]

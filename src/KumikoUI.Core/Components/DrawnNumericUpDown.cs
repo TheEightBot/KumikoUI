@@ -677,8 +677,12 @@ public class DrawnNumericUpDown : DrawnComponent, IValueEditor
         return (float)Math.Max(Math.Min(MinRepeatIntervalMs, RepeatIntervalMs), interval);
     }
 
-    private static double StepMultiplier(int ticks) =>
-        Math.Min(MaxStepMultiplier, Math.Pow(10, ticks / TicksPerAccelerationStage));
+    private static double StepMultiplier(int ticks)
+    {
+        // Whole stages only: the multiplier steps up every TicksPerAccelerationStage ticks, so the division truncates on purpose
+        int stage = ticks / TicksPerAccelerationStage;
+        return Math.Min(MaxStepMultiplier, Math.Pow(10, stage));
+    }
 
     // ── Keyboard input ──────────────────────────────────────────
 
