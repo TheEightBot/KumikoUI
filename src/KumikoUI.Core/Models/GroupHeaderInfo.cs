@@ -29,10 +29,14 @@ public class GroupHeaderInfo
 
     /// <summary>
     /// Unique path identifying this group in the hierarchy.
-    /// Used for persisting expand/collapse state across rebuilds.
+    /// Identifies the group in summaries and row keys. Expand/collapse state is kept by raw key path instead,
+    /// so groups with different keys but the same display text get distinct paths (a numeric suffix is appended).
     /// Example: "Department=Engineering" or "Department=Engineering|City=Seattle"
     /// </summary>
     public string GroupPath { get; init; } = "";
+
+    /// <summary>The group's identity by raw keys; expand/collapse state is stored under it.</summary>
+    internal GroupKeyPath? KeyPath { get; init; }
 
     // The header row's text runs, composed once and reused every frame while their inputs are the same.
     private string? _title;

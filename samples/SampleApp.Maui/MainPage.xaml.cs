@@ -211,6 +211,7 @@ public class MainPageViewModel
 /// Employee model implementing INotifyPropertyChanged for live cell updates.
 /// Showcases every column type: Text, Numeric, Boolean, Date, ComboBox, Picker, Template.
 /// </summary>
+[KumikoUI.Core.Data.KumikoGridItem]
 public class Employee : INotifyPropertyChanged
 {
 	private int _id;

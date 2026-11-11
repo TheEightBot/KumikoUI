@@ -19,6 +19,21 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     private int _pressedItemIndex = -1;
     private string _filterText = string.Empty;
     private List<DrawnComboBoxItem>? _filteredItems;
+    private int _selectedIndexAtOpen = -1;
+
+    // Pointer state of a press in the open dropdown: on the list (a tap picks, a drag scrolls) or the scrollbar
+    private PressTarget _pressTarget;
+    private float _pressY;
+    private float _lastPanY;
+    private bool _isPanning;
+    private float _scrollbarGrab;
+
+    private const float DragThreshold = 6f;
+    private const float ScrollbarHitWidth = 12f;
+    private const float MinThumbHeight = 20f;
+    private const int WheelItemsPerNotch = 3;
+
+    private enum PressTarget { None, List, Scrollbar }
 
     // ── Style ───────────────────────────────────────────────────
 
@@ -52,11 +67,24 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Sets the font of the selected text and the dropdown items, so the editor draws and measures its text like the grid's cells.
+    /// <see cref="ApplyTheme"/> calls it with the grid's cell font; the grid calls it again with the column's
+    /// own font when the column has one.
+    /// </summary>
+    /// <param name="font">The font to use: family, size, bold and italic.</param>
+    public void ApplyFont(KumikoFont font)
+    {
+        Font = font;
+        InvalidateVisual();
+    }
+
+    /// <summary>
     /// Applies theme colors from a <see cref="KumikoStyle"/> so the combo box
     /// visually matches the current grid theme.
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
 
@@ -105,7 +133,11 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     /// <summary>Is the dropdown currently open?</summary>
     public bool IsDropdownOpen => _isDropdownOpen;
 
-    /// <summary>Enable search/filter mode.</summary>
+    /// <summary>
+    /// Enable search/filter mode: typed characters narrow the dropdown to the items containing them. When
+    /// false, a typed character jumps to the next item starting with it. In a grid, set from
+    /// <see cref="KumikoColumn.EditorIsFilterable"/>.
+    /// </summary>
     public bool IsFilterable { get; set; }
 
     /// <summary>Placeholder when no item is selected.</summary>
@@ -320,8 +352,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
         var items = GetVisibleItems();
         if (items.Count == 0) return;
 
-        float dropdownHeight = Math.Min(items.Count * ItemHeight, MaxDropdownHeight);
-        var dropRect = new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height, Bounds.Width, dropdownHeight);
+        var dropRect = GetDropdownBounds();
 
         // Shadow
         ctx.FillRect(new KumikoRect(dropRect.X + 2, dropRect.Y + 2, dropRect.Width, dropRect.Height),
@@ -358,16 +389,30 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
             y += ItemHeight;
         }
 
+        // Scrollbar: a thin thumb on the right edge of a list that scrolls (its hit area is wider)
+        if (MaxDropdownScrollOffset > 0)
+        {
+            var thumb = ScrollbarThumb(dropRect);
+            byte alpha = _pressTarget == PressTarget.Scrollbar ? (byte)220 : (byte)150;
+            ctx.FillRoundRect(new KumikoRect(dropRect.Right - 5, thumb.Y, 4, thumb.Height), 2,
+                new KumikoPaint { Color = ArrowColor.WithAlpha(alpha), Style = PaintStyle.Fill });
+        }
+
         ctx.Restore();
     }
 
     /// <summary>Get the bounding rect of the dropdown area (for popup hit testing).</summary>
     public KumikoRect GetDropdownBounds()
     {
-        var items = GetVisibleItems();
-        float dropdownHeight = Math.Min(items.Count * ItemHeight, MaxDropdownHeight);
-        return new KumikoRect(Bounds.X, Bounds.Y + Bounds.Height, Bounds.Width, dropdownHeight);
+        return PopupLayout.Place(Bounds, Bounds.Width, DropdownHeight, PopupViewport);
     }
+
+    /// <summary>
+    /// The height of the open dropdown: its items, up to <see cref="MaxDropdownHeight"/>, and no more than
+    /// the room the viewport (<see cref="DrawnComponent.PopupViewport"/>) leaves above or below the combo box.
+    /// </summary>
+    private float DropdownHeight =>
+        Math.Min(Math.Min(GetVisibleItems().Count * ItemHeight, MaxDropdownHeight), PopupLayout.RoomFor(Bounds, PopupViewport));
 
     /// <summary>
     /// Override HitTest to include the dropdown area when the dropdown is open.
@@ -384,21 +429,41 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     // ── Input ───────────────────────────────────────────────────
 
     /// <inheritdoc />
+    /// <remarks>
+    /// A press on an item is picked on release (when the pointer has not dragged); a press on the list
+    /// that drags scrolls it; a press on the scrollbar (the right edge of a list that scrolls) drags the
+    /// thumb, or jumps to the press.
+    /// </remarks>
     public override bool OnPointerDown(KumikoPointerEventArgs e)
     {
         if (!IsEnabled) return false;
 
         _pressedItemIndex = -1;
+        _pressTarget = PressTarget.None;
+        _isPanning = false;
 
         if (_isDropdownOpen)
         {
             var dropBounds = GetDropdownBounds();
             if (dropBounds.Contains(e.X, e.Y))
             {
+                _pressY = _lastPanY = e.Y;
+
+                if (MaxDropdownScrollOffset > 0 && e.X >= dropBounds.Right - ScrollbarHitWidth)
+                {
+                    _pressTarget = PressTarget.Scrollbar;
+                    var thumb = ScrollbarThumb(dropBounds);
+                    if (e.Y < thumb.Y || e.Y > thumb.Bottom)
+                        ScrollThumbTo(dropBounds, e.Y - thumb.Height / 2); // jump: center the thumb on the press
+                    _scrollbarGrab = e.Y - ScrollbarThumb(dropBounds).Y;
+                    InvalidateVisual();
+                    return true;
+                }
+
                 // Record which item was pressed – selection happens on release
-                int itemIndex = (int)((e.Y - dropBounds.Y + DropdownScrollOffset) / ItemHeight);
-                var items = GetVisibleItems();
-                if (itemIndex >= 0 && itemIndex < items.Count)
+                _pressTarget = PressTarget.List;
+                int itemIndex = ItemIndexAt(dropBounds, e.Y);
+                if (itemIndex >= 0)
                 {
                     _pressedItemIndex = itemIndex;
                     _highlightedIndex = itemIndex;
@@ -422,25 +487,27 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     /// <inheritdoc />
     public override bool OnPointerUp(KumikoPointerEventArgs e)
     {
-        if (_isDropdownOpen && _pressedItemIndex >= 0)
+        var pressed = _pressTarget;
+        bool wasPanning = _isPanning;
+        _pressTarget = PressTarget.None;
+        _isPanning = false;
+
+        if (_isDropdownOpen && pressed == PressTarget.List && !wasPanning && _pressedItemIndex >= 0)
         {
             var dropBounds = GetDropdownBounds();
-            if (dropBounds.Contains(e.X, e.Y))
+            // Confirm selection only if pointer is still over the same item
+            if (dropBounds.Contains(e.X, e.Y) && ItemIndexAt(dropBounds, e.Y) == _pressedItemIndex)
             {
-                // Confirm selection only if pointer is still over the same item
-                int itemIndex = (int)((e.Y - dropBounds.Y + DropdownScrollOffset) / ItemHeight);
-                if (itemIndex == _pressedItemIndex)
-                {
-                    SelectItemFromFiltered(_pressedItemIndex);
-                    CloseDropdown();
-                    RaiseEditCompleted();
-                }
+                SelectItemFromFiltered(_pressedItemIndex);
+                _pressedItemIndex = -1;
+                CloseDropdown();
+                RaiseEditCompleted();
+                return true;
             }
-            _pressedItemIndex = -1;
-            return true;
         }
 
         _pressedItemIndex = -1;
+        if (pressed == PressTarget.Scrollbar) InvalidateVisual();
         // Always consume pointer-up when the combobox editor is active.
         // Without this, the grid's HandlePointerUp falls through to
         // "click outside editor → commit" logic, immediately ending
@@ -449,21 +516,70 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// With a press on the list, a move past a small threshold turns the press into a drag that scrolls
+    /// the list (and picks nothing on release); with a press on the scrollbar, it drags the thumb.
+    /// Otherwise it highlights the item under the pointer.
+    /// </remarks>
     public override bool OnPointerMove(KumikoPointerEventArgs e)
     {
         if (!_isDropdownOpen) return false;
 
         var dropBounds = GetDropdownBounds();
+        switch (_pressTarget)
+        {
+            case PressTarget.Scrollbar:
+                ScrollThumbTo(dropBounds, e.Y - _scrollbarGrab);
+                return true;
+
+            case PressTarget.List:
+                if (!_isPanning && Math.Abs(e.Y - _pressY) > DragThreshold)
+                {
+                    _isPanning = true;
+                    _pressedItemIndex = -1; // a drag scrolls; it never picks
+                }
+                if (_isPanning)
+                {
+                    ScrollDropdownTo(DropdownScrollOffset + (_lastPanY - e.Y));
+                    _lastPanY = e.Y;
+                    return true;
+                }
+                break;
+        }
+
         if (dropBounds.Contains(e.X, e.Y))
         {
-            _highlightedIndex = (int)((e.Y - dropBounds.Y + DropdownScrollOffset) / ItemHeight);
-            InvalidateVisual();
+            int index = ItemIndexAt(dropBounds, e.Y);
+            if (index >= 0 && index != _highlightedIndex)
+            {
+                _highlightedIndex = index;
+                InvalidateVisual();
+            }
             return true;
         }
-        return false;
+        return _pressTarget != PressTarget.None;
+    }
+
+    /// <summary>The mouse wheel scrolls the open dropdown list.</summary>
+    public override bool OnScroll(KumikoPointerEventArgs e)
+    {
+        if (!_isDropdownOpen || !GetDropdownBounds().Contains(e.X, e.Y)) return false;
+
+        ScrollDropdownTo(DropdownScrollOffset - e.ScrollDeltaY * ItemHeight * WheelItemsPerNotch);
+        return true;
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>Down, Up (and PageDown, PageUp, Home, End in the open dropdown) move the highlight, and the
+    /// selection with it; Down, Up and Space open a closed dropdown.</para>
+    /// <para>Enter picks the highlighted item, closes the dropdown and completes the edit
+    /// (<see cref="DrawnComponent.EditCompleted"/>); with the dropdown closed or nothing highlighted it is
+    /// not handled. Escape closes the open dropdown, restoring the selection it opened with; with the
+    /// dropdown closed it is not handled.</para>
+    /// <para>A typed character narrows the list when <see cref="IsFilterable"/>; otherwise it jumps to the
+    /// next item whose text starts with it (typeahead), and is not handled when no item does.</para>
+    /// </remarks>
     public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
         switch (e.Key)
@@ -478,58 +594,146 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
                 MoveHighlight(-1);
                 return true;
 
+            case KumikoKey.PageDown when _isDropdownOpen:
+                MoveHighlight(Math.Max(1, VisibleItemSlots - 1));
+                return true;
+
+            case KumikoKey.PageUp when _isDropdownOpen:
+                MoveHighlight(-Math.Max(1, VisibleItemSlots - 1));
+                return true;
+
+            case KumikoKey.Home when _isDropdownOpen:
+                MoveHighlightTo(0);
+                return true;
+
+            case KumikoKey.End when _isDropdownOpen:
+                MoveHighlightTo(GetVisibleItems().Count - 1);
+                return true;
+
             case KumikoKey.Enter:
-                if (_isDropdownOpen && _highlightedIndex >= 0)
-                {
-                    SelectItemFromFiltered(_highlightedIndex);
-                    CloseDropdown();
-                }
+                if (!_isDropdownOpen || _highlightedIndex < 0 || _highlightedIndex >= GetVisibleItems().Count)
+                    return false;
+                SelectItemFromFiltered(_highlightedIndex);
+                CloseDropdown();
+                RaiseEditCompleted();
                 return true;
 
             case KumikoKey.Escape:
+                if (!_isDropdownOpen) return false;
+                if (_selectedIndex != _selectedIndexAtOpen)
+                    SelectIndex(_selectedIndexAtOpen);
                 CloseDropdown();
                 return true;
 
             case KumikoKey.Space:
-                if (!_isDropdownOpen) { OpenDropdown(); return true; }
-                break;
+                return OnSpace();
 
-            default:
-                if (IsFilterable && e.Character.HasValue && e.Character.Value != '\0' && _isDropdownOpen)
-                {
-                    _filterText += e.Character.Value;
-                    _filteredItems = null;
-                    _highlightedIndex = 0;
-                    InvalidateVisual();
-                    return true;
-                }
-                if (e.Key == KumikoKey.Backspace && IsFilterable && _filterText.Length > 0)
-                {
-                    _filterText = _filterText[..^1];
-                    _filteredItems = null;
-                    _highlightedIndex = 0;
-                    InvalidateVisual();
-                    return true;
-                }
-                break;
+            case KumikoKey.Backspace:
+                if (!IsFilterable || _filterText.Length == 0) return false;
+                _filterText = _filterText[..^1];
+                ApplyFilterChange();
+                return true;
+        }
+
+        if (e.HasCommand || e.HasAlt || e.EnteredText is not { } text || char.IsControl(text[0]))
+            return false;
+
+        if (IsFilterable)
+        {
+            if (!_isDropdownOpen) OpenDropdown();
+            _filterText += text;
+            ApplyFilterChange();
+            return true;
+        }
+
+        // A space typed as text (hosts that capture the keyboard through a text box) is Space
+        if (text == " ")
+            return OnSpace();
+
+        return TypeAhead(text);
+    }
+
+    /// <summary>Space opens a closed dropdown; in an open filterable one it is part of the filter.</summary>
+    private bool OnSpace()
+    {
+        if (!_isDropdownOpen) { OpenDropdown(); return true; }
+        if (!IsFilterable) return false;
+        _filterText += " ";
+        ApplyFilterChange();
+        return true;
+    }
+
+    private void ApplyFilterChange()
+    {
+        _filteredItems = null;
+        _highlightedIndex = GetVisibleItems().Count > 0 ? 0 : -1;
+        DropdownScrollOffset = 0;
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Jump to the next item (after the highlighted one, wrapping) whose text starts with
+    /// <paramref name="prefix"/>: typing the same letter again cycles through the items that start with it.
+    /// </summary>
+    private bool TypeAhead(string prefix)
+    {
+        var items = GetVisibleItems();
+        int count = items.Count;
+        if (count == 0) return false;
+
+        int start = _isDropdownOpen ? _highlightedIndex : FilteredIndexOf(_selectedIndex);
+        if (start < -1 || start >= count) start = -1;
+        for (int step = 1; step <= count; step++)
+        {
+            int i = (start + step) % count;
+            if (items[i].DisplayText.StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase))
+            {
+                MoveHighlightTo(i);
+                return true;
+            }
         }
         return false;
     }
+
+    private int FilteredIndexOf(int realIndex)
+    {
+        if (realIndex < 0 || realIndex >= _items.Count) return -1;
+        return GetVisibleItems().IndexOf(_items[realIndex]);
+    }
+
+    /// <summary>The number of whole items the open dropdown shows at once.</summary>
+    private int VisibleItemSlots =>
+        ItemHeight > 0 ? Math.Max(1, (int)(DropdownHeight / ItemHeight)) : 1;
 
     private void MoveHighlight(int delta)
     {
         var items = GetVisibleItems();
         if (items.Count == 0) return;
 
-        _highlightedIndex = Math.Clamp(_highlightedIndex + delta, 0, items.Count - 1);
+        MoveHighlightTo(Math.Clamp(_highlightedIndex + delta, 0, items.Count - 1));
+    }
+
+    /// <summary>
+    /// Highlight the item at <paramref name="filteredIndex"/> of the visible list and select it: the item
+    /// the keyboard highlights is the combo box's value, so any commit (Enter, Tab, a click elsewhere)
+    /// writes it.
+    /// </summary>
+    private void MoveHighlightTo(int filteredIndex)
+    {
+        var items = GetVisibleItems();
+        if (items.Count == 0) return;
+
+        _highlightedIndex = Math.Clamp(filteredIndex, 0, items.Count - 1);
+        SelectItemFromFiltered(_highlightedIndex);
         EnsureHighlightVisible();
         InvalidateVisual();
     }
 
     private void EnsureHighlightVisible()
     {
+        if (_highlightedIndex < 0) return;
         float itemTop = _highlightedIndex * ItemHeight;
-        float dropdownHeight = Math.Min(GetVisibleItems().Count * ItemHeight, MaxDropdownHeight);
+        float dropdownHeight = DropdownHeight;
 
         if (itemTop < DropdownScrollOffset)
             DropdownScrollOffset = itemTop;
@@ -537,31 +741,95 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
             DropdownScrollOffset = itemTop + ItemHeight - dropdownHeight;
     }
 
+    // ── Dropdown scrolling ──────────────────────────────────────
+
+    /// <summary>How far the dropdown list scrolls: its content height past the dropdown's height.</summary>
+    private float MaxDropdownScrollOffset
+    {
+        get
+        {
+            float content = GetVisibleItems().Count * ItemHeight;
+            return Math.Max(0, content - Math.Min(content, DropdownHeight));
+        }
+    }
+
+    private void ScrollDropdownTo(float offset)
+    {
+        float clamped = Math.Clamp(offset, 0, MaxDropdownScrollOffset);
+        if (Math.Abs(clamped - DropdownScrollOffset) < 0.01f) return;
+        DropdownScrollOffset = clamped;
+        InvalidateVisual();
+    }
+
+    /// <summary>The scrollbar thumb's hit area: the right edge of the dropdown, sized to the visible fraction.</summary>
+    private KumikoRect ScrollbarThumb(KumikoRect dropBounds)
+    {
+        float content = GetVisibleItems().Count * ItemHeight;
+        float max = MaxDropdownScrollOffset;
+        float thumbHeight = content > 0
+            ? Math.Min(dropBounds.Height, Math.Max(MinThumbHeight, dropBounds.Height * (dropBounds.Height / content)))
+            : dropBounds.Height;
+        float thumbY = dropBounds.Y + (max > 0 ? DropdownScrollOffset / max : 0) * (dropBounds.Height - thumbHeight);
+        return new KumikoRect(dropBounds.Right - ScrollbarHitWidth, thumbY, ScrollbarHitWidth, thumbHeight);
+    }
+
+    private void ScrollThumbTo(KumikoRect dropBounds, float thumbTop)
+    {
+        float track = dropBounds.Height - ScrollbarThumb(dropBounds).Height;
+        if (track <= 0) return;
+        ScrollDropdownTo((thumbTop - dropBounds.Y) / track * MaxDropdownScrollOffset);
+    }
+
+    /// <summary>The index in the visible list of the item at viewport y <paramref name="y"/>, or -1.</summary>
+    private int ItemIndexAt(KumikoRect dropBounds, float y)
+    {
+        if (ItemHeight <= 0) return -1;
+        float offset = y - dropBounds.Y + DropdownScrollOffset;
+        if (offset < 0) return -1;
+        int index = (int)(offset / ItemHeight);
+        return index < GetVisibleItems().Count ? index : -1;
+    }
+
     private void SelectItemFromFiltered(int filteredIndex)
     {
         var items = GetVisibleItems();
         if (filteredIndex < 0 || filteredIndex >= items.Count) return;
 
-        var item = items[filteredIndex];
-        int realIndex = _items.IndexOf(item);
-        if (realIndex >= 0)
-        {
-            var old = _selectedIndex;
-            _selectedIndex = realIndex;
-            SelectionChanged?.Invoke(this, new ComboBoxSelectionChangedEventArgs(
-                old >= 0 ? _items[old] : null, _items[realIndex]));
-            RaiseValueChanged(old >= 0 ? _items[old].Value : null, _items[realIndex].Value);
-        }
+        SelectIndex(_items.IndexOf(items[filteredIndex]));
     }
 
-    /// <summary>Open the dropdown and reset filter/scroll state.</summary>
+    /// <summary>
+    /// Select the item at <paramref name="realIndex"/> of <see cref="Items"/> (-1 for none), raising
+    /// <see cref="SelectionChanged"/> and <see cref="DrawnComponent.ValueChanged"/> when it changes.
+    /// </summary>
+    private void SelectIndex(int realIndex)
+    {
+        if (realIndex < -1 || realIndex >= _items.Count || realIndex == _selectedIndex) return;
+
+        var old = _selectedIndex;
+        _selectedIndex = realIndex;
+        var oldItem = old >= 0 ? _items[old] : null;
+        var newItem = realIndex >= 0 ? _items[realIndex] : null;
+        SelectionChanged?.Invoke(this, new ComboBoxSelectionChangedEventArgs(oldItem, newItem));
+        RaiseValueChanged(oldItem?.Value, newItem?.Value);
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Open the dropdown: clear the filter, highlight the selected item and scroll it into view. Escape
+    /// restores the selection the dropdown opened with.
+    /// </summary>
     public void OpenDropdown()
     {
         _isDropdownOpen = true;
         _highlightedIndex = _selectedIndex;
+        _selectedIndexAtOpen = _selectedIndex;
         _filterText = string.Empty;
         _filteredItems = null;
+        _pressTarget = PressTarget.None;
+        _isPanning = false;
         DropdownScrollOffset = 0;
+        EnsureHighlightVisible();
         DropdownOpened?.Invoke();
         InvalidateVisual();
     }
