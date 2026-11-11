@@ -43,7 +43,8 @@ internal sealed class KumikoFontRegistrar : IFontRegistrar
 
             SkiaFontRegistrar.RegisterTypefaceFamiliesFromStream(stream, FamilyNames(filename, alias));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException
+                                       or ArgumentException or NotSupportedException)
         {
             // Non-fatal: the grid falls back to the system font manager for this family.
             Skip(filename, ex.Message);

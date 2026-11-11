@@ -125,12 +125,12 @@ public static class SkiaFontRegistrar
         ArgumentNullException.ThrowIfNull(stream);
         ArgumentNullException.ThrowIfNull(families);
 
-        var names = new List<string>();
-        foreach (var name in families)
-        {
-            if (!string.IsNullOrWhiteSpace(name) && !names.Contains(name, StringComparer.OrdinalIgnoreCase))
-                names.Add(name);
-        }
+        // Distinct keeps the first spelling of each name, in order.
+        var names = families
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
         if (names.Count == 0)
             throw new ArgumentException("At least one family name is required.", nameof(families));
 

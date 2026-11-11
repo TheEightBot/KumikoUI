@@ -81,7 +81,7 @@ public class SkiaFontRegistrarTests : IDisposable
         Assert.Throws<ArgumentException>(() =>
             SkiaFontRegistrar.RegisterTypefaceFamiliesFromStream(OpenSansStream(), [null, " "]));
         Assert.Throws<ArgumentNullException>(() =>
-            SkiaFontRegistrar.RegisterTypefaceFamiliesFromStream((Stream)null!, ["A"]));
+            SkiaFontRegistrar.RegisterTypefaceFamiliesFromStream(null!, ["A"]));
     }
 
     [Fact]
