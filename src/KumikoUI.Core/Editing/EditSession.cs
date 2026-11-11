@@ -440,12 +440,9 @@ public class EditSession
     internal static object? NextBooleanValue(object? current, bool isThreeState)
     {
         if (!isThreeState) return current is not true;
-        return current switch
-        {
-            true => null,
-            false => true,
-            _ => false,
-        };
+        // checked -> indeterminate, unchecked -> checked, indeterminate (or anything else) -> unchecked
+        if (current is true) return null;
+        return current is false;
     }
 
     private void RefuseToggle(int row, int col, KumikoColumn column, object item, object? oldValue, object? attempted,

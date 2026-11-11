@@ -109,7 +109,7 @@ public class ThreeStateBooleanTests
     [Fact]
     public void Enter_CyclesTheCurrentCell_FromIndeterminateToUnchecked()
     {
-        var g = Grid.Create(true, (bool?)null);
+        var g = Grid.Create(true, new bool?[] { null });
         g.Selection.CurrentCell = new CellPosition(0, 0);
 
         g.Key(KumikoKey.Enter);
@@ -120,7 +120,7 @@ public class ThreeStateBooleanTests
     [Fact]
     public void TwoStateColumn_NullBecomesCheckedAndNeverReturnsToNull()
     {
-        var g = Grid.Create(false, (bool?)null);
+        var g = Grid.Create(false, new bool?[] { null });
         g.Selection.CurrentCell = new CellPosition(0, 0);
 
         g.Key(KumikoKey.Space);
