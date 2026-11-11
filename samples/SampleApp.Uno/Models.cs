@@ -8,6 +8,7 @@ namespace SampleApp.Uno;
 /// Showcases every column type: Text, Numeric, Boolean, Date, ComboBox, Picker, Template.
 /// Shared by <see cref="BasicGridPage"/> and <see cref="MvvmActionsPage"/>.
 /// </summary>
+[KumikoUI.Core.Data.KumikoGridItem]
 public class Employee : INotifyPropertyChanged
 {
     private int _id;

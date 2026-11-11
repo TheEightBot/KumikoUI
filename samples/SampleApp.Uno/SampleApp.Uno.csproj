@@ -95,6 +95,18 @@
   </ItemGroup>
 
   <!--
+    The KumikoUI.Core package delivers the [KumikoGridItem] source generator as an analyzer; a project reference
+    does not, so the sample references it directly. The sample's row types then read through generated accessors,
+    which is what Native AOT and full trimming need (#76).
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      UndefineProperties="TargetFramework;TargetFrameworks" />
+  </ItemGroup>
+
+  <!--
     WebAssembly head workaround for SkiaSharp.NativeAssets.WebAssembly 4.153.1 (#184).
 
     That package puts Dawn's emdawnwebgpu port on the native link line as source: it appends
