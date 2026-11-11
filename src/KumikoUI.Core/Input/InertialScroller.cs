@@ -8,11 +8,15 @@ public class InertialScroller
     private float _velocityX;
     private float _velocityY;
     private bool _isActive;
+    private bool _hasSample;
     private long _lastTimestampMs;
 
     // Smoothed velocity samples for less jerky tracking
     private float _smoothVelocityX;
     private float _smoothVelocityY;
+
+    /// <summary>Longest frame step, in milliseconds, that <see cref="Update"/> will integrate in one call.</summary>
+    private const float MaxFrameIntervalMs = 100f;
 
     /// <summary>Configurable scroll settings. Shared with KumikoDataGrid.</summary>
     public ScrollSettings Settings { get; set; } = new();
@@ -21,47 +25,102 @@ public class InertialScroller
     public bool IsActive => _isActive;
 
     /// <summary>
+    /// Number of velocity samples ignored since the last <see cref="Reset"/> because their timestamp was missing
+    /// (zero or negative), duplicated, or earlier than the previous sample. A host that never sets the pointer
+    /// timestamp sees this grow with every move and gets no fling; use it to diagnose that.
+    /// </summary>
+    public int IgnoredSampleCount { get; private set; }
+
+    /// <summary>
     /// Record a velocity sample from touch/pan move events.
     /// Call this on every pointer-move during a pan.
     /// Uses exponential moving average for smoother velocity tracking.
+    /// Samples whose timestamp is missing, duplicated or moves backward are ignored and counted in
+    /// <see cref="IgnoredSampleCount"/>; a gap longer than <see cref="ScrollSettings.FlingHoldCutoffMs"/> since the
+    /// previous sample drops the accumulated velocity, because the finger paused.
     /// </summary>
     public void TrackVelocity(float dx, float dy, long timestampMs)
     {
-        if (_lastTimestampMs > 0)
+        if (timestampMs <= 0 || !float.IsFinite(dx) || !float.IsFinite(dy))
         {
-            float dt = (timestampMs - _lastTimestampMs) / 1000f;
-            if (dt > 0 && dt < 0.2f)  // Ignore stale or zero-gap samples
-            {
-                float rawVx = Math.Clamp(dx / dt, -Settings.MaxVelocity, Settings.MaxVelocity);
-                float rawVy = Math.Clamp(dy / dt, -Settings.MaxVelocity, Settings.MaxVelocity);
-
-                float s = Settings.VelocitySmoothing;
-                _smoothVelocityX = _smoothVelocityX * s + rawVx * (1f - s);
-                _smoothVelocityY = _smoothVelocityY * s + rawVy * (1f - s);
-
-                _velocityX = _smoothVelocityX;
-                _velocityY = _smoothVelocityY;
-            }
+            IgnoredSampleCount++;
+            return;
         }
-        else
+
+        if (!_hasSample)
         {
-            // First sample — no smoothing
+            // First sample — no smoothing, nothing to measure a delta against.
             _smoothVelocityX = 0;
             _smoothVelocityY = 0;
+            _velocityX = 0;
+            _velocityY = 0;
+            _hasSample = true;
+            _lastTimestampMs = timestampMs;
+            return;
         }
+
+        long gapMs = timestampMs - _lastTimestampMs;
+        if (gapMs <= 0)
+        {
+            // Duplicate or backward timestamp: no usable interval. Keep the newest time seen.
+            IgnoredSampleCount++;
+            return;
+        }
+
+        if (gapMs >= Settings.FlingHoldCutoffMs)
+        {
+            // The finger paused: earlier motion says nothing about the current speed.
+            _smoothVelocityX = 0;
+            _smoothVelocityY = 0;
+            _velocityX = 0;
+            _velocityY = 0;
+            _lastTimestampMs = timestampMs;
+            return;
+        }
+
+        float dt = gapMs / 1000f;
+        float max = Settings.MaxVelocity;
+        float rawVx = Math.Clamp(dx / dt, -max, max);
+        float rawVy = Math.Clamp(dy / dt, -max, max);
+
+        float s = Settings.VelocitySmoothing;
+        _smoothVelocityX = _smoothVelocityX * s + rawVx * (1f - s);
+        _smoothVelocityY = _smoothVelocityY * s + rawVy * (1f - s);
+
+        _velocityX = _smoothVelocityX;
+        _velocityY = _smoothVelocityY;
         _lastTimestampMs = timestampMs;
     }
 
     /// <summary>
+    /// Start the inertial animation with the tracked velocity, without checking how long the pointer rested before
+    /// release. Prefer <see cref="StartFling(long)"/> when the release timestamp is known.
+    /// </summary>
+    public void StartFling() => StartFling(0);
+
+    /// <summary>
     /// Start the inertial animation with the tracked velocity.
     /// Call this when the pointer is released after a pan.
+    /// If the pointer rested for <see cref="ScrollSettings.FlingHoldCutoffMs"/> or longer between the last move
+    /// sample and the release, the velocity is dropped and no fling starts (hold-then-release).
     /// </summary>
-    public void StartFling()
+    /// <param name="releaseTimestampMs">Timestamp of the release event, on the same clock as
+    /// <see cref="TrackVelocity"/>. Zero or negative skips the hold check.</param>
+    public void StartFling(long releaseTimestampMs)
     {
         if (!Settings.EnableInertia)
         {
             _isActive = false;
             return;
+        }
+
+        if (releaseTimestampMs > 0 && _hasSample
+            && releaseTimestampMs - _lastTimestampMs >= Settings.FlingHoldCutoffMs)
+        {
+            _velocityX = 0;
+            _velocityY = 0;
+            _smoothVelocityX = 0;
+            _smoothVelocityY = 0;
         }
 
         float threshold = Settings.MinVelocity * Settings.FlingThresholdMultiplier;
@@ -79,23 +138,51 @@ public class InertialScroller
         _smoothVelocityX = 0;
         _smoothVelocityY = 0;
         _isActive = false;
+        _hasSample = false;
         _lastTimestampMs = 0;
+        IgnoredSampleCount = 0;
+    }
+
+    /// <summary>
+    /// Report how far the host actually scrolled for the delta returned by <see cref="Update"/>. An axis that was
+    /// asked to move but did not (the content edge clamped it) loses its velocity, and the fling ends once no axis
+    /// has any left, so a fling into an edge does not keep the frame loop alive.
+    /// </summary>
+    /// <param name="requestedDx">Horizontal delta returned by <see cref="Update"/>.</param>
+    /// <param name="requestedDy">Vertical delta returned by <see cref="Update"/>.</param>
+    /// <param name="appliedDx">Horizontal distance the offset really changed by.</param>
+    /// <param name="appliedDy">Vertical distance the offset really changed by.</param>
+    public void ReportApplied(float requestedDx, float requestedDy, float appliedDx, float appliedDy)
+    {
+        if (!_isActive) return;
+
+        if (requestedDx != 0 && appliedDx == 0) { _velocityX = 0; _smoothVelocityX = 0; }
+        if (requestedDy != 0 && appliedDy == 0) { _velocityY = 0; _smoothVelocityY = 0; }
+
+        if (_velocityX == 0 && _velocityY == 0)
+            _isActive = false;
     }
 
     /// <summary>
     /// Call each frame to get the scroll delta.
     /// Returns (dx, dy) to apply to scroll offset.
     /// </summary>
+    /// <param name="frameIntervalMs">Real time since the previous step, in milliseconds. Travel and friction both
+    /// scale with it, so slow frames cover the same distance. Non-finite or non-positive values produce no motion;
+    /// values above 100 ms are clamped.</param>
     public (float dx, float dy) Update(float frameIntervalMs = 16f)
     {
         if (!_isActive) return (0, 0);
+        if (!(frameIntervalMs > 0f) || !float.IsFinite(frameIntervalMs)) return (0, 0);
+        if (frameIntervalMs > MaxFrameIntervalMs) frameIntervalMs = MaxFrameIntervalMs;
 
         float factor = frameIntervalMs / 16f; // Normalize to 60fps baseline
         float dx = _velocityX * (frameIntervalMs / 1000f);
         float dy = _velocityY * (frameIntervalMs / 1000f);
 
-        _velocityX *= MathF.Pow(Settings.Friction, factor);
-        _velocityY *= MathF.Pow(Settings.Friction, factor);
+        float decay = MathF.Pow(Settings.Friction, factor);
+        _velocityX *= decay;
+        _velocityY *= decay;
 
         if (Math.Abs(_velocityX) < Settings.MinVelocity &&
             Math.Abs(_velocityY) < Settings.MinVelocity)

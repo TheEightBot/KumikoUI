@@ -525,17 +525,23 @@ public class KumikoInputController
 
     /// <summary>
     /// Tick the inertial scroller. Returns true if the scroll is still animating.
-    /// Call this from a frame timer.
+    /// Call this from a frame timer, passing the real time since the previous call. The fling ends as soon as a
+    /// step cannot move the offset (content edge reached).
     /// </summary>
+    /// <param name="scroll">Scroll state to advance.</param>
+    /// <param name="frameIntervalMs">Measured milliseconds since the previous tick.</param>
     public bool UpdateInertialScroll(ScrollState scroll, float frameIntervalMs = 16f)
     {
         if (!_inertialScroller.IsActive) return false;
 
         var (dx, dy) = _inertialScroller.Update(frameIntervalMs);
-        if (dx == 0 && dy == 0) return false;
+        if (dx == 0 && dy == 0) return _inertialScroller.IsActive;
 
+        float beforeX = scroll.OffsetX, beforeY = scroll.OffsetY;
         scroll.ScrollBy(dx, dy);
-        Redraw();
+        float movedX = scroll.OffsetX - beforeX, movedY = scroll.OffsetY - beforeY;
+        _inertialScroller.ReportApplied(dx, dy, movedX, movedY);
+        if (movedX != 0 || movedY != 0) Redraw();
         return _inertialScroller.IsActive;
     }
 
@@ -879,7 +885,7 @@ public class KumikoInputController
         if (_isPanning)
         {
             _isPanning = false;
-            _inertialScroller.StartFling();
+            _inertialScroller.StartFling(e.TimestampMs);
             e.Handled = true;
             return;
         }
@@ -1090,7 +1096,7 @@ public class KumikoInputController
         {
             // Touch left bounds — start inertial scroll with current velocity
             _isPanning = false;
-            _inertialScroller.StartFling();
+            _inertialScroller.StartFling(e.TimestampMs);
             e.Handled = true;
             return;
         }
