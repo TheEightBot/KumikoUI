@@ -1021,6 +1021,9 @@ public partial class KumikoDataGrid : ContentView
         StopInertialScrollTimer();
         StopCursorBlinkTimer();
 
+        // Stop observing the app's collection and its items (the source lives on; Reconnect re-attaches it)
+        _dataSource.Detach();
+
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
         _inputController.NeedsRedraw -= OnInputControllerNeedsRedraw;
@@ -1097,6 +1100,8 @@ public partial class KumikoDataGrid : ContentView
     private void Reconnect()
     {
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
+        _dataSource.Attach();
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
