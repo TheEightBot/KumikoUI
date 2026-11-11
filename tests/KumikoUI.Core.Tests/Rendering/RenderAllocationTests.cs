@@ -134,6 +134,40 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_AutoColumnsWhileScrolling_AllocatesNothing()
+    {
+        // Auto columns sample their cells on the first frame and after a data change (#24); frames of unchanged data
+        // reuse the measurement, also while the grid scrolls.
+        var grid = CreateGrid(featured: false);
+        foreach (var column in grid.Source.Columns)
+            column.SizeMode = ColumnSizeMode.Auto;
+        grid.Source.Columns[1].SizeMode = ColumnSizeMode.Star;
+        int frame = 0;
+
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+        {
+            grid.Scroll.OffsetY = frame++ % 2 == 0 ? 0 : 5 * grid.Style.RowHeight + 7;
+            grid.Render(ctx);
+        }));
+        Assert.True(grid.Source.Columns[0].ContentFitWidth > 0);
+    }
+
+    [Fact]
+    public void ADataChange_MeasuresAutoColumnsOnce_ThenAllocatesNothingAgain()
+    {
+        var grid = CreateGrid(featured: false);
+        grid.Source.Columns[0].SizeMode = ColumnSizeMode.Auto;
+        var ctx = new NoOpDrawingContext();
+        MeasureSteadyState(grid.Render);
+
+        grid.Source.Refresh();
+        long remeasure = Allocated(() => grid.Render(ctx));
+
+        Assert.True(remeasure > 0, "a data change samples the Auto column's cells again");
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
     public void ChangingTheStyle_RebuildsThePaintsOnce_ThenAllocatesNothingAgain()
     {
         var grid = CreateGrid(featured: false);

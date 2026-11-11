@@ -117,6 +117,34 @@ public class KumikoRenderer : IDisposable
             : _cellRenderers[KumikoColumnType.Text];
     }
 
+    // The scrolling data rows on screen in the last frame, sampled by AutoFitColumn (#24); none before the first.
+    private int _lastFirstRow;
+    private int _lastLastRow = -1;
+
+    /// <summary>
+    /// Fits <paramref name="column"/> to its header and its content, as a double-click on its resize grip asks
+    /// (<see cref="Input.KumikoInputController.AutoFitColumnRequested"/>), and returns the new width. The cells
+    /// measured are the rows on screen in the last frame plus the first and last
+    /// <see cref="KumikoLayoutEngine.AutoFitSampleRows"/> rows of the view, so it costs the same on any number of
+    /// rows (see <see cref="KumikoLayoutEngine.CalculateAutoFitWidth(KumikoColumn, KumikoSource, IDrawingContext, KumikoStyle, int, int)"/>).
+    /// The width becomes explicit, and a <see cref="ColumnSizeMode.Star"/> or <see cref="ColumnSizeMode.Auto"/>
+    /// column switches to <see cref="ColumnSizeMode.Fixed"/> so it keeps the width (see
+    /// <see cref="KumikoColumn.SizeMode"/>). The host redraws afterwards.
+    /// </summary>
+    /// <param name="column">The column to fit.</param>
+    /// <param name="dataSource">The rows to sample.</param>
+    /// <param name="measuringContext">Measures header and cell text; the caller owns and disposes it.</param>
+    /// <param name="style">The grid style (fonts and padding).</param>
+    /// <returns>The column's new width, in pixels.</returns>
+    public float AutoFitColumn(KumikoColumn column, KumikoSource dataSource, IDrawingContext measuringContext,
+        KumikoStyle style)
+    {
+        float width = _layout.CalculateAutoFitWidth(column, dataSource, measuringContext, style,
+            _lastFirstRow, _lastLastRow);
+        column.ApplyUserWidth(width);
+        return width;
+    }
+
     /// <summary>Render the full grid given the current state.</summary>
     public void Render(
         IDrawingContext ctx,
@@ -154,7 +182,14 @@ public class KumikoRenderer : IDisposable
         }
         float effectiveViewportWidth = scroll.ViewportWidth - handleOffset - rightHandleWidth;
 
-        _layout.ComputeColumnWidths(columns, effectiveViewportWidth, ctx, style);
+        // Auto columns sample the rows on screen (#24); the row range does not depend on column widths. A culture
+        // change is applied first, so they measure text formatted as this frame draws it.
+        dataSource.SyncCellTextCulture();
+        int frozenRowCount = dataSource.EffectiveFrozenRowCount;
+        var (firstRow, lastRow) = _layout.GetVisibleRowRangeWithOffset(
+            scroll, style, dataSource.RowCount, topSummaryHeight, frozenRowCount);
+
+        _layout.ComputeColumnWidths(columns, effectiveViewportWidth, ctx, style, dataSource, firstRow, lastRow);
         scroll.ContentWidth = _layout.GetContentWidth(columns) + handleOffset + rightHandleWidth;
         scroll.ContentHeight = _layout.GetContentHeight(dataSource.RowCount, style)
             + groupPanelOffset + topSummaryHeight + bottomSummaryHeight;
@@ -204,13 +239,15 @@ public class KumikoRenderer : IDisposable
         }
 
         // Compute frozen rows
-        int frozenRowCount = dataSource.EffectiveFrozenRowCount;
         float frozenRowHeight = _layout.GetFrozenRowHeight(frozenRowCount, style);
 
-        // Data rows start after header + top summaries + frozen rows
+        // Data rows start after header + top summaries + frozen rows. The vertical offset may have been clamped
+        // since the range was first computed (the row count or viewport changed), so compute it again.
         float dataAreaTop = style.HeaderHeight + topSummaryHeight;
-        var (firstRow, lastRow) = _layout.GetVisibleRowRangeWithOffset(
+        (firstRow, lastRow) = _layout.GetVisibleRowRangeWithOffset(
             scroll, style, dataSource.RowCount, topSummaryHeight, frozenRowCount);
+        _lastFirstRow = firstRow;
+        _lastLastRow = lastRow;
         bool isMultiSort = dataSource.IsMultiSortActive;
         dataSource.PrepareCellTextCache(frozenRowCount, Math.Max(0, lastRow - firstRow + 1));
 

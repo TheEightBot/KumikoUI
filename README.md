@@ -342,7 +342,7 @@ Columns support three sizing modes controlled by the `SizeMode` property.
 | `SizeMode` | Behavior |
 |---|---|
 | `Fixed` | The pixel width set via `Width` (default mode) |
-| `Auto` | Laid out like `Fixed` for now; content measurement is planned (#24). Double-click a header's resize grip to auto-fit a column to its header and cells |
+| `Auto` | Fitted to its header and its widest cell (`ContentFitWidth`), within `MinWidth`/`MaxWidth`. Cells are sampled (the rows on screen plus the first and last 100 rows), on the first frame and again after the data or the view changes; scrolling alone never changes the width |
 | `Star` | Weighted share (`StarWeight`, default `1`) of the width Fixed and Auto columns leave, within `MinWidth`/`MaxWidth` |
 
 Modes can be mixed freely — the layout engine resolves them every frame.
@@ -360,13 +360,14 @@ Modes can be mixed freely — the layout engine resolves them every frame.
 <core:KumikoColumn Header="Customer Account Number" PropertyName="Account" MaxWidth="100" />
 ```
 
-- Setting `Width` in code or XAML, dragging the column's resize grip, or auto-fitting it makes the width explicit (`HasExplicitWidth`); from then on the column keeps its width, even below the header-fit width.
+- Setting `Width` in code or XAML, dragging the column's resize grip, or auto-fitting it makes the width explicit (`HasExplicitWidth`); from then on a Fixed column keeps its width, even below the header-fit width.
+- For Star and Auto columns `Width` is an output of layout. Dragging the resize grip of a Star or Auto column, or auto-fitting it, switches it to `Fixed` at the chosen width so the width persists; set `SizeMode` back to `Star` or `Auto` to share or measure it again.
 - Star columns share the remaining width by weight. A Star column whose share is below its minimum (its `MinWidth` and header-fit width) or above its `MaxWidth` is held there, and the others share what is left. When the viewport is too narrow for every column's minimum, columns keep their minimums and the grid scrolls horizontally instead of truncating headers.
 - Header widths are measured once per header text and font and cached; changing a column's `Header`, its `HeaderCellStyle.Font` or the grid's `HeaderFont` (or a property of that font) measures it again.
 
 ### Resizing and hover cursors
 
-Drag the right edge of a column header to resize the column, or double-click it to request an auto-fit (`AutoFitColumnRequested`). The edge is a resize grip only when the column has `AllowResize` set (the default) and room to change (`MaxWidth` above `MinWidth`).
+Drag the right edge of a column header to resize the column, or double-click it to auto-fit the column to its header and its widest sampled cell (`AutoFitColumnRequested`, answered by `KumikoRenderer.AutoFitColumn`). The edge is a resize grip only when the column has `AllowResize` set (the default) and room to change (`MaxWidth` above `MinWidth`).
 
 With a mouse, the cursor shows what a click does:
 

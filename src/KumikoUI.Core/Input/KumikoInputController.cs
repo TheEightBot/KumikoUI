@@ -82,7 +82,11 @@ public class KumikoInputController
 
     /// <summary>Raised when <see cref="Cursor"/> changes (only when it changes), with the new cursor.</summary>
     public event Action<KumikoCursor>? CursorChanged;
-    /// <summary>Raised when the user finishes resizing a column by dragging its header edge.</summary>
+    /// <summary>
+    /// Raised when the user finishes resizing a column by dragging its header edge. The drag makes the width
+    /// explicit and switches a Star or Auto column to Fixed, so the width persists (see
+    /// <see cref="KumikoColumn.SizeMode"/>).
+    /// </summary>
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized;
     /// <summary>Raised when the user drops a dragged column header at a new position.</summary>
     public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered;
@@ -115,7 +119,10 @@ public class KumikoInputController
     public ITextInputSession? ActiveTextInput =>
         _activeFilterPopup?.SearchTextInput ?? _editSession?.ActiveTextInput;
 
-    /// <summary>Raised when a column edge is double-clicked, requesting auto-fit width.</summary>
+    /// <summary>
+    /// Raised when a column edge is double-clicked, requesting auto-fit width. The built-in hosts answer it with
+    /// <see cref="KumikoRenderer.AutoFitColumn"/>.
+    /// </summary>
     public event EventHandler<AutoFitColumnEventArgs>? AutoFitColumnRequested;
 
     /// <summary>Is the inertial scroller still animating?</summary>
@@ -1153,8 +1160,10 @@ public class KumikoInputController
 
         var col = columns[_resizeColumnIndex];
         float delta = e.X - _resizeStartX;
-        float newWidth = Math.Clamp(_resizeStartWidth + delta, col.MinWidth, col.MaxWidth);
-        col.Width = newWidth;
+        // Not Math.Clamp: a MinWidth above MaxWidth wins instead of throwing. A Star or Auto column switches to
+        // Fixed, so the next layout pass keeps the width instead of sharing it out or measuring it again (#24).
+        float newWidth = Math.Max(col.MinWidth, Math.Min(_resizeStartWidth + delta, col.MaxWidth));
+        col.ApplyUserWidth(newWidth);
         Redraw();
     }
 

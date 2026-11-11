@@ -238,7 +238,7 @@ public class KumikoLayoutEngineEdgeTests
     }
 
     [Fact]
-    public void ComputeColumnWidths_AutoColumnsKeepTheirWidth_AndCountAsFixed()
+    public void ComputeColumnWidths_UnmeasuredAutoColumnsKeepTheirWidth_AndCountAsFixed()
     {
         var auto = Fixed(50);
         auto.SizeMode = ColumnSizeMode.Auto;
@@ -317,7 +317,7 @@ public class KumikoLayoutEngineEdgeTests
         Assert.Equal(160f, Engine.GetContentWidth(cols)); // wider than the 100px viewport: it scrolls
     }
 
-    [Fact(Skip = "Known defect: space freed by a star column clamped to MaxWidth is not given to the other star columns (#24)")]
+    [Fact]
     public void ComputeColumnWidths_RedistributesSpaceAMaxWidthClampFreesUp()
     {
         var cols = new List<KumikoColumn> { Star(1, max: 100), Star(1) };
@@ -328,7 +328,7 @@ public class KumikoLayoutEngineEdgeTests
         Assert.Equal(400f, cols[1].Width, 0.01f);
     }
 
-    [Fact(Skip = "Known defect: a star column clamped up to MinWidth pushes the total past the viewport instead of shrinking its siblings (#24)")]
+    [Fact]
     public void ComputeColumnWidths_RedistributesTheSpaceAMinWidthClampTakes()
     {
         var cols = new List<KumikoColumn> { Star(1, min: 300), Star(1) };
