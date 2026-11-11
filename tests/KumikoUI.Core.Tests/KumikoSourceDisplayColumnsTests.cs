@@ -157,6 +157,7 @@ public class KumikoSourceDisplayColumnsTests
     }
 
     [Fact]
+    [Trait("Category", "Performance")]
     public void IndexOfRowKey_On100KRows_IsConstantTimePerLookup()
     {
         var items = Enumerable.Range(0, 100_000).Select(i => new Row { Id = i }).ToList();
@@ -174,6 +175,7 @@ public class KumikoSourceDisplayColumnsTests
     }
 
     [Fact]
+    [Trait("Category", "Performance")]
     public void Selection_On100KRows_StaysFastAcrossSelectionChanges()
     {
         var items = Enumerable.Range(0, 100_000).Select(i => new Row { Id = i }).ToList();

@@ -331,7 +331,8 @@ public class DrawnScrollPicker : DrawnComponent, IValueEditor
     {
         if (_items.Count == 0) return false;
 
-        _wheelRemainder -= e.ScrollDeltaY; // positive is up: toward earlier items
+        // Positive is up: toward earlier items. Trackpads report pixels, a wheel notches: both become items.
+        _wheelRemainder -= ItemHeight > 0 ? e.GetScrollPixelsY(ItemHeight) / ItemHeight : e.ScrollDeltaY;
         int steps = (int)_wheelRemainder;
         _wheelRemainder -= steps;
         if (steps != 0)

@@ -565,7 +565,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     {
         if (!_isDropdownOpen || !GetDropdownBounds().Contains(e.X, e.Y)) return false;
 
-        ScrollDropdownTo(DropdownScrollOffset - e.ScrollDeltaY * ItemHeight * WheelItemsPerNotch);
+        ScrollDropdownTo(DropdownScrollOffset - e.GetScrollPixelsY(ItemHeight * WheelItemsPerNotch));
         return true;
     }
 

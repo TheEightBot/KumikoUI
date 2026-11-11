@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 //   dotnet run --project eng/DocsSnippets -c Release [-- options]
 //
 //   --file <path-or-glob>   Markdown file to read, relative to the repository root. Repeatable. Replaces the
-//                           default list (README.md and docs/nuget/*.md). A missing file or a glob with no
+//                           default list (README.md; docs/nuget/*.md is opt-in for now). A missing file or a glob with no
 //                           match is skipped with a note.
 //   --root <dir>            Repository root. Default: the nearest parent directory that has a global.json.
 //   --maui-out <dir>        Output directory for the MAUI project. Default: tests/KumikoUI.Docs.Snippets.Maui/Generated
@@ -48,7 +48,7 @@ static int Run(string[] args)
 
     root = Path.GetFullPath(root ?? FindRoot());
     Emitter.Root = root;
-    if (files.Count == 0) { files.Add("README.md"); files.Add("docs/nuget/*.md"); }
+    if (files.Count == 0) files.Add("README.md"); // docs/nuget/*.md: opt in with --file until the tool handles their shape (#236)
     mauiOut = Path.GetFullPath(mauiOut ?? Path.Combine(root, "tests", "KumikoUI.Docs.Snippets.Maui", "Generated"));
     unoOut = Path.GetFullPath(unoOut ?? Path.Combine(root, "tests", "KumikoUI.Docs.Snippets.Uno", "Generated"));
 
@@ -277,6 +277,12 @@ internal static class Emitter
         RegexOptions.Compiled);
     private static readonly string[] FullPageRoots = ["ContentPage", "ContentView", "Page", "UserControl"];
 
+    // Root elements of MSBuild project-file fragments, which the docs show as setup steps rather than XAML.
+    private static readonly HashSet<string> MsBuildRoots = new(StringComparer.Ordinal)
+    {
+        "Project", "PropertyGroup", "ItemGroup", "Target", "Import", "PackageReference", "UnoFeatures", "TargetFrameworks",
+    };
+
     private static string HostNs(Host h) => h == Host.Maui ? "KumikoUI.Maui" : "KumikoUI.Uno";
 
     private static bool Applies(Block b, Host h) => b.Hosts is null || b.Hosts == (h == Host.Maui ? "maui" : "uno");
@@ -417,14 +423,27 @@ internal static class Emitter
             if (b.Hosts is not null && b.Hosts != (pageHost == Host.Maui ? "maui" : "uno"))
                 throw new SnippetException($"annotation says {b.Hosts} but the page's xmlns is {pageHost}");
             if (host != pageHost) return null;
-            if (bare.Contains("x:Class", StringComparison.Ordinal)) throw new SnippetException("page already has x:Class; remove it from the README (the tool adds one)");
             if (!bare.Contains("xmlns:x=", StringComparison.Ordinal)) throw new SnippetException("page does not declare the x prefix");
-            var m = Regex.Match(text, @"<\s*" + Regex.Escape(name) + @"\b");
-            text = text.Insert(m.Index + m.Length, $" x:Class=\"{cls}\"");
+            // A page written as an app would write it carries its own x:Class; replace it so every generated page
+            // has a unique class.
+            var existing = Regex.Match(text, "\\bx:Class\\s*=\\s*\"[^\"]*\"");
+            if (existing.Success)
+            {
+                text = text.Remove(existing.Index, existing.Length).Insert(existing.Index, $"x:Class=\"{cls}\"");
+            }
+            else
+            {
+                var m = Regex.Match(text, @"<\s*" + Regex.Escape(name) + @"\b");
+                text = text.Insert(m.Index + m.Length, $" x:Class=\"{cls}\"");
+            }
             return new Output($"{b.Id}.xaml", $"{origin}\n{text}\n", IsXaml: true, IsUsings: false);
         }
 
         if (!Applies(b, host)) return null;
+
+        // Project-file fragments (an app's csproj settings) are setup steps, not XAML, so there is nothing to compile.
+        // They need no annotation, which keeps HTML comments out of the NuGet READMEs (nuget.org doesn't render HTML).
+        if (MsBuildRoots.Contains(name)) return null;
 
         // Fragments: a data grid (placed in a layout) or content of a data grid (columns, summary rows, ...).
         if (!name.StartsWith("kumiko:", StringComparison.Ordinal) && !name.StartsWith("core:", StringComparison.Ordinal)

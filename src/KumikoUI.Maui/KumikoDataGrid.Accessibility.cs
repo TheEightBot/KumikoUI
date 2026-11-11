@@ -96,7 +96,7 @@ public partial class KumikoDataGrid
         var strings = _dataSource.Strings;
         SemanticProperties.SetDescription(this, GridDescription ?? strings.AccessibleGridName);
         SemanticProperties.SetHint(this, GridHint ?? KumikoAnnouncements.GridHint(
-            strings, _dataSource.RowCount, _dataSource.Columns.Count, _selection.CurrentCell));
+            strings, _dataSource.RowCount, _dataSource.DisplayColumns.Count, ToDisplayCell(_selection.CurrentCell)));
     }
 
     private void Announce(string message)
@@ -136,13 +136,13 @@ public partial class KumikoDataGrid
         if (_dataSource.IsGroupHeaderRow(cell.Row)) return;
 
         var column = _dataSource.Columns[cell.Column];
-        Announce(KumikoAnnouncements.CurrentCell(_dataSource.Strings, column, cell.Column, cell.Row,
+        Announce(KumikoAnnouncements.CurrentCell(_dataSource.Strings, column, DisplayColumnIndex(cell.Column), cell.Row,
             _dataSource.GetCellDisplayText(cell.Row, column)));
     }
 
     private void OnAccessibilitySortChanged(object? sender, SortColumnsChangedEventArgs e)
     {
-        int index = _dataSource.Columns.ToList().IndexOf(e.Column);
+        int index = _dataSource.GetDisplayIndex(e.Column);
         Announce(KumikoAnnouncements.SortChanged(_dataSource.Strings, e.Column, index < 0 ? 0 : index));
     }
 
@@ -155,17 +155,31 @@ public partial class KumikoDataGrid
         Dispatcher.Dispatch(() =>
         {
             if (_editSession.IsEditing)
-                Announce(KumikoAnnouncements.EditStarted(_dataSource.Strings, column, columnIndex, text));
+                Announce(KumikoAnnouncements.EditStarted(_dataSource.Strings, column, DisplayColumnIndex(columnIndex), text));
         });
     }
 
     private void OnAccessibilityCellEndEdit(object? sender, CellEndEditEventArgs e)
     {
         string? text = e.Committed ? _dataSource.FormatCellValue(e.NewValue, e.Column) : null;
-        Announce(KumikoAnnouncements.EditEnded(_dataSource.Strings, e.Column, e.ColumnIndex, e.Committed, text));
+        Announce(KumikoAnnouncements.EditEnded(_dataSource.Strings, e.Column, DisplayColumnIndex(e.ColumnIndex), e.Committed, text));
     }
 
     private void OnAccessibilityValidationFailed(object? sender, CellValidationEventArgs e)
         => Announce(KumikoAnnouncements.ValidationFailed(
-            _dataSource.Strings, e.Column, e.ColumnIndex, e.Result.ErrorMessage));
+            _dataSource.Strings, e.Column, DisplayColumnIndex(e.ColumnIndex), e.Result.ErrorMessage));
+
+    // Screen readers number columns as the user sees them: on-screen order, hidden columns not counted (#79).
+    private int DisplayColumnIndex(int columnIndex)
+    {
+        int display = _dataSource.ToDisplayIndex(columnIndex);
+        return display < 0 ? columnIndex : display;
+    }
+
+    private CellPosition ToDisplayCell(CellPosition cell)
+    {
+        if (!cell.IsValid) return cell;
+        int display = _dataSource.ToDisplayIndex(cell.Column);
+        return display < 0 ? CellPosition.Invalid : new CellPosition(cell.Row, display);
+    }
 }
