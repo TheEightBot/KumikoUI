@@ -445,18 +445,18 @@ public partial class KumikoDataGrid
     public static readonly DependencyProperty GridDescriptionProperty =
         DependencyProperty.Register(
             nameof(GridDescription), typeof(string), typeof(KumikoDataGrid),
-            new PropertyMetadata("Data grid", OnGridDescriptionChanged));
+            new PropertyMetadata(null, OnGridDescriptionChanged));
 
-    /// <summary>Accessible description for screen readers.</summary>
-    public string GridDescription
+    /// <summary>
+    /// Accessible name for screen readers. Null (the default) uses <see cref="KumikoStrings.AccessibleGridName"/>
+    /// of <see cref="KumikoSource.Strings"/> on <see cref="DataSource"/>, so the name follows the grid's localization.
+    /// </summary>
+    public string? GridDescription
     {
-        get => (string)GetValue(GridDescriptionProperty);
+        get => (string?)GetValue(GridDescriptionProperty);
         set => SetValue(GridDescriptionProperty, value);
     }
 
     private static void OnGridDescriptionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var view = (KumikoDataGrid)d;
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(view, (string)e.NewValue);
-    }
+        => ((KumikoDataGrid)d).UpdateAccessibleName();
 }
