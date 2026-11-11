@@ -77,8 +77,8 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 |---|---|
 | Hosts | `KumikoDataGrid` for .NET MAUI and for the Uno Platform, with the same properties, commands and events |
 | Rendering | Only visible rows and columns are drawn; steady-state frames allocate nothing in the managed render loop ([Performance](#performance)) |
-| Column types | Text, Numeric, Boolean, Date, ComboBox, Picker, Image, Template (custom renderers such as the built-in progress bar and action buttons) |
-| Column layout | Fixed, Star and Auto sizing; headers fit unless you set a width; resize by dragging or double-click auto-fit; drag a header to reorder; freeze columns left or right and rows at the top |
+| Column types | Text, Numeric, Boolean (optionally three-state), Date, ComboBox, Picker, Image, ProgressBar, Template (custom renderers such as the built-in action buttons) |
+| Column layout | Fixed, Star and Auto (fitted to content) sizing; headers fit unless you set a width; resize by dragging or double-click auto-fit; wrapping text cells; drag a header to reorder; freeze columns left or right and rows at the top |
 | Sorting | Header tap cycles through a type-aware first direction, the opposite direction and none; Shift or Ctrl adds columns to a multi-column sort |
 | Filtering | Filter popup per column with search, a value checklist, sort rows and OK / Cancel / Clear; programmatic predicate and column filters |
 | Grouping | Nested groups, expand and collapse, sticky group headers, a grouping panel with chips |
@@ -86,7 +86,9 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Editing | Text, numeric, date, combo box, picker and custom editors; edit triggers per grid and per column; typed conversion and validation with messages |
 | Selection | None, Single, Multiple, Extended; item-based, so it survives sort, filter and regrouping; MVVM-bindable |
 | Rows | Drag and drop reorder by handle or by row |
-| Theming | Light, Dark and HighContrast presets; every color, font and size on `KumikoStyle`; per-cell and per-row style resolvers |
+| Scrolling | Touch, wheel, trackpad and keyboard; `ScrollToRow`, `ScrollToItem` and `ScrollToColumn`; bindable `VerticalOffset` and `HorizontalOffset`; a `Scrolled` event |
+| Clipboard | Ctrl/Cmd+C copies the selected rows as tab-separated text; copy, cut and paste work in editors |
+| Theming | Light, Dark and HighContrast presets, bindable, following the system light/dark setting by default; every color, font and size on `KumikoStyle`; per-cell and per-row style resolvers |
 | Localization | `KumikoStrings` for every built-in text, `Culture` for formatting, parsing and ordering |
 | Data | `ObservableCollection` and `INotifyPropertyChanged`, nested property paths, heterogeneous item types |
 | AOT | Packages are `IsAotCompatible`; source-generated accessors (`[KumikoGridItem]`) or per-column delegates |
@@ -97,8 +99,8 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 
 | Package | Contains | Install it when |
 |---|---|---|
-| [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `KumikoDataGrid` for .NET MAUI, `UseSkiaKumikoUI()`, `MauiActionButtonDefinition` | you build a .NET MAUI app |
-| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `KumikoFonts`, `UseKumikoUI()` | you build an Uno Platform app |
+| [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `KumikoDataGrid` for .NET MAUI, `UseKumikoUI()`, `MauiActionButtonDefinition` | you build a .NET MAUI app |
+| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `KumikoFonts` | you build an Uno Platform app |
 | [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | `SkiaDrawingContext`, `SkiaResourceCache`, `SkiaFontRegistrar` | you host the engine on your own SkiaSharp surface (the host packages reference it) |
 | [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Data, layout, rendering, input and editing engine; models and themes; the `[KumikoGridItem]` source generator | always (the other packages reference it); it has no UI framework or SkiaSharp dependency |
 
@@ -136,12 +138,12 @@ The grid, its columns and its options are the same on both hosts. What differs i
 | | .NET MAUI | Uno Platform |
 |---|---|---|
 | Package | `KumikoUI.Maui` | `KumikoUI.Uno` |
-| Startup | `builder.UseSkiaKumikoUI()` in `MauiProgram` (required: it registers SkiaSharp's MAUI handlers) | nothing required; `UseKumikoUI()` on the host builder exists for symmetry and does nothing |
+| Startup | `builder.UseKumikoUI()` in `MauiProgram` (required: it registers SkiaSharp's MAUI handlers and passes `ConfigureFonts` aliases to the grid) | no startup call |
 | App project | — | `<SkiaSharpVersion>4.153.1</SkiaSharpVersion>` and the `SkiaRenderer` Uno feature |
 | Control namespace | `clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui` | `using:KumikoUI.Uno` |
 | Models namespace | `clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core` | `using:KumikoUI.Core.Models` |
 | Two-way bindings | default for the selection properties | set `Mode=TwoWay` explicitly (WinUI bindings default to one-way) |
-| Custom fonts | `SkiaFontRegistrar` | `KumikoFonts` (wraps `SkiaFontRegistrar`) |
+| Custom fonts | `ConfigureFonts` aliases, or `SkiaFontRegistrar` | `KumikoFonts` (wraps `SkiaFontRegistrar`) |
 
 ### .NET MAUI
 
@@ -151,7 +153,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
    dotnet add package KumikoUI.Maui
    ```
 
-2. Register SkiaSharp in `MauiProgram.cs`:
+2. Register KumikoUI in `MauiProgram.cs`:
 
    <!-- snippet: maui -->
    ```csharp
@@ -164,12 +166,14 @@ The grid, its columns and its options are the same on both hosts. What differs i
            var builder = MauiApp.CreateBuilder();
            builder
                .UseMauiApp<App>()
-               .UseSkiaKumikoUI(); // registers the SkiaSharp handlers the grid's canvas needs
+               .UseKumikoUI(); // registers the SkiaSharp handlers the grid's canvas needs
 
            return builder.Build();
        }
    }
    ```
+
+   A `KumikoDataGrid` attached to a handler without this call throws an exception that says so. `UseSkiaKumikoUI()` from earlier versions is obsolete and calls `UseKumikoUI()`.
 
 3. Declare the grid. The XAML is the same as on Uno once the `kumiko` and `core` prefixes are declared:
 
@@ -222,7 +226,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
 
    `samples/SampleApp.Uno/SampleApp.Uno.csproj` is a complete, working project file.
 
-3. Declare the grid. No startup registration is needed:
+3. Declare the grid. Uno needs no startup call:
 
    ```xml
    <Page xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -285,12 +289,13 @@ Each column is a `KumikoColumn`. Its `ColumnType` picks the cell renderer and th
 |---|---|---|---|
 | `Text` (default) | Text | `DrawnTextBox` | |
 | `Numeric` | Formatted number | `DrawnTextBox` that accepts numbers only | Set `Format` (for example `"C0"`, `"N2"`) and usually `TextAlignment="Right"` |
-| `Boolean` | Check box | none: toggled in place | Checked or unchecked (no indeterminate state) |
+| `Boolean` | Check box | none: toggled in place | Checked or unchecked; with `IsThreeState="True"` a tap, Space or Enter cycles unchecked, checked and indeterminate (`null`, drawn as a dash), and the property must be a `bool?` |
 | `Date` | Formatted date | `DrawnDatePicker` (opens its calendar) | `DateTime`, `DateTimeOffset` and `DateOnly` values |
-| `ComboBox` | Text | `DrawnComboBox` (opens its list) | Items from `EditorItems` or `EditorItemsString`; `EditorDisplayMemberPath` / `EditorValueMemberPath` or the selector delegates for objects |
+| `ComboBox` | Text | `DrawnComboBox` (opens its list) | Items from `EditorItems` or `EditorItemsString`; `EditorDisplayMemberPath` / `EditorValueMemberPath` or the selector delegates for objects; `EditorIsFilterable` makes the list searchable |
 | `Picker` | Text | `DrawnScrollPicker` (scroll wheel) | Items from `EditorItems` or `EditorItemsString` |
 | `Image` | Image, centered in a square | none | The value must be an `SKImage` or `SKBitmap`; use `ImageCellRenderer.ImageResolver` to map other values |
-| `Template` | `CustomCellRenderer` (text if none) | `EditorFactory`, `CustomEditorFactory`, `EditorDescriptor`, an `ICellEditorProvider` renderer, or a text box | For progress bars, action buttons and your own renderers |
+| `ProgressBar` | Progress bar | none (read-only) | A number between `ProgressMinimum` (default 0) and `ProgressMaximum` (default 100); see [Progress bars](#progress-bars) |
+| `Template` | `CustomCellRenderer` (text if none) | `EditorFactory`, `CustomEditorFactory`, `EditorDescriptor`, an `ICellEditorProvider` renderer, or a text box | For action buttons and your own renderers |
 
 ```xml
 <core:KumikoColumn Header="Department" PropertyName="Department" Width="140"
@@ -306,9 +311,24 @@ Each column is a `KumikoColumn`. Its `ColumnType` picks the cell renderer and th
 
 Other per-column switches: `IsVisible`, `AllowSorting`, `AllowFiltering`, `AllowResize`, `AllowReorder`, `CustomComparer`, `CellStyle` and `HeaderCellStyle` (a `KumikoCellStyle`).
 
+### Text wrapping
+
+A Text, Numeric or Date cell shows one line and cuts it with an ellipsis; a line break in the value draws as a space. Set `TextWrap` on the column to `Word` or `Character` to wrap the text onto as many lines as fit the row height, with an ellipsis at the end of the last line when there is more. Rows keep the grid's `RowHeight`, so raise it to show more lines (variable row height is tracked in #102). The ellipsis never splits an emoji or a letter with combining marks.
+
+```xml
+<core:KumikoColumn Header="Notes" PropertyName="Notes" Width="220" TextWrap="Word" />
+```
+
 ### Progress bars
 
-A progress bar is a `Template` column with a `ProgressBarCellRenderer` (read-only; it has no editor):
+A `ProgressBar` column draws a number as a read-only bar. `ProgressMinimum` (0) and `ProgressMaximum` (100) are the values at the empty and full ends, `ProgressShowText` (true) draws the value over the bar formatted with `Format` (`N0` when unset), and `ProgressFillColor` sets the fill (default: the style's `AccentColor`). The column sorts and filters as numbers.
+
+```xml
+<core:KumikoColumn Header="Performance" PropertyName="Performance" Width="140"
+                   ColumnType="ProgressBar" ProgressMaximum="100" Format="N0" />
+```
+
+For a per-value fill color or a different track, use a `Template` column with a `ProgressBarCellRenderer`:
 
 ```xml
 <core:KumikoColumn Header="Performance" PropertyName="Performance" Width="140"
@@ -364,7 +384,7 @@ A renderer that also implements `ICellEditorProvider` supplies the editor of its
 | `SizeMode` | Behavior |
 |---|---|
 | `Fixed` (default) | The width set with `Width` |
-| `Auto` | Laid out like `Fixed` for now; content measurement is planned (#24). Double-click a header's resize grip to auto-fit a column to its header and cells |
+| `Auto` | Fitted to its header and its widest cell (`ContentFitWidth`), within `MinWidth` and `MaxWidth`. Cells are sampled (the rows on screen plus the first and last 100 rows) on the first frame and again after the data or the view changes; scrolling alone never changes the width |
 | `Star` | A weighted share (`StarWeight`, default `1`) of the width that Fixed and Auto columns leave, within `MinWidth` and `MaxWidth` |
 
 ```xml
@@ -384,13 +404,14 @@ A renderer that also implements `ICellEditorProvider` supplies the editor of its
 <core:KumikoColumn Header="Customer Account Number" PropertyName="Account" MaxWidth="100" />
 ```
 
-- Setting `Width` in code or XAML, dragging the column's resize grip, or auto-fitting it makes the width explicit (`HasExplicitWidth`); from then on the column keeps its width, even below the header-fit width.
+- Setting `Width` in code or XAML, dragging the column's resize grip, or auto-fitting it makes the width explicit (`HasExplicitWidth`); from then on a Fixed column keeps its width, even below the header-fit width.
+- For Star and Auto columns `Width` is an output of layout. Dragging the resize grip of a Star or Auto column, or auto-fitting it, switches it to `Fixed` at the chosen width so the width persists; set `SizeMode` back to `Star` or `Auto` to share or measure it again.
 - A Star column whose share is below its minimum (its `MinWidth` and header-fit width) or above its `MaxWidth` is held there, and the other Star columns share what is left. When the viewport is too narrow for every column's minimum, the grid scrolls horizontally instead of truncating headers.
 - Header widths are measured once per header text and font and cached; changing a column's `Header`, its `HeaderCellStyle.Font` or the grid's `HeaderFont` measures it again.
 
 ### Resizing and hover cursors
 
-Drag the right edge of a column header to resize the column, or double-click it to auto-fit the column to its header and cells. The edge is a resize grip only when the column has `AllowResize` set (the default) and room to change (`MaxWidth` above `MinWidth`). `ColumnResized` reports a resize.
+Drag the right edge of a column header to resize the column, or double-click it to auto-fit the column to its header and its widest sampled cell (`AutoFitColumnRequested`, answered by `KumikoRenderer.AutoFitColumn`). The edge is a resize grip only when the column has `AllowResize` set (the default) and room to change (`MaxWidth` above `MinWidth`). `ColumnResized` reports a resize.
 
 With a mouse, the cursor shows what a click does:
 
@@ -761,7 +782,17 @@ A Boolean cell toggles in place:
 - a long press toggles with the `LongPress` trigger, and Space, Enter or F2 toggle the current Boolean cell;
 - a read-only column, or one with `EditTriggers="None"`, never toggles.
 
-A toggle goes through the same validation as an edit.
+A toggle goes through the same validation as an edit. With `IsThreeState="True"` a toggle cycles unchecked, checked and indeterminate (a `null` value, drawn as a dash) instead of flipping between two states.
+
+### Editor behavior
+
+While a cell is being edited, the open editor sees every key first. In an open ComboBox dropdown, Up/Down (and Page Up/Down, Home, End) move the selection, Enter picks the item and commits it, Escape closes the dropdown and restores the value it opened with, and a typed letter jumps to the next item starting with it, or narrows the list when the column sets `EditorIsFilterable`. The dropdown scrolls by drag, mouse wheel and scrollbar. A key the editor does not use goes to the grid's edit keys (Enter, Escape, Tab and the arrows commit or cancel as above) and otherwise stops there: typing never restarts the edit, and Space never toggles the row's selection inside an editor.
+
+The Picker's scroll wheel coasts and snaps, and confirms an item on Enter, on a tap on the centered item, or when it settles on one.
+
+The date picker and the numeric up/down are culture-aware and accept typed entry, validated through the edit session. The calendar follows the culture's first day of the week, month and day names and date order; the date shows in the culture's short date format. Held +/- buttons and the arrow keys repeat with acceleration, and minimum and maximum limits are enforced (disabled days draw dimmed).
+
+Editors draw with the grid's cell font (or the column's `CellStyle` font). ComboBox dropdowns, calendars and the filter popup open above the cell when there is no room below, and slide into the viewport; a dropdown shrinks and scrolls in a short grid.
 
 ### Committing and canceling
 
@@ -950,6 +981,8 @@ The keys are handled in `KumikoUI.Core`, the same way on every host. Which keys 
 | Escape | Clear the selection and the current cell; with nothing to clear, left to the page | Cancel the edit |
 | Space | Toggle a Boolean cell, toggle a group header, or toggle the current row's selection | Types a space |
 | Ctrl+A | Select all rows | Select all text |
+| Ctrl/Cmd+C | Copy the selected rows (see [Copying rows](#copying-rows)) | Copy the selected text |
+| Ctrl/Cmd+X, Ctrl/Cmd+V | | Cut, paste |
 | Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y | | Undo, redo (a word at a time) |
 | A character | Open the editor with that character (`Typing` trigger) | Type it |
 
@@ -967,28 +1000,45 @@ Each host captures the keyboard through a hidden native text field, and that dec
 | Tab, Shift+Tab | Yes | Yes | No (on Windows the system moves focus) |
 | Escape, F2, Delete | Yes | Yes | No |
 | Ctrl+A, editor undo / redo | Yes; Cmd works as Ctrl on macOS, iOS and WebAssembly | No: letters arrive as text without modifiers | No |
+| Ctrl/Cmd+C, X, V | Yes | Yes | Yes (Android with a hardware keyboard) |
 
-The editors raise `EditSession.ClipboardCopyRequested` and `ClipboardPasteRequested` for copy, cut and paste; neither host connects them to the system clipboard yet. The hosts pass committed characters to the editors but don't drive input-method composition (`ITextInputSession`) yet; host adapters are tracked in #40 to #43.
+The hosts pass committed characters to the editors but don't drive input-method composition (`ITextInputSession`) yet; host adapters are tracked in #40 to #43.
+
+### Copying rows
+
+Ctrl/Cmd+C copies the selected rows to the clipboard as tab-separated text that Excel and other spreadsheets paste into cells: one line per row, the visible columns in their on-screen order, values formatted as the cells show them. Set `ClipboardCopyIncludesHeaders` to start the text with a row of column headers. Copy, cut, paste and select-all also work inside cell editors and the filter popup's search box. A cut deletes the text only after the clipboard accepted it. The on-screen keyboard has no Ctrl key, so there is no copy from touch alone.
+
+`Clipboard` (an `IKumikoClipboard`) defaults to the platform clipboard; assign another implementation to redirect copy and paste, or `null` to turn them off:
+
+```csharp
+kumiko.ClipboardCopyIncludesHeaders = true;
+```
 
 ---
 
 ## Row Drag and Drop
 
-Rows can be reordered by dragging. Both switches are bindable on the grid, and `RowReordered` reports the move:
+Rows can be reordered by dragging. Both switches are bindable on the grid, `RowReordered` reports a move, and `RowReorderRejected` reports a drop the grid refused:
 
 ```xml
 <kumiko:KumikoDataGrid ShowRowDragHandle="True" AllowRowDragDrop="False" />
 ```
 
 - **Drag handle** (`ShowRowDragHandle`): a handle column on each row; a vertical drag that starts on a handle moves the row. `KumikoStyle.RowDragHandlePosition` puts it on the `Left` (default) or `Right`, and `RowDragHandleWidth` sets its width.
-- **Whole row** (`AllowRowDragDrop`): a drag that starts on any cell and moves more vertically than horizontally moves the row. With this on, such a drag no longer scrolls the grid, so on touch devices prefer the handle.
+- **Whole row** (`AllowRowDragDrop`): on touch, a swipe on a row scrolls the grid and a long press starts the drag (a column whose edit triggers include `LongPress` edits on a long press instead). With a mouse or pen, a mostly vertical drag past a few pixels starts it. The handle starts on a small movement in any direction, on every device.
+- **Autoscroll:** dragging within `ScrollSettings.AutoScrollEdgeSize` (40) of the top or bottom of the scrolling rows scrolls the grid, faster toward the edge up to `AutoScrollMaxSpeed` (1,200 px/s).
 
-A drop moves the item in `ItemsSource` when it is an `IList`, and the view is rebuilt. While grouping is active a drop changes nothing, and while a sort is active the rebuilt view is sorted again.
+A drop moves the item in `ItemsSource`, and the view is rebuilt. Rows move within their group: a drop that would cross groups is refused. A drop is also refused while a sort is active (the sort would put the row back) and when `ItemsSource` is not a writable, resizable `IList` (an array, for example). A refused drop changes nothing and raises `RowReorderRejected`, whose `Result` says why (`KumikoReorderResult`: `NotSupportedSorted`, `NotSupportedSource`, `NotSupportedAcrossGroups` or `OutOfRange`). `RowReordered` is raised once, after a move that happened.
 
 ```csharp
 kumiko.RowReordered += (_, e) =>
     Console.WriteLine($"{e.DataItem} moved from row {e.OldIndex} to row {e.NewIndex}");
+
+kumiko.RowReorderRejected += (_, e) =>
+    Console.WriteLine($"Row {e.OldIndex} was not moved: {e.Result}");
 ```
+
+When you reorder in code, `DataSource.ReorderRow` returns the same `KumikoReorderResult`.
 
 ---
 
@@ -1000,7 +1050,20 @@ kumiko.RowReordered += (_, e) =>
 kumiko.Theme = KumikoThemeMode.Dark; // Light (default), Dark or HighContrast
 ```
 
-`Theme` replaces `GridStyle` with `KumikoTheme.Create(mode)`. `Theme` and `GridStyle` are plain properties on both hosts, not bindable ones, so set them in code. The grid does not follow the operating system's light, dark or high-contrast setting by itself.
+`Theme` replaces `GridStyle` with `KumikoTheme.Create(mode)`. `Theme`, `GridStyle` and `ScrollSettings` are bindable on both hosts, so XAML can set or bind them:
+
+```xml
+<kumiko:KumikoDataGrid Theme="Dark" />
+```
+
+On .NET MAUI the theme can follow the app's theme binding:
+
+<!-- snippet: maui -->
+```xml
+<kumiko:KumikoDataGrid Theme="{AppThemeBinding Light=Light, Dark=Dark}" />
+```
+
+**Following the system theme.** `FollowSystemTheme` is on by default until you set `Theme` or `GridStyle`: the grid then shows the Light or Dark preset to match the operating system or app theme, and switches when it changes, so a default grid is dark in a dark app. Assigning `Theme` or `GridStyle` turns following off, unless you also set `FollowSystemTheme` yourself. The grid never switches to `HighContrast` by itself.
 
 ### Custom style
 
@@ -1043,7 +1106,7 @@ style.RowStyleResolver = item =>
 kumiko.GridStyle = style;
 ```
 
-`KumikoCellStyle` has `BackgroundColor`, `TextColor`, `Font`, `Padding`, `BorderColor`, `BorderWidth` and `TextAlignment`; `KumikoRowStyle` has `BackgroundColor`, `TextColor` and `Font` (its `Height` is not used yet: every row has the grid's `RowHeight`). Every member is nullable, and null means "no override". A cell's style is composed from the cell resolver, then the column's `CellStyle`, then the row resolver's text color and font, then the grid style; the row resolver's background is drawn behind unselected rows. Resolvers run for every visible cell on every frame, so return cached instances rather than allocating new ones where you can.
+`KumikoCellStyle` has `BackgroundColor`, `TextColor`, `Font`, `Padding`, `BorderColor`, `BorderWidth` and `TextAlignment`; `KumikoRowStyle` has `BackgroundColor`, `TextColor` and `Font` (every row has the grid's `RowHeight`; variable row height is tracked in #102). Every member is nullable, and null means "no override". A cell's style is composed from the cell resolver, then the column's `CellStyle`, then the row resolver's text color and font, then the grid style; the row resolver's background is drawn behind unselected rows. Resolvers run for every visible cell on every frame, so return cached instances rather than allocating new ones where you can.
 
 ### KumikoStyle reference
 
@@ -1199,14 +1262,21 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `AllowRowDragDrop` | `bool?` | null (style: off) | Drag a row from any cell. |
 | `ShowRowDragHandle` | `bool?` | null (style: off) | Drag handle on each row. |
 | `ShowFrameStats` | `bool` | false | Frame-time overlay ([Performance](#performance)). |
-| `GridDescription` | `string` | "Data grid" | Accessible name ([Accessibility](#accessibility)). |
-| `Theme` | `KumikoThemeMode` | `Light` | Built-in theme (a plain property, not bindable). |
-| `GridStyle` | `KumikoStyle` | the Light style | The full style (a plain property, not bindable). |
-| `ScrollSettings` | `ScrollSettings` | defaults | Scrolling and inertia ([Scrolling](#scrolling); a plain property). |
-| `IsReadOnly` | `bool` | false | Not enforced yet: use `KumikoColumn.IsReadOnly`. |
-| `AllowSorting`, `AllowFiltering` | `bool` | true | Not enforced yet: use the `KumikoColumn` properties of the same names. |
+| `GridDescription` | `string?` | null ("Data grid") | Accessible name; null uses `KumikoStrings.AccessibleGridName` ([Accessibility](#accessibility)). |
+| `GridHint` | `string?` | null (computed) | Accessible hint; null describes the row and column counts and the current cell. |
+| `AnnounceChanges` | `bool` | true | Announce the current cell, sort changes, edits and validation errors to a screen reader. |
+| `Theme` | `KumikoThemeMode` | `Light` | Built-in theme; bindable. |
+| `GridStyle` | `KumikoStyle` | the Light style | The full style; bindable. |
+| `FollowSystemTheme` | `bool` | true until a theme or style is set | Follow the system light/dark setting at run time ([Built-in themes](#built-in-themes)). |
+| `ScrollSettings` | `ScrollSettings` | defaults | Scrolling and inertia ([Scrolling](#scrolling)); bindable. |
+| `VerticalOffset`, `HorizontalOffset` | `double` | 0 | The scroll offsets; two-way ([Scrolling](#scrolling)). |
+| `Clipboard` | `IKumikoClipboard?` | the platform clipboard | Used for copy, cut and paste; null turns them off ([Copying rows](#copying-rows)). |
+| `ClipboardCopyIncludesHeaders` | `bool` | false | Ctrl/Cmd+C starts the copied text with the column headers. |
+| `RenderMode` | `KumikoRenderMode` | `Auto` | Uno only. `Auto` draws through Uno's GPU-backed `SKCanvasElement` on the Skia-rendered heads and through `SKXamlCanvas` elsewhere; `Hardware` and `Software` ask for one. `ActiveRenderMode` reports the surface in use. |
+| `IsReadOnly` | `bool` | false | True refuses every edit, Boolean toggle and Tab stop; combines with `KumikoColumn.IsReadOnly`. |
+| `AllowSorting`, `AllowFiltering` | `bool` | true | False stops header-tap sorting, or hides and disables the header filter icons; a grid-level false wins over the column's setting. |
 
-Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
+Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
 
 ### Commands
 
@@ -1221,11 +1291,13 @@ Each command is executed with the event arguments as its parameter (`SelectionCh
 
 ### Events
 
-`RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `ColumnReordered`, `ColumnResized` and `SelectionChanged`. They forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection`, which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
+`RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled` and `SelectionChanged`. They forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection`, which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
 
 `DataSource.ViewChanged` reports every change of the view once, with its kind (`Redraw`, `Rebuild`, `Insert`, `Remove`); `MapRow(oldRow)` follows a row from before the change to after it, and `GetViewRow(item)` finds an item's row.
 
 ### Precedence: explicit properties versus style and theme
+
+From highest to lowest: the explicit properties below, together with `RowHeight` and `HeaderHeight`; then whichever of `Theme` or `GridStyle` was assigned last; then the system theme, while `FollowSystemTheme` is on. The order of attributes in XAML does not matter. Assigning `GridStyle` or `ScrollSettings` null resets it to the preset or the default settings.
 
 `ShowHorizontalGridLines`, `ShowVerticalGridLines`, `AlternateRowBackground`, `AllowRowDragDrop` and `ShowRowDragHandle` are nullable. Null leaves the value to `GridStyle` and `Theme`; a value overrides it. Setting one writes it into the current style immediately, and assigning `GridStyle` or `Theme` afterwards re-applies every explicit value to the new style, so an explicit property wins over the theme in either order. Setting a property back to null stops overriding but doesn't restore the earlier value until the next style or theme assignment.
 
@@ -1255,7 +1327,7 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-        builder.UseMauiApp<App>().UseSkiaKumikoUI();
+        builder.UseMauiApp<App>().UseKumikoUI();
 
         RegisterFont("NotoSansJP", "NotoSansJP-Regular.ttf");
         RegisterFont("MaterialIcons", "MaterialIcons-Regular.ttf");
@@ -1291,6 +1363,8 @@ protected override async void OnLaunched(LaunchActivatedEventArgs args)
 ```
 
 `RegisterFromAppPackageAsync` never throws: a missing or unreadable font is logged with `Debug.WriteLine` and the grid uses the default font. `KumikoFonts.RegisterFromStream(family, stream)` registers a stream you opened yourself and does throw on an unreadable font.
+
+Fonts added with `ConfigureFonts` also reach the grid once `UseKumikoUI()` is called, so a font alias from `fonts.AddFont("MyFont.ttf", "MyAlias")` can be used as a `KumikoFont` family directly; registering with `SkiaFontRegistrar` is needed only for fonts that `ConfigureFonts` doesn't cover.
 
 ### Using registered fonts
 
@@ -1332,14 +1406,37 @@ kumiko.Columns.Add(new KumikoColumn
 });
 ```
 
+**Bold and italic.** A family can hold several faces. Register the bold or italic file under the same family name with a `SKFontStyle`, and bold or italic text uses the closest registered face. When the closest face lacks the style (a bold font with only a regular face registered), the text is emboldened or slanted synthetically.
+
+**Fallback fonts.** Text that the requested font has no glyph for (emoji, CJK, symbols) is drawn glyph by glyph with a fallback font: first the families you list with `SetFallbackFamilies`, in order, then the platform font manager's own choice. An emoji sequence or a letter with combining marks is never split between two fonts.
+
+```csharp
+using KumikoUI.SkiaSharp;
+using SkiaSharp;
+
+public static class FontSetup
+{
+    public static void Register(System.IO.Stream regular, System.IO.Stream bold, System.IO.Stream emoji)
+    {
+        SkiaFontRegistrar.RegisterTypefaceFromStream("NotoSansJP", regular);
+        SkiaFontRegistrar.RegisterTypefaceFromStream("NotoSansJP", bold, SKFontStyle.Bold);
+        SkiaFontRegistrar.RegisterTypefaceFromStream("NotoEmoji", emoji);
+
+        SkiaFontRegistrar.SetFallbackFamilies("NotoSansJP", "NotoEmoji");
+    }
+}
+```
+
 | `SkiaFontRegistrar` member | Description |
 |---|---|
 | `RegisterTypefaceFromStream(family, stream)` | Creates a typeface from a stream and registers it; the registrar owns it and disposes it when the family is replaced, unregistered or cleared. The stream may be disposed after the call. |
 | `RegisterTypeface(family, typeface)` | Registers an `SKTypeface` you keep ownership of. |
-| `TryGetTypeface(family, out typeface)` | Looks up a registered family. |
+| `RegisterTypefaceFromStream(family, stream, style)`, `RegisterTypeface(family, typeface, style)` | Registers one face of a family for a `SKFontStyle` (bold, italic, ...). |
+| `SetFallbackFamilies(params string[])` | Sets `FallbackFamilies`, the families tried, in order, for characters the requested font can't draw. |
+| `TryGetTypeface(family, out typeface)` | Looks up a registered family (an overload takes a `SKFontStyle`). |
 | `IsRegistered(typeface)` | Whether a typeface is registered under any family. |
 | `Unregister(family)` | Removes one family. |
-| `Clear()` | Removes every registration. |
+| `Clear()` | Removes every registration and the fallback families. |
 | `Version` | Incremented by every change. |
 
 All members are thread-safe, and changes are safe while grids are alive: every grid drops the affected family before anything is disposed. A family name the platform can't resolve falls back to the default font in the same weight and slant, and is logged once through `Trace.TraceWarning`.
@@ -1367,7 +1464,29 @@ kumiko.ScrollSettings = new ScrollSettings
 | `FlingThresholdMultiplier` | 10 | A release must exceed `MinVelocity` times this to fling |
 | `VelocitySmoothing` | 0.3 | Smoothing of the tracked velocity, 0..1 (higher is smoother but slower to respond) |
 | `WheelScrollMultiplier` | 3 | Row heights scrolled per unit of wheel movement the platform reports |
-| `EnableInertia` | true | Whether a release flings | A drag that starts on a column header and moves sideways reorders the column rather than scrolling, and with `AllowRowDragDrop` a vertical drag that starts on a cell moves the row.
+| `EnableInertia` | true | Whether a release flings |
+| `FlingHoldCutoffMs` | 100 | A finger that rests this long before release does not fling |
+| `AutoScrollEdgeSize`, `AutoScrollMaxSpeed` | 40, 1200 | Autoscroll during a row drag ([Row Drag and Drop](#row-drag-and-drop)) |
+
+A drag that starts on a column header and moves sideways reorders the column rather than scrolling, and with `AllowRowDragDrop` a long press on touch (a mostly vertical drag with a mouse) on a cell moves the row. Trackpads scroll by pixels, Shift plus the wheel scrolls horizontally, and once the grid reaches its end the wheel scrolls the page instead. `IsEnabled="False"` stops all input.
+
+### Programmatic scrolling
+
+`ScrollToRow`, `ScrollToItem` and `ScrollToColumn` scroll the grid from code. Each takes a `KumikoScrollPosition` (`Nearest`, the default, `Start`, `Center` or `End`), respects the header, summaries, frozen rows and sticky group headers, clamps to the scrollable range, and returns false when the target does not exist. `ScrollToItem` expands collapsed groups on the way unless you pass `expandGroups: false`.
+
+```csharp
+kumiko.ScrollToRow(500, KumikoScrollPosition.Center);
+kumiko.ScrollToItem(employees[^1], KumikoScrollPosition.End);
+kumiko.ScrollToColumn(2);
+
+kumiko.Scrolled += (_, e) =>
+{
+    if (e.OffsetY + e.ViewportHeight >= e.ContentHeight - 200)
+        Console.WriteLine("Near the end: load more rows");
+};
+```
+
+`VerticalOffset` and `HorizontalOffset` are two-way properties that follow every scroll and scroll the grid when set. Scrolling before the grid has its first layout is applied once it has a size.
 
 ---
 
@@ -1517,6 +1636,8 @@ public static class CustomerColumns
 }
 ```
 
+CI publishes a Native AOT console smoke app (Linux, Windows and macOS) and the MAUI sample with Native AOT (iOS and Mac Catalyst), and the Uno WebAssembly sample trimmed. The sample row types use `[KumikoGridItem]` accessors.
+
 The generator reports `KUMIKO001` for generic types and `KUMIKO002` for types it can't reference (private, protected or file-local); use delegates or a provider for those. Generated and delegate reads are measured in `bench/KumikoUI.Benchmarks` (`PropertyAccessBenchmarks`).
 
 ---
@@ -1526,10 +1647,12 @@ The generator reports `KUMIKO001` for generic types and `KUMIKO002` for types it
 This is the current state, not the goal. The 1.0 target and the plan are in [docs/ROADMAP.md](docs/ROADMAP.md) (track L).
 
 - **Screen readers see one element.** Cells, headers, editors and popups are drawn on a canvas and are not exposed to assistive technology individually, so a screen reader can't read or navigate cell contents. A per-cell accessibility tree is planned for 1.x.
-  - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default "Data grid") as its semantic description and a hint with the row and column counts and the current cell, updated when the view is rebuilt.
-  - **Uno:** `GridDescription` becomes the grid's `AutomationProperties.Name` once you set it; the default value is not applied, so set `GridDescription` yourself.
+  - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default: the localizable `KumikoStrings.AccessibleGridName`, "Data grid") as its semantic description and `GridHint` (default: a hint with the row and column counts and the current cell) as its hint.
+  - **Uno:** the grid has a UI Automation peer with the DataGrid control type. Its name comes from `GridDescription` or `KumikoStrings.AccessibleGridName`, and its help text from `GridHint` or a computed description of the rows and columns.
+  - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, and validation errors to a running screen reader. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
 - **Keyboard.** The grid can be used without a pointer on Uno and on MAUI for iOS and Mac Catalyst, and never traps Tab. On MAUI for Android and Windows only typed characters, Space, Backspace and Enter reach it. See [Keys per platform](#keys-per-platform).
-- **Hidden input fields.** Each host keeps a zero-size native text field (MAUI `Entry`, Uno `TextBox`) to receive keyboard input; it is not yet hidden from assistive technology.
+- **Hidden input fields.** Each host keeps a zero-size native text field (MAUI `Entry`, Uno `TextBox`) to receive keyboard input; it is kept out of the accessibility tree and takes no pointer input.
+- **Right-to-left layout is not supported in 1.0.** Under a right-to-left ancestor (`FlowDirection`) the grid still draws left to right instead of mirroring; mirrored layout is tracked in #80.
 - **Contrast and text size.** `KumikoThemeMode.HighContrast` is a high-contrast preset; the grid doesn't switch to it when the operating system's high-contrast mode is on. Font sizes come from `KumikoStyle` and don't follow the operating system's text-size setting.
 
 ---
@@ -1548,8 +1671,8 @@ Yes: set `EditTriggers` on that column; it overrides the grid's ([Per-column edi
 **I unchecked values in the filter popup and closed it, but nothing was filtered.**
 The popup applies its checklist on **OK**. **Cancel** and a tap outside the popup discard the changes; **Clear** removes the column's filter.
 
-**Setting `IsReadOnly`, `AllowSorting` or `AllowFiltering` on the grid does nothing.**
-These host properties are not enforced yet. Set the `KumikoColumn` properties of the same names on each column.
+**How do I make the whole grid read-only, or turn off sorting or filtering?**
+Set `IsReadOnly`, `AllowSorting` or `AllowFiltering` to `False` on the grid. They combine with the `KumikoColumn` properties of the same names, and a grid-level `False` wins.
 
 **Arrow keys, Tab and Escape don't work in my MAUI app on Android or Windows.**
 On those platforms the MAUI control receives keyboard input through a hidden `Entry`, which delivers only text, Space, Backspace and Enter. The Uno control, and the MAUI control on iOS and Mac Catalyst, receive every navigation key ([Keys per platform](#keys-per-platform)).
@@ -1566,14 +1689,17 @@ Headers fit their column unless the column has an explicit `Width` (or a `MaxWid
 **Edits I make to items in code don't show.**
 Implement `INotifyPropertyChanged` on the items, or call `DataSource.Refresh()` after changing them ([Live Data](#live-data)).
 
-**Can I bind `Theme` or `GridStyle`?**
-Not yet: both are plain properties. Set them in code. The grid properties for grid lines, alternate rows and row drag are bindable and win over the style ([Precedence](#precedence-explicit-properties-versus-style-and-theme)).
+**Can I bind `Theme` or `GridStyle`? Does the grid follow dark mode?**
+Yes: `Theme`, `GridStyle` and `ScrollSettings` are bindable, including `Theme="{AppThemeBinding Light=Light, Dark=Dark}"` on MAUI. Until you set a theme or style, `FollowSystemTheme` makes the grid follow the system light/dark setting ([Built-in themes](#built-in-themes), [Precedence](#precedence-explicit-properties-versus-style-and-theme)).
+
+**Does the grid support right-to-left languages?**
+Text in Arabic or Hebrew is drawn, but the grid layout is not mirrored: it draws left to right under a right-to-left `FlowDirection`. Full right-to-left layout is not part of 1.0 (#80).
 
 **After the user drags a column, `Columns` still has the old order.**
 A user's reorder changes `DataSource.Columns`, not the grid's `Columns` collection. Read the order from `DataSource.Columns` or handle `ColumnReordered` ([Reordering columns](#reordering-columns)).
 
 **Where are the scrollbars?**
-The grid doesn't draw scrollbars yet. It scrolls by touch, mouse wheel, trackpad and keyboard.
+The grid doesn't draw scrollbars yet. It scrolls by touch, mouse wheel, trackpad and keyboard, and from code with the `ScrollTo` methods and `VerticalOffset`.
 
 **Can I update the collection from a background thread?**
 Make collection and item changes on the UI thread. The grid rebuilds its view on the thread that raises the change.
@@ -1588,7 +1714,8 @@ KumikoUI.Core (net10.0): data, layout, rendering, input, editing; no UI framewor
 KumikoUI.SkiaSharp (net10.0): IDrawingContext on an SKCanvas, resource cache, font registry
        ↑                                   ↑
 KumikoUI.Maui (.NET MAUI)            KumikoUI.Uno (Uno Platform / WinUI)
-KumikoDataGrid on an SKCanvasView    KumikoDataGrid on an SKXamlCanvas
+KumikoDataGrid on an SKCanvasView    KumikoDataGrid on an SKCanvasElement
+                                     (or an SKXamlCanvas, see RenderMode)
 ```
 
 All drawing goes through the `IDrawingContext` abstraction, so Core has no dependency on MAUI, WinUI or SkiaSharp. The two host controls are thin: they forward pointer, wheel and keyboard input to `KumikoInputController`, run the inertia and caret timers, and paint by calling `KumikoRenderer.Render`.
