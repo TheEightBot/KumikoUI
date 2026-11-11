@@ -16,6 +16,7 @@ namespace KumikoUI.Core.Models;
 public class KumikoSource
 {
     private IList _sourceItems = Array.Empty<object>();
+    private bool _sourceItemsAreCopy;                 // the items were not an IList: _sourceItems is a private copy
     private List<int> _viewIndices = new();          // filtered + sorted mapping
     private List<FlatViewRow>? _flatView;            // null when no grouping; otherwise group headers + data rows
 
@@ -357,6 +358,7 @@ public class KumikoSource
         UnsubscribeFromCollection();
         UnsubscribeFromItemPropertyChanged();
 
+        _sourceItemsAreCopy = items is not IList;
         if (items is IList list)
             _sourceItems = list;
         else
@@ -591,39 +593,80 @@ public class KumikoSource
     }
 
     /// <summary>
-    /// Reorder a row from one visible index to another.
-    /// Moves the item in both the view index mapping and the underlying source collection.
-    /// Only supported when grouping is not active.
+    /// Move the data row at visible index <paramref name="fromVisibleRow"/> so that it ends up at visible index
+    /// <paramref name="toVisibleRow"/> (the rows in between shift by one), by moving its item in the underlying
+    /// collection, then rebuild the view once (one <see cref="ViewChanged"/>). Under a filter the item moves to the
+    /// target row's position in the collection.
+    /// <para>
+    /// With grouping active a row moves only within its own (innermost) group: the item is moved next to the target
+    /// item in the collection, which keeps the order of the group's other items. A target in another group is
+    /// rejected with <see cref="KumikoReorderResult.NotSupportedAcrossGroups"/>, because moving a row between groups
+    /// means changing its grouped value, which is the app's decision.
+    /// </para>
+    /// <para>
+    /// Nothing changes, and the result says why, when an index is out of range or not a data row, the row is already
+    /// there, a column sort is active (the sort would put the row back), or the items source is not a writable,
+    /// resizable <see cref="IList"/>.
+    /// </para>
     /// </summary>
-    public void ReorderRow(int fromVisibleRow, int toVisibleRow)
+    /// <param name="fromVisibleRow">The visible index of the row to move.</param>
+    /// <param name="toVisibleRow">The visible index the row should end up at.</param>
+    /// <returns><see cref="KumikoReorderResult.Moved"/> when the item moved, otherwise the reason it did not.</returns>
+    public KumikoReorderResult ReorderRow(int fromVisibleRow, int toVisibleRow)
     {
-        // Row drag is not supported when grouping is active (complex flat view)
-        if (_flatView != null) return;
-        if (fromVisibleRow < 0 || fromVisibleRow >= _viewIndices.Count) return;
-        if (toVisibleRow < 0 || toVisibleRow >= _viewIndices.Count) return;
-        if (fromVisibleRow == toVisibleRow) return;
+        int rowCount = RowCount;
+        if (fromVisibleRow < 0 || fromVisibleRow >= rowCount || toVisibleRow < 0 || toVisibleRow >= rowCount ||
+            IsNonDataRow(fromVisibleRow) || IsNonDataRow(toVisibleRow))
+            return KumikoReorderResult.OutOfRange;
+        if (fromVisibleRow == toVisibleRow) return KumikoReorderResult.NoOp;
+        if (_sourceItemsAreCopy || _sourceItems.IsReadOnly || _sourceItems.IsFixedSize)
+            return KumikoReorderResult.NotSupportedSource;
+        if (IsColumnSortActive()) return KumikoReorderResult.NotSupportedSorted;
+        if (!AreInSameGroup(fromVisibleRow, toVisibleRow)) return KumikoReorderResult.NotSupportedAcrossGroups;
 
-        // Move in the source collection if it supports it
-        int sourceFrom = _viewIndices[fromVisibleRow];
-        int sourceTo = _viewIndices[toVisibleRow];
+        int sourceFrom = GetSourceIndex(fromVisibleRow);
+        int sourceTo = GetSourceIndex(toVisibleRow);
 
-        if (_sourceItems is System.Collections.IList list)
+        _isReordering = true;
+        try
         {
-            _isReordering = true;
-            try
-            {
-                var item = list[sourceFrom];
-                list.RemoveAt(sourceFrom);
-                list.Insert(sourceTo, item);
-            }
-            finally
-            {
-                _isReordering = false;
-            }
+            var item = _sourceItems[sourceFrom];
+            _sourceItems.RemoveAt(sourceFrom);
+            _sourceItems.Insert(sourceTo, item);
+        }
+        finally
+        {
+            _isReordering = false;
         }
 
         // Rebuild the view to reflect the new order
         RequestRebuild();
+        return KumikoReorderResult.Moved;
+    }
+
+    /// <summary>The index in the items source of a data row (no range or kind check).</summary>
+    private int GetSourceIndex(int visibleRow) =>
+        _flatView != null ? _flatView[visibleRow].SourceIndex : _viewIndices[visibleRow];
+
+    /// <summary>Whether a column sort decides the order of the rows.</summary>
+    private bool IsColumnSortActive()
+    {
+        for (int i = 0; i < _columns.Count; i++)
+            if (_columns[i].SortDirection != KumikoSortDirection.None) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Whether two visible rows are in the same innermost group (always true without grouping): the rows a row drag
+    /// can be dropped between. O(log groups), allocation-free.
+    /// </summary>
+    internal bool AreInSameGroup(int visibleRowA, int visibleRowB)
+    {
+        if (_flatView == null) return true;
+        int level = _groupDescriptions.Count - 1;
+        return TryGetEnclosingGroup(visibleRowA, level, out int headerA, out _) &&
+               TryGetEnclosingGroup(visibleRowB, level, out int headerB, out _) &&
+               headerA == headerB;
     }
 
     /// <summary>

@@ -366,6 +366,7 @@ public class ResizeAndReorderTests
         var g = WithHandle();
         var reordered = new List<RowReorderedEventArgs>();
         g.Input.RowReordered += (_, e) => reordered.Add(e);
+        var dragged = g.Items[1];
 
         g.Press(10, g.RowY(1));
         g.Move(10, g.RowY(1) + 16);
@@ -377,7 +378,9 @@ public class ResizeAndReorderTests
         var e = Assert.Single(reordered);
         Assert.Equal(1, e.OldIndex);
         Assert.Equal(4, e.NewIndex);
-        Assert.Same(g.Items[1], e.DataItem);
+        Assert.Same(dragged, e.DataItem);
+        Assert.Equal(KumikoReorderResult.Moved, e.Result);
+        Assert.Same(dragged, g.Items[4]); // the controller moved the item in the list before raising the event
         Assert.Equal(-1, g.Input.DragRowIndex);
     }
 
@@ -422,8 +425,10 @@ public class ResizeAndReorderTests
     }
 
     [Fact]
-    public void HandleDrag_DropIsClampedToTheFirstAndLastRow()
+    public void HandleDrag_DropIsClampedToTheFirstAndLastVisibleRow()
     {
+        // 10 rows, 6 on screen: a drop above or below the grid lands on the first or last row on screen (edge
+        // autoscroll brings the others into view first).
         var g = WithHandle(rows: 10);
         var reordered = new List<RowReorderedEventArgs>();
         g.Input.RowReordered += (_, e) => reordered.Add(e);
@@ -435,7 +440,7 @@ public class ResizeAndReorderTests
         g.Move(10, g.RowY(3) + 12);
         g.Release(10, 5000);
 
-        Assert.Equal(new[] { 0, 9 }, reordered.Select(e => e.NewIndex));
+        Assert.Equal(new[] { 0, 5 }, reordered.Select(e => e.NewIndex));
     }
 
     [Fact]
@@ -474,14 +479,17 @@ public class ResizeAndReorderTests
     }
 
     [Fact]
-    public void HandleDrag_Horizontal_DoesNotStartARowDrag()
+    public void HandleDrag_StartsAsSoonAsItMoves_InAnyDirection()
     {
+        // The drag handle exists to drag: no threshold, no direction test (#99).
         var g = WithHandle();
 
         g.Press(10, g.RowY(1));
-        g.Move(40, g.RowY(1) + 3);
+        g.Move(14, g.RowY(1) + 1);
 
-        Assert.Equal(-1, g.Input.DragRowIndex);
+        Assert.Equal(1, g.Input.DragRowIndex);
+        Assert.Equal(0, g.Scroll.OffsetX);
+        Assert.Equal(0, g.Scroll.OffsetY);
     }
 
     [Fact]
@@ -562,7 +570,9 @@ public class ResizeAndReorderTests
             x.Source.AddGroupDescription(new GroupDescription("City"));
         });
         var reordered = new List<RowReorderedEventArgs>();
+        var rejected = new List<RowReorderedEventArgs>();
         g.Input.RowReordered += (_, e) => reordered.Add(e);
+        g.Input.RowReorderRejected += (_, e) => rejected.Add(e);
         // Rows: 0 Oslo header, 1, 2 items, 3 Rome header, 4, 5 items; data starts below the 40 px panel and header.
 
         g.Press(150, 80 + 36 + 18);
@@ -570,6 +580,7 @@ public class ResizeAndReorderTests
         g.Release(150, 80 + 3 * 36 + 10); // onto the Rome header
 
         Assert.Empty(reordered);
+        Assert.Equal(KumikoReorderResult.OutOfRange, Assert.Single(rejected).Result);
 
         g.Press(150, 80 + 36 + 18);
         g.Move(150, 80 + 36 + 34);
@@ -580,7 +591,7 @@ public class ResizeAndReorderTests
         Assert.Equal(2, e.NewIndex);
     }
 
-    [Fact(Skip = "Known defect (#99): the row drag ghost ignores the grouping panel offset")]
+    [Fact]
     public void RowDrag_UnderGrouping_GhostKeepsTheGrabOffset()
     {
         var g = new InputGrid(rows: 4, viewportHeight: 500, configure: x =>

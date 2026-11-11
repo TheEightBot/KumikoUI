@@ -25,4 +25,16 @@ public class ScrollSettings
 
     /// <summary>Whether inertial scrolling (fling) is enabled. Default true.</summary>
     public bool EnableInertia { get; set; } = true;
+
+    /// <summary>
+    /// Height in pixels of the bands at the top and bottom of the scrolling rows in which a row drag scrolls the grid
+    /// (edge autoscroll). The bands shrink to a third of the scrolling area when it is short. Default 40.
+    /// </summary>
+    public float AutoScrollEdgeSize { get; set; } = 40f;
+
+    /// <summary>
+    /// Edge autoscroll speed in pixels per second with the pointer at the outer edge of an autoscroll band or beyond
+    /// it. The speed grows linearly with the depth into the band, from 0 at its inner edge. Default 1200.
+    /// </summary>
+    public float AutoScrollMaxSpeed { get; set; } = 1200f;
 }

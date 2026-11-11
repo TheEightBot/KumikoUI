@@ -185,7 +185,10 @@ public partial class KumikoDataGrid
 
     // ── Frame loop (CompositionTarget.Rendering) ──────────────────
 
-    /// <summary>Starts stepping the inertial scroller once per frame (a fling began on release or cancel).</summary>
+    /// <summary>
+    /// Starts stepping the inertial scroller and edge autoscroll once per frame (a fling began on release or cancel,
+    /// or a row drag holds the pointer at an edge).
+    /// </summary>
     private void StartInertialScroll()
     {
         if (_frames.StartAnimation())
@@ -219,9 +222,15 @@ public partial class KumikoDataGrid
             : Stopwatch.GetElapsedTime(s_frameClockStart);
         float frameMs = _frames.BeginFrame(now);
 
-        // UpdateInertialScroll scrolls and raises NeedsRedraw (→ RequestRedraw) on every step that moves.
-        if (_frames.IsAnimating && !_inputController.UpdateInertialScroll(_scroll, frameMs))
-            _frames.StopAnimation();
+        // UpdateInertialScroll and UpdateAutoScroll scroll and raise NeedsRedraw (→ RequestRedraw) on every step that
+        // moves; the animation ends when neither has anything left to do.
+        if (_frames.IsAnimating)
+        {
+            bool flinging = _inputController.UpdateInertialScroll(_scroll, frameMs);
+            bool autoScrolling = _inputController.UpdateAutoScroll(_scroll, frameMs);
+            if (!flinging && !autoScrolling)
+                _frames.StopAnimation();
+        }
 
         if (_frames.TakePendingRedraw())
             _surface.Invalidate();

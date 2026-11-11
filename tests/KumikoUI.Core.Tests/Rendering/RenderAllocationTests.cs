@@ -66,6 +66,21 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_RowDragGhostAndDropIndicator_AllocateNothing()
+    {
+        // A row drag redraws every frame (pointer moves, edge autoscroll): the ghost's texts are read once per drag.
+        var grid = CreateGrid(featured: false);
+        int frame = 0;
+
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+        {
+            float ghostTop = frame++ % 2 == 0 ? 200 : 260;
+            grid.Renderer.Render(ctx, grid.Source, grid.Scroll, grid.Selection, grid.Style,
+                dragRowIndex: 3, dragRowScreenY: ghostTop);
+        }));
+    }
+
+    [Fact]
     public void SteadyState_ScrollingBackAndForthOverCachedRows_AllocatesNothing()
     {
         var grid = CreateGrid(featured: false);

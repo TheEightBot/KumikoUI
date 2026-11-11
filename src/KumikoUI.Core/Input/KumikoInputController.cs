@@ -33,8 +33,20 @@ public class KumikoInputController
     private int _dragRowIndex = -1;
     private float _dragRowOffset;
 
+    // A press on a row drag handle: the drag starts as soon as it moves, with no drag threshold (-1 when none).
+    private int _armedDragRow = -1;
+
+    // The device of the press in progress: a touch drag on a row pans, a mouse or pen drag reorders it.
+    private KumikoPointerDeviceType _pressDeviceType;
+
+    // Edge autoscroll during a row drag, in pixels per second (positive scrolls down); 0 when not autoscrolling.
+    private float _autoScrollVelocityY;
+
     private const float PanThreshold = 10f;
     private const float DragThreshold = 8f;
+
+    // The movement that starts a drag from a drag handle: enough to ignore the jitter of a tap.
+    private const float HandleDragSlop = 2f;
 
     // Tracks the original press position for more accurate first-move
     private float _pressOriginX, _pressOriginY;
@@ -94,8 +106,19 @@ public class KumikoInputController
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized;
     /// <summary>Raised when the user drops a dragged column header at a new position.</summary>
     public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered;
-    /// <summary>Raised when the user drops a dragged row at a new position.</summary>
+    /// <summary>
+    /// Raised once when the user drops a dragged row at a new position and the row moved: the controller has already
+    /// called <see cref="KumikoSource.ReorderRow"/>, which moved the item in the items source.
+    /// <see cref="RowReorderedEventArgs.Result"/> is <see cref="KumikoReorderResult.Moved"/>.
+    /// </summary>
     public event EventHandler<RowReorderedEventArgs>? RowReordered;
+    /// <summary>
+    /// Raised once when the user drops a dragged row at a new position but <see cref="KumikoSource.ReorderRow"/>
+    /// refused to move it; <see cref="RowReorderedEventArgs.Result"/> says why (a column sort is active, the items
+    /// source cannot be reordered, or the target is in another group). Nothing changed. A drop where the row already
+    /// is, or a canceled drag, raises neither event.
+    /// </summary>
+    public event EventHandler<RowReorderedEventArgs>? RowReorderRejected;
     /// <summary>Raised when a data cell is tapped (after the selection is updated).</summary>
     public event EventHandler<RowTappedEventArgs>? RowTapped;
     /// <summary>Raised on the second tap of a double-tap on a data cell.</summary>
@@ -130,6 +153,14 @@ public class KumikoInputController
     public bool IsInertialScrolling => _inertialScroller.IsActive;
 
     /// <summary>
+    /// Whether a drag holds the pointer in an edge autoscroll band (see <see cref="ScrollSettings.AutoScrollEdgeSize"/>)
+    /// and the grid can still scroll that way. Hosts check it after each pointer event and, while it is true, call
+    /// <see cref="UpdateAutoScroll"/> once per frame (from the same frame loop or timer as
+    /// <see cref="UpdateInertialScroll"/>).
+    /// </summary>
+    public bool IsAutoScrolling => _isDraggingRow && _autoScrollVelocityY != 0;
+
+    /// <summary>
     /// Whether the grid responds to the user. While false, pointer and key events are ignored (the grid does
     /// not select, sort, scroll, drag or edit, and leaves every event unhandled) and the cursor stays the
     /// default. Turning it off ends whatever is in progress: a drag or pan stops, a fling stops, popups close
@@ -155,7 +186,11 @@ public class KumikoInputController
     /// <summary>Row being dragged for reorder (-1 if none).</summary>
     public int DragRowIndex => _dragRowIndex;
 
-    /// <summary>Current drag Y offset for visual feedback.</summary>
+    /// <summary>
+    /// The top of the dragged row's ghost, in viewport coordinates (from the top of the grid, grouping panel
+    /// included): the pointer minus where the row was grabbed, kept so that the ghost's middle stays within the rows
+    /// area. The drop target is the row under the ghost's middle.
+    /// </summary>
     public float DragRowScreenY { get; private set; }
 
     /// <summary>
@@ -274,6 +309,8 @@ public class KumikoInputController
         _isDraggingRow = false;
         _dragColumnIndex = -1;
         _dragRowIndex = -1;
+        _armedDragRow = -1;
+        _autoScrollVelocityY = 0;
         _editorConsumedPointerDown = false;
         _inertialScroller.Reset();
         if (_popupManager.HasActivePopups) _popupManager.CloseAll();
@@ -626,6 +663,33 @@ public class KumikoInputController
         return _inertialScroller.IsActive;
     }
 
+    /// <summary>
+    /// Advance edge autoscroll by one frame: while a row drag holds the pointer in an edge band
+    /// (<see cref="IsAutoScrolling"/>), scroll toward that edge by the band's speed times
+    /// <paramref name="frameIntervalMs"/>. The ghost stays under the pointer, so the drop target follows the rows
+    /// scrolling by. Returns true while it keeps scrolling; false when there is nothing to do or the content edge was
+    /// reached (autoscroll then waits for the pointer to move again). Call it from the frame loop or timer that runs
+    /// <see cref="UpdateInertialScroll"/>; it allocates nothing.
+    /// </summary>
+    /// <param name="scroll">The grid's scroll state.</param>
+    /// <param name="frameIntervalMs">The time since the previous frame, in milliseconds.</param>
+    /// <returns>Whether the grid scrolled and autoscroll is still active.</returns>
+    public bool UpdateAutoScroll(ScrollState scroll, float frameIntervalMs = 16f)
+    {
+        if (!IsAutoScrolling) return false;
+
+        float oldY = scroll.OffsetY;
+        scroll.ScrollBy(0, _autoScrollVelocityY * Math.Max(0, frameIntervalMs) / 1000f);
+        if (scroll.OffsetY == oldY)
+        {
+            _autoScrollVelocityY = 0; // at the content edge
+            return false;
+        }
+
+        Redraw();
+        return true;
+    }
+
     // ── Pointer handlers ──
 
     private void HandlePointerDown(
@@ -639,6 +703,10 @@ public class KumikoInputController
         _isResizingColumn = false;
         _isDraggingColumn = false;
         _isDraggingRow = false;
+        _dragRowIndex = -1;
+        _armedDragRow = -1;
+        _autoScrollVelocityY = 0;
+        _pressDeviceType = e.DeviceType;
         _editorConsumedPointerDown = false;
         _lastPanX = e.X;
         _lastPanY = e.Y;
@@ -736,6 +804,10 @@ public class KumikoInputController
             return;
         }
 
+        // A press on a row's drag handle: the drag starts as soon as it moves, whatever the device or direction.
+        if (hit.Region == HitRegion.RowDragHandle && style.ShowRowDragHandle && IsDataRow(dataSource, hit.RowIndex))
+            _armedDragRow = hit.RowIndex;
+
         e.Handled = true;
     }
 
@@ -775,8 +847,27 @@ public class KumikoInputController
 
         if (_isDraggingRow)
         {
-            DragRowScreenY = e.Y - _dragRowOffset;
-            Redraw();
+            UpdateRowDrag(e.Y, scroll, style, dataSource);
+            e.Handled = true;
+            return;
+        }
+
+        // A press on a drag handle starts the row drag as soon as it moves (past a tap's jitter), in any direction.
+        if (_armedDragRow >= 0 && !_isPanning)
+        {
+            if (MathF.Abs(e.X - _pressOriginX) <= HandleDragSlop && MathF.Abs(e.Y - _pressOriginY) <= HandleDragSlop)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            int row = _armedDragRow;
+            _armedDragRow = -1;
+            if (row < totalRows && CommitEditBeforeViewChange(dataSource, selection))
+            {
+                BeginRowDrag(row, _pressOriginY, scroll, style, dataSource);
+                UpdateRowDrag(e.Y, scroll, style, dataSource);
+            }
             e.Handled = true;
             return;
         }
@@ -804,31 +895,16 @@ public class KumikoInputController
                     return;
                 }
 
-                // Check if this started on a data cell (potential row reorder) or a drag handle
-                bool isDragHandle = startHit.Region == HitRegion.RowDragHandle && style.ShowRowDragHandle;
-                bool isCellDrag = startHit.Region == HitRegion.Cell && style.AllowRowDragDrop;
-                if ((isDragHandle || isCellDrag) &&
+                // A mouse or pen drag that started on a data cell reorders the row (with AllowRowDragDrop); a touch
+                // drag pans instead, and a touch long press starts the row drag (HandleLongPress).
+                if (startHit.Region == HitRegion.Cell && style.AllowRowDragDrop &&
+                    _pressDeviceType != KumikoPointerDeviceType.Touch &&
                     Math.Abs(e.Y - _lastPanY) > Math.Abs(e.X - _lastPanX) &&
-                    startHit.RowIndex >= 0 &&
+                    IsDataRow(dataSource, startHit.RowIndex) &&
                     CommitEditBeforeViewChange(dataSource, selection))
                 {
-                    _isDraggingRow = true;
-                    _dragRowIndex = startHit.RowIndex;
-                    // Compute the Y position of the row top in viewport coords
-                    float topSummaryHeight = dataSource.TopSummaryCount * style.SummaryRowHeight;
-                    float dataAreaTop = style.HeaderHeight + topSummaryHeight;
-                    int frozenRowCount = dataSource.EffectiveFrozenRowCount;
-                    float rowScreenY;
-                    if (startHit.RowIndex < frozenRowCount)
-                    {
-                        rowScreenY = dataAreaTop + startHit.RowIndex * style.RowHeight;
-                    }
-                    else
-                    {
-                        rowScreenY = dataAreaTop + (startHit.RowIndex * style.RowHeight) - scroll.OffsetY;
-                    }
-                    _dragRowOffset = _lastPanY - rowScreenY;
-                    DragRowScreenY = e.Y - _dragRowOffset;
+                    BeginRowDrag(startHit.RowIndex, _lastPanY, scroll, style, dataSource);
+                    UpdateRowDrag(e.Y, scroll, style, dataSource);
                     e.Handled = true;
                     return;
                 }
@@ -953,11 +1029,14 @@ public class KumikoInputController
             return;
         }
 
+        _armedDragRow = -1;
         if (_isDraggingRow)
         {
-            FinishRowReorder(e.Y, scroll, style, dataSource);
-            _isDraggingRow = false;
-            _dragRowIndex = -1;
+            UpdateRowDrag(e.Y, scroll, style, dataSource);
+            int from = _dragRowIndex;
+            int to = RowDragGeometry.DropTarget(DragRowScreenY, scroll, style, dataSource);
+            EndRowDrag();
+            FinishRowReorder(from, to, dataSource);
             Redraw();
             e.Handled = true;
             return;
@@ -1163,11 +1242,11 @@ public class KumikoInputController
             return;
         }
 
+        _armedDragRow = -1;
         if (_isDraggingRow)
         {
             // Cancel row drag — snap back
-            _isDraggingRow = false;
-            _dragRowIndex = -1;
+            EndRowDrag();
             Redraw();
             e.Handled = true;
             return;
@@ -1209,7 +1288,8 @@ public class KumikoInputController
     }
 
     /// <summary>
-    /// Handle a long press gesture. Triggers editing if the LongPress edit trigger is configured.
+    /// Handle a long press gesture: on touch it may start a row drag; otherwise it selects the cell and triggers
+    /// editing if the LongPress edit trigger is configured.
     /// </summary>
     private void HandleLongPress(
         KumikoPointerEventArgs e,
@@ -1217,7 +1297,24 @@ public class KumikoInputController
         IReadOnlyList<KumikoColumn> columns, int totalRows,
         KumikoSource dataSource)
     {
+        // A long press that arrives after the press became a pan or a drag (the host's timer allows a little
+        // movement) belongs to that gesture: it neither selects nor edits.
+        if (_isPanning || _isDraggingRow || _isDraggingColumn || _isResizingColumn)
+        {
+            e.Handled = true;
+            return;
+        }
+
         var hit = _hitTester.HitTest(e.X, e.Y, scroll, style, columns, totalRows, dataSource);
+
+        // A touch long press on a row (with AllowRowDragDrop) or on its drag handle starts the row drag, unless the
+        // press already became a pan or a drag, or the cell edits on a long press (LongPress edit trigger).
+        if (TryBeginRowDragOnLongPress(e, hit, scroll, selection, style, dataSource))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (hit.Region != HitRegion.Cell || hit.RowIndex < 0) return;
 
         // An open edit is committed first; a refused commit keeps the editor and the selection
@@ -1296,53 +1393,109 @@ public class KumikoInputController
 
     // ── Row reorder ──
 
-    private void FinishRowReorder(
-        float dropY, ScrollState scroll,
-        KumikoStyle style, KumikoSource dataSource)
+    private static bool IsDataRow(KumikoSource dataSource, int row) =>
+        row >= 0 && row < dataSource.RowCount && !dataSource.IsNonDataRow(row);
+
+    /// <summary>
+    /// A touch long press starts a row drag on a data row: anywhere on the row with
+    /// <see cref="KumikoStyle.AllowRowDragDrop"/> (unless the cell's edit triggers include
+    /// <see cref="EditTrigger.LongPress"/>, which then edits), or on its drag handle. Not once the press has become a
+    /// pan or another drag. True when the drag started, or the press was consumed by a refused commit.
+    /// </summary>
+    private bool TryBeginRowDragOnLongPress(
+        KumikoPointerEventArgs e, KumikoHitTestResult hit, ScrollState scroll,
+        KumikoSelectionModel selection, KumikoStyle style, KumikoSource dataSource)
     {
-        if (_dragRowIndex < 0) return;
+        if (e.DeviceType != KumikoPointerDeviceType.Touch || !IsDataRow(dataSource, hit.RowIndex) ||
+            _isPanning || _isDraggingRow || _isDraggingColumn || _isResizingColumn)
+            return false;
 
-        int totalRows = dataSource.RowCount;
-        float topSummaryHeight = dataSource.TopSummaryCount * style.SummaryRowHeight;
-        int frozenRowCount = dataSource.EffectiveFrozenRowCount;
-        float frozenRowHeight = frozenRowCount * style.RowHeight;
+        bool onHandle = hit.Region == HitRegion.RowDragHandle && style.ShowRowDragHandle;
+        bool onCell = hit.Region == HitRegion.Cell && style.AllowRowDragDrop &&
+                      !(_editSession != null && hit.Column != null &&
+                        (GetEffectiveEditTriggers(hit.Column) & EditTrigger.LongPress) != 0);
+        if (!onHandle && !onCell) return false;
 
-        // Account for grouping panel offset
-        float groupPanelOffset = dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
-
-        // Convert drop Y to row index
-        float dataAreaTop = style.HeaderHeight + topSummaryHeight + groupPanelOffset;
-        int dropIndex;
-
-        if (frozenRowCount > 0 && dropY >= dataAreaTop && dropY < dataAreaTop + frozenRowHeight)
+        _armedDragRow = -1;
+        if (CommitEditBeforeViewChange(dataSource, selection))
         {
-            // Dropping in the frozen row area
-            dropIndex = (int)((dropY - dataAreaTop) / style.RowHeight);
-            dropIndex = Math.Clamp(dropIndex, 0, frozenRowCount - 1);
+            BeginRowDrag(hit.RowIndex, e.Y, scroll, style, dataSource);
+            UpdateRowDrag(e.Y, scroll, style, dataSource);
+            _autoScrollVelocityY = 0; // a row held in an edge band scrolls once the finger moves
         }
+        return true;
+    }
+
+    /// <summary>Starts dragging <paramref name="row"/>, grabbed at viewport y <paramref name="grabY"/>.</summary>
+    private void BeginRowDrag(int row, float grabY, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    {
+        _inertialScroller.Reset();
+        _isPanning = false;
+        _isDraggingRow = true;
+        _dragRowIndex = row;
+        _dragRowOffset = grabY - RowDragGeometry.RowTop(row, scroll, style, dataSource);
+        _autoScrollVelocityY = 0;
+    }
+
+    /// <summary>
+    /// Moves the ghost with the pointer at viewport y <paramref name="pointerY"/> and sets the edge autoscroll speed
+    /// for that position.
+    /// </summary>
+    private void UpdateRowDrag(float pointerY, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    {
+        DragRowScreenY = RowDragGeometry.ClampGhostTop(pointerY - _dragRowOffset, scroll, style, dataSource);
+        _autoScrollVelocityY = ComputeAutoScrollVelocity(
+            pointerY, RowDragGeometry.ScrollableTop(style, dataSource),
+            RowDragGeometry.RowsBottom(scroll, style, dataSource), scroll);
+        Redraw();
+    }
+
+    private void EndRowDrag()
+    {
+        _isDraggingRow = false;
+        _dragRowIndex = -1;
+        _autoScrollVelocityY = 0;
+    }
+
+    /// <summary>
+    /// The edge autoscroll speed (pixels per second, positive scrolls down) for a pointer at viewport y
+    /// <paramref name="pointerY"/> over a scrolling area from <paramref name="top"/> to <paramref name="bottom"/>: in
+    /// a band of <see cref="ScrollSettings.AutoScrollEdgeSize"/> at either edge (at most a third of the area), the
+    /// speed grows linearly from 0 at the band's inner edge to <see cref="ScrollSettings.AutoScrollMaxSpeed"/> at its
+    /// outer edge and stays there beyond it. 0 elsewhere, and when the grid cannot scroll further that way. It knows
+    /// nothing of rows, so another drag (a drag-select) can share it.
+    /// </summary>
+    private float ComputeAutoScrollVelocity(float pointerY, float top, float bottom, ScrollState scroll)
+    {
+        var settings = _inertialScroller.Settings;
+        float edge = Math.Min(settings.AutoScrollEdgeSize, (bottom - top) / 3);
+        if (edge <= 0 || settings.AutoScrollMaxSpeed <= 0) return 0;
+
+        if (pointerY < top + edge && scroll.OffsetY > 0)
+            return -settings.AutoScrollMaxSpeed * Math.Min(1f, (top + edge - pointerY) / edge);
+        if (pointerY > bottom - edge && scroll.OffsetY < scroll.MaxOffsetY)
+            return settings.AutoScrollMaxSpeed * Math.Min(1f, (pointerY - (bottom - edge)) / edge);
+        return 0;
+    }
+
+    /// <summary>
+    /// Drops dragged row <paramref name="from"/> on row <paramref name="to"/>: the source moves it
+    /// (<see cref="KumikoSource.ReorderRow"/>), then exactly one of <see cref="RowReordered"/> (it moved) or
+    /// <see cref="RowReorderRejected"/> (it did not, with the reason) is raised. A drop on itself raises nothing.
+    /// </summary>
+    private void FinishRowReorder(int from, int to, KumikoSource dataSource)
+    {
+        if (from < 0 || to < 0 || from == to || !IsDataRow(dataSource, from)) return;
+
+        object dataItem = dataSource.GetItem(from);
+        var result = dataSource.ReorderRow(from, to);
+        if (result == KumikoReorderResult.NoOp) return;
+
+        var args = new RowReorderedEventArgs(from, to, dataItem, result);
+        if (result == KumikoReorderResult.Moved)
+            RowReordered?.Invoke(this, args);
         else
-        {
-            // Dropping in the scrollable row area
-            float scrollableDataTop = dataAreaTop + frozenRowHeight;
-            dropIndex = (int)((dropY - scrollableDataTop + scroll.OffsetY) / style.RowHeight) + frozenRowCount;
-        }
-
-        dropIndex = Math.Clamp(dropIndex, 0, totalRows - 1);
-
-        // Don't reorder onto group header or group summary rows
-        if (dataSource.IsGroupHeaderRow(dropIndex) || dataSource.IsGroupSummaryRow(dropIndex))
-            return;
-
-        // Don't reorder the dragged row onto itself
-        if (dropIndex != _dragRowIndex)
-        {
-            object? dataItem = null;
-            try { dataItem = dataSource.GetItem(_dragRowIndex); }
-            catch { /* group header — shouldn't happen but guard */ }
-
-            RowReordered?.Invoke(this, new RowReorderedEventArgs(
-                _dragRowIndex, dropIndex, dataItem));
-        }
+            RowReorderRejected?.Invoke(this, args);
     }
 
     // ── Scroll helpers ──

@@ -344,7 +344,7 @@ else
 |---|---|
 | **Tap a cell** | `OnPointerPressed` (`_lastPointerWasTouch=true`) → `DispatchPointer` → Core selects cell; proxy NOT focused (no soft keyboard summon) |
 | **Double-tap (edit start)** | `DispatchPointer(ClickCount=2)` → Core → `CellBeginEdit` → `FocusKeyboardInput()` → proxy focused → soft keyboard appears |
-| **Long-press** | `OnHolding` → `LongPress` → Core context action |
+| **Long-press** | `OnHolding` → `LongPress` (`DeviceType = Touch`) → Core starts a row drag (`AllowRowDragDrop` or the drag handle) or runs the `LongPress` edit trigger |
 | **Typing during edit** | Soft keyboard injects into proxy `TextChanged` → `HandleEditChar` → Core editor appends |
 | **Backspace on soft keyboard** | Proxy text becomes empty → `OnProxyTextChanged` → `HandleEditKey(Backspace)` |
 | **Done / Return on soft keyboard** | `\n` in `OnProxyTextChanged` → `HandleEditKey(KumikoKey.Enter)` → Core commits → `CellEndEdit` → `ResetProxy()` + `Focus(grid)` → soft keyboard dismisses |

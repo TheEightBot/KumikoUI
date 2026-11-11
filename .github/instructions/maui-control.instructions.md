@@ -72,7 +72,7 @@ null leaves the value to the style or theme, a value overrides it and is re-appl
 
 Events: `RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`,
 `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`,
-`GroupExpandedChanged`, `RowReordered`, `ColumnReordered`, `ColumnResized`, `SelectionChanged`.
+`GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `SelectionChanged`.
 
 Methods: `Invalidate()` repaints without rebuilding the view (any thread).
 
@@ -174,7 +174,7 @@ Methods: `Invalidate()` repaints without rebuilding the view (any thread).
 - Extends `Grid`; contains `SKCanvasView` (render surface) + hidden `Entry` (keyboard proxy).
 - `[ContentProperty(nameof(Columns))]` — columns are XAML content.
 - Double-tap: 400 ms threshold, 20 px distance.
-- Long-press: 500 ms, 15 px tolerance.
+- Long-press: 500 ms, 15 px tolerance. A touch long press starts a row drag (`AllowRowDragDrop` or the drag handle); the release after it is sent as `Cancelled` unless a drag is in progress.
 - Android IME: zero-width-space (`\u200B`) sentinel for backspace detection.
 - iOS/macCatalyst: `KeyInputResponder` (native UIKit) + `UIPanGestureRecognizer`.
-- Inertial scroll and cursor blink use `IDispatcherTimer`.
+- Inertial scroll, edge autoscroll (`UpdateAutoScroll` while `IsAutoScrolling`) and cursor blink use `IDispatcherTimer`.

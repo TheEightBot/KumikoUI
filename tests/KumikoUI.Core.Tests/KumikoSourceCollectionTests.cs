@@ -246,17 +246,21 @@ public class KumikoSourceCollectionTests
     }
 
     [Fact]
-    public void ReorderRow_WhileSorted_ChangesTheSourceButNotTheVisibleOrder()
+    public void ReorderRow_WhileSorted_IsRejected_AndChangesNothing()
     {
-        // Pins today's behavior (CORE-48): the sort wins, so the row snaps back on screen.
+        // CORE-48: the sort decides the order, so a move would snap back; it is refused instead.
         var list = Rows().ToList();
         var source = MakeSource(list);
         source.SetSort(Col(source, "Value"), KumikoSortDirection.Ascending); // b, c, a, d
+        int events = 0;
+        source.ViewChanged += (_, _) => events++;
 
-        source.ReorderRow(0, 3);
+        var result = source.ReorderRow(0, 3);
 
+        Assert.Equal(KumikoReorderResult.NotSupportedSorted, result);
         Assert.Equal(new[] { "b", "c", "a", "d" }, Ids(source));
-        Assert.NotEqual(new[] { "a", "b", "c", "d" }, list.Select(r => r.Id));
+        Assert.Equal(new[] { "a", "b", "c", "d" }, list.Select(r => r.Id));
+        Assert.Equal(0, events);
     }
 
     [Theory]
@@ -290,6 +294,155 @@ public class KumikoSourceCollectionTests
 
         Assert.Equal(new[] { KumikoViewChangeKind.Rebuild }, kinds);
         Assert.Equal(new[] { "d", "a", "b", "c" }, items.Select(r => r.Id));
+    }
+
+    // ── ReorderRow results (#99) ──────────────────────────────────
+
+    /// <summary>The visible rows, a group header as <c>[key]</c>, a group summary as <c>Σ</c>.</summary>
+    private static string[] View(KumikoSource s) =>
+        Enumerable.Range(0, s.RowCount).Select(i =>
+            s.GetGroupHeaderInfo(i) is { } header ? $"[{header.DisplayText}]"
+            : s.IsGroupSummaryRow(i) ? "Σ"
+            : ((Row)s.GetItem(i)).Id).ToArray();
+
+    private static Row[] GroupedRows() => new[]
+    {
+        new Row { Id = "a", Group = "g1" },
+        new Row { Id = "b", Group = "g2" },
+        new Row { Id = "c", Group = "g1" },
+        new Row { Id = "d", Group = "g2" },
+        new Row { Id = "e", Group = "g1" },
+        new Row { Id = "f", Group = "g2" },
+    };
+
+    [Fact]
+    public void ReorderRow_ReturnsMoved_AndRaisesOneRebuild()
+    {
+        var list = Rows().ToList();
+        var source = MakeSource(list);
+        int events = 0;
+        source.ViewChanged += (_, _) => events++;
+
+        Assert.Equal(KumikoReorderResult.Moved, source.ReorderRow(3, 1));
+
+        Assert.Equal(new[] { "a", "d", "b", "c" }, list.Select(r => r.Id));
+        Assert.Equal(1, events);
+    }
+
+    [Theory]
+    [InlineData(-1, 1, KumikoReorderResult.OutOfRange)]
+    [InlineData(0, 4, KumikoReorderResult.OutOfRange)]
+    [InlineData(2, 2, KumikoReorderResult.NoOp)]
+    public void ReorderRow_ReportsWhyNothingMoved(int from, int to, KumikoReorderResult expected)
+    {
+        var source = MakeSource(Rows().ToList());
+
+        Assert.Equal(expected, source.ReorderRow(from, to));
+    }
+
+    public static TheoryData<IEnumerable> UnsupportedSources() => new()
+    {
+        Rows().Select(r => r),                                   // not an IList: the grid reads a private copy
+        Rows(),                                                  // an array: fixed size
+        new ReadOnlyCollection<Row>(Rows()),                     // read-only
+    };
+
+    [Theory]
+    [MemberData(nameof(UnsupportedSources))]
+    public void ReorderRow_OfASourceThatCannotMove_IsRejected_AndChangesNothing(IEnumerable items)
+    {
+        var source = MakeSource(items);
+        int events = 0;
+        source.ViewChanged += (_, _) => events++;
+
+        Assert.Equal(KumikoReorderResult.NotSupportedSource, source.ReorderRow(0, 2));
+
+        Assert.Equal(new[] { "a", "b", "c", "d" }, Ids(source));
+        Assert.Equal(0, events);
+    }
+
+    [Fact]
+    public void ReorderRow_WithinAGroup_MovesTheItemNextToTheTarget_KeepingTheGroupsOtherItemsInOrder()
+    {
+        var list = GroupedRows().ToList();
+        var source = MakeSource(list);
+        source.AddGroupDescription(new GroupDescription("Group"));
+        Assert.Equal(new[] { "[g1]", "a", "c", "e", "[g2]", "b", "d", "f" }, View(source));
+
+        Assert.Equal(KumikoReorderResult.Moved, source.ReorderRow(1, 3)); // a after e
+
+        Assert.Equal(new[] { "[g1]", "c", "e", "a", "[g2]", "b", "d", "f" }, View(source));
+        Assert.Equal(new[] { "b", "c", "d", "e", "a", "f" }, list.Select(r => r.Id));
+
+        Assert.Equal(KumikoReorderResult.Moved, source.ReorderRow(7, 5)); // f before b
+
+        Assert.Equal(new[] { "[g1]", "c", "e", "a", "[g2]", "f", "b", "d" }, View(source));
+    }
+
+    [Fact]
+    public void ReorderRow_AcrossGroups_IsRejected_AndChangesNothing()
+    {
+        var list = GroupedRows().ToList();
+        var source = MakeSource(list);
+        source.AddGroupDescription(new GroupDescription("Group"));
+        int events = 0;
+        source.ViewChanged += (_, _) => events++;
+
+        Assert.Equal(KumikoReorderResult.NotSupportedAcrossGroups, source.ReorderRow(1, 6)); // a onto d (g2)
+        Assert.Equal(KumikoReorderResult.OutOfRange, source.ReorderRow(1, 4));                // onto the g2 header
+
+        Assert.Equal(new[] { "a", "b", "c", "d", "e", "f" }, list.Select(r => r.Id));
+        Assert.Equal(0, events);
+    }
+
+    [Fact]
+    public void ReorderRow_WithNestedGroups_StaysWithinTheInnermostGroup()
+    {
+        var list = new List<Row>
+        {
+            new() { Id = "a", Group = "g1", Value = 1 },
+            new() { Id = "b", Group = "g1", Value = 2 },
+            new() { Id = "c", Group = "g1", Value = 1 },
+            new() { Id = "d", Group = "g1", Value = 1 },
+        };
+        var source = MakeSource(list);
+        source.AddGroupDescription(new GroupDescription("Group"));
+        source.AddGroupDescription(new GroupDescription("Value"));
+        Assert.Equal(new[] { "[g1]", "[1]", "a", "c", "d", "[2]", "b" }, View(source));
+
+        Assert.Equal(KumikoReorderResult.Moved, source.ReorderRow(4, 2));                     // d before a
+        Assert.Equal(KumikoReorderResult.NotSupportedAcrossGroups, source.ReorderRow(2, 6)); // into Value = 2
+
+        Assert.Equal(new[] { "[g1]", "[1]", "d", "a", "c", "[2]", "b" }, View(source));
+    }
+
+    [Fact]
+    public void ReorderRow_WithinAGroup_UnderAFilter_MovesToTheTargetsPosition()
+    {
+        var list = GroupedRows().ToList();
+        var source = MakeSource(list);
+        source.AddGroupDescription(new GroupDescription("Group"));
+        source.SetFilter(i => ((Row)i).Id != "c"); // g1: a, e
+
+        Assert.Equal(KumikoReorderResult.Moved, source.ReorderRow(2, 1)); // e before a
+
+        Assert.Equal(new[] { "[g1]", "e", "a", "[g2]", "b", "d", "f" }, View(source));
+        Assert.Equal(new[] { "e", "a", "b", "c", "d", "f" }, list.Select(r => r.Id));
+    }
+
+    [Fact]
+    public void ReorderRow_WithGroupSummaries_TreatsTheSummaryAsOutOfRange()
+    {
+        var list = GroupedRows().ToList();
+        var source = MakeSource(list);
+        source.AddGroupDescription(new GroupDescription("Group"));
+        source.AddGroupSummaryRow(new GroupSummaryRow { Name = "S", Columns = { new SummaryColumnDescription("Value", SummaryType.Sum) } });
+        Assert.Equal(new[] { "[g1]", "a", "c", "e", "Σ", "[g2]", "b", "d", "f", "Σ" }, View(source));
+
+        Assert.Equal(KumikoReorderResult.OutOfRange, source.ReorderRow(1, 4));
+        Assert.Equal(KumikoReorderResult.Moved, source.ReorderRow(1, 3));
+
+        Assert.Equal(new[] { "[g1]", "c", "e", "a", "Σ", "[g2]", "b", "d", "f", "Σ" }, View(source));
     }
 
     // ── The filter popup's value list ─────────────────────────────

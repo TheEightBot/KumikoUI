@@ -96,13 +96,14 @@ internal sealed class InputGrid
 
     public KumikoPointerEventArgs Pointer(InputAction action, float x, float y, InputModifiers modifiers = InputModifiers.None,
         int clicks = 1, long timestampMs = 0, PointerButton button = PointerButton.Primary, float scrollDx = 0, float scrollDy = 0,
-        long pointerId = 0, KumikoScrollUnit scrollUnit = KumikoScrollUnit.Notches)
+        long pointerId = 0, KumikoScrollUnit scrollUnit = KumikoScrollUnit.Notches,
+        KumikoPointerDeviceType deviceType = KumikoPointerDeviceType.Mouse)
     {
         var e = new KumikoPointerEventArgs
         {
             X = x, Y = y, Action = action, Modifiers = modifiers, ClickCount = clicks,
             TimestampMs = timestampMs, Button = button, ScrollDeltaX = scrollDx, ScrollDeltaY = scrollDy,
-            PointerId = pointerId, ScrollUnit = scrollUnit,
+            PointerId = pointerId, ScrollUnit = scrollUnit, DeviceType = deviceType,
         };
         Input.HandlePointer(e, Scroll, Selection, Style, Source);
         return e;
