@@ -50,6 +50,7 @@ public partial class KumikoDataGrid : ContentView
 
     // Inertial scroll timer
     private IDispatcherTimer? _scrollTimer;
+    private long _scrollTimerLastTicks;
 
     // Cursor blink timer — drives regular repaints while editing
     private IDispatcherTimer? _cursorBlinkTimer;
@@ -934,15 +935,20 @@ public partial class KumikoDataGrid : ContentView
         _scrollTimer = Dispatcher.CreateTimer();
         _scrollTimer.Interval = TimeSpan.FromMilliseconds(16); // ~60fps
         _scrollTimer.Tick += OnScrollTimerTick;
+        _scrollTimerLastTicks = System.Diagnostics.Stopwatch.GetTimestamp();
         _scrollTimer.Start();
     }
 
     private void OnScrollTimerTick(object? sender, EventArgs e)
     {
+        // Real elapsed time: dispatcher timers drift and coalesce, so a fixed 16 ms would slow slow ticks down.
+        long nowTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+        float elapsedMs = (float)System.Diagnostics.Stopwatch.GetElapsedTime(_scrollTimerLastTicks, nowTicks).TotalMilliseconds;
+        _scrollTimerLastTicks = nowTicks;
         // The grid's inertial scroll and the open editor's animation (a scroll picker settling, which may
         // commit the edit) both run on this timer, which stops once neither moves.
-        bool scrolling = _inputController.UpdateInertialScroll(_scroll, 16f);
-        bool animating = _editSession.UpdateAnimation(16f);
+        bool scrolling = _inputController.UpdateInertialScroll(_scroll, elapsedMs);
+        bool animating = _editSession.UpdateAnimation(elapsedMs);
         if (!scrolling && !animating)
         {
             StopInertialScrollTimer();
