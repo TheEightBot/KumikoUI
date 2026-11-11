@@ -177,6 +177,7 @@ public sealed partial class CustomFontsPage : Page
 // ── Data models ──────────────────────────────────────────────────
 
 /// <summary>Inventory item with Japanese property-value data.</summary>
+[KumikoUI.Core.Data.KumikoGridItem]
 public class InventoryItem : INotifyPropertyChanged
 {
     private int _itemId;
@@ -197,6 +198,7 @@ public class InventoryItem : INotifyPropertyChanged
 }
 
 /// <summary>Task item whose Priority and Done columns are rendered as Material Icons glyphs.</summary>
+[KumikoUI.Core.Data.KumikoGridItem]
 public class TaskItem : INotifyPropertyChanged
 {
     private string _name = string.Empty;
