@@ -1726,14 +1726,20 @@ public class KumikoInputController
     {
         if (!from.IsValid) return CellPosition.Invalid;
 
-        var columns = dataSource.Columns;
+        // Tab stops are found in on-screen order (left-frozen, scrolling, right-frozen), as Left and Right move.
+        var columns = dataSource.DisplayColumns;
+        int fromDisplay = dataSource.ToDisplayIndex(from.Column);
         int firstStop = -1, lastStop = -1, nextInRow = -1;
-        for (int c = 0; c < columns.Count; c++)
+        for (int d = 0; d < columns.Count; d++)
         {
-            if (!IsTabStop(columns[c])) continue;
+            if (!IsTabStop(columns[d])) continue;
+            int c = dataSource.ToColumnIndex(d);
             if (firstStop < 0) firstStop = c;
             lastStop = c;
-            if (direction > 0 ? c > from.Column && nextInRow < 0 : c < from.Column)
+            // A current cell on a hidden column has no display position: its Columns index stands in for it.
+            bool after = fromDisplay >= 0 ? d > fromDisplay : c > from.Column;
+            bool before = fromDisplay >= 0 ? d < fromDisplay : c < from.Column;
+            if (direction > 0 ? after && nextInRow < 0 : before)
                 nextInRow = c;
         }
         if (firstStop < 0) return CellPosition.Invalid;
