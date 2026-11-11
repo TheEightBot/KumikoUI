@@ -104,6 +104,7 @@ public partial class KumikoDataGrid : UserControl
         // Wire edit session to input controller and style (mirrors MAUI).
         _inputController.EditSession = _editSession;
         _editSession.Style = _style;
+        ConnectTheming();
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
 
         // Edit lifecycle drives the cursor-blink repaint timer (mirrors MAUI). These target the
@@ -133,46 +134,6 @@ public partial class KumikoDataGrid : UserControl
 
     /// <summary>Gets the edit session for inline cell editing.</summary>
     public EditSession EditSession => _editSession;
-
-    /// <summary>Configurable scroll/inertia settings.</summary>
-    public ScrollSettings ScrollSettings
-    {
-        get => _inputController.ScrollSettings;
-        set => _inputController.ScrollSettings = value;
-    }
-
-    /// <summary>
-    /// Gets or sets the grid style / theme. Style-backed properties you set explicitly
-    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied to the style you assign.
-    /// </summary>
-    public KumikoStyle GridStyle
-    {
-        get => _style;
-        set
-        {
-            _style = value;
-            ApplyStyleOptions();
-            _editSession.Style = value;
-            InvalidateSurface();
-        }
-    }
-
-    /// <summary>
-    /// Applies a built-in theme preset. Sets <see cref="GridStyle"/> to a preconfigured
-    /// <see cref="KumikoStyle"/> for the chosen theme; style-backed properties you set explicitly
-    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied on top of it.
-    /// </summary>
-    public KumikoThemeMode Theme
-    {
-        get => _themeMode;
-        set
-        {
-            if (_themeMode == value) return;
-            _themeMode = value;
-            GridStyle = KumikoTheme.Create(value);
-        }
-    }
-    private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
 
     private void OnContentReplaced(DependencyObject sender, DependencyProperty property)
     {
@@ -366,6 +327,7 @@ public partial class KumikoDataGrid : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ConnectTheming(loaded: true);
         // Re-attach the paint loop in case Unloaded detached it on a prior
         // navigation. Idempotent: detach first to avoid a double subscription.
         _canvasView.PaintSurface -= OnPaintSurface;
@@ -391,6 +353,7 @@ public partial class KumikoDataGrid : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        DisconnectTheming();
         // Detach the paint loop. The Core redraw-signal subscriptions target
         // owned objects (this control owns _dataSource/_inputController/
         // _editSession), so they don't leak the page — but the canvas's

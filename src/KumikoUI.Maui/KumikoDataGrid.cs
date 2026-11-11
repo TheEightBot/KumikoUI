@@ -152,6 +152,7 @@ public partial class KumikoDataGrid : ContentView
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
         _editSession.Style = _style;
+        ConnectTheming();
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
 
         // Wire edit session lifecycle for cursor blink timer
@@ -230,13 +231,6 @@ public partial class KumikoDataGrid : ContentView
 
     // ── Public API ────────────────────────────────────────────────
 
-    /// <summary>Configurable scroll/inertia settings.</summary>
-    public ScrollSettings ScrollSettings
-    {
-        get => _inputController.ScrollSettings;
-        set => _inputController.ScrollSettings = value;
-    }
-
     /// <summary>Gets the underlying data source.</summary>
     public KumikoSource DataSource => _dataSource;
 
@@ -248,42 +242,6 @@ public partial class KumikoDataGrid : ContentView
 
     /// <summary>Gets the edit session for inline cell editing.</summary>
     public EditSession EditSession => _editSession;
-
-    /// <summary>
-    /// Gets or sets the grid style / theme. Style-backed properties you set explicitly
-    /// (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied to the style you assign.
-    /// </summary>
-    public KumikoStyle GridStyle
-    {
-        get => _style;
-        set
-        {
-            _style = value;
-            ApplyStyleOptions();
-            _editSession.Style = _style;
-            InvalidateSurface();
-        }
-    }
-
-    /// <summary>
-    /// Applies a built-in theme preset. Sets <see cref="GridStyle"/>
-    /// to a preconfigured <see cref="KumikoStyle"/> for the chosen theme; style-backed properties you set
-    /// explicitly (<see cref="ShowHorizontalGridLines"/> and the others) are re-applied on top of it.
-    /// </summary>
-    public KumikoThemeMode Theme
-    {
-        get => _themeMode;
-        set
-        {
-            if (_themeMode == value) return;
-            _themeMode = value;
-            _style = KumikoTheme.Create(value);
-            ApplyStyleOptions();
-            _editSession.Style = _style;
-            InvalidateSurface();
-        }
-    }
-    private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
 
     // ── Bindable Properties ──────────────────────────────────────
 
@@ -547,11 +505,15 @@ public partial class KumikoDataGrid : ContentView
     /// <summary>Identifies the <see cref="HeaderHeight"/> bindable property.</summary>
     public static readonly BindableProperty HeaderHeightProperty = BindableProperty.Create(
         nameof(HeaderHeight), typeof(double), typeof(KumikoDataGrid), 40d,
-        propertyChanged: (b, _, n) =>
+        coerceValue: (b, v) =>
         {
+            // Runs on every assignment (even one equal to the default), so the value is always an explicit
+            // override that survives a later style or theme change.
             var view = (KumikoDataGrid)b;
-            view._style.HeaderHeight = (float)(double)n;
+            view._styleOptions.HeaderHeight = (float)(double)v;
+            view.ApplyStyleOptions();
             view.InvalidateSurface();
+            return v;
         });
 
     /// <summary>Height of the column header row in pixels.</summary>
@@ -566,11 +528,15 @@ public partial class KumikoDataGrid : ContentView
     /// <summary>Identifies the <see cref="RowHeight"/> bindable property.</summary>
     public static readonly BindableProperty RowHeightProperty = BindableProperty.Create(
         nameof(RowHeight), typeof(double), typeof(KumikoDataGrid), 36d,
-        propertyChanged: (b, _, n) =>
+        coerceValue: (b, v) =>
         {
+            // Runs on every assignment (even one equal to the default), so the value is always an explicit
+            // override that survives a later style or theme change.
             var view = (KumikoDataGrid)b;
-            view._style.RowHeight = (float)(double)n;
+            view._styleOptions.RowHeight = (float)(double)v;
+            view.ApplyStyleOptions();
             view.InvalidateSurface();
+            return v;
         });
 
     /// <summary>Height of each data row in pixels.</summary>
@@ -1025,6 +991,7 @@ public partial class KumikoDataGrid : ContentView
     private void Cleanup()
     {
         _wasCleanedUp = true;
+        DisconnectTheming();
 
         // Stop timers first (they capture 'this' via Tick delegates)
         StopInertialScrollTimer();
@@ -1109,6 +1076,7 @@ public partial class KumikoDataGrid : ContentView
     /// </summary>
     private void Reconnect()
     {
+        ConnectTheming();
         _dataSource.ViewChanged += OnDataSourceViewChanged;
         // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
         _dataSource.Attach();

@@ -248,7 +248,8 @@ public partial class KumikoDataGrid
     private static void OnRowHeightChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var view = (KumikoDataGrid)d;
-        view._style.RowHeight = (float)(double)e.NewValue;
+        view._styleOptions.RowHeight = (float)(double)e.NewValue;
+        view.ApplyStyleOptions();
         view.Invalidate();
     }
 
@@ -270,7 +271,8 @@ public partial class KumikoDataGrid
     private static void OnHeaderHeightChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var view = (KumikoDataGrid)d;
-        view._style.HeaderHeight = (float)(double)e.NewValue;
+        view._styleOptions.HeaderHeight = (float)(double)e.NewValue;
+        view.ApplyStyleOptions();
         view.Invalidate();
     }
 
