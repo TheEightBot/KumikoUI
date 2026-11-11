@@ -8,35 +8,27 @@ using Microsoft.UI.Xaml.Input;
 namespace KumikoUI.Uno;
 
 /// <summary>
-/// Phase 04 input wiring for <see cref="KumikoDataGrid"/>: pointer, keyboard, focus, and the
-/// input-driven repaint timers (inertial scroll + cursor blink). WinUI delivers all of these as
+/// Phase 04 input wiring for <see cref="KumikoDataGrid"/>: pointer, keyboard and focus. A fling hands over to
+/// the frame loop in <c>KumikoDataGrid.Rendering.cs</c>, which steps the inertial scroller. WinUI delivers all of these as
 /// routed events on the control itself; this partial adapts each to the platform-independent
 /// <see cref="KumikoInputController"/> API (<c>HandlePointer</c> / <c>HandleKey</c> /
 /// <c>UpdateInertialScroll</c>) that already owns the behavior.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Coordinates: <see cref="PointerPoint.Position"/> from <c>GetCurrentPoint(_canvasView)</c> is in logical
-/// DIPs — the same space the renderer was fed in Phase 03 — so hit-testing aligns at every display
-/// scale with no extra conversion (unlike MAUI, which divides <c>SKTouch.Location</c> by the canvas
-/// scale).
+/// Coordinates: <see cref="PointerPoint.Position"/> from <c>GetCurrentPoint(PointerOrigin)</c> is in logical
+/// DIPs relative to the drawing surface — the same space and origin the renderer draws in — so hit-testing
+/// aligns at every display scale with no extra conversion (unlike MAUI, which divides <c>SKTouch.Location</c>
+/// by the canvas scale), and stays aligned if the surface is ever inset from the control (UNO-18).
 /// </para>
 /// <para>
 /// Handlers are attached in <see cref="AttachInputHandlers"/> (from <c>OnLoaded</c>) and fully
-/// removed in <see cref="DetachInputHandlers"/> (from <c>OnUnloaded</c>); all timers are stopped on
-/// unload so nothing roots the page across navigation.
+/// removed in <see cref="DetachInputHandlers"/> (from <c>OnUnloaded</c>); the frame loop and the caret
+/// timer are stopped on unload (<c>DetachSurface</c>) so nothing roots the page across navigation.
 /// </para>
 /// </remarks>
 public partial class KumikoDataGrid
 {
-    // ── Inertial scroll timer (mirrors MAUI's _scrollTimer) ──
-    private DispatcherTimer? _scrollTimer;
-
-    // ── Cursor-blink timer — drives regular repaints while editing or a filter popup is open
-    //    (mirrors MAUI's _cursorBlinkTimer) ──
-    private DispatcherTimer? _cursorBlinkTimer;
-    private bool _filterPopupActive;
-
     // ── Double-tap detection (WinUI pointer args carry no click count) ──
     // WinUI's DoubleTapped routed event fires *after* the second press/release pair, which is too
     // late to stamp ClickCount on that release (and would mis-count a later third click). So we
@@ -100,7 +92,7 @@ public partial class KumikoDataGrid
     }
 
     /// <summary>
-    /// Detaches every pointer + keyboard handler and stops all input-driven timers.
+    /// Detaches every pointer + keyboard handler.
     /// Called from <c>OnUnloaded</c> so no delegate roots this control across navigation.
     /// </summary>
     private void DetachInputHandlers()
@@ -119,9 +111,6 @@ public partial class KumikoDataGrid
 
         // Detach the hidden TextBox proxy's events (see KumikoDataGrid.Editing.cs).
         TeardownInputProxy();
-
-        StopInertialScrollTimer();
-        StopCursorBlinkTimer();
     }
 
     // ── Pointer event handlers ───────────────────────────────────
@@ -132,7 +121,7 @@ public partial class KumikoDataGrid
         CapturePointer(e.Pointer);
         _lastPointerWasTouch = e.Pointer.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Touch;
 
-        var point = e.GetCurrentPoint(_canvasView);
+        var point = e.GetCurrentPoint(PointerOrigin);
 
         // Double-tap heuristic: detect on Pressed (time + distance from the previous tap) and carry
         // the count to the matching Released so both report ClickCount=2 (mirrors MAUI's OnCanvasTouch).
@@ -142,7 +131,7 @@ public partial class KumikoDataGrid
 
         DispatchPointer(e, point, InputAction.Pressed, clickCount);
         if (_editSession.IsAnimating)
-            StartInertialScrollTimer(); // a spin button pressed and held repeats from the frame loop
+            StartInertialScroll(); // a spin button pressed and held repeats from the frame loop
 
         // Route the keyboard to the hidden TextBox proxy for non-touch input (mouse/pen). The proxy
         // is a real focusable element on every head, unlike this control, whose KeyDown/
@@ -162,7 +151,7 @@ public partial class KumikoDataGrid
         // a mouse, only the LEFT button drags/scrolls (a right/middle drag must not pan). Touch/pen
         // contact reports IsInContact without a named mouse button, so the right/middle guard leaves
         // mobile scrolling unaffected.
-        var point = e.GetCurrentPoint(_canvasView);
+        var point = e.GetCurrentPoint(PointerOrigin);
         if (!point.IsInContact)
         {
             DispatchPointer(e, point, InputAction.Hover);
@@ -175,7 +164,7 @@ public partial class KumikoDataGrid
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        var point = e.GetCurrentPoint(_canvasView);
+        var point = e.GetCurrentPoint(PointerOrigin);
         // Carry the click count from the preceding Pressed so a double-click commits on the up.
         int clickCount = _pendingClickCount;
         _pendingClickCount = 1;
@@ -184,25 +173,25 @@ public partial class KumikoDataGrid
         ReleasePointerCapture(e.Pointer);
 
         // Touch fling: Core started the inertial scroller (or a scroll picker editor started coasting and
-        // snapping) on release; pump it from a frame timer.
+        // snapping) on release; the frame loop steps it once per frame.
         if (_inputController.IsInertialScrolling || _editSession.IsAnimating)
-            StartInertialScrollTimer();
+            StartInertialScroll();
     }
 
     private void OnPointerCanceled(object sender, PointerRoutedEventArgs e)
     {
-        DispatchPointer(e, e.GetCurrentPoint(_canvasView), InputAction.Cancelled);
+        DispatchPointer(e, e.GetCurrentPoint(PointerOrigin), InputAction.Cancelled);
         if (_inputController.IsInertialScrolling)
-            StartInertialScrollTimer();
+            StartInertialScroll();
     }
 
     private void OnPointerCaptureLost(object sender, PointerRoutedEventArgs e)
     {
         // Losing capture mid-drag is equivalent to a cancel — preserve scroll momentum (Core's
         // HandlePointerCancelled starts a fling if we were panning).
-        DispatchPointer(e, e.GetCurrentPoint(_canvasView), InputAction.Cancelled);
+        DispatchPointer(e, e.GetCurrentPoint(PointerOrigin), InputAction.Cancelled);
         if (_inputController.IsInertialScrolling)
-            StartInertialScrollTimer();
+            StartInertialScroll();
     }
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
@@ -210,7 +199,7 @@ public partial class KumikoDataGrid
         // Core resets the cursor to the default unless a column resize drag is in progress; it does not
         // cancel an active drag (capture keeps drags alive past the bounds, and PointerCaptureLost
         // handles real loss).
-        DispatchPointer(e, e.GetCurrentPoint(_canvasView), InputAction.Exited);
+        DispatchPointer(e, e.GetCurrentPoint(PointerOrigin), InputAction.Exited);
     }
 
     // ── Cursor ──
@@ -235,7 +224,7 @@ public partial class KumikoDataGrid
 
     private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        var point = e.GetCurrentPoint(_canvasView);
+        var point = e.GetCurrentPoint(PointerOrigin);
         DispatchPointer(e, point, InputAction.Scroll);
     }
 
@@ -285,7 +274,7 @@ public partial class KumikoDataGrid
         if (e.PointerDeviceType != PointerDeviceType.Touch) return;
         if (e.HoldingState != HoldingState.Started) return;
 
-        var pos = e.GetPosition(_canvasView);
+        var pos = e.GetPosition(PointerOrigin);
         var evt = new KumikoPointerEventArgs
         {
             X = (float)pos.X,
@@ -321,7 +310,7 @@ public partial class KumikoDataGrid
         };
         _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
         if (_editSession.IsAnimating)
-            StartInertialScrollTimer(); // a held arrow key repeats a spin button from the frame loop
+            StartInertialScroll(); // a held arrow key repeats a spin button from the frame loop
         if (evt.Handled)
         {
             e.Handled = true;
@@ -335,70 +324,13 @@ public partial class KumikoDataGrid
         }
     }
 
-    // ── Inertial scroll timer (mirrors MAUI's _scrollTimer) ──────
-
-    private void StartInertialScrollTimer()
-    {
-        if (_scrollTimer != null) return;
-
-        _scrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) }; // ~60fps
-        _scrollTimer.Tick += OnScrollTimerTick;
-        _scrollTimer.Start();
-    }
-
-    private void OnScrollTimerTick(object? sender, object e)
-    {
-        // The grid's inertial scroll and the open editor's animation (a scroll picker settling, which may
-        // commit the edit) both run on this timer, which stops once neither moves.
-        bool scrolling = _inputController.UpdateInertialScroll(_scroll, 16f);
-        bool animating = _editSession.UpdateAnimation(16f);
-        if (!scrolling && !animating)
-            StopInertialScrollTimer();
-        // UpdateInertialScroll raises NeedsRedraw on each step that moves; an explicit invalidate
-        // here keeps the surface in lockstep with the timer even on the final (stopping) tick.
-        _canvasView.Invalidate();
-    }
-
-    private void StopInertialScrollTimer()
-    {
-        if (_scrollTimer != null)
-        {
-            _scrollTimer.Stop();
-            _scrollTimer.Tick -= OnScrollTimerTick;
-            _scrollTimer = null;
-        }
-    }
-
-    // ── Cursor-blink timer (mirrors MAUI's _cursorBlinkTimer) ────
-
-    private void StartCursorBlinkTimer()
-    {
-        if (_cursorBlinkTimer != null) return;
-
-        _cursorBlinkTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(530) };
-        _cursorBlinkTimer.Tick += OnCursorBlinkTimerTick;
-        _cursorBlinkTimer.Start();
-    }
-
-    private void OnCursorBlinkTimerTick(object? sender, object e)
-    {
-        if (_editSession.IsEditing || _filterPopupActive)
-            _canvasView.Invalidate();
-        else
-            StopCursorBlinkTimer();
-    }
-
-    private void StopCursorBlinkTimer()
-    {
-        if (_cursorBlinkTimer != null)
-        {
-            _cursorBlinkTimer.Stop();
-            _cursorBlinkTimer.Tick -= OnCursorBlinkTimerTick;
-            _cursorBlinkTimer = null;
-        }
-    }
-
     // ── Helpers ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// The element pointer positions are measured against: the drawing surface, whose top-left corner is the
+    /// renderer's origin.
+    /// </summary>
+    private UIElement PointerOrigin => _surface.Element;
 
     /// <summary>WinUI pointer timestamps are in microseconds; Core wants milliseconds.</summary>
     private static long ToMillis(ulong timestampMicroseconds) => PointerGestures.ToMillis(timestampMicroseconds);

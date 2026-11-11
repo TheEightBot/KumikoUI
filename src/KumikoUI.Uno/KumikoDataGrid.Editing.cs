@@ -296,7 +296,7 @@ public partial class KumikoDataGrid
         };
         _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
         if (_editSession.IsAnimating)
-            StartInertialScrollTimer();
+            StartInertialScroll();
     }
 
     /// <summary>
@@ -313,7 +313,7 @@ public partial class KumikoDataGrid
         };
         _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
         if (_editSession.IsAnimating)
-            StartInertialScrollTimer(); // a held arrow key repeats a spin button from the frame loop
+            StartInertialScroll(); // a held arrow key repeats a spin button from the frame loop
         return evt;
     }
 }
