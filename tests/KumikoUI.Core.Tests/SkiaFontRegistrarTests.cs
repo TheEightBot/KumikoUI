@@ -61,6 +61,30 @@ public class SkiaFontRegistrarTests : IDisposable
     }
 
     [Fact]
+    public void RegisterTypefaceFamiliesFromStream_registers_one_typeface_under_every_name()
+    {
+        SkiaFontRegistrar.RegisterTypefaceFamiliesFromStream(OpenSansStream(), ["MyAlias", null, "", "myalias", "OpenSans-Regular"]);
+
+        var typeface = Registered("MyAlias");
+        Assert.Same(typeface, Registered("OpenSans-Regular"));
+
+        // Still owned until the last family is gone.
+        Assert.True(SkiaFontRegistrar.Unregister("MyAlias"));
+        Assert.False(IsDisposed(typeface));
+        Assert.True(SkiaFontRegistrar.Unregister("OpenSans-Regular"));
+        Assert.True(IsDisposed(typeface));
+    }
+
+    [Fact]
+    public void RegisterTypefaceFamiliesFromStream_requires_a_name()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            SkiaFontRegistrar.RegisterTypefaceFamiliesFromStream(OpenSansStream(), [null, " "]));
+        Assert.Throws<ArgumentNullException>(() =>
+            SkiaFontRegistrar.RegisterTypefaceFamiliesFromStream(null!, ["A"]));
+    }
+
+    [Fact]
     public void Every_change_increments_the_version()
     {
         long v0 = SkiaFontRegistrar.Version;

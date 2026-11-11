@@ -213,6 +213,7 @@ public partial class KumikoDataGrid : ContentView
     protected override void OnHandlerChanged()
     {
         base.OnHandlerChanged();
+        EnsureHostingConfigured();
 
         // Connected to a new handler — re-subscribe if previously cleaned up.
         // On first attach, the constructor already did the wiring and _isConnected

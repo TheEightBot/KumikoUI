@@ -34,11 +34,8 @@ public partial class KumikoDataGrid
     // late to stamp ClickCount on that release (and would mis-count a later third click). So we
     // detect it on Pressed via press timing + distance and carry it to the matching Released so
     // both report ClickCount=2 — exactly how the MAUI control does it in OnCanvasTouch.
-    private long _lastTapTimeMs;
-    private float _lastTapX, _lastTapY;
+    private PointerGestures.TapTracker _tapTracker;
     private int _pendingClickCount = 1;
-    private const long DoubleTapThresholdMs = 400;
-    private const float DoubleTapDistanceThreshold = 20f;
 
     // ── Touch-vs-mouse tracking ──
     // Tracks whether the last pointer press was a touch event. Used in OnPointerPressed and
@@ -128,24 +125,8 @@ public partial class KumikoDataGrid
 
         // Double-tap heuristic: detect on Pressed (time + distance from the previous tap) and carry
         // the count to the matching Released so both report ClickCount=2 (mirrors MAUI's OnCanvasTouch).
-        int clickCount = 1;
         long nowMs = ToMillis(point.Timestamp);
-        float x = (float)point.Position.X;
-        float y = (float)point.Position.Y;
-        float dx = x - _lastTapX;
-        float dy = y - _lastTapY;
-        if (nowMs - _lastTapTimeMs < DoubleTapThresholdMs &&
-            MathF.Sqrt(dx * dx + dy * dy) < DoubleTapDistanceThreshold)
-        {
-            clickCount = 2;
-            _lastTapTimeMs = 0; // reset so a third tap doesn't also count as double
-        }
-        else
-        {
-            _lastTapTimeMs = nowMs;
-        }
-        _lastTapX = x;
-        _lastTapY = y;
+        int clickCount = _tapTracker.RegisterPress(nowMs, (float)point.Position.X, (float)point.Position.Y);
         _pendingClickCount = clickCount;
 
         DispatchPointer(e, point, InputAction.Pressed, clickCount);
@@ -347,7 +328,7 @@ public partial class KumikoDataGrid
     private UIElement PointerOrigin => _surface.Element;
 
     /// <summary>WinUI pointer timestamps are in microseconds; Core wants milliseconds.</summary>
-    private static long ToMillis(ulong timestampMicroseconds) => (long)(timestampMicroseconds / 1000);
+    private static long ToMillis(ulong timestampMicroseconds) => PointerGestures.ToMillis(timestampMicroseconds);
 
     /// <summary>
     /// Current high-resolution timestamp in microseconds, matching <see cref="PointerPoint.Timestamp"/>'s

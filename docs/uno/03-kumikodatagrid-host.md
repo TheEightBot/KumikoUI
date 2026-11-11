@@ -258,25 +258,11 @@ Map each MAUI `BindableProperty` to a WinUI `DependencyProperty`. Same names, sa
 
 ## 8. Hosting extension
 
-- [x] Add `KumikoUIHostingExtensions` mirroring
-  [`KumikoUIHostingExtensions.cs`](../../src/KumikoUI.Maui/KumikoUIHostingExtensions.cs). Uno apps
-  configure services on the `IHostBuilder` from `IApplicationBuilder`:
-  ```csharp
-  using Microsoft.Extensions.Hosting;
-
-  public static class KumikoUIHostingExtensions
-  {
-      // Place to register fonts / services; keeps app startup symmetric with MAUI's UseSkiaKumikoUI()
-      public static IHostBuilder UseKumikoUI(this IHostBuilder host) => host;
-  }
-  ```
-  > Unlike MAUI, SkiaSharp needs no `UseSkiaSharp()` initializer on Uno — `SKXamlCanvas` self-hosts.
-  > The extension still earns its place as the documented spot for font registration (see [05](05-fonts-and-assets.md)).
-  > Deviation: the Uno.Sdk library head does **not** transitively reference the hosting abstractions,
-  > so `IHostBuilder` was unresolved. Added a direct `PackageReference` to
-  > `Microsoft.Extensions.Hosting.Abstractions` (9.0.4) in `KumikoUI.Uno.csproj` — it carries only the
-  > `IHostBuilder` contract (no runtime), so the documented signature stays intact and the extension
-  > stays minimal.
+- [x] Uno needs no hosting extension. `SKXamlCanvas` self-hosts, so there is no `UseSkiaSharp()`
+  equivalent and no startup call to make; the earlier no-op `UseKumikoUI(IHostBuilder)` was removed
+  (it only cost consumers a `Microsoft.Extensions.Hosting.Abstractions` dependency). Register custom
+  fonts with `KumikoFonts` from `App.OnLaunched` (see [05](05-fonts-and-assets.md)). The MAUI host
+  has the real entry point, `builder.UseKumikoUI()`.
 
 ---
 

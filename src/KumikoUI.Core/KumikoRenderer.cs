@@ -109,9 +109,14 @@ public class KumikoRenderer : IDisposable
             interactive.RedrawRequested += OnInteractiveRedrawRequested;
     }
 
-    /// <summary>Register a custom cell renderer for a column type.</summary>
+    /// <summary>
+    /// Register a custom cell renderer for every column of a type that has no
+    /// <see cref="KumikoColumn.CustomCellRenderer"/> of its own. Replaces the built-in renderer for that type.
+    /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="renderer"/> is null.</exception>
     public void SetCellRenderer(KumikoColumnType columnType, ICellRenderer renderer)
     {
+        ArgumentNullException.ThrowIfNull(renderer);
         _cellRenderers[columnType] = renderer;
     }
 
@@ -797,7 +802,7 @@ public class KumikoRenderer : IDisposable
             string displayText = dataSource.GetCachedCellText(row, dataItem, col, out object? value);
 
             var cell = new CellRenderContext(cellRect, row, value, displayText, col, style, colCellStyle, isSelected,
-                _paintCache, _paintCache.CellTextPaint(colCellStyle, style),
+                _paintCache, _paintCache.CellTextPaint(colCellStyle, style, isSelected),
                 colCellStyle?.TextAlignment ?? col.TextAlignment);
             renderer.Render(ctx, in cell);
         }
@@ -958,16 +963,32 @@ public class KumikoRenderer : IDisposable
                 leftX, chevronCenterY + triH / 2, chevronPaint);
         }
 
-        // Draw group text: "Header: DisplayText (count items)"
+        // Draw group text in up to three runs: "Header: DisplayText", " (count)" and the caption summary, each
+        // with its own paint (group header text, count, caption summary).
         float textX = indent + chevronSize + style.CellPadding;
+        float textRight = areaWidth - style.CellPadding;
 
-        // Include caption summary if available
-        string? captionText = dataSource.GetCaptionSummaryText(groupInfo.GroupPath);
-        string label = groupInfo.GetLabel(captionText);
+        string? captionLabel = groupInfo.GetCaptionLabel(dataSource.GetCaptionSummaryText(groupInfo.GroupPath));
 
-        var textRect = new KumikoRect(textX, rowY, areaWidth - textX - style.CellPadding, style.RowHeight);
-        ctx.DrawTextInRect(label, textRect, _paintCache.GroupHeaderText,
-            KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+        textX = DrawGroupHeaderRun(ctx, groupInfo.GetTitle(), _paintCache.GroupHeaderText, textX, textRight, rowY, style);
+        textX = DrawGroupHeaderRun(ctx, groupInfo.GetCountText(), _paintCache.GroupHeaderCount, textX, textRight, rowY, style);
+        if (captionLabel != null)
+            DrawGroupHeaderRun(ctx, captionLabel, _paintCache.CaptionSummaryText, textX, textRight, rowY, style);
+    }
+
+    /// <summary>
+    /// Draw one run of a group header's text starting at <paramref name="x"/> and return where the next run
+    /// starts; returns <paramref name="right"/> when the run did not fit, so nothing is drawn after it.
+    /// </summary>
+    private static float DrawGroupHeaderRun(
+        IDrawingContext ctx, string text, KumikoPaint paint, float x, float right, float rowY, KumikoStyle style)
+    {
+        if (x >= right) return right;
+
+        float width = ctx.MeasureText(text, paint).Width;
+        var rect = new KumikoRect(x, rowY, right - x, style.RowHeight);
+        ctx.DrawTextInRect(text, rect, paint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+        return x + width;
     }
 
     private void DrawGridLines(
