@@ -14,7 +14,7 @@ internal readonly record struct KumikoSurfaceMetrics(float ScaleX, float ScaleY,
     public const double ScaleTolerance = 0.001;
 
     /// <summary>True when there is nothing to draw (a zero or negative viewport).</summary>
-    public bool IsEmpty => !(Width > 0) || !(Height > 0);
+    public bool IsEmpty => float.IsNaN(Width) || Width <= 0 || float.IsNaN(Height) || Height <= 0;
 
     /// <summary>
     /// The metrics of a bitmap of <paramref name="pixelWidth"/> × <paramref name="pixelHeight"/> device pixels backing
