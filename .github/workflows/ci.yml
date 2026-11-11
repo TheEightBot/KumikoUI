@@ -97,13 +97,34 @@ jobs:
           -- src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll
           src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
 
+      # Collects Cobertura coverage for KumikoUI.Core + KumikoUI.SkiaSharp (coverage.runsettings excludes the tests,
+      # generated code and samples); the report and ratchet follow the source generator tests below.
       - name: Test
         run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+          --collect:"XPlat Code Coverage" --settings coverage.runsettings
 
       - name: Test — source generator
         run: dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
           --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+
+      # Merges the coverage files, writes the summary to the job summary (needs no token permissions) and fails when
+      # coverage drops below eng/coverage/baseline.json (the ratchet; raise it by hand as coverage grows).
+      - name: Coverage report and ratchet
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11
+          reportgenerator "-reports:TestResults/**/coverage.cobertura.xml" "-targetdir:CoverageReport" \
+            "-reporttypes:MarkdownSummaryGithub;Cobertura;Html"
+          cat CoverageReport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+          eng/coverage/check-coverage.sh CoverageReport/Cobertura.xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-report
+          path: CoverageReport/
+          if-no-files-found: ignore
 
       - name: Upload test results
         if: always()
