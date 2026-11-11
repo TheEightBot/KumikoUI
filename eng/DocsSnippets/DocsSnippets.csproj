@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Build-time tool, not a shipped package and not part of KumikoUI.sln. It extracts the fenced C# and XAML
+    blocks of README.md (and any other Markdown file you point it at) into compilable source files for the
+    two documentation snippet projects (tests/KumikoUI.Docs.Snippets.Maui and .Uno), so a documented member
+    that disappears or changes shape fails a build (#87). See "Documentation snippets" in CONTRIBUTING.md.
+
+    It uses only the .NET SDK (no Python or Node) and needs no workloads, so it runs on any OS.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IncludeSymbols>false</IncludeSymbols>
+    <RootNamespace>KumikoUI.Build.DocsSnippets</RootNamespace>
+  </PropertyGroup>
+
+  <!-- No version stamping for a build tool (Directory.Build.props adds MinVer to every project). -->
+  <ItemGroup>
+    <PackageReference Remove="MinVer" />
+  </ItemGroup>
+
+</Project>

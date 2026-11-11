@@ -97,7 +97,24 @@ git push origin v0.2.0
 
 The section becomes the GitHub release notes, and every package links to the CHANGELOG. Versioning rules (SemVer, lockstep packages, deprecation, support window) are in [docs/VERSIONING.md](docs/VERSIONING.md).
 
-The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. It then runs the Core and Uno test suites and waits for approval in the `nuget-publish` environment before pushing to NuGet.org. Symbol packages (`.snupkg`) are produced for every package by default. Only admins can create `v*` tags.
+The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. It then runs the Core and Uno test suites, packs all four packages, and fails unless each `.nupkg` has a matching `.snupkg` symbol package and carries the CHANGELOG section as its release notes. The publish job then waits for approval in the `nuget-publish` environment before pushing to NuGet.org. Only admins can create `v*` tags.
+
+To rehearse a release, run the **Publish NuGet Packages** workflow manually with **dry run** on (the default), from any branch. It runs the same resolve, test, pack and validate jobs as a tag push but never pushes to NuGet.org or creates a GitHub Release. To retry a failed publish, run it from the `vX.Y.Z` tag with dry run off. Runs are serialized per ref, so a tag push and a manual retry cannot publish at the same time.
+
+### NuGet Trusted Publishing (one-time maintainer setup)
+
+The workflow authenticates to NuGet.org with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing): the publish job exchanges a GitHub OIDC token for a short-lived API key through `NuGet/login`. No API key is stored as a secret. Before the first release with this workflow:
+
+1. Sign in to nuget.org as the owner of the four packages (or of the organization that owns them), open **Trusted Publishing**, and add a policy with:
+   - Repository owner: `TheEightBot`
+   - Repository: `KumikoUI`
+   - Workflow file: `publish.yml`
+   - Environment: `nuget-publish`
+   For a package ID that does not exist yet, create the policy as pending so the first push can claim it.
+2. In the GitHub repository, add the variable `NUGET_USER` (Settings, Secrets and variables, Actions, Variables) containing the nuget.org profile name (not the email address) that owns the policy.
+3. After one successful release, delete the old `EIGHTBOT_NUGET_APIKEY` secret and revoke that key on nuget.org.
+
+Only the publish job has `id-token: write`, and the policy is bound to the `nuget-publish` environment, so the approval and `v*` tag restrictions apply to getting a key.
 
 ## Making a change
 
@@ -170,6 +187,39 @@ dotnet run --project eng/TypeNameCheck -c Release -- src/KumikoUI.Core/bin/Relea
 ```
 
 It exits non-zero and lists every collision. Raising one of those versions can surface a new collision, which is then fixed by renaming the KumikoUI type.
+
+### Documentation snippets
+
+Every ` ```csharp ` and ` ```xml ` block in `README.md` (and in `docs/nuget/*.md`, when present) is compiled in CI against both hosts, so a documented member that is renamed or removed fails the build. `eng/DocsSnippets` (a console tool, not part of `KumikoUI.sln` and not packed) extracts the blocks into git-ignored `Generated/` folders; `tests/KumikoUI.Docs.Snippets.Maui` and `tests/KumikoUI.Docs.Snippets.Uno` compile them. Nothing is run. Compiler errors point at the README line (`README.md(266,39): error CS0117 ...`).
+
+To check your edit locally, extract and then build the host you can (MAUI needs the MAUI workloads; the Uno head builds on any OS):
+
+```bash
+dotnet run --project eng/DocsSnippets -c Release
+dotnet build tests/KumikoUI.Docs.Snippets.Uno -f net10.0-desktop -c Release
+dotnet build tests/KumikoUI.Docs.Snippets.Maui -f net10.0-maccatalyst -c Release
+```
+
+Build in Release: that is the configuration where MAUI's XamlC validates the XAML. The tool prints how many C# and XAML snippets each host got and exits non-zero for a block it cannot classify, so nothing is skipped silently.
+
+**What needs no annotation.** A C# block is compiled for both hosts. It is wrapped in a method if it is statements, and put in its own namespace if it declares types (the tool tells them apart). The `using` directives and objects the README says snippets assume (`kumiko`, `employees`, `vm`, `Employee`, ...) come from the README's own `using` block and from `tests/KumikoUI.Docs.Snippets.Shared/Fixtures.cs`; add a member there only when a snippet needs one the README states as an assumption. An XML block that starts with a `ContentPage` or `Page` is a page for the host its `xmlns` names. One that starts with a `kumiko:`, `core:` or `render:` element is wrapped in a data grid and a page of each host, with the three prefixes declared as the README describes.
+
+**Annotations.** When a block needs more, put an HTML comment on the line before the fence (indented like the fence inside a list). It is invisible in the rendered Markdown:
+
+| Annotation | Meaning |
+|---|---|
+| `<!-- snippet: maui -->` or `uno` | Compile for that host only (the block uses a host-specific type or namespace). `both` is the default. |
+| `<!-- snippet: usings -->` | The README's standard `using` block: it is prepended to every other C# snippet of that file. A `KumikoUI.Maui` or `KumikoUI.Uno` line in it is replaced with the host's. |
+| `<!-- snippet: shared -->` | A block of type declarations that other snippets of the file use too (for example a renderer a later snippet instantiates). |
+| `<!-- snippet: members=Base.Type -->` | Class members (for example an override), compiled inside a class that derives from `Base.Type`. Combine with a host: `<!-- snippet: uno members=Microsoft.UI.Xaml.Application -->`. |
+| `<!-- snippet: statements -->` or `file` | Overrides the detected kind. |
+| `<!-- snippet: skip reason -->` | Not compiled. Use it only for text that is not C# or XAML (a project-file fragment, for example) and say why; everything after `skip` is the reason, and the tool lists every skipped block. |
+
+An annotation that is not directly followed by a code block, or has an unknown word, is an error. Shell and plain blocks are ignored.
+
+**Writing snippets that compile.** Keep a snippet short and complete enough to compile as written; if it only works with something the text does not show, either show it or state the assumption in the README and add it to `Fixtures.cs`. If a snippet fails on one host only, annotate it `maui` or `uno` rather than hiding the failure. To add other Markdown files, pass `--file` (repeatable, relative to the repository root) to the tool; the default list is `README.md` and `docs/nuget/*.md`, and a file that does not exist is skipped. The `.github/instructions/*.md` files hold API fragments rather than compilable examples, so they are not in the default list.
+
+CI (`Build (Documentation snippets — MAUI + Uno)`) runs this on every pull request that changes code or one of those Markdown files.
 
 ### Pull requests
 

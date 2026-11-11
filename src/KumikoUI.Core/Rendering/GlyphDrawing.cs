@@ -25,6 +25,17 @@ internal static class GlyphDrawing
     public static void FillTriangleDown(IDrawingContext ctx, float cx, float cy, float halfWidth, float halfHeight, KumikoPaint paint) =>
         FillTriangle(ctx, cx - halfWidth, cy - halfHeight, cx + halfWidth, cy - halfHeight, cx, cy + halfHeight, paint);
 
+    /// <summary>Fills an axis-aligned rectangle as one polygon: the dash of an indeterminate check box.</summary>
+    public static void FillDash(IDrawingContext ctx, float x, float y, float width, float height, KumikoPaint paint)
+    {
+        Span<KumikoPoint> pts = stackalloc KumikoPoint[4];
+        pts[0] = new KumikoPoint(x, y);
+        pts[1] = new KumikoPoint(x + width, y);
+        pts[2] = new KumikoPoint(x + width, y + height);
+        pts[3] = new KumikoPoint(x, y + height);
+        ctx.FillPolygon(pts, paint);
+    }
+
     /// <summary>Strokes an open chevron (two segments meeting at the middle point) with round joins.</summary>
     public static void Chevron(
         IDrawingContext ctx, float x1, float y1, float x2, float y2, float x3, float y3, KumikoPaint paint)
