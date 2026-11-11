@@ -56,6 +56,8 @@ public class LocalizationTests
         EnterOneOf = "Geben Sie einen dieser Werte ein: {0}.",
         EnterValidValue = "Geben Sie einen gültigen Wert ein.",
         ValueCouldNotBeSaved = "Der Wert konnte nicht gespeichert werden.",
+        GridHint = "{0} Zeilen, {1} Spalten",
+        GridHintCurrentCell = "{0} Zeilen, {1} Spalten, aktuelle Zelle Zeile {2}, Spalte {3}",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>
@@ -93,6 +95,29 @@ public class LocalizationTests
             new Event { Title = null, Count = 3, When = new DateTime(2024, 3, 3) },
         });
         return (source, title, count, when);
+    }
+
+    // ── Accessibility hint (#78) ─────────────────────────────────
+
+    [Fact]
+    public void FormatGridHint_WithoutACurrentCell_ReportsTheSizeOnly()
+    {
+        Assert.Equal("12 rows, 3 columns", KumikoStrings.Default.FormatGridHint(12, 3, -1, -1));
+        Assert.Equal("12 rows, 3 columns", KumikoStrings.Default.FormatGridHint(12, 3, 4, -1));
+    }
+
+    [Fact]
+    public void FormatGridHint_WithACurrentCell_ReportsOneBasedPosition()
+    {
+        Assert.Equal("12 rows, 3 columns, current cell row 1, column 2",
+            KumikoStrings.Default.FormatGridHint(12, 3, 0, 1));
+    }
+
+    [Fact]
+    public void FormatGridHint_UsesTheLocalizedTable()
+    {
+        Assert.Equal("12 Zeilen, 3 Spalten", GermanStrings.FormatGridHint(12, 3, -1, -1));
+        Assert.Equal("12 Zeilen, 3 Spalten, aktuelle Zelle Zeile 5, Spalte 3", GermanStrings.FormatGridHint(12, 3, 4, 2));
     }
 
     // ── The table ─────────────────────────────────────────────────

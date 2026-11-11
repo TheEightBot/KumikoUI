@@ -123,6 +123,34 @@ public sealed record KumikoStrings
     /// <summary>The message when writing an edited value fails without a reason. Default: "The value could not be saved.".</summary>
     public string ValueCouldNotBeSaved { get; init; } = "The value could not be saved.";
 
+    /// <summary>
+    /// The accessibility hint of the grid, used when no cell is current. <c>{0}</c> is the row count and
+    /// <c>{1}</c> the column count. Default: "{0} rows, {1} columns".
+    /// </summary>
+    public string GridHint { get; init; } = "{0} rows, {1} columns";
+
+    /// <summary>
+    /// The accessibility hint of the grid when a cell is current. <c>{0}</c> is the row count, <c>{1}</c> the
+    /// column count, <c>{2}</c> the 1-based row of the current cell and <c>{3}</c> its 1-based column.
+    /// Default: "{0} rows, {1} columns, current cell row {2}, column {3}".
+    /// </summary>
+    public string GridHintCurrentCell { get; init; } = "{0} rows, {1} columns, current cell row {2}, column {3}";
+
+    /// <summary>
+    /// Builds the accessibility hint a screen reader announces for the grid: its size and, when there is one,
+    /// the current cell.
+    /// </summary>
+    /// <param name="rowCount">The number of data rows in the current view.</param>
+    /// <param name="columnCount">The number of columns.</param>
+    /// <param name="currentRow">The zero-based row of the current cell, or a negative number for none.</param>
+    /// <param name="currentColumn">The zero-based column of the current cell, or a negative number for none.</param>
+    /// <returns>The hint text, formatted with the invariant culture.</returns>
+    public string FormatGridHint(int rowCount, int columnCount, int currentRow, int currentColumn)
+        => currentRow >= 0 && currentColumn >= 0
+            ? string.Format(System.Globalization.CultureInfo.InvariantCulture, GridHintCurrentCell,
+                rowCount, columnCount, currentRow + 1, currentColumn + 1)
+            : string.Format(System.Globalization.CultureInfo.InvariantCulture, GridHint, rowCount, columnCount);
+
     /// <summary>The default summary label for <paramref name="type"/>, or an empty string.</summary>
     /// <param name="type">The kind of summary.</param>
     internal string SummaryLabel(SummaryType type) => type switch
