@@ -35,9 +35,12 @@ public static class KumikoTsvFormatter
     /// <returns>The tab-separated text, empty when there is nothing to write.</returns>
     public static string Format(KumikoSource source, IEnumerable<int> rows, bool includeHeaders)
     {
-        var columns = new List<KumikoColumn>();
-        foreach (var column in source.Columns)
-            if (column.IsVisible) columns.Add(column);
+        // Columns in the order the grid shows them: left-frozen pane, scrolling columns, right-frozen pane.
+        var visible = source.Columns.Where(c => c.IsVisible).ToList();
+        var columns = visible.Where(c => c.IsFrozen)
+            .Concat(visible.Where(c => !c.IsFrozen && !c.IsFrozenRight))
+            .Concat(visible.Where(c => c.IsFrozenRight))
+            .ToList();
         if (columns.Count == 0) return string.Empty;
 
         var ordered = new List<int>(rows);

@@ -66,6 +66,19 @@ public class ClipboardTests
     }
 
     [Fact]
+    public void Format_WritesFrozenPanesInTheOrderTheGridShowsThem()
+    {
+        var g = new InputGrid();
+        g.Dept.IsVisible = false;
+        g.City.IsFrozen = true;       // drawn first, in the left pane
+        g.Name.IsFrozenRight = true;  // drawn last, in the right pane
+
+        string text = KumikoTsvFormatter.Format(g.Source, new[] { 1 }, includeHeaders: true);
+
+        Assert.Equal("City\tAge\tScore\tName\r\nRome\t21\t10\tN01\r\n", text);
+    }
+
+    [Fact]
     public void Format_WithHeaders_StartsWithTheHeaderRow()
     {
         var g = new InputGrid();
