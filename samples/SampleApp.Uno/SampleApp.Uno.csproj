@@ -7,8 +7,10 @@
     <!--
       Uno single-project head TFMs. The sample and the library KumikoUI.Uno both target .NET 10
       (docs/uno ADR-4, #10), so each app head binds the library's matching head directly. The Windows (WinAppSDK) head is conditioned on Windows
-      only so non-Windows machines / CI don't try to build it. Only net10.0-desktop is built/verified
-      locally; the other heads are CI-verified (Phase 08).
+      only so non-Windows machines / CI don't try to build it. Day to day you build one head with
+      `-f net10.0-desktop`, but restore walks every head listed here: a local restore needs the workloads of
+      all of them (`wasm-tools`, plus the mobile heads' workloads, see CONTRIBUTING.md), even when you only
+      build the desktop head. CI builds and verifies the other heads (Phase 08).
     -->
     <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-browserwasm;net10.0-desktop</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.26100</TargetFrameworks>
@@ -91,5 +93,72 @@
   <ItemGroup>
     <Content Include="Assets/Fonts/*.ttf" />
   </ItemGroup>
+
+  <!--
+    The KumikoUI.Core package delivers the [KumikoGridItem] source generator as an analyzer; a project reference
+    does not, so the sample references it directly. The sample's row types then read through generated accessors,
+    which is what Native AOT and full trimming need (#76).
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      UndefineProperties="TargetFramework;TargetFrameworks" />
+  </ItemGroup>
+
+  <!--
+    WebAssembly head workaround for SkiaSharp.NativeAssets.WebAssembly 4.153.1 (#184).
+
+    That package puts Dawn's emdawnwebgpu port on the native link line as source: it appends
+    "-std=c++20 .../webgpu/src/webgpu.cpp" to EmccExtraLDFlags. The .NET WebAssembly SDK compiles every
+    source on that line in one emcc invocation with the same flags, so the C++ standard also reaches
+    Uno's C shim (uno_gl_shim.c, from Uno.WinUI.Runtime.Skia.WebAssembly.Browser), and clang fails with
+    "invalid argument '-std=c++20' not allowed with 'C'". Clang has no per-language -std. Dropping the
+    flag doesn't work (webgpu.cpp needs C++20 for std::span), and neither does opting out of the port
+    with _SkiaSharpUseEmdawnwebgpu=false (libSkiaSharp.a then has undefined wgpu* symbols).
+
+    So compile webgpu.cpp on its own, with C++20 and the flags the link line would have used, and link
+    the object instead of the source. SkiaSharp fixes this upstream the same way from 4.156.0 (a release
+    candidate at the time of writing), where webgpu.cpp ships inside libSkiaSharp.a:
+    https://github.com/mono/SkiaSharp/pull/5316 (tracked for Uno in
+    https://github.com/unoplatform/uno/issues/24507). Remove these targets once SkiaSharpVersion moves to
+    a stable release with that fix; until then they do nothing when EmccExtraLDFlags carries no
+    webgpu.cpp. The properties are set in a target because SkiaSharp's targets import after this file.
+  -->
+  <Target Name="_KumikoDetectEmdawnwebgpuSource" BeforeTargets="_BrowserWasmWriteRspForLinking">
+    <PropertyGroup>
+      <_KumikoEmdawnwebgpuSource Condition="'$(_SkiaSharpEmdawnwebgpuPkg)' != ''">$(_SkiaSharpEmdawnwebgpuPkg)/webgpu/src/webgpu.cpp</_KumikoEmdawnwebgpuSource>
+      <_KumikoEmdawnwebgpuObject>$(_WasmIntermediateOutputPath)emdawnwebgpu.o</_KumikoEmdawnwebgpuObject>
+      <_KumikoPrecompileEmdawnwebgpu Condition="'$(_KumikoEmdawnwebgpuSource)' != '' and $(EmccExtraLDFlags.Contains('-std=c++20 $(_KumikoEmdawnwebgpuSource)'))">true</_KumikoPrecompileEmdawnwebgpu>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="_KumikoCompileEmdawnwebgpu"
+          Condition="'$(_KumikoPrecompileEmdawnwebgpu)' == 'true'"
+          Inputs="$(_KumikoEmdawnwebgpuSource);$(MSBuildProjectFullPath)"
+          Outputs="$(_KumikoEmdawnwebgpuObject)">
+    <ItemGroup>
+      <!-- The SDK's common emcc flags, minus linker inputs such as Uno's -lidbfs.js. -->
+      <_KumikoEmdawnwebgpuFlag Include="@(_EmccCommonFlags)" Condition="!$([System.String]::Copy('%(Identity)').StartsWith('-l'))" />
+    </ItemGroup>
+    <Exec Command='emcc "@$(_WasmDefaultFlagsRsp)" $(_WasmDefaultFlags) $(WasmLinkOptimizationFlag) @(_KumikoEmdawnwebgpuFlag, &apos; &apos;) -std=c++20 -isystem "$(_SkiaSharpEmdawnwebgpuPkg)/webgpu/include" -isystem "$(_SkiaSharpEmdawnwebgpuPkg)/webgpu_cpp/include" -c "$(_KumikoEmdawnwebgpuSource)" -o "$(_KumikoEmdawnwebgpuObject)"'
+          EnvironmentVariables="@(EmscriptenEnvVars)" />
+    <ItemGroup>
+      <FileWrites Include="$(_KumikoEmdawnwebgpuObject)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="_KumikoLinkEmdawnwebgpuObject"
+          AfterTargets="_KumikoDetectEmdawnwebgpuSource"
+          BeforeTargets="_BrowserWasmWriteRspForLinking"
+          DependsOnTargets="_KumikoCompileEmdawnwebgpu"
+          Condition="'$(_KumikoPrecompileEmdawnwebgpu)' == 'true'">
+    <PropertyGroup>
+      <EmccExtraLDFlags>$(EmccExtraLDFlags.Replace('-std=c++20 $(_KumikoEmdawnwebgpuSource)', '&quot;$(_KumikoEmdawnwebgpuObject)&quot;'))</EmccExtraLDFlags>
+    </PropertyGroup>
+    <ItemGroup>
+      <_WasmLinkDependencies Include="$(_KumikoEmdawnwebgpuObject)" />
+    </ItemGroup>
+  </Target>
 
 </Project>

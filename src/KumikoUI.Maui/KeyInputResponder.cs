@@ -55,6 +55,12 @@ internal class KeyInputResponder : UIView, IUIKeyInput
             cmds.Add(UIKeyCommand.Create((NSString)input, UIKeyModifierFlags.Shift, _navKeySelector));
         }
 
+        // Command+A/C/X/V/Z (and Shift+Z for redo): select all, copy, cut, paste, undo, redo. UIKit does not
+        // deliver a letter pressed with Command through InsertText or PressesBegan, so each is a key command.
+        foreach (var letter in new[] { "a", "c", "x", "v", "z" })
+            cmds.Add(UIKeyCommand.Create((NSString)letter, UIKeyModifierFlags.Command, _navKeySelector));
+        cmds.Add(UIKeyCommand.Create((NSString)"z", UIKeyModifierFlags.Command | UIKeyModifierFlags.Shift, _navKeySelector));
+
         return cmds.ToArray();
     }
 
@@ -74,7 +80,7 @@ internal class KeyInputResponder : UIView, IUIKeyInput
     private bool ClaimsTab(bool shift) => CanHandleTab?.Invoke(shift) ?? true;
 
     // UIKit asks before dispatching a key command: declining Tab lets the press continue to the system.
-    public override bool CanPerform(Selector action, NSObject? withSender)
+    private bool CanPerformCore(Selector action, NSObject? withSender)
     {
         if (action.Name == "handleTabKey:") return ClaimsTab(false);
         if (action.Name == "handleShiftTabKey:") return ClaimsTab(true);
@@ -109,12 +115,36 @@ internal class KeyInputResponder : UIView, IUIKeyInput
             var s when s == UIKeyCommand.PageDown => KumikoKey.PageDown,
             var s when s == UIKeyCommand.Home => KumikoKey.Home,
             var s when s == UIKeyCommand.End => KumikoKey.End,
-            _ => null
+            _ => input.ToString() switch
+            {
+                "a" => KumikoKey.A,
+                "c" => KumikoKey.C,
+                "x" => KumikoKey.X,
+                "v" => KumikoKey.V,
+                "z" => KumikoKey.Z,
+                _ => null
+            }
         };
 
         if (gridKey.HasValue)
             NavigationKeyReceived?.Invoke(gridKey.Value, modifiers);
     }
+
+    // The Edit menu on Mac Catalyst (and the edit menu of a pointer or touch gesture) reaches the responder
+    // chain as the standard edit actions: they are the same shortcuts as Command+A/C/X/V.
+    public override bool CanPerform(Selector action, NSObject? withSender)
+    {
+        if (action.Name is "copy:" or "cut:" or "paste:" or "selectAll:") return true;
+        return CanPerformCore(action, withSender);
+    }
+
+    public override void Copy(NSObject? sender) => NavigationKeyReceived?.Invoke(KumikoKey.C, InputModifiers.Control);
+
+    public override void Cut(NSObject? sender) => NavigationKeyReceived?.Invoke(KumikoKey.X, InputModifiers.Control);
+
+    public override void Paste(NSObject? sender) => NavigationKeyReceived?.Invoke(KumikoKey.V, InputModifiers.Control);
+
+    public override void SelectAll(NSObject? sender) => NavigationKeyReceived?.Invoke(KumikoKey.A, InputModifiers.Control);
 
     public bool HasText => true;
 

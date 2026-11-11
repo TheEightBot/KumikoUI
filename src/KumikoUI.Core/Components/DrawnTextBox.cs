@@ -31,6 +31,15 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     // Grapheme boundaries of _text and the measured width of the text before each one (NaN: not measured yet)
     private int[]? _boundaries;
     private float[]? _prefixWidths;
+
+    // Paints reused by every frame (a render pass allocates nothing); the colors and font are set before each use
+    private readonly KumikoPaint _bgPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _borderPaint = new() { Style = PaintStyle.Stroke, IsAntiAlias = true };
+    private readonly KumikoPaint _textPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _placeholderPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _selectionPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _underlinePaint = new() { Style = PaintStyle.Stroke, StrokeWidth = 1f };
+    private readonly KumikoPaint _cursorPaint = new() { Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
     private (string Family, float Size, bool Bold, bool Italic, IDrawingContext? Context) _widthKey;
 
     // Undo history: states before each edit; consecutive typing or deleting coalesce into one step
@@ -87,11 +96,24 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     // ── Theming ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Sets the font of the text, so the editor draws and measures its text like the grid's cells.
+    /// <see cref="ApplyTheme"/> calls it with the grid's cell font; the grid calls it again with the column's
+    /// own font when the column has one.
+    /// </summary>
+    /// <param name="font">The font to use: family, size, bold and italic.</param>
+    public void ApplyFont(KumikoFont font)
+    {
+        Font = font;
+        InvalidateVisual();
+    }
+
+    /// <summary>
     /// Applies theme colors from a <see cref="KumikoStyle"/> so the text box
     /// visually matches the current grid theme.
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
 
@@ -220,10 +242,16 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     /// <summary>Raised when text changes via user input.</summary>
     public event EventHandler<KumikoTextChangedEventArgs>? TextChanged;
 
-    /// <summary>Raised when Enter is pressed during editing.</summary>
+    /// <summary>
+    /// Raised when Enter is pressed during editing (not while an input method is composing). The key itself
+    /// is left unhandled, so a host (the grid's edit session) can commit the edit.
+    /// </summary>
     public event Action? Committed;
 
-    /// <summary>Raised when Escape is pressed during editing.</summary>
+    /// <summary>
+    /// Raised when Escape is pressed during editing (not while an input method is composing). The key itself
+    /// is left unhandled, so a host (the grid's edit session) can cancel the edit.
+    /// </summary>
     public event Action? Cancelled;
 
     /// <summary>Raised when clipboard paste is requested (host must provide text).</summary>
@@ -298,18 +326,15 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         var bgColor = IsFocused ? EditingBackgroundColor : BackgroundColor;
 
         // Background
-        ctx.FillRect(b, new KumikoPaint { Color = bgColor, Style = PaintStyle.Fill });
+        _bgPaint.Color = bgColor;
+        ctx.FillRect(b, _bgPaint);
 
         // Border — thicker when focused
         float bw = IsFocused ? BorderWidth + 1f : BorderWidth;
         if (Validation == ValidationState.Error) bw = BorderWidth + 1.5f;
-        ctx.DrawRect(b, new KumikoPaint
-        {
-            Color = borderColor,
-            Style = PaintStyle.Stroke,
-            StrokeWidth = bw,
-            IsAntiAlias = true
-        });
+        _borderPaint.Color = borderColor;
+        _borderPaint.StrokeWidth = bw;
+        ctx.DrawRect(b, _borderPaint);
 
         // Clip to inner area
         float innerX = b.X + Padding;
@@ -322,7 +347,9 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         ctx.Translate(-_scrollOffset, 0);
 
         // Compute properly centered text baseline using font metrics
-        var textPaint = new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font };
+        var textPaint = _textPaint;
+        textPaint.Color = TextColor;
+        textPaint.Font = Font;
         var fontMetrics = ctx.GetFontMetrics(textPaint);
         float textHeight = fontMetrics.TextHeight;
         float textBaseline = b.Y + (b.Height - textHeight) / 2 - fontMetrics.Ascent;
@@ -332,8 +359,8 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         {
             float startX = innerX + XAt(Selection.Start);
             float endX = innerX + XAt(Selection.End);
-            ctx.FillRect(new KumikoRect(startX, b.Y + 2, endX - startX, b.Height - 4),
-                new KumikoPaint { Color = SelectionHighlightColor, Style = PaintStyle.Fill });
+            _selectionPaint.Color = SelectionHighlightColor;
+            ctx.FillRect(new KumikoRect(startX, b.Y + 2, endX - startX, b.Height - 4), _selectionPaint);
         }
 
         // Text or placeholder
@@ -343,7 +370,9 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         }
         else if (!IsFocused && !string.IsNullOrEmpty(Placeholder))
         {
-            var phPaint = new KumikoPaint { Color = PlaceholderColor, Style = PaintStyle.Fill, Font = Font };
+            var phPaint = _placeholderPaint;
+            phPaint.Color = PlaceholderColor;
+            phPaint.Font = Font;
             ctx.DrawText(Placeholder, innerX, textBaseline, phPaint);
         }
 
@@ -353,8 +382,8 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
             float startX = innerX + XAt(_compositionStart);
             float endX = innerX + XAt(_compositionStart + _compositionLength);
             float underlineY = textBaseline + Math.Max(1f, fontMetrics.Descent / 2);
-            ctx.DrawLine(startX, underlineY, endX, underlineY,
-                new KumikoPaint { Color = TextColor, Style = PaintStyle.Stroke, StrokeWidth = 1f });
+            _underlinePaint.Color = TextColor;
+            ctx.DrawLine(startX, underlineY, endX, underlineY, _underlinePaint);
         }
 
         // Cursor
@@ -380,8 +409,8 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         float cursorTop = textTop + 1f;
         float cursorBottom = textTop + textHeight - 1f;
 
-        var paint = new KumikoPaint { Color = CursorColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
-        ctx.DrawLine(cursorX, cursorTop, cursorX, cursorBottom, paint);
+        _cursorPaint.Color = CursorColor;
+        ctx.DrawLine(cursorX, cursorTop, cursorX, cursorBottom, _cursorPaint);
     }
 
     // ── Focus ───────────────────────────────────────────────────
@@ -568,13 +597,14 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
                 else DeleteForward();
                 return true;
 
+            // A single-line box has no use for Enter and Escape: they are reported and left to the host
             case KumikoKey.Enter:
                 Committed?.Invoke();
-                return true;
+                return false;
 
             case KumikoKey.Escape:
                 Cancelled?.Invoke();
-                return true;
+                return false;
 
             case KumikoKey.A when command:
                 SelectAll();
@@ -1102,8 +1132,10 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     private void HandleCut()
     {
         if (!HasSelection) return;
-        CopyRequested?.Invoke(this, new ClipboardTextEventArgs(SelectedText));
-        if (IsReadOnly) return;
+        // Nothing is deleted unless a host took the text: cutting must never destroy it
+        var copy = new ClipboardTextEventArgs(SelectedText);
+        CopyRequested?.Invoke(this, copy);
+        if (!copy.Handled || IsReadOnly) return;
         var snap = Capture();
         DeleteRange(Selection.Start, Selection.Length, EditKind.Other);
         Finish(snap);
@@ -1114,11 +1146,24 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         if (IsReadOnly) return;
         var args = new ClipboardRequestEventArgs();
         PasteRequested?.Invoke(this, args);
-        if (string.IsNullOrEmpty(args.Text)) return;
+        if (args.IsPending) return;
+        PasteText(args.Text);
+    }
+
+    /// <summary>
+    /// Replaces the selection with <paramref name="text"/> as one undo step, applying the box's input rules
+    /// (single line, numeric only, maximum length). For a host that reads the clipboard asynchronously (see
+    /// <see cref="ClipboardRequestEventArgs.IsPending"/>). Does nothing when the box is read-only or the text
+    /// is empty.
+    /// </summary>
+    /// <param name="text">The text to paste.</param>
+    public void PasteText(string? text)
+    {
+        if (IsReadOnly || string.IsNullOrEmpty(text)) return;
 
         CommitComposition();
         var snap = Capture();
-        TryReplaceSelection(args.Text, EditKind.Other, forceNewStep: true);
+        TryReplaceSelection(text, EditKind.Other, forceNewStep: true);
         Finish(snap);
     }
 
