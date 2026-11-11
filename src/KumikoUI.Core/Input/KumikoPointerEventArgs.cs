@@ -28,6 +28,13 @@ public class KumikoPointerEventArgs
     public long PointerId { get; init; }
 
     /// <summary>
+    /// The device that raised the event. With <see cref="Models.KumikoStyle.AllowRowDragDrop"/>, a touch drag on a
+    /// row scrolls the grid and a touch long press starts the row drag, while a mouse or pen drag on a row starts it
+    /// once it passes the drag threshold. Hosts that cannot tell leave the default, <see cref="KumikoPointerDeviceType.Mouse"/>.
+    /// </summary>
+    public KumikoPointerDeviceType DeviceType { get; init; }
+
+    /// <summary>
     /// Horizontal wheel delta (for <see cref="InputAction.Scroll"/>), in <see cref="ScrollUnit"/>. Positive scrolls
     /// toward the first column (left), negative toward the last.
     /// </summary>

@@ -385,11 +385,25 @@ public partial class KumikoDataGrid
         remove => _dataSource.GroupExpandedChanged -= value;
     }
 
-    /// <summary>Raised after the user dragged a row to a new position.</summary>
+    /// <summary>
+    /// Raised once after the user dragged a row to a new position and the grid moved its item in
+    /// <c>ItemsSource</c> (<see cref="KumikoSource.ReorderRow"/>).
+    /// </summary>
     public event EventHandler<RowReorderedEventArgs>? RowReordered
     {
         add => _inputController.RowReordered += value;
         remove => _inputController.RowReordered -= value;
+    }
+
+    /// <summary>
+    /// Raised once when the user dropped a dragged row at a new position but the grid could not move it:
+    /// <see cref="RowReorderedEventArgs.Result"/> says why (a column sort is active, <c>ItemsSource</c> is not a
+    /// writable <see cref="System.Collections.IList"/>, or the target is in another group). Nothing changed.
+    /// </summary>
+    public event EventHandler<RowReorderedEventArgs>? RowReorderRejected
+    {
+        add => _inputController.RowReorderRejected += value;
+        remove => _inputController.RowReorderRejected -= value;
     }
 
     /// <summary>Raised after the user dragged a column header to a new position.</summary>

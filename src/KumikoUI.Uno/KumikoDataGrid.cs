@@ -92,7 +92,6 @@ public partial class KumikoDataGrid : UserControl
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
-        _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
         _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
@@ -146,9 +145,6 @@ public partial class KumikoDataGrid : UserControl
 
     private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
         => _dataSource.ReorderColumn(e.OldIndex, e.NewIndex);
-
-    private void OnRowReordered(object? sender, RowReorderedEventArgs e)
-        => _dataSource.ReorderRow(e.OldIndex, e.NewIndex);
 
     private void OnAutoFitColumnRequested(object? sender, AutoFitColumnEventArgs e)
     {

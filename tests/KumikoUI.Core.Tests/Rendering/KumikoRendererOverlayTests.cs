@@ -302,9 +302,9 @@ public class KumikoRendererOverlayTests
         var ghostText = Assert.Single(ctx.TextsEqual("P02"), t => Near(t.Rect.Y, 150));
         Assert.Equal(h.Style.CellTextColor.WithAlpha(200), ghostText.Color);
 
-        // Ghost centre 168 → drop before row 3, whose top edge is 40 + 3 × 36 = 148.
+        // Ghost centre 168 lies in row 3 (148–184): row 2 moves down to index 3, so the line marks row 3's bottom edge.
         var indicator = ctx.Lines.Where(l => l.Color == h.Style.RowDropIndicatorColor).ToList();
-        Assert.Contains(indicator, l => Near(l.Y1, 148) && Near(l.Y2, 148) && Near(l.X1, 0) && Near(l.X2, 600));
+        Assert.Contains(indicator, l => Near(l.Y1, 184) && Near(l.Y2, 184) && Near(l.X1, 0) && Near(l.X2, 600));
         Assert.Equal(2, indicator.Count(l => Near(l.X1, l.X2))); // end caps
     }
 
@@ -323,15 +323,66 @@ public class KumikoRendererOverlayTests
     }
 
     [Fact]
-    public void RowDrag_GroupRow_DrawsAnEmptyGhost()
+    public void RowDrag_GroupRow_DrawsNoGhost()
     {
+        // A group header is never dragged; a stale index pointing at one draws nothing.
         var h = Create();
         h.Source.AddGroupDescription(new GroupDescription("City"));
 
         var ctx = h.Render(dragRowIndex: 0, dragRowScreenY: 150);
 
+        Assert.DoesNotContain(ctx.Fills, f => f.Color == h.Style.RowDragOverlayColor);
+        Assert.DoesNotContain(ctx.Lines, l => l.Color == h.Style.RowDropIndicatorColor);
+    }
+
+    [Fact]
+    public void RowDrag_MovingUp_MarksTheTopOfTheTargetRow()
+    {
+        var h = Create();
+
+        var ctx = h.Render(dragRowIndex: 6, dragRowScreenY: 80); // ghost centre 98 in row 1 (76–112)
+
+        Assert.Contains(ctx.Lines, l => l.Color == h.Style.RowDropIndicatorColor && Near(l.Y1, 76) && Near(l.Y2, 76));
+    }
+
+    [Fact]
+    public void RowDrag_OverItself_DrawsNoIndicator()
+    {
+        var h = Create();
+
+        var ctx = h.Render(dragRowIndex: 2, dragRowScreenY: 116); // ghost centre 134 in row 2
+
         Assert.Single(ctx.Fills, f => f.Color == h.Style.RowDragOverlayColor);
-        Assert.DoesNotContain(ctx.Texts, t => t.Color == h.Style.CellTextColor.WithAlpha(200));
+        Assert.DoesNotContain(ctx.Lines, l => l.Color == h.Style.RowDropIndicatorColor);
+    }
+
+    [Fact]
+    public void RowDrag_UnderGrouping_GhostAndIndicatorStayInViewportCoordinates()
+    {
+        // Grouping panel 40 + header 40: rows start at 80. Rows: 0 [Oslo], 1 P00, 2 P02, 3 P04, 4 [Rome], ... The
+        // drag position is in viewport coordinates, so the ghost is drawn exactly there despite the panel's offset.
+        var h = Create(rows: 6);
+        h.Source.AddGroupDescription(new GroupDescription("City"));
+
+        var ctx = h.Render(dragRowIndex: 1, dragRowScreenY: 162); // ghost centre 180 in row 2 (152–188)
+
+        var ghost = Assert.Single(ctx.Fills, f => f.Color == h.Style.RowDragOverlayColor);
+        Assert.Equal(162, ghost.Rect.Y);
+        Assert.Single(ctx.TextsEqual("P00"), t => Near(t.Rect.Y, 162));
+        Assert.Contains(ctx.Lines, l => l.Color == h.Style.RowDropIndicatorColor && Near(l.Y1, 188) && Near(l.Y2, 188));
+    }
+
+    [Fact]
+    public void RowDrag_OverAnotherGroup_DrawsNoIndicator()
+    {
+        var h = Create(rows: 6);
+        h.Source.AddGroupDescription(new GroupDescription("City"));
+        int lastRow = h.Source.RowCount - 1; // a row of the second group
+
+        var ctx = h.Render(dragRowIndex: 1, dragRowScreenY: 80 + 36 * lastRow);
+
+        Assert.Single(ctx.Fills, f => f.Color == h.Style.RowDragOverlayColor);
+        Assert.DoesNotContain(ctx.Lines, l => l.Color == h.Style.RowDropIndicatorColor);
     }
 
     [Fact]

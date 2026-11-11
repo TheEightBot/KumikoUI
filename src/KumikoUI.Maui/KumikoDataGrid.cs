@@ -48,7 +48,7 @@ public partial class KumikoDataGrid : ContentView
     private readonly EditSession _editSession = new();
     private KumikoStyle _style = new();
 
-    // Inertial scroll timer
+    // Scroll timer: steps the inertial scroller (a fling) and edge autoscroll (a row drag at an edge)
     private IDispatcherTimer? _scrollTimer;
     private long _scrollTimerLastTicks;
 
@@ -76,6 +76,9 @@ public partial class KumikoDataGrid : ContentView
     private long? _pressedPointerId;
     private long _pressedPointerLastMs;
     private const long StalePointerMs = 1000;
+
+    // The device of the press in progress, for the long press synthesized from it
+    private KumikoPointerDeviceType _pressedDeviceType;
 
     // Track if we are suppressing TextChanged because we set the text programmatically
     private bool _suppressTextChanged;
@@ -152,7 +155,6 @@ public partial class KumikoDataGrid : ContentView
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
-        _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
         _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
@@ -740,6 +742,7 @@ public partial class KumikoDataGrid : ContentView
             return;
 
         var action = MapAction(e.ActionType, e.InContact);
+        var deviceType = MapDeviceType(e.DeviceType);
         float x = e.Location.X / scale;
         float y = e.Location.Y / scale;
 
@@ -750,13 +753,19 @@ public partial class KumikoDataGrid : ContentView
             (e.ActionType == SKTouchAction.Pressed && nowMs - _pressedPointerLastMs > StalePointerMs);
         if (!fromPressedPointer && action is InputAction.Pressed or InputAction.Moved or InputAction.Released or InputAction.Cancelled)
         {
-            var ignored = new KumikoPointerEventArgs { X = x, Y = y, Action = action, PointerId = e.Id, TimestampMs = nowMs };
+            var ignored = new KumikoPointerEventArgs
+            {
+                X = x, Y = y, Action = action, PointerId = e.Id, DeviceType = deviceType, TimestampMs = nowMs,
+            };
             _inputController.HandlePointer(ignored, _scroll, _selection, _style, _dataSource);
             e.Handled = ignored.Handled;
             return;
         }
         if (e.ActionType == SKTouchAction.Pressed)
+        {
             _pressedPointerId = e.Id;
+            _pressedDeviceType = deviceType;
+        }
         else if (e.ActionType is SKTouchAction.Released or SKTouchAction.Cancelled)
             _pressedPointerId = null;
         if (action != InputAction.Hover) _pressedPointerLastMs = nowMs;
@@ -822,13 +831,16 @@ public partial class KumikoDataGrid : ContentView
         }
 
         // If long press already fired, the release must not also tap: Core is told the press was canceled, which
-        // ends it without acting on it.
-        if (_longPressFired && e.ActionType == SKTouchAction.Released)
+        // ends it without acting on it. A drag in progress (a long press starts a row drag on touch) is dropped by
+        // the release as usual.
+        bool releaseAfterLongPress = _longPressFired && e.ActionType == SKTouchAction.Released;
+        if (releaseAfterLongPress) _longPressFired = false;
+        bool dragging = _inputController.DragRowIndex >= 0 || _inputController.DragColumnIndex >= 0;
+        if (releaseAfterLongPress && !dragging)
         {
-            _longPressFired = false;
             var cancel = new KumikoPointerEventArgs
             {
-                X = x, Y = y, Action = InputAction.Cancelled, PointerId = e.Id,
+                X = x, Y = y, Action = InputAction.Cancelled, PointerId = e.Id, DeviceType = deviceType,
                 TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             };
             _inputController.HandlePointer(cancel, _scroll, _selection, _style, _dataSource);
@@ -849,6 +861,7 @@ public partial class KumikoDataGrid : ContentView
             },
             Modifiers = GetPointerModifiers(),
             PointerId = e.Id,
+            DeviceType = deviceType,
             // Only Windows reports the wheel here (when the native hook is missing): 120ths of a notch
             ScrollDeltaY = e.ActionType == SKTouchAction.WheelChanged ? e.WheelDelta / 120f : 0,
             TimestampMs = nowMs,
@@ -859,16 +872,24 @@ public partial class KumikoDataGrid : ContentView
         if (action == InputAction.Moved)
             ReassertPlatformCursor(); // keeps the resize cursor through a drag on Catalyst
 
-        // Start the frame timer for a fling (the grid coasting, or a scroll picker editor coasting and
-        // snapping to an item)
-        if ((e.ActionType == SKTouchAction.Released || e.ActionType == SKTouchAction.Cancelled)
-            && (_inputController.IsInertialScrolling || _editSession.IsAnimating))
+        // Start the frame timer for a fling (the grid coasting, or a scroll picker editor coasting and snapping
+        // to an item) on release, or for edge autoscroll (a row drag held at an edge)
+        if (((e.ActionType == SKTouchAction.Released || e.ActionType == SKTouchAction.Cancelled)
+             && (_inputController.IsInertialScrolling || _editSession.IsAnimating)) || _inputController.IsAutoScrolling)
             StartInertialScrollTimer();
         else if (_editSession.IsAnimating)
             StartInertialScrollTimer(); // a spin button pressed and held repeats from the frame loop
 
         e.Handled = gridEvent.Handled;
     }
+
+    /// <summary>The Core device type of a SkiaSharp touch event: a finger, a pen, or else a mouse.</summary>
+    private static KumikoPointerDeviceType MapDeviceType(SKTouchDeviceType deviceType) => deviceType switch
+    {
+        SKTouchDeviceType.Touch => KumikoPointerDeviceType.Touch,
+        SKTouchDeviceType.Pen => KumikoPointerDeviceType.Pen,
+        _ => KumikoPointerDeviceType.Mouse,
+    };
 
     private static InputAction MapAction(SKTouchAction action, bool inContact) => action switch
     {
@@ -921,6 +942,7 @@ public partial class KumikoDataGrid : ContentView
             Action = InputAction.LongPress,
             Button = PointerButton.Primary,
             PointerId = pointerId,
+            DeviceType = _pressedDeviceType,
             TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             ClickCount = 1
         };
@@ -928,6 +950,10 @@ public partial class KumikoDataGrid : ContentView
         _inputController.HandlePointer(gridEvent, _scroll, _selection, _style, _dataSource);
     }
 
+    /// <summary>
+    /// Starts the ~60 fps timer that steps the inertial scroller and edge autoscroll; it stops itself when neither
+    /// has anything left to do.
+    /// </summary>
     private void StartInertialScrollTimer()
     {
         if (_scrollTimer != null) return;
@@ -945,11 +971,12 @@ public partial class KumikoDataGrid : ContentView
         long nowTicks = System.Diagnostics.Stopwatch.GetTimestamp();
         float elapsedMs = (float)System.Diagnostics.Stopwatch.GetElapsedTime(_scrollTimerLastTicks, nowTicks).TotalMilliseconds;
         _scrollTimerLastTicks = nowTicks;
-        // The grid's inertial scroll and the open editor's animation (a scroll picker settling, which may
-        // commit the edit) both run on this timer, which stops once neither moves.
+        // The grid's fling, a row drag's edge autoscroll and the open editor's animation (a scroll picker settling,
+        // which may commit the edit) all run on this timer, which stops once none of them moves.
         bool scrolling = _inputController.UpdateInertialScroll(_scroll, elapsedMs);
+        bool autoScrolling = _inputController.UpdateAutoScroll(_scroll, elapsedMs);
         bool animating = _editSession.UpdateAnimation(elapsedMs);
-        if (!scrolling && !animating)
+        if (!scrolling && !autoScrolling && !animating)
         {
             StopInertialScrollTimer();
         }
@@ -970,13 +997,6 @@ public partial class KumikoDataGrid : ContentView
     private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
     {
         _dataSource.ReorderColumn(e.OldIndex, e.NewIndex);
-    }
-
-    // ── Row reorder event ──
-
-    private void OnRowReordered(object? sender, RowReorderedEventArgs e)
-    {
-        _dataSource.ReorderRow(e.OldIndex, e.NewIndex);
     }
 
     // ── Auto-fit column event ──
@@ -1076,7 +1096,6 @@ public partial class KumikoDataGrid : ContentView
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.Dispose();
         _inputController.ColumnReordered -= OnColumnReordered;
-        _inputController.RowReordered -= OnRowReordered;
         _inputController.AutoFitColumnRequested -= OnAutoFitColumnRequested;
         _inputController.KeyboardFocusRequested -= OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened -= OnFilterPopupOpened;
@@ -1162,7 +1181,6 @@ public partial class KumikoDataGrid : ContentView
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
         _inputController.ColumnReordered += OnColumnReordered;
-        _inputController.RowReordered += OnRowReordered;
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
         _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened += OnFilterPopupOpened;

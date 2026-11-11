@@ -185,7 +185,10 @@ public partial class KumikoDataGrid
 
     // ── Frame loop (CompositionTarget.Rendering) ──────────────────
 
-    /// <summary>Starts stepping the inertial scroller once per frame (a fling began on release or cancel).</summary>
+    /// <summary>
+    /// Starts stepping the inertial scroller and edge autoscroll once per frame (a fling began on release or cancel,
+    /// or a row drag holds the pointer at an edge).
+    /// </summary>
     private void StartInertialScroll()
     {
         if (_frames.StartAnimation())
@@ -219,14 +222,15 @@ public partial class KumikoDataGrid
             : Stopwatch.GetElapsedTime(s_frameClockStart);
         float frameMs = _frames.BeginFrame(now);
 
-        // UpdateInertialScroll scrolls and raises NeedsRedraw (→ RequestRedraw) on every step that moves. The open
-        // editor's animation (a scroll picker settling, a held spin button repeating) runs on the same loop, which
-        // stops once neither moves.
+        // UpdateInertialScroll and UpdateAutoScroll scroll and raise NeedsRedraw (→ RequestRedraw) on every step that
+        // moves. The open editor's animation (a scroll picker settling, a held spin button repeating) runs on the same
+        // loop, which stops once none of them moves.
         if (_frames.IsAnimating)
         {
             bool scrolling = _inputController.UpdateInertialScroll(_scroll, frameMs);
+            bool autoScrolling = _inputController.UpdateAutoScroll(_scroll, frameMs);
             bool animating = _editSession.UpdateAnimation(frameMs);
-            if (!scrolling && !animating)
+            if (!scrolling && !autoScrolling && !animating)
                 _frames.StopAnimation();
         }
 

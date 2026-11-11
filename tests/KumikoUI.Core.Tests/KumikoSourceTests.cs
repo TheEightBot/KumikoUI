@@ -840,13 +840,12 @@ public class KumikoSourceTests
     }
 
     [Fact]
-    public void ReorderRow_WithGrouping_DoesNothing()
+    public void ReorderRow_WithGrouping_OntoAGroupHeader_IsOutOfRange()
     {
         var source = MakeSource(SamplePeople());
         source.AddGroupDescription(new GroupDescription("Department"));
         int rowsBefore = source.RowCount;
-        var ex = Record.Exception(() => source.ReorderRow(0, 1));
-        Assert.Null(ex);
+        Assert.Equal(KumikoReorderResult.OutOfRange, source.ReorderRow(0, 1)); // row 0 is a header
         Assert.Equal(rowsBefore, source.RowCount);
     }
 

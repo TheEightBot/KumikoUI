@@ -63,7 +63,6 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
 
       _inputController.NeedsRedraw          += OnInputControllerNeedsRedraw;
       _inputController.ColumnReordered      += OnColumnReordered;
-      _inputController.RowReordered         += OnRowReordered;
       _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
       _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
       _inputController.FilterPopupOpened    += OnFilterPopupOpened;

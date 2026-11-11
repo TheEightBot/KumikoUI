@@ -48,6 +48,19 @@ internal static class PointerMapping
     }
 
     /// <summary>
+    /// Core's device type for a WinUI pointer: a finger is <see cref="KumikoPointerDeviceType.Touch"/>, a pen
+    /// <see cref="KumikoPointerDeviceType.Pen"/>, anything else (a mouse, a trackpad) <see cref="KumikoPointerDeviceType.Mouse"/>.
+    /// </summary>
+    /// <param name="deviceType"><c>Pointer.PointerDeviceType</c>.</param>
+    /// <returns>The value for <see cref="KumikoPointerEventArgs.DeviceType"/>.</returns>
+    public static KumikoPointerDeviceType ToDeviceType(PointerDeviceType deviceType) => deviceType switch
+    {
+        PointerDeviceType.Touch => KumikoPointerDeviceType.Touch,
+        PointerDeviceType.Pen => KumikoPointerDeviceType.Pen,
+        _ => KumikoPointerDeviceType.Mouse,
+    };
+
+    /// <summary>
     /// The button an event is about. The update kind names the button that changed, which is the only way to
     /// know it on a release (no button is pressed any more); otherwise the pressed buttons decide. Hover and
     /// exit carry no button; a contact with no named button (touch, pen) is <see cref="PointerButton.Primary"/>.

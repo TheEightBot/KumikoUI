@@ -1,5 +1,6 @@
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Editing;
+using KumikoUI.Core.Input;
 using KumikoUI.Core.Layout;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -46,6 +47,11 @@ public class KumikoRenderer : IDisposable
 
     // Group headers pinned at the top of the data area this frame (#174), outermost first; reused every frame
     private readonly List<PinnedGroupHeader> _pinnedGroupHeaders = new();
+
+    // The dragged row's cell texts (by column index), read once per drag so the ghost allocates nothing per frame
+    private string?[] _ghostTexts = Array.Empty<string?>();
+    private object? _ghostItem;
+    private int _ghostColumnCount;
 
     // "1".."16": multi-sort order badges without formatting a number per frame
     private static readonly string[] s_sortOrderLabels = CreateSortOrderLabels(16);
@@ -449,8 +455,9 @@ public class KumikoRenderer : IDisposable
 
         if (dragRowIndex >= 0)
             DrawRowDragOverlay(ctx, dataSource, columns, dragRowIndex, dragRowScreenY, scroll, style,
-                frozenWidth, rightFrozenWidth, topSummaryHeight, frozenRowCount,
-                handleOffset, rightHandleWidth);
+                groupPanelOffset, handleOffset, rightHandleWidth);
+        else
+            _ghostItem = null; // the next drag reads its row's texts afresh
 
         // Restore from grouping panel offset
         ctx.Restore();
@@ -1667,7 +1674,10 @@ public class KumikoRenderer : IDisposable
     }
 
     /// <summary>
-    /// Draws a ghost row at the drag position and an insertion indicator line at the drop target.
+    /// Draws a ghost of the dragged row at the drag position and a line where the drop lands. Called inside the
+    /// grouping panel offset, so the viewport coordinates of <paramref name="dragScreenY"/> and of
+    /// <see cref="RowDragGeometry"/> are shifted up by <paramref name="groupPanelOffset"/>. The ghost's texts are read
+    /// once per drag (<see cref="FillGhostTexts"/>), so a steady drag frame allocates nothing.
     /// </summary>
     private void DrawRowDragOverlay(
         IDrawingContext ctx,
@@ -1677,97 +1687,73 @@ public class KumikoRenderer : IDisposable
         float dragScreenY,
         ScrollState scroll,
         KumikoStyle style,
-        float frozenWidth,
-        float rightFrozenWidth,
-        float topSummaryHeight,
-        int frozenRowCount,
+        float groupPanelOffset,
         float handleOffset = 0,
         float rightHandleWidth = 0)
     {
-        int totalRows = dataSource.RowCount;
-        if (dragRowIndex < 0 || dragRowIndex >= totalRows) return;
+        if (dragRowIndex < 0 || dragRowIndex >= dataSource.RowCount || dataSource.IsNonDataRow(dragRowIndex)) return;
 
         float rowWidth = scroll.ViewportWidth;
         float rowHeight = style.RowHeight;
+        float ghostTop = RowDragGeometry.ClampGhostTop(dragScreenY, scroll, style, dataSource);
+        float ghostY = ghostTop - groupPanelOffset;
 
         // ── Ghost row ──
-        var ghostRect = new KumikoRect(handleOffset, dragScreenY, rowWidth - handleOffset - rightHandleWidth, rowHeight);
+        var ghostRect = new KumikoRect(handleOffset, ghostY, rowWidth - handleOffset - rightHandleWidth, rowHeight);
         ctx.FillRect(ghostRect, _paintCache.RowDragGhost);
         ctx.DrawRect(ghostRect, _paintCache.RowDragBorder);
 
-        // Draw cell text in the ghost row
+        FillGhostTexts(dataSource, columns, dragRowIndex);
         float cellX = handleOffset - scroll.OffsetX;
         for (int c = 0; c < columns.Count; c++)
         {
             if (!columns[c].IsVisible) continue;
             float colWidth = columns[c].Width;
 
-            // Skip rendering cells outside the visible area
-            if (cellX + colWidth > handleOffset && cellX < rowWidth - rightHandleWidth)
+            // Skip cells outside the visible area
+            string? cellText = _ghostTexts[c];
+            if (cellX + colWidth > handleOffset && cellX < rowWidth - rightHandleWidth && !string.IsNullOrEmpty(cellText))
             {
-                string cellText = "";
-                try
-                {
-                    if (!dataSource.IsNonDataRow(dragRowIndex))
-                    {
-                        cellText = dataSource.GetCellDisplayText(dragRowIndex, columns[c]);
-                    }
-                }
-                catch { /* guard against group rows */ }
-
-                if (!string.IsNullOrEmpty(cellText))
-                {
-                    var textRect = new KumikoRect(
-                        cellX + style.CellPadding, dragScreenY,
-                        colWidth - style.CellPadding * 2, rowHeight);
-                    ctx.DrawTextInRect(cellText, textRect, _paintCache.RowDragText,
-                        KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
-                }
+                var textRect = new KumikoRect(
+                    cellX + style.CellPadding, ghostY,
+                    colWidth - style.CellPadding * 2, rowHeight);
+                ctx.DrawTextInRect(cellText, textRect, _paintCache.RowDragText,
+                    KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
             }
 
             cellX += colWidth;
         }
 
         // ── Drop indicator line ──
-        // Determine where the row would be inserted based on the center of the ghost
-        float ghostCenterY = dragScreenY + rowHeight / 2;
-        float dataAreaTop = style.HeaderHeight + topSummaryHeight;
-        float frozenRowHeight = frozenRowCount * style.RowHeight;
+        // Where the drop lands: the row under the ghost's middle, the same computation the input controller drops on.
+        // No line when the drop would not move the row (onto itself, a group row or another group).
+        int target = RowDragGeometry.DropTarget(ghostTop, scroll, style, dataSource);
+        if (!RowDragGeometry.IsDroppable(dragRowIndex, target, dataSource)) return;
 
-        int dropIndex;
-        if (frozenRowCount > 0 && ghostCenterY >= dataAreaTop && ghostCenterY < dataAreaTop + frozenRowHeight)
-        {
-            dropIndex = (int)((ghostCenterY - dataAreaTop) / style.RowHeight);
-            dropIndex = Math.Clamp(dropIndex, 0, frozenRowCount - 1);
-        }
-        else
-        {
-            float scrollableDataTop = dataAreaTop + frozenRowHeight;
-            dropIndex = (int)((ghostCenterY - scrollableDataTop + scroll.OffsetY) / style.RowHeight) + frozenRowCount;
-        }
-        dropIndex = Math.Clamp(dropIndex, 0, totalRows);
-
-        // Compute the Y position of the drop indicator
-        float indicatorY;
-        if (dropIndex < frozenRowCount)
-        {
-            indicatorY = dataAreaTop + dropIndex * style.RowHeight;
-        }
-        else
-        {
-            indicatorY = dataAreaTop + frozenRowHeight + (dropIndex - frozenRowCount) * style.RowHeight - scroll.OffsetY;
-        }
-
-        // Draw the horizontal drop indicator line
+        float indicatorY = RowDragGeometry.IndicatorY(dragRowIndex, target, scroll, style, dataSource) - groupPanelOffset;
         float indicatorLeft = handleOffset;
         float indicatorRight = rowWidth - rightHandleWidth;
         ctx.DrawLine(indicatorLeft, indicatorY, indicatorRight, indicatorY, _paintCache.RowDropIndicator);
 
-        // Draw small triangles at the ends of the indicator line for visibility
+        // Short ticks at both ends of the indicator line for visibility
         float triSize = 6f;
-        // Left triangle
         ctx.DrawLine(indicatorLeft, indicatorY - triSize, indicatorLeft, indicatorY + triSize, _paintCache.RowDropIndicator);
-        // Right triangle
         ctx.DrawLine(indicatorRight, indicatorY - triSize, indicatorRight, indicatorY + triSize, _paintCache.RowDropIndicator);
+    }
+
+    /// <summary>
+    /// Reads the display texts of the dragged row's cells into <see cref="_ghostTexts"/> once per drag (again only
+    /// when the row shows another item, or the columns change), so drawing the ghost every frame allocates nothing.
+    /// </summary>
+    private void FillGhostTexts(KumikoSource dataSource, IReadOnlyList<KumikoColumn> columns, int row)
+    {
+        object item = dataSource.GetItem(row);
+        if (ReferenceEquals(item, _ghostItem) && _ghostColumnCount == columns.Count) return;
+
+        if (_ghostTexts.Length < columns.Count) _ghostTexts = new string?[columns.Count];
+        for (int c = 0; c < columns.Count; c++)
+            _ghostTexts[c] = columns[c].IsVisible ? dataSource.GetCellDisplayText(row, columns[c]) : null;
+        _ghostItem = item;
+        _ghostColumnCount = columns.Count;
     }
 }

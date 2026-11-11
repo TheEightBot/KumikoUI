@@ -106,4 +106,16 @@ public class PointerMappingTests
     {
         Assert.Equal(PointerButton.None, PointerMapping.ToPointerButton(action, PointerUpdateKind.RightButtonPressed, true, false));
     }
+
+    // ── ToDeviceType (#99: a touch drag scrolls, a touch long press drags a row) ──
+
+    [Theory]
+    [InlineData(PointerDeviceType.Touch, KumikoPointerDeviceType.Touch)]
+    [InlineData(PointerDeviceType.Pen, KumikoPointerDeviceType.Pen)]
+    [InlineData(PointerDeviceType.Mouse, KumikoPointerDeviceType.Mouse)]
+    [InlineData(PointerDeviceType.Touchpad, KumikoPointerDeviceType.Mouse)]
+    public void ToDeviceType_MapsEachDevice(PointerDeviceType device, KumikoPointerDeviceType expected)
+    {
+        Assert.Equal(expected, PointerMapping.ToDeviceType(device));
+    }
 }

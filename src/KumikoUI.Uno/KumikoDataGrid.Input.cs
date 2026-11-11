@@ -295,6 +295,7 @@ public partial class KumikoDataGrid
             Button = PointerMapping.ToPointerButton(action, props.PointerUpdateKind,
                 props.IsRightButtonPressed, props.IsMiddleButtonPressed),
             PointerId = e.Pointer.PointerId,
+            DeviceType = PointerMapping.ToDeviceType(e.Pointer.PointerDeviceType),
             ScrollDeltaX = scrollX,
             ScrollDeltaY = scrollY,
             ScrollUnit = scrollUnit,
@@ -305,11 +306,15 @@ public partial class KumikoDataGrid
 
         _inputController.HandlePointer(evt, _scroll, _selection, _style, _dataSource);
         e.Handled = evt.Handled;
+
+        // A row drag held at an edge scrolls the grid: the frame loop steps it (UpdateAutoScroll) once per frame.
+        if (_inputController.IsAutoScrolling)
+            StartInertialScroll();
     }
 
     /// <summary>
-    /// Touch long-press → <see cref="InputAction.LongPress"/> (row drag handle / context actions on
-    /// mobile). Only fires for touch and only on <see cref="HoldingState.Started"/>; mouse/pen use
+    /// Touch long-press → <see cref="InputAction.LongPress"/> (starts a row drag with <c>AllowRowDragDrop</c> or on a
+    /// drag handle; the LongPress edit trigger). Only fires for touch and only on <see cref="HoldingState.Started"/>; mouse/pen use
     /// right-click, which Core reads from <see cref="PointerButton.Secondary"/>.
     /// </summary>
     private void OnHolding(object sender, HoldingRoutedEventArgs e)
@@ -326,6 +331,7 @@ public partial class KumikoDataGrid
             Action = InputAction.LongPress,
             Button = PointerButton.Primary,
             PointerId = pointerId, // Holding carries no pointer: it belongs to the press in progress
+            DeviceType = KumikoPointerDeviceType.Touch, // Holding is handled for touch only (above)
             TimestampMs = ToMillis(GetCurrentTimestampMicros()),
             ClickCount = 1,
         };
