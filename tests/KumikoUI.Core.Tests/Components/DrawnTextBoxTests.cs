@@ -462,12 +462,37 @@ public class DrawnTextBoxTests
     {
         var box = Box("hello", mode: EditTextSelectionMode.SelectAll);
         string? copied = null;
-        box.CopyRequested += (_, e) => copied = e.Text;
+        box.CopyRequested += (_, e) => { copied = e.Text; e.Handled = true; };
 
         Key(box, KumikoKey.X, InputModifiers.Control);
 
         Assert.Equal("hello", copied);
         Assert.Equal("", box.Text);
+        box.Undo();
+        Assert.Equal("hello", box.Text);
+    }
+
+    [Fact]
+    public void Cut_WithNoHostTakingTheText_KeepsIt()
+    {
+        var box = Box("hello", mode: EditTextSelectionMode.SelectAll);
+        string? copied = null;
+        box.CopyRequested += (_, e) => copied = e.Text; // never sets Handled
+
+        Key(box, KumikoKey.X, InputModifiers.Control);
+
+        Assert.Equal("hello", copied);
+        Assert.Equal("hello", box.Text);
+    }
+
+    [Fact]
+    public void PasteText_ReplacesTheSelectionAsOneUndoStep()
+    {
+        var box = Box("hello", mode: EditTextSelectionMode.SelectAll);
+
+        box.PasteText("a\nb");
+
+        Assert.Equal("a b", box.Text);
         box.Undo();
         Assert.Equal("hello", box.Text);
     }

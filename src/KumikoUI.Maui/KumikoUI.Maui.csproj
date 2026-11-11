@@ -14,8 +14,9 @@
 
 		<!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
 		<PackageId>KumikoUI.Maui</PackageId>
-		<Description>A high-performance, fully custom-drawn KumikoUI DataGrid control for .NET MAUI. Features virtual scrolling, sorting, filtering, grouping, cell editing, theming, row drag-and-drop, frozen columns/rows, and table/group summaries — all rendered via SkiaSharp with zero native controls.</Description>
-		<PackageTags>maui;datagrid;grid;table;skiasharp;dotnet;xamarin;cross-platform</PackageTags>
+		<Description>A high-performance, fully custom-drawn KumikoUI DataGrid control for .NET MAUI. Features virtual scrolling, sorting, filtering, grouping, cell editing, theming, row drag-and-drop, frozen columns/rows, and table/group summaries, drawn with SkiaSharp.</Description>
+		<PackageTags>maui;dotnet-maui;datagrid;data-grid;grid;table;skiasharp;android;ios;maccatalyst;windows;cross-platform</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 
 	</PropertyGroup>
 
@@ -28,5 +29,9 @@
 	  <ProjectReference Include="../KumikoUI.Core/KumikoUI.Core.csproj" />
 	  <ProjectReference Include="../KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" />
 	</ItemGroup>
+  <!-- The package README shown on nuget.org: plain Markdown with absolute image URLs (#95). -->
+  <ItemGroup>
+    <None Include="../../docs/nuget/README.KumikoUI.Maui.md" Pack="true" PackagePath="README.md" Visible="false" />
+  </ItemGroup>
 
 </Project>

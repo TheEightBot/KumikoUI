@@ -1,0 +1,5 @@
+{
+  "_comment": "Coverage ratchet (#85): CI fails when Core + SkiaSharp coverage from the Core tests drops below these percentages. Measured 96.06% line / 86.62% branch when set; the floor sits about one point below to absorb noise. Raise it by hand (never lower it) as coverage grows.",
+  "lineCoveragePercent": 95.0,
+  "branchCoveragePercent": 85.0
+}
