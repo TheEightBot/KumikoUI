@@ -181,8 +181,9 @@ public partial class KumikoDataGrid
         DispatchPointer(e, point, InputAction.Released, clickCount);
         ReleasePointerCapture(e.Pointer);
 
-        // Touch fling: Core started the inertial scroller on release; pump it from a frame timer.
-        if (_inputController.IsInertialScrolling)
+        // Touch fling: Core started the inertial scroller (or a scroll picker editor started coasting and
+        // snapping) on release; pump it from a frame timer.
+        if (_inputController.IsInertialScrolling || _editSession.IsAnimating)
             StartInertialScrollTimer();
     }
 
@@ -343,7 +344,11 @@ public partial class KumikoDataGrid
 
     private void OnScrollTimerTick(object? sender, object e)
     {
-        if (!_inputController.UpdateInertialScroll(_scroll, 16f))
+        // The grid's inertial scroll and the open editor's animation (a scroll picker settling, which may
+        // commit the edit) both run on this timer, which stops once neither moves.
+        bool scrolling = _inputController.UpdateInertialScroll(_scroll, 16f);
+        bool animating = _editSession.UpdateAnimation(16f);
+        if (!scrolling && !animating)
             StopInertialScrollTimer();
         // UpdateInertialScroll raises NeedsRedraw on each step that moves; an explicit invalidate
         // here keeps the surface in lockstep with the timer even on the final (stopping) tick.

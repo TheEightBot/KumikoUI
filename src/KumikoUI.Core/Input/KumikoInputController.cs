@@ -212,6 +212,13 @@ public class KumikoInputController
                 SetCursor(ComputeCursor(e.X, e.Y, scroll, style, dataSource));
                 break;
             case InputAction.Scroll:
+                // The wheel over an open editor (a dropdown list, a picker wheel) scrolls the editor
+                if (_editSession is { IsEditing: true } && _editSession.HandlePointerEvent(e))
+                {
+                    e.Handled = true;
+                    Redraw();
+                    break;
+                }
                 HandleScroll(e, scroll, style);
                 break;
             case InputAction.Cancelled:
@@ -246,13 +253,14 @@ public class KumikoInputController
         // ── Editing-mode key handling ──
         if (_editSession != null && _editSession.IsEditing)
         {
-            // While an input method is composing, Enter and Escape finish or abandon the composition
-            // (in the editor) rather than commit or cancel the edit.
-            if (e.Key is KumikoKey.Enter or KumikoKey.Escape &&
-                _editSession.ActiveTextInput?.Composition != null &&
-                _editSession.HandleKeyEvent(e))
+            // The editor has the first chance at every key, Enter, Escape and Tab included: an open dropdown
+            // or calendar uses them (pick the highlighted item, close the list), as does an input method
+            // composing text. Picking an item may complete, and so commit, the edit.
+            if (_editSession.HandleKeyEvent(e))
             {
+                selection.IsEditing = _editSession.IsEditing;
                 e.Handled = true;
+                Redraw();
                 return;
             }
 
@@ -303,24 +311,25 @@ public class KumikoInputController
                     Redraw();
                     return;
 
-                default:
-                    // Forward to editor
-                    if (_editSession.HandleKeyEvent(e))
-                    {
-                        e.Handled = true;
-                        return;
-                    }
-
+                case KumikoKey.Up or KumikoKey.Down or KumikoKey.Left or KumikoKey.Right or
+                    KumikoKey.Home or KumikoKey.End or KumikoKey.PageUp or KumikoKey.PageDown:
                     // A navigation key the editor leaves alone moves the selection, which ends the edit: a
                     // refused commit keeps the editor open and the selection where it is.
-                    if (e.Key is KumikoKey.Up or KumikoKey.Down or KumikoKey.Left or KumikoKey.Right or
-                        KumikoKey.Home or KumikoKey.End or KumikoKey.PageUp or KumikoKey.PageDown &&
-                        !CommitEditBeforeViewChange(dataSource, selection))
+                    if (!CommitEditBeforeViewChange(dataSource, selection))
                     {
                         e.Handled = true;
                         return;
                     }
                     break;
+
+                default:
+                    // Any other key the editor leaves alone stops here: it must not reach the grid's shortcuts
+                    // (typing would restart the edit, Space toggle the row's selection, F2 reopen the editor,
+                    // Ctrl+A select every row). A key with a shortcut modifier stays unhandled, so the page's
+                    // own accelerators still work.
+                    if (!e.HasCommand && !e.HasAlt)
+                        e.Handled = true;
+                    return;
             }
         }
 
