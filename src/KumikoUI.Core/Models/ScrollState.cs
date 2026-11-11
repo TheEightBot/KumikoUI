@@ -54,6 +54,15 @@ public class ScrollState
     public void ScrollBy(float dx, float dy) =>
         SetOffsets(Math.Clamp(_offsetX + dx, 0, MaxOffsetX), Math.Clamp(_offsetY + dy, 0, MaxOffsetY));
 
+    /// <summary>
+    /// Scrolls to the given offsets, clamped to the valid range, raising <see cref="ScrollChanged"/> once when either
+    /// moved (setting <see cref="OffsetX"/> and then <see cref="OffsetY"/> would raise it twice).
+    /// </summary>
+    /// <param name="offsetX">The horizontal offset.</param>
+    /// <param name="offsetY">The vertical offset.</param>
+    public void ScrollTo(float offsetX, float offsetY) =>
+        SetOffsets(Math.Clamp(offsetX, 0, MaxOffsetX), Math.Clamp(offsetY, 0, MaxOffsetY));
+
     private void SetOffsets(float x, float y)
     {
         float oldX = _offsetX, oldY = _offsetY;

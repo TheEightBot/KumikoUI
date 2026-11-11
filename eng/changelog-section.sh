@@ -15,10 +15,16 @@ body=$(awk -v v="$version" '
     if (index($0, "## [" v "]") == 1) { found = 1; next }
   }
   /^\[[^]]+\]: / { if (found) exit }      # link reference definitions at the end
-  found { print }
-' "$file" | sed -e '/./,$!d' | sed -e ':a' -e '/^\n*$/{$d;N;ba' -e '}')
+  # Drop leading blank lines; hold blank lines back until more text follows, so trailing ones are trimmed.
+  found {
+    if ($0 ~ /^[[:space:]]*$/) { if (started) blanks = blanks "\n"; next }
+    printf "%s%s\n", (started ? blanks : ""), $0
+    started = 1; blanks = ""
+  }
+' "$file")
 
-if [[ -z "${body//[[:space:]]/}" ]]; then
+# (grep, not ${body//...}: bash 3.2 on macOS takes minutes to run that substitution on a long section)
+if ! printf '%s' "$body" | grep -q '[^[:space:]]'; then
   echo "CHANGELOG.md has no '## [$version]' section (or it is empty)." >&2
   exit 1
 fi

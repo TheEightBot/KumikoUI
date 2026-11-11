@@ -129,6 +129,9 @@ public class PaintCache
     internal KumikoPaint GroupChevronBackground { get; private set; } = new();
     internal KumikoPaint GroupChevron { get; private set; } = new();
     internal KumikoPaint GroupHeaderText { get; private set; } = new();
+    internal KumikoPaint GroupHeaderCount { get; private set; } = new();
+    internal KumikoPaint CaptionSummaryText { get; private set; } = new();
+    internal KumikoPaint SelectedCellText { get; private set; } = new();
     internal KumikoPaint SummaryBorder { get; private set; } = new();
     internal KumikoPaint SummaryLabel { get; private set; } = new();
     internal KumikoPaint GroupSummaryBackground { get; private set; } = new();
@@ -196,6 +199,13 @@ public class PaintCache
         CellText = new KumikoPaint
         {
             Color = style.CellTextColor,
+            Font = style.CellFont,
+            IsAntiAlias = true
+        };
+
+        SelectedCellText = new KumikoPaint
+        {
+            Color = style.SelectionTextColor,
             Font = style.CellFont,
             IsAntiAlias = true
         };
@@ -312,7 +322,7 @@ public class PaintCache
         SummaryLabel = new KumikoPaint
         {
             Color = style.SummaryRowLabelColor,
-            Font = style.SummaryRowFont,
+            Font = style.SummaryRowLabelFont,
             IsAntiAlias = true
         };
         SummaryBorder = Stroke(style.SummaryRowBorderColor, 1f, antiAlias: false);
@@ -360,6 +370,18 @@ public class PaintCache
         {
             Color = style.GroupHeaderTextColor,
             Font = style.GroupHeaderFont,
+            IsAntiAlias = true
+        };
+        GroupHeaderCount = new KumikoPaint
+        {
+            Color = style.GroupHeaderCountColor,
+            Font = style.GroupCountFont,
+            IsAntiAlias = true
+        };
+        CaptionSummaryText = new KumikoPaint
+        {
+            Color = style.CaptionSummaryTextColor,
+            Font = style.CaptionSummaryFont,
             IsAntiAlias = true
         };
 
@@ -434,14 +456,18 @@ public class PaintCache
     /// <paramref name="cellStyle"/> overrides neither the text color nor the font, otherwise one paint reused for
     /// every overriding call, set from <paramref name="cellStyle"/> over <paramref name="style"/>. Draw with the
     /// result before the next call; do not keep or modify it.
+    /// <para>When <paramref name="isSelected"/> is true the text color defaults to
+    /// <see cref="KumikoStyle.SelectionTextColor"/> instead of <see cref="KumikoStyle.CellTextColor"/>. A text
+    /// color set on <paramref name="cellStyle"/> (the cell resolver, the column's style or the row style) still
+    /// wins over it.</para>
     /// </summary>
-    public KumikoPaint CellTextPaint(KumikoCellStyle? cellStyle, KumikoStyle style)
+    public KumikoPaint CellTextPaint(KumikoCellStyle? cellStyle, KumikoStyle style, bool isSelected = false)
     {
         if (cellStyle == null || (cellStyle.TextColor == null && cellStyle.Font == null))
-            return CellText;
+            return isSelected ? SelectedCellText : CellText;
 
         var paint = _cellTextOverride;
-        paint.Color = cellStyle.TextColor ?? style.CellTextColor;
+        paint.Color = cellStyle.TextColor ?? (isSelected ? style.SelectionTextColor : style.CellTextColor);
         paint.Font = cellStyle.Font ?? style.CellFont;
         return paint;
     }

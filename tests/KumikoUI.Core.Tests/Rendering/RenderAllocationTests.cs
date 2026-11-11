@@ -134,6 +134,110 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void AnOpenTextEditor_WithAVisibleCaretAndSelection_AllocatesNothing()
+    {
+        var box = new KumikoUI.Core.Components.DrawnTextBox
+        {
+            Bounds = new KumikoRect(0, 0, 200, 30),
+            Text = "Some editable text",
+        };
+        box.IsFocused = true;
+        box.CursorColor = new KumikoColor(0, 0, 0);
+        box.SelectAll();
+
+        // The caret blinks on a wall clock: pin the measurement inside one visible half-period by retrying
+        Assert.Equal(0, MeasureSteadyState(box.OnDraw));
+    }
+
+    [Fact]
+    public void ANumericUpDown_ShowingAndTypingANumber_AllocatesNothing()
+    {
+        var spin = new KumikoUI.Core.Components.DrawnNumericUpDown
+        {
+            Bounds = new KumikoRect(0, 0, 200, 30),
+            Culture = System.Globalization.CultureInfo.GetCultureInfo("de-DE"),
+            Step = 0.1,
+            Value = 12.3,
+        };
+        spin.IsFocused = true;
+        Assert.Equal(0, MeasureSteadyState(spin.OnDraw));
+
+        // Typed entry draws its text box
+        spin.OnKeyDown(new KumikoUI.Core.Input.KumikoKeyEventArgs { Key = KumikoUI.Core.Input.KumikoKey.Character, Character = '7' });
+        Assert.Equal(0, MeasureSteadyState(spin.OnDraw));
+    }
+
+    [Fact]
+    public void ADatePicker_WithAnOpenCalendar_AllocatesNothing()
+    {
+        var picker = new KumikoUI.Core.Components.DrawnDatePicker
+        {
+            Bounds = new KumikoRect(0, 0, 200, 30),
+            Culture = System.Globalization.CultureInfo.GetCultureInfo("de-DE"),
+            ShowTimePicker = true,
+            MinDate = new DateTime(2000, 1, 1),
+            MaxDate = new DateTime(2100, 1, 1),
+        };
+        picker.SelectedDate = new DateTime(2024, 3, 15);
+        picker.OpenCalendar();
+        Assert.Equal(0, MeasureSteadyState(picker.OnDraw));
+
+        // The year list, then typed entry in the field
+        picker.OnPointerDown(new KumikoUI.Core.Input.KumikoPointerEventArgs { X = 150, Y = 50, Action = KumikoUI.Core.Input.InputAction.Pressed });
+        Assert.Equal(0, MeasureSteadyState(picker.OnDraw));
+        picker.OnPointerDown(new KumikoUI.Core.Input.KumikoPointerEventArgs { X = 500, Y = 500, Action = KumikoUI.Core.Input.InputAction.Pressed }); // closes the dropdown
+        picker.IsFocused = true;
+        picker.OpenCalendar();
+        picker.OnKeyDown(new KumikoUI.Core.Input.KumikoKeyEventArgs { Key = KumikoUI.Core.Input.KumikoKey.Character, Character = '2' });
+        Assert.Equal(0, MeasureSteadyState(picker.OnDraw));
+    }
+
+    [Fact]
+    public void SteadyState_WrappedTextColumns_AllocatesNothing()
+    {
+        // Text cells of wrapping columns take the wrapping DrawTextInRect overload (#23); choosing it allocates nothing.
+        var grid = CreateGrid(featured: false);
+        grid.Source.Columns[0].TextWrap = KumikoTextWrap.Word;
+        grid.Source.Columns[9].TextWrap = KumikoTextWrap.Character;
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
+    public void SteadyState_AutoColumnsWhileScrolling_AllocatesNothing()
+    {
+        // Auto columns sample their cells on the first frame and after a data change (#24); frames of unchanged data
+        // reuse the measurement, also while the grid scrolls.
+        var grid = CreateGrid(featured: false);
+        foreach (var column in grid.Source.Columns)
+            column.SizeMode = ColumnSizeMode.Auto;
+        grid.Source.Columns[1].SizeMode = ColumnSizeMode.Star;
+        int frame = 0;
+
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+        {
+            grid.Scroll.OffsetY = frame++ % 2 == 0 ? 0 : 5 * grid.Style.RowHeight + 7;
+            grid.Render(ctx);
+        }));
+        Assert.True(grid.Source.Columns[0].ContentFitWidth > 0);
+    }
+
+    [Fact]
+    public void ADataChange_MeasuresAutoColumnsOnce_ThenAllocatesNothingAgain()
+    {
+        var grid = CreateGrid(featured: false);
+        grid.Source.Columns[0].SizeMode = ColumnSizeMode.Auto;
+        var ctx = new NoOpDrawingContext();
+        MeasureSteadyState(grid.Render);
+
+        grid.Source.Refresh();
+        long remeasure = Allocated(() => grid.Render(ctx));
+
+        Assert.True(remeasure > 0, "a data change samples the Auto column's cells again");
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
     public void ChangingTheStyle_RebuildsThePaintsOnce_ThenAllocatesNothingAgain()
     {
         var grid = CreateGrid(featured: false);

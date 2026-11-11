@@ -10,6 +10,7 @@ namespace KumikoUI.Core.Components;
 public abstract class DrawnComponent
 {
     private KumikoRect _bounds;
+    private KumikoRect _popupViewport;
     private bool _isFocused;
     private bool _isEnabled = true;
     private bool _isVisible = true;
@@ -21,11 +22,32 @@ public abstract class DrawnComponent
         get => _bounds;
         set
         {
-            if (!_bounds.Equals(value))
+            if (!SameRect(_bounds, value))
             {
                 _bounds = value;
                 OnBoundsChanged();
             }
+        }
+    }
+
+    /// <summary>Whether two rectangles are the same; compared by field, because the struct's own equality boxes.</summary>
+    private static bool SameRect(KumikoRect a, KumikoRect b) =>
+        a.X == b.X && a.Y == b.Y && a.Width == b.Width && a.Height == b.Height;
+
+    /// <summary>
+    /// The visible area, in the same coordinates as <see cref="Bounds"/>, that the component's popups (a
+    /// dropdown list, a calendar) must stay inside: they open above the editor when there is no room below,
+    /// slide sideways into view, and a list shrinks to the room left. The grid sets it to its viewport when
+    /// an editor opens; an empty rectangle (the default) puts no limit on the popups.
+    /// </summary>
+    public KumikoRect PopupViewport
+    {
+        get => _popupViewport;
+        set
+        {
+            if (SameRect(_popupViewport, value)) return;
+            _popupViewport = value;
+            InvalidateVisual();
         }
     }
 
@@ -91,6 +113,20 @@ public abstract class DrawnComponent
     /// </summary>
     public virtual bool ActivatesImmediately => false;
 
+    /// <summary>
+    /// Whether the component is animating (a scroll wheel coasting or snapping) and needs
+    /// <see cref="UpdateAnimation"/> called every frame until it stops. Default: <see langword="false"/>.
+    /// </summary>
+    public virtual bool IsAnimating => false;
+
+    /// <summary>
+    /// Advance the component's animation by one frame. Hosts call this from their frame timer while
+    /// <see cref="IsAnimating"/> is true (the grid does it through <see cref="Editing.EditSession.UpdateAnimation"/>).
+    /// </summary>
+    /// <param name="frameIntervalMs">Time since the previous frame, in milliseconds.</param>
+    /// <returns>True while the component is still animating.</returns>
+    public virtual bool UpdateAnimation(float frameIntervalMs) => false;
+
     /// <summary>Request a redraw of the hosting surface.</summary>
     public void InvalidateVisual() => RedrawRequested?.Invoke();
 
@@ -111,6 +147,14 @@ public abstract class DrawnComponent
 
     /// <summary>Handle pointer move. Return true if handled.</summary>
     public virtual bool OnPointerMove(KumikoPointerEventArgs e) => false;
+
+    /// <summary>
+    /// The system canceled a press this component handled (a gesture such as a scroll took the pointer
+    /// over), so no release will follow. A component that started something on the press (a held spin
+    /// button repeating, a day waiting for its release) ends it here without completing it.
+    /// </summary>
+    /// <param name="e">The cancel event.</param>
+    public virtual void OnPointerCancel(KumikoPointerEventArgs e) { }
 
     /// <summary>
     /// Handle mouse-wheel or trackpad scrolling (<see cref="KumikoPointerEventArgs.ScrollDeltaX"/>/<see cref="KumikoPointerEventArgs.ScrollDeltaY"/>,

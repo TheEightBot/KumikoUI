@@ -43,3 +43,12 @@ Thumbs.db
 
 # BenchmarkDotNet output (bench/)
 BenchmarkDotNet.Artifacts/
+
+# Test and coverage output
+TestResults/
+*.trx
+coverage*
+*.binlog
+
+# Local agent tooling
+.claude/

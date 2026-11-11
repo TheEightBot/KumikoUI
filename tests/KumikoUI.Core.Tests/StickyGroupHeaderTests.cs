@@ -12,15 +12,15 @@ namespace KumikoUI.Core.Tests;
 /// </summary>
 /// <remarks>
 /// Render geometry (<see cref="RenderHarness"/>): grouping panel 40 px, header 40 px, rows 36 px, so the scrolling
-/// rows start at viewport y 80. Twenty people grouped by City: row 0 "City: Oslo (10)", rows 1–10 Oslo, row 11
-/// "City: Rome (10)", rows 12–21 Rome.
+/// rows start at viewport y 80. Twenty people grouped by City: row 0 "City: Oslo", rows 1–10 Oslo, row 11
+/// "City: Rome", rows 12–21 Rome.
 /// </remarks>
 public class StickyGroupHeaderTests
 {
     private const float RowsTop = 80f;   // grouping panel + header
     private const float Row = 36f;
-    private const string Oslo = "City: Oslo (10)";
-    private const string Rome = "City: Rome (10)";
+    private const string Oslo = "City: Oslo";
+    private const string Rome = "City: Rome";
 
     private static RenderHarness GroupedByCity(bool sticky = true, Action<RenderHarness>? configure = null) =>
         RenderHarness.Create(rows: 20, configure: h =>
@@ -148,7 +148,7 @@ public class StickyGroupHeaderTests
         var ctx = h.Render();
 
         var city = Assert.Single(LabelsStartingWith(ctx, "City: Oslo"));
-        var age = Assert.Single(LabelsStartingWith(ctx, "Age: 20 "));
+        var age = Assert.Single(LabelsStartingWith(ctx, "Age: 20"));
         Assert.Equal(RowsTop, city.Rect.Y, 2);
         Assert.Equal(RowsTop + Row, age.Rect.Y, 2);
         Assert.True(age.Index < city.Index, "the inner level is drawn first, under the outer one");
@@ -164,9 +164,9 @@ public class StickyGroupHeaderTests
 
         var city = Assert.Single(LabelsStartingWith(ctx, "City: Oslo"));
         Assert.Equal(RowsTop, city.Rect.Y, 2);
-        var age20 = Assert.Single(LabelsStartingWith(ctx, "Age: 20 "));
+        var age20 = Assert.Single(LabelsStartingWith(ctx, "Age: 20"));
         Assert.Equal(RowsTop + 2 * Row - 10 - Row, age20.Rect.Y, 2); // pushed up under the city header
-        Assert.Contains(LabelsStartingWith(ctx, "Age: 21 "), o => RenderHarness.Near(o.Rect.Y, RowsTop + 2 * Row - 10));
+        Assert.Contains(LabelsStartingWith(ctx, "Age: 21"), o => RenderHarness.Near(o.Rect.Y, RowsTop + 2 * Row - 10));
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public class StickyGroupHeaderTests
 
         h.Scroll.OffsetY = 18; // the collapsed header half scrolled away: it has no rows to stay pinned over
         var ctx = h.Render();
-        Assert.All(Labels(ctx, "City: Oslo (10)"), o => Assert.Equal(RowsTop - 18, o.Rect.Y, 2));
+        Assert.All(Labels(ctx, "City: Oslo"), o => Assert.Equal(RowsTop - 18, o.Rect.Y, 2));
 
         h.Scroll.OffsetY = Row + 18; // Rome's header half scrolled away over its rows
         ctx = h.Render();

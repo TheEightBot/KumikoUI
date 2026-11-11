@@ -134,6 +134,15 @@ differs (see step 4).
   private void OnDataSourceViewChanged(object? s, KumikoViewChangedEventArgs e) => _canvasView.Invalidate();
   ```
 
+> **Update (#65):** the grid no longer hosts an `SKXamlCanvas` directly. It draws on an internal
+> `IKumikoSurface` (`src/KumikoUI.Uno/Rendering/`): Uno's `SKCanvasElement` (`RenderMode.Hardware`, drawn
+> straight into the window's canvas in logical units, no bitmap copy) where
+> `SKCanvasElement.IsSupportedOnCurrentPlatform()`, otherwise `SKXamlCanvas` (`RenderMode.Software`, the
+> only surface on WinAppSDK). `RenderMode` defaults to `Auto`; `ActiveRenderMode` reports the surface in
+> use. `SKXamlCanvas.Invalidate()` paints synchronously, so every Core redraw signal now goes through
+> `RequestRedraw()`, which coalesces requests into one paint per frame via a `CompositionTarget.Rendering`
+> loop that runs only while there is work (see `KumikoDataGrid.Rendering.cs`).
+
 ## 4. DPI / scaling
 
 `SKXamlCanvas.PaintSurface` provides `e.Info` in **device pixels**, while `ActualWidth`/`ActualHeight`
@@ -141,8 +150,11 @@ are **logical DIPs**. KumikoUI's renderer is resolution-independent and is fed l
 MAUI). Bridge the two with a single `canvas.Scale(scale)` where `scale = e.Info.Width / ActualWidth`.
 
 - [x] Apply the scale transform before rendering (shown above).
-- [ ] Re-invalidate on DPI changes: handle `XamlRoot.Changed` (or `RasterizationScale` changes) and
+- [x] Re-invalidate on DPI changes: handle `XamlRoot.Changed` (or `RasterizationScale` changes) and
   call `Invalidate()`.
+  > Done in #65: `OnLoaded` subscribes `XamlRoot.Changed` (unsubscribed in `OnUnloaded`) and a real
+  > `RasterizationScale` change requests a redraw. The software surface now measures its scale against
+  > its own `ActualWidth/Height` (not the grid's, UNO-18); the hardware surface needs no scale math.
   > **Deferred to Phase 04.** `SKXamlCanvas` already re-rasterises (and raises `PaintSurface`) on
   > size/scale changes, so the per-frame `scale = e.Info.Width / ActualWidth` keeps output correct
   > across DPI today. A `XamlRoot`/`RasterizationScale` subscription needs the live visual tree, so
@@ -246,25 +258,11 @@ Map each MAUI `BindableProperty` to a WinUI `DependencyProperty`. Same names, sa
 
 ## 8. Hosting extension
 
-- [x] Add `KumikoUIHostingExtensions` mirroring
-  [`KumikoUIHostingExtensions.cs`](../../src/KumikoUI.Maui/KumikoUIHostingExtensions.cs). Uno apps
-  configure services on the `IHostBuilder` from `IApplicationBuilder`:
-  ```csharp
-  using Microsoft.Extensions.Hosting;
-
-  public static class KumikoUIHostingExtensions
-  {
-      // Place to register fonts / services; keeps app startup symmetric with MAUI's UseSkiaKumikoUI()
-      public static IHostBuilder UseKumikoUI(this IHostBuilder host) => host;
-  }
-  ```
-  > Unlike MAUI, SkiaSharp needs no `UseSkiaSharp()` initializer on Uno — `SKXamlCanvas` self-hosts.
-  > The extension still earns its place as the documented spot for font registration (see [05](05-fonts-and-assets.md)).
-  > Deviation: the Uno.Sdk library head does **not** transitively reference the hosting abstractions,
-  > so `IHostBuilder` was unresolved. Added a direct `PackageReference` to
-  > `Microsoft.Extensions.Hosting.Abstractions` (9.0.4) in `KumikoUI.Uno.csproj` — it carries only the
-  > `IHostBuilder` contract (no runtime), so the documented signature stays intact and the extension
-  > stays minimal.
+- [x] Uno needs no hosting extension. `SKXamlCanvas` self-hosts, so there is no `UseSkiaSharp()`
+  equivalent and no startup call to make; the earlier no-op `UseKumikoUI(IHostBuilder)` was removed
+  (it only cost consumers a `Microsoft.Extensions.Hosting.Abstractions` dependency). Register custom
+  fonts with `KumikoFonts` from `App.OnLaunched` (see [05](05-fonts-and-assets.md)). The MAUI host
+  has the real entry point, `builder.UseKumikoUI()`.
 
 ---
 

@@ -26,6 +26,7 @@ public class EditSession
     private KumikoSource? _editDataSource;
     private bool _warningShown;     // a warning was shown for _warnedValue; committing it again accepts it
     private object? _warnedValue;
+    private bool _pointerCaptured;  // the editor took the press: moves and the release go to it
 
     /// <summary>Whether a cell is currently being edited.</summary>
     public bool IsEditing => _isEditing;
@@ -55,6 +56,23 @@ public class EditSession
     /// Edit trigger configuration. Default: DoubleTap + F2 + Typing.
     /// </summary>
     public EditTrigger EditTriggers { get; set; } = EditTrigger.Default;
+
+    /// <summary>
+    /// Grid-level read-only switch. While true no cell can be edited: <see cref="BeginEdit"/> returns false
+    /// and Boolean cells do not toggle. It combines with the per-column <see cref="KumikoColumn.IsReadOnly"/>:
+    /// a cell is editable only when neither is set. Setting it to true cancels an edit that is open.
+    /// </summary>
+    public bool IsReadOnly
+    {
+        get => _isReadOnly;
+        set
+        {
+            if (_isReadOnly == value) return;
+            _isReadOnly = value;
+            if (value && _isEditing) CancelEdit();
+        }
+    }
+    private bool _isReadOnly;
 
     /// <summary>
     /// Controls how text is selected when a cell enters edit mode.
@@ -90,6 +108,14 @@ public class EditSession
     /// </summary>
     public KumikoStyle? Style { get; set; }
 
+    /// <summary>
+    /// The visible area of the grid, in the coordinates of the cell bounds passed to <see cref="BeginEdit"/>.
+    /// New editors get it as their <see cref="DrawnComponent.PopupViewport"/>, so a dropdown or calendar opens
+    /// above the cell when there is no room below, slides sideways into view, and a list shrinks to the room
+    /// left. Empty (the default) leaves popups unconstrained.
+    /// </summary>
+    public KumikoRect Viewport { get; set; }
+
     // ── Events ──────────────────────────────────────────────────
 
     /// <summary>Fires before a cell enters edit mode. Set Cancel to prevent.</summary>
@@ -122,6 +148,13 @@ public class EditSession
     /// </summary>
     public event EventHandler<ClipboardRequestEventArgs>? ClipboardPasteRequested;
 
+    /// <summary>
+    /// Pastes <paramref name="text"/> into the active text editor (see <see cref="ClipboardRequestEventArgs.IsPending"/>).
+    /// Does nothing when no text editor is open.
+    /// </summary>
+    /// <param name="text">The text to paste.</param>
+    public void PasteText(string? text) => (_activeEditor as DrawnTextBox)?.PasteText(text);
+
     // ── Edit lifecycle ──────────────────────────────────────────
 
     /// <summary>
@@ -139,6 +172,8 @@ public class EditSession
         KumikoColumn column, KumikoSource dataSource,
         KumikoRect cellBounds, char? initialCharacter = null)
     {
+        if (_isReadOnly) return false;
+
         if (_isEditing && !CommitEdit(_editDataSource ?? dataSource))
             return false;
 
@@ -178,7 +213,16 @@ public class EditSession
 
         // Apply theme colors to the new editor
         if (Style != null)
+        {
             CellEditorFactory.ApplyThemeToEditor(_activeEditor, Style);
+
+            // The font the cell is drawn with: a dynamic style, the column's style, the grid's cell font
+            var cellFont = Style.CellStyleResolver?.Invoke(item, column)?.Font ?? column.CellStyle?.Font;
+            if (cellFont != null)
+                CellEditorFactory.ApplyFontToEditor(_activeEditor, cellFont);
+        }
+
+        CellEditorFactory.ApplyViewportToEditor(_activeEditor, Viewport);
 
         _activeEditor.RedrawRequested += OnEditorRedrawRequested;
         _activeEditor.EditCompleted += OnEditorEditCompleted;
@@ -591,18 +635,63 @@ public class EditSession
     }
 
     /// <summary>
-    /// Forward a pointer event to the active editor.
+    /// Forward a pointer event to the active editor: a press, move, release or wheel scroll over it (its
+    /// dropdown or calendar included). A press the editor handles captures the pointer: the moves and the
+    /// release that follow go to the editor wherever they are, so a drag that starts in a dropdown list keeps
+    /// scrolling it past its edge instead of panning the grid.
     /// Returns true if the editor handled it.
     /// </summary>
     public bool HandlePointerEvent(KumikoPointerEventArgs e)
     {
         if (!_isEditing || _activeEditor == null) return false;
 
+        if (e.Action == InputAction.Pressed)
+            _pointerCaptured = false;
+        else if (_pointerCaptured && e.Action is InputAction.Moved or InputAction.Released or InputAction.Cancelled)
+        {
+            var editor = _activeEditor;
+            if (e.Action == InputAction.Moved)
+                editor.OnPointerMove(e);
+            else
+            {
+                _pointerCaptured = false;
+                if (e.Action == InputAction.Released)
+                    editor.OnPointerUp(e);
+                else
+                    editor.OnPointerCancel(e);
+            }
+            return true;
+        }
+
         // Check if click is inside editor
         if (_activeEditor.HitTest(e.X, e.Y))
-            return _focusManager.DispatchPointer(e);
+        {
+            bool handled = _focusManager.DispatchPointer(e);
+            if (handled && e.Action == InputAction.Pressed && _isEditing)
+                _pointerCaptured = true;
+            return handled;
+        }
 
         return false;
+    }
+
+    /// <summary>
+    /// Whether the active editor is animating (a scroll picker coasting or snapping to an item). While it
+    /// is, the host calls <see cref="UpdateAnimation"/> from its frame timer.
+    /// </summary>
+    public bool IsAnimating => _isEditing && _activeEditor is { IsAnimating: true };
+
+    /// <summary>
+    /// Advance the active editor's animation by one frame (<see cref="DrawnComponent.UpdateAnimation"/>).
+    /// An editor may complete the edit when its animation settles (a scroll picker confirms the item it
+    /// stops on), which commits it like any other completion.
+    /// </summary>
+    /// <param name="frameIntervalMs">Time since the previous frame, in milliseconds.</param>
+    /// <returns>True while the editor is still animating.</returns>
+    public bool UpdateAnimation(float frameIntervalMs = 16f)
+    {
+        if (!_isEditing || _activeEditor is not { } editor) return false;
+        return editor.UpdateAnimation(frameIntervalMs) && _isEditing;
     }
 
     /// <summary>
@@ -693,6 +782,7 @@ public class EditSession
         _originalValue = null;
         _warningShown = false;
         _warnedValue = null;
+        _pointerCaptured = false;
         CurrentValidation = null;
         NeedsRedraw?.Invoke();
     }

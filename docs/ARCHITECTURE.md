@@ -83,7 +83,7 @@ KumikoUI.Maui (net10.0-ios/android/maccatalyst → MAUI + SkiaSharp.Views.Maui.C
 | Class | Responsibility |
 |-------|---------------|
 | `KumikoDataGrid` | MAUI control — hosts `SKCanvasView`, translates touch/scroll/keyboard events |
-| `KumikoUIHostingExtensions` | `builder.UseSkiaKumikoUI()` service registration |
+| `KumikoUIHostingExtensions` | `builder.UseKumikoUI()` service, handler and font-alias registration (MAUI only; Uno needs none) |
 
 ## Drawn Components
 
