@@ -73,7 +73,7 @@ jobs:
       - name: Resolve version with MinVer and compare with the tag
         id: ver
         run: |
-          MINVER_VERSION=$(dotnet msbuild src/KumikoUI.Core/KumikoUI.Core.csproj -t:MinVer -getProperty:MinVerVersion -p:Configuration=Release | tail -n 1 | tr -d '[:space:]')
+          MINVER_VERSION=$(dotnet msbuild src/KumikoUI.Core/KumikoUI.Core.csproj -restore -t:MinVer -getProperty:MinVerVersion -p:Configuration=Release | tail -n 1 | tr -d '[:space:]')
           if [ "$DRY_RUN" = "true" ]; then
             echo "Dry run: MinVer computed $MINVER_VERSION for ${GITHUB_REF_NAME}"
             echo "version=$MINVER_VERSION" >> "$GITHUB_OUTPUT"
