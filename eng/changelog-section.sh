@@ -23,8 +23,9 @@ body=$(awk -v v="$version" '
   }
 ' "$file")
 
-# (grep, not ${body//...}: bash 3.2 on macOS takes minutes to run that substitution on a long section)
-if ! printf '%s' "$body" | grep -q '[^[:space:]]'; then
+# (grep, not ${body//...}: bash 3.2 on macOS takes minutes to run that substitution on a long section. A here-string,
+# not a pipe: with pipefail, grep -q exiting early makes printf die of SIGPIPE on a long section, failing the check.)
+if ! grep -q '[^[:space:]]' <<< "$body"; then
   echo "CHANGELOG.md has no '## [$version]' section (or it is empty)." >&2
   exit 1
 fi
