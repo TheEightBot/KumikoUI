@@ -110,12 +110,24 @@ jobs:
             exit 1
           fi
           printf '\n**Full changelog:** https://github.com/%s/blob/%s/CHANGELOG.md\n' "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" >> release-notes.md
+          # nuget.org rejects ReleaseNotes longer than 35,000 characters, so the packages get the notes cut at a line
+          # boundary under 30,000 characters plus a link to the full notes; the GitHub Release keeps them whole.
+          if [ "$(wc -m < release-notes.md)" -le 30000 ]; then
+            cp release-notes.md package-notes.md
+          else
+            awk 'BEGIN { total = 0 } { total += length($0) + 1; if (total > 29000) exit; print }' release-notes.md > package-notes.md
+            printf '\n...\n\nThe full release notes are longer than NuGet allows: https://github.com/%s/releases/tag/%s\n' \
+              "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" >> package-notes.md
+          fi
+          echo "Release notes: $(wc -m < release-notes.md) characters; package notes: $(wc -m < package-notes.md)"
 
       - name: Upload release notes
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-notes
-          path: release-notes.md
+          path: |
+            release-notes.md
+            package-notes.md
           if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────────
@@ -153,7 +165,7 @@ jobs:
           dotnet pack src/KumikoUI.Core/KumikoUI.Core.csproj \
             --no-restore \
             -c Release \
-            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/release-notes.md" \
+            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/package-notes.md" \
             -o ./artifacts
 
       - name: Pack — KumikoUI.SkiaSharp
@@ -161,7 +173,7 @@ jobs:
           dotnet pack src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj \
             --no-restore \
             -c Release \
-            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/release-notes.md" \
+            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/package-notes.md" \
             -o ./artifacts
 
       - name: Verify package versions
@@ -220,7 +232,7 @@ jobs:
           dotnet pack src/KumikoUI.Maui/KumikoUI.Maui.csproj `
             --no-restore `
             -c Release `
-            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/release-notes.md" `
+            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/package-notes.md" `
             -o ./artifacts
 
       - name: Verify package version
@@ -277,7 +289,7 @@ jobs:
           dotnet pack src/KumikoUI.Uno/KumikoUI.Uno.csproj `
             --no-restore `
             -c Release `
-            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/release-notes.md" `
+            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/package-notes.md" `
             -o ./artifacts
 
       - name: Verify package version
@@ -400,6 +412,12 @@ jobs:
             fi
             if unzip -p "$f" '*.nuspec' | grep -q 'Release notes for every version'; then
               echo "::error::$f still carries the placeholder release notes instead of the CHANGELOG section"
+              exit 1
+            fi
+            # nuget.org rejects a push whose ReleaseNotes are over 35,000 characters
+            notes=$(unzip -p "$f" '*.nuspec' | awk '/<releaseNotes>/,/<\/releaseNotes>/' | wc -m)
+            if [ "$notes" -gt 35000 ]; then
+              echo "::error::$f has ReleaseNotes of about $notes characters; nuget.org allows 35,000"
               exit 1
             fi
           done
