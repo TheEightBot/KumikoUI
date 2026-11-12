@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-11
+
 ### Added
 - Custom editors can see the character that opened the edit (#34). New `CellEditorContext` (`Value`, `Bounds`, `InitialCharacter`, `Culture`), `KumikoColumn.EditorFactory` (takes precedence over `CustomEditorFactory`), `EditorDescriptor.CreateEditor(CellEditorContext)` (virtual; forwards to the existing method) and `ICellEditorProvider.CreateEditor(CellEditorContext)` (default interface method; forwards to the existing method). Existing factories, descriptors and providers keep working but receive no character; `TextEditorDescriptor` and the template-column text fallback show it.
 - `IValueEditor` (`Value`, `HasValue`, `IsDirty`), implemented by every built-in editor; a custom editor implements it to have its value committed (#33). `DrawnScrollPicker` takes display/value pairs (`SetItems(displayTexts, values)`, `ItemValues`, `SelectedItemValue`, `SelectValue`, `ClearSelection`), and `DrawnDatePicker.TimeOfDay` keeps an edited cell's time of day.
@@ -272,7 +274,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 Versions 0.1.1, 0.1.2 and 0.1.5 were tagged but never published to NuGet.org.
 
-[Unreleased]: https://github.com/TheEightBot/KumikoUI/compare/v0.1.10...HEAD
+[Unreleased]: https://github.com/TheEightBot/KumikoUI/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/TheEightBot/KumikoUI/compare/v0.1.10...v0.2.0
 [0.1.10]: https://github.com/TheEightBot/KumikoUI/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/TheEightBot/KumikoUI/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/TheEightBot/KumikoUI/compare/v0.1.7...v0.1.8
