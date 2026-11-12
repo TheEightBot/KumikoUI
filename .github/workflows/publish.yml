@@ -98,8 +98,13 @@ jobs:
           if eng/changelog-section.sh "$VERSION" > release-notes.md; then
             echo "Using the [$VERSION] section of CHANGELOG.md"
           elif [[ "$VERSION" == *-* ]]; then
-            eng/changelog-section.sh Unreleased > release-notes.md
-            echo "Prerelease: using the [Unreleased] section of CHANGELOG.md"
+            if eng/changelog-section.sh Unreleased > release-notes.md; then
+              echo "Prerelease: using the [Unreleased] section of CHANGELOG.md"
+            else
+              # Right after a release the Unreleased section is empty; a prerelease or dry run still needs notes.
+              echo "Prerelease build of ${GITHUB_REF_NAME}; no changes are listed under Unreleased yet." > release-notes.md
+              echo "Prerelease: the [Unreleased] section is empty, using a placeholder"
+            fi
           else
             echo "::error::CHANGELOG.md needs a '## [$VERSION] - <date>' section before $VERSION can be released."
             exit 1
