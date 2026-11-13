@@ -47,6 +47,15 @@
     <CommunityToolkitMauiVersion>15.0.1</CommunityToolkitMauiVersion>
     <AvaloniaVersion>12.1.4</AvaloniaVersion>
     <AvaloniaDataGridVersion>12.1.2</AvaloniaDataGridVersion>
+
+    <!--
+      .NET MAUI DevFlow (https://learn.microsoft.com/dotnet/maui/developer-tools/devflow/): the in-app agent the
+      MAUI sample references in Debug builds only, so eng/devflow can drive and inspect it. Keep it in step with
+      the Microsoft.Maui.Cli tool version (eng/devflow/verify.sh checks they match); both are experimental previews.
+    -->
+    <MauiDevFlowVersion>0.1.0-preview.14.26555.2</MauiDevFlowVersion>
+    <!-- The Microsoft.Maui.Core version that DevFlow agent requires; the sample's Controls follows it while DevFlow is on. -->
+    <MauiDevFlowMauiVersion>10.0.41</MauiDevFlowMauiVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Rendering (SkiaSharp)">
@@ -61,6 +70,10 @@
   <ItemGroup Label="Hosts">
     <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup Label="Samples (Debug only)">
+    <PackageVersion Include="Microsoft.Maui.DevFlow.Agent" Version="$(MauiDevFlowVersion)" />
   </ItemGroup>
 
   <ItemGroup Label="Build">

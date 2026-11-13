@@ -56,6 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - The hidden text box is no longer hit-testable, announced by screen readers or 64×32 at the grid's center, focusing it no longer scrolls a page that hosts the grid, and it no longer makes iOS Safari zoom the page (WebAssembly).
   - The grid no longer sets `IsTabStop` on every load or `TabIndex` to 0, so it takes its place in the page's tab order and an app's `IsTabStop="False"` is kept. **Behavior change** for pages that relied on the grid being first in tab order.
   - After a touch edit the keyboard focus stays in the grid and the soft keyboard is hidden, so a hardware keyboard on a tablet keeps navigating the grid.
+- `SampleApp.Maui` hosts the [.NET MAUI DevFlow](https://learn.microsoft.com/dotnet/maui/developer-tools/devflow/) agent in Debug builds (never in Release or in the packages), with a `com.kumikoui.sample` agent extension that reports the canvas-drawn grid's state and cell geometry, and `eng/devflow/verify.sh` drives the sample page by page through the `maui devflow` CLI on Mac Catalyst and the iOS Simulator: sorting, filtering, grouping, selection, editing, column resize and reorder, frozen panes, summaries and themes, with a screenshot per step. See [eng/devflow/README.md](eng/devflow/README.md). (#262)
 
 ## [0.2.0] - 2026-11-11
 
