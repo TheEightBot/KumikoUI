@@ -21,7 +21,12 @@ public enum InputAction
     Scroll,
     /// <summary>A double-tap or double-click.</summary>
     DoubleTap,
-    /// <summary>A long press / right-click equivalent.</summary>
+    /// <summary>
+    /// The press in progress was held down without moving. With a finger or a pen it starts a row drag (see
+    /// <see cref="Models.KumikoStyle.AllowRowDragDrop"/>), edits a cell with the LongPress edit trigger, or else raises
+    /// <see cref="KumikoInputController.ContextRequested"/>; with a mouse it selects the cell. A right click is not a
+    /// long press: hosts report it as a press and release with <see cref="PointerButton.Secondary"/>.
+    /// </summary>
     LongPress,
     /// <summary>
     /// A mouse or pen moved over the grid with no button pressed. It never scrolls, drags or selects: it

@@ -2,6 +2,8 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using KumikoUI.Core.Editing;
+using KumikoUI.Core.Input;
+using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
 
 namespace SampleApp.Maui;
@@ -31,6 +33,56 @@ public partial class MainPage : ContentPage
 		var style = kumiko.GridStyle;
 		style.ShowRowDragHandle = true;
 		kumiko.GridStyle = style;
+
+		// Right click (or a long press on touch) opens a context menu
+		kumiko.ContextMenuRequested += OnGridContextMenuRequested;
+	}
+
+	// ── Context menu ──
+	// MAUI has no API to open a MenuFlyout at a point, so the menu is an action sheet: a sheet on phones and
+	// tablets, a dialog on the desktop.
+
+	private async void OnGridContextMenuRequested(object? sender, KumikoContextRequestedEventArgs e)
+	{
+		if (e.IsHeader && e.Column is { } column)
+		{
+			const string ascending = "Sort ascending", descending = "Sort descending", clear = "Clear sort";
+			var choice = await DisplayActionSheetAsync($"Column: {column.Header}", "Cancel", null, ascending, descending, clear);
+			if (choice == ascending) kumiko.DataSource.SetSort(column, KumikoSortDirection.Ascending);
+			else if (choice == descending) kumiko.DataSource.SetSort(column, KumikoSortDirection.Descending);
+			else if (choice == clear) kumiko.DataSource.ClearSort();
+		}
+		else if (e.DataItem is Employee employee)
+		{
+			// The grid selected the row first (unless it was already part of the selection)
+			var selected = kumiko.Selection.SelectedItems.OfType<Employee>().ToList();
+			string delete = selected.Count > 1 ? $"Delete {selected.Count} rows" : "Delete row";
+			const string duplicate = "Duplicate", raise = "Give a 5% raise";
+			var choice = await DisplayActionSheetAsync(employee.Name, "Cancel", delete, duplicate, raise);
+			if (choice == delete)
+			{
+				foreach (var item in selected.Count > 0 ? selected : new List<Employee> { employee })
+					_viewModel.Employees.Remove(item);
+			}
+			else if (choice == duplicate)
+			{
+				OnAddRowClicked(this, EventArgs.Empty);
+				var copy = _viewModel.Employees[^1];
+				copy.Name = $"{employee.Name} (copy)";
+				copy.Department = employee.Department;
+				copy.Salary = employee.Salary;
+			}
+			else if (choice == raise)
+			{
+				employee.Salary = Math.Round(employee.Salary * 1.05m, 0);
+			}
+		}
+		else if (e.Region == HitRegion.EmptyArea)
+		{
+			const string add = "Add row";
+			if (await DisplayActionSheetAsync("Grid", "Cancel", null, add) == add)
+				OnAddRowClicked(this, EventArgs.Empty);
+		}
 	}
 
 	private void LoadSampleData()
