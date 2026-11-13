@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- `KumikoColumn` separates configuration from runtime state (#50). It implements `INotifyPropertyChanged`: setting `Header`, `IsVisible`, `Width`, `MinWidth`, `MaxWidth`, `SizeMode`, `StarWeight`, `Format`, `IsReadOnly`, `FreezeMode`, `AllowSorting`, alignment, styles and the other display settings from code repaints the grid and lays it out again, with no `Refresh()`. `KumikoSource` observes its columns (and stops on `Detach`, `Dispose` or `SetColumns`); changing `PropertyName`, `ValueAccessor`, `CustomComparer` or `ColumnType` of a sorted, filtered or grouped column rebuilds the view. Runtime state (`SortDirection`, `SortOrder`, `ActiveFilter`, `HeaderFitWidth`, `ContentFitWidth`) has no public setter; change it with `KumikoSource.SetSort` and `SetColumnFilter`. `Width` is documented as an output of layout for Star and Auto columns.
+
+### Removed
+- **Breaking:** `KumikoColumn.Id`, a random value nothing used. Identify a column by reference or `PropertyName`; a stable user key comes with the layout persistence work (#98).
+
 ## [0.2.0] - 2026-11-11
 
 ### Added
