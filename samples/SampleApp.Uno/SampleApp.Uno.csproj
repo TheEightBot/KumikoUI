@@ -107,6 +107,11 @@
                       UndefineProperties="TargetFramework;TargetFrameworks" />
   </ItemGroup>
 
+  <!-- Code shared with SampleApp.Maui, so both samples draw the same grid (the Grouping page's style). -->
+  <ItemGroup>
+    <Compile Include="../Shared/GroupingTheme.cs" Link="Shared/GroupingTheme.cs" />
+  </ItemGroup>
+
   <!--
     WebAssembly head workaround for SkiaSharp.NativeAssets.WebAssembly 4.153.1 (#184).
 
