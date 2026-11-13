@@ -267,6 +267,27 @@ public partial class MainPage : ContentPage
 			? "Select: All"
 			: "Select: End";
 	}
+
+	// Column order, widths, visibility, sort, filters and grouping, kept across app runs (#98).
+	private const string LayoutKey = "MainPage.GridLayout";
+
+	private void OnSaveLayoutClicked(object? sender, EventArgs e)
+	{
+		Preferences.Set(LayoutKey, kumiko.GetLayoutState().ToJson());
+		restoreLayoutButton.Text = "Restore Layout (saved)";
+	}
+
+	private void OnRestoreLayoutClicked(object? sender, EventArgs e)
+	{
+		if (Preferences.Get(LayoutKey, null) is not { } json)
+		{
+			restoreLayoutButton.Text = "Restore Layout (nothing saved)";
+			return;
+		}
+
+		kumiko.ApplyLayoutState(KumikoLayoutState.FromJson(json));
+		restoreLayoutButton.Text = "Restore Layout";
+	}
 }
 
 /// <summary>

@@ -112,6 +112,7 @@ public partial class KumikoDataGrid
 
     private void OnGroupDescriptionsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (_syncingFromSource) return; // the grid is copying the source's grouping in (ApplyLayoutState)
         _dataSource.SetGroupDescriptions(GroupDescriptions);
         Invalidate();
     }
@@ -457,12 +458,13 @@ public partial class KumikoDataGrid
         remove => _inputController.RowReorderRejected -= value;
     }
 
-    /// <summary>Raised after the user dragged a column header to a new position.</summary>
-    public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered
-    {
-        add => _inputController.ColumnReordered += value;
-        remove => _inputController.ColumnReordered -= value;
-    }
+    /// <summary>
+    /// Raised after the user dropped a dragged column header at a new position and the grid moved the column in
+    /// <see cref="DataSource"/> and <see cref="Columns"/>. <see cref="KumikoColumnReorderedEventArgs.OldIndex"/> and
+    /// <see cref="KumikoColumnReorderedEventArgs.NewIndex"/> are the column's indices in <see cref="Columns"/> before
+    /// and after the move. A column moves only within its pane (left-frozen, scrolling or right-frozen).
+    /// </summary>
+    public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered;
 
     /// <summary>Raised after the user resized a column.</summary>
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized

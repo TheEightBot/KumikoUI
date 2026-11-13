@@ -988,8 +988,13 @@ public class KumikoSource : IDisposable
     }
 
     /// <summary>
-    /// Reorder a column from one index to another.
+    /// Move the column at <paramref name="fromIndex"/> in <see cref="Columns"/> so that it ends up at
+    /// <paramref name="toIndex"/> (remove, then insert; the columns in between shift by one), then raise
+    /// <see cref="ColumnOrderChanged"/> and repaint. Out-of-range indices and a move to the same index do nothing.
+    /// The on-screen order (<see cref="DisplayColumns"/>) follows, within each pane.
     /// </summary>
+    /// <param name="fromIndex">The column's index in <see cref="Columns"/>.</param>
+    /// <param name="toIndex">The column's index in <see cref="Columns"/> after the move.</param>
     public void ReorderColumn(int fromIndex, int toIndex)
     {
         VerifyAccess();
@@ -1000,7 +1005,51 @@ public class KumikoSource : IDisposable
         var col = _columns[fromIndex];
         _columns.RemoveAt(fromIndex);
         _columns.Insert(toIndex, col);
+        ColumnOrderChanged?.Invoke(this, EventArgs.Empty);
         NotifyRedraw();
+    }
+
+    /// <summary>
+    /// Raised after <see cref="ReorderColumn"/> (or <see cref="SetDisplayIndex"/>, or applying a
+    /// <see cref="KumikoLayoutState"/>) changed the order of <see cref="Columns"/>. Not raised by
+    /// <see cref="SetColumns"/>. The MAUI and Uno grids use it to keep their <c>Columns</c> collection in the same
+    /// order.
+    /// </summary>
+    public event EventHandler? ColumnOrderChanged;
+
+    /// <summary>
+    /// Move a visible column to <paramref name="displayIndex"/> in <see cref="DisplayColumns"/>, the on-screen
+    /// order read by <see cref="GetDisplayIndex"/>. A column stays in its pane (left-frozen, scrolling or
+    /// right-frozen; change <see cref="KumikoColumn.FreezeMode"/> to move it to another one), so the index is
+    /// clamped to the pane's range. The column moves in <see cref="Columns"/> next to the column it displaces
+    /// (<see cref="ReorderColumn"/>), and hidden columns keep their place. Does nothing for a hidden column.
+    /// </summary>
+    /// <param name="column">One of <see cref="Columns"/>.</param>
+    /// <param name="displayIndex">The position in <see cref="DisplayColumns"/> the column should have.</param>
+    /// <returns>The column's display index afterwards, or -1 when it is hidden.</returns>
+    /// <exception cref="ArgumentException">The column is not one of <see cref="Columns"/>.</exception>
+    public int SetDisplayIndex(KumikoColumn column, int displayIndex)
+    {
+        ArgumentNullException.ThrowIfNull(column);
+        int from = _columns.IndexOf(column);
+        if (from < 0)
+            throw new ArgumentException("The column is not one of this source's columns.", nameof(column));
+
+        int current = GetDisplayIndex(column);
+        if (current < 0) return -1;
+
+        // The pane's range in the display order: a contiguous run of columns with the same freeze mode.
+        int paneStart = current, paneEnd = current;
+        while (paneStart > 0 && _displayColumns[paneStart - 1].FreezeMode == column.FreezeMode) paneStart--;
+        while (paneEnd < _displayColumns.Length - 1 && _displayColumns[paneEnd + 1].FreezeMode == column.FreezeMode) paneEnd++;
+        int target = Math.Clamp(displayIndex, paneStart, paneEnd);
+        if (target == current) return current;
+
+        // Insert next to the displaced column: after it when moving right, before it when moving left.
+        int other = _displayColumnIndices[target];
+        int otherAfterRemove = other > from ? other - 1 : other;
+        ReorderColumn(from, target > current ? otherAfterRemove + 1 : otherAfterRemove);
+        return GetDisplayIndex(column);
     }
 
     /// <summary>
