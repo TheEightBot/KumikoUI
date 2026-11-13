@@ -12,6 +12,15 @@ namespace KumikoUI.Core.Models;
 /// Automatically observes INotifyCollectionChanged and INotifyPropertyChanged
 /// for dynamic data updates. Items may be of mixed runtime types; <c>null</c> items are skipped
 /// (see <see cref="SetItems"/>).
+/// <para>
+/// <b>Threading.</b> A source belongs to the thread that last called <see cref="SetItems"/> or <see cref="Attach"/>:
+/// the UI thread, for a grid. Change the bound collection, raise the items' <c>PropertyChanged</c> and call the
+/// source's methods on that thread (or on its <see cref="SynchronizationContext"/>). A change raised on another
+/// thread, such as <c>items.Add(...)</c> in a <c>Task.Run</c> continuation, throws an
+/// <see cref="InvalidOperationException"/> to the code that made it, before the view is touched; the source then
+/// re-reads the collection on its own thread (posted to that context, or on the next <see cref="Refresh"/>).
+/// Marshal background changes with the platform dispatcher.
+/// </para>
 /// </summary>
 public class KumikoSource : IDisposable
 {
@@ -19,6 +28,7 @@ public class KumikoSource : IDisposable
     private bool _sourceItemsAreCopy;                 // the items were not an IList: _sourceItems is a private copy
     private List<int> _viewIndices = new();          // filtered + sorted mapping
     private List<FlatViewRow>? _flatView;            // null when no grouping; otherwise group headers + data rows
+    private readonly List<FlatViewRow> _flatViewBuffer = new(); // the list _flatView points to while grouping (reused)
 
     // The group structure of the flat view, rebuilt with it (sticky group headers, #174). For every group header in
     // view order: its row, its level, the index (into these lists) of its enclosing group's header (-1 at level 0)
@@ -42,6 +52,19 @@ public class KumikoSource : IDisposable
     private bool _disposed;
     private bool _detached;
 
+    // ── Thread affinity (#69) ────────────────────────────────────
+    // The source belongs to the thread that last called SetItems or Attach (the UI thread, in a grid). Changes
+    // raised on another thread are rejected with WrongThreadMessage; see VerifyAccess.
+    private int _ownerThreadId;                      // 0: no owner yet (SetItems never called)
+    private SynchronizationContext? _ownerContext;   // SynchronizationContext.Current on the owner thread, if any
+    private bool _needsResync;                       // a change was rejected: re-read the collection on the owner thread
+
+    /// <summary>The message of the <see cref="InvalidOperationException"/> raised for a change made on another thread.</summary>
+    internal const string WrongThreadMessage =
+        "KumikoSource was changed from a thread other than the one it is attached to (the UI thread). Make collection " +
+        "changes, item PropertyChanged notifications and KumikoSource calls on the UI thread: marshal them with the " +
+        "dispatcher (MainThread.BeginInvokeOnMainThread, DispatcherQueue.TryEnqueue or SynchronizationContext.Post).";
+
     // ── Grouping state ───────────────────────────────────────────
     private readonly List<GroupDescription> _groupDescriptions = new();
     private readonly Dictionary<GroupKeyPath, bool> _groupExpandedState = new();
@@ -55,6 +78,14 @@ public class KumikoSource : IDisposable
     // Computed caches (rebuilt with the view)
     private List<ComputedSummaryRow> _computedTopSummaries = new();
     private List<ComputedSummaryRow> _computedBottomSummaries = new();
+    // Table summaries: one aggregate per summarized property over the visible rows (#69). Sum, Average and Count
+    // aggregates also keep each row's value, so a PropertyChanged of the property updates them in O(1).
+    private readonly Dictionary<string, PropertyAggregate> _tableAggregates = new(StringComparer.OrdinalIgnoreCase);
+    // The ComputedSummaryRow each TableSummaryRow produced: which list and where, for incremental updates.
+    private readonly List<(TableSummaryRow Definition, List<ComputedSummaryRow> List, int Index)> _tableSummarySlots = new();
+    // Each item's index in the items source (by reference; -1 for an item that appears more than once). Built when
+    // a table summary keeps row values, dropped whenever source indices may have moved.
+    private Dictionary<object, int>? _sourceIndexByItem;
     // Group summaries: keyed by group path
     private readonly Dictionary<string, List<ComputedSummaryRow>> _computedGroupSummaries = new();
     // Caption summaries: keyed by group path
@@ -65,6 +96,8 @@ public class KumikoSource : IDisposable
     private bool _pendingRebuild;     // a state change inside BeginUpdate/EndUpdate deferred its rebuild
     private bool _pendingStructural;  // the view changed structurally inside BeginUpdate/EndUpdate
     private bool _pendingRedraw;
+    private bool _pendingSummaries;   // table summaries must be recomputed at EndUpdate (the view itself is current)
+    private bool _viewStale;          // a collection change inside a batch deferred its rebuild: rebuild before a read
     private object?[]? _batchOldRowKeys;
     private object?[]? _rowKeys;      // the rows as last notified; maintained only while ViewChanged has listeners
     private EventHandler<KumikoViewChangedEventArgs>? _viewChanged;
@@ -129,7 +162,14 @@ public class KumikoSource : IDisposable
     /// Total number of visible rows after filtering/sorting/grouping.
     /// Includes group header rows when grouping is active.
     /// </summary>
-    public int RowCount => _flatView?.Count ?? _viewIndices.Count;
+    public int RowCount
+    {
+        get
+        {
+            EnsureView();
+            return _flatView?.Count ?? _viewIndices.Count;
+        }
+    }
 
     /// <summary>Whether grouping is currently active.</summary>
     public bool IsGroupingActive => _groupDescriptions.Count > 0;
@@ -143,6 +183,7 @@ public class KumikoSource : IDisposable
         get => _culture;
         set
         {
+            VerifyAccess();
             _culture = value;
             _comparer = new KumikoComparer(_culture, _stringCompareOptions);
             InvalidateCellText();
@@ -161,6 +202,7 @@ public class KumikoSource : IDisposable
         get => _strings;
         set
         {
+            VerifyAccess();
             _strings = value ?? KumikoStrings.Default;
             RequestRebuild();
         }
@@ -176,6 +218,7 @@ public class KumikoSource : IDisposable
         get => _stringCompareOptions;
         set
         {
+            VerifyAccess();
             _stringCompareOptions = value;
             _comparer = new KumikoComparer(_culture, _stringCompareOptions);
             RequestRebuild();
@@ -202,6 +245,7 @@ public class KumikoSource : IDisposable
         get => IsGroupingActive ? 0 : _frozenRowCount;
         set
         {
+            VerifyAccess();
             int count = Math.Max(0, value);
             if (count == _frozenRowCount) return;
             _frozenRowCount = count;
@@ -226,20 +270,34 @@ public class KumikoSource : IDisposable
     public CaptionSummaryDescription? CaptionSummary
     {
         get => _captionSummary;
-        set { _captionSummary = value; RequestRebuild(); }
+        set { VerifyAccess(); _captionSummary = value; RequestRebuild(); }
     }
 
     /// <summary>Computed top-positioned table summary rows.</summary>
-    public IReadOnlyList<ComputedSummaryRow> ComputedTopSummaries => _computedTopSummaries;
+    public IReadOnlyList<ComputedSummaryRow> ComputedTopSummaries
+    {
+        get
+        {
+            EnsureView();
+            return _computedTopSummaries;
+        }
+    }
 
     /// <summary>Computed bottom-positioned table summary rows.</summary>
-    public IReadOnlyList<ComputedSummaryRow> ComputedBottomSummaries => _computedBottomSummaries;
+    public IReadOnlyList<ComputedSummaryRow> ComputedBottomSummaries
+    {
+        get
+        {
+            EnsureView();
+            return _computedBottomSummaries;
+        }
+    }
 
     /// <summary>Number of summary rows above the data area.</summary>
-    public int TopSummaryCount => _computedTopSummaries.Count;
+    public int TopSummaryCount => ComputedTopSummaries.Count;
 
     /// <summary>Number of summary rows below the data area.</summary>
-    public int BottomSummaryCount => _computedBottomSummaries.Count;
+    public int BottomSummaryCount => ComputedBottomSummaries.Count;
 
     /// <summary>Whether any group summary rows are defined.</summary>
     public bool HasGroupSummaries => _groupSummaryRows.Count > 0;
@@ -247,6 +305,7 @@ public class KumikoSource : IDisposable
     /// <summary>Add a table-level summary row.</summary>
     public void AddTableSummaryRow(TableSummaryRow row)
     {
+        VerifyAccess();
         _tableSummaryRows.Add(row);
         RequestRebuild();
     }
@@ -254,6 +313,7 @@ public class KumikoSource : IDisposable
     /// <summary>Remove a table-level summary row by name.</summary>
     public void RemoveTableSummaryRow(string name)
     {
+        VerifyAccess();
         _tableSummaryRows.RemoveAll(r => r.Name == name);
         RequestRebuild();
     }
@@ -261,6 +321,7 @@ public class KumikoSource : IDisposable
     /// <summary>Clear all table-level summary rows.</summary>
     public void ClearTableSummaryRows()
     {
+        VerifyAccess();
         _tableSummaryRows.Clear();
         RequestRebuild();
     }
@@ -268,6 +329,7 @@ public class KumikoSource : IDisposable
     /// <summary>Add a group-level summary row.</summary>
     public void AddGroupSummaryRow(GroupSummaryRow row)
     {
+        VerifyAccess();
         _groupSummaryRows.Add(row);
         RequestRebuild();
     }
@@ -275,6 +337,7 @@ public class KumikoSource : IDisposable
     /// <summary>Remove a group-level summary row by name.</summary>
     public void RemoveGroupSummaryRow(string name)
     {
+        VerifyAccess();
         _groupSummaryRows.RemoveAll(r => r.Name == name);
         RequestRebuild();
     }
@@ -282,6 +345,7 @@ public class KumikoSource : IDisposable
     /// <summary>Clear all group-level summary rows.</summary>
     public void ClearGroupSummaryRows()
     {
+        VerifyAccess();
         _groupSummaryRows.Clear();
         RequestRebuild();
     }
@@ -292,6 +356,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public IReadOnlyList<ComputedSummaryRow>? GetGroupSummaries(string groupPath)
     {
+        EnsureView();
         return _computedGroupSummaries.TryGetValue(groupPath, out var rows) ? rows : null;
     }
 
@@ -301,6 +366,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public string? GetCaptionSummaryText(string groupPath)
     {
+        EnsureView();
         return _computedCaptionSummaries.TryGetValue(groupPath, out var text) ? text : null;
     }
 
@@ -313,6 +379,7 @@ public class KumikoSource : IDisposable
         get => _defaultGroupExpanded;
         set
         {
+            VerifyAccess();
             if (_defaultGroupExpanded == value) return;
             _defaultGroupExpanded = value;
             // Only groups without their own expanded state follow the default, and only groups show it.
@@ -490,11 +557,18 @@ public class KumikoSource : IDisposable
     /// <see cref="GetUniqueColumnValues"/>, and are never tracked for property changes. <see cref="RowCount"/>,
     /// <see cref="GetItem"/> and <see cref="GetCellValue"/> therefore never see a null item.
     /// </para>
+    /// <para>
+    /// The calling thread becomes the source's thread: later collection changes, item property changes and calls
+    /// must come from it (see the threading remarks on <see cref="KumikoSource"/>).
+    /// </para>
     /// </summary>
     public void SetItems(IEnumerable items)
     {
         if (_disposed) return;
         _detached = false;
+        CaptureOwner();
+        _needsResync = false;
+        _sourceIndexByItem = null;
 
         // Unsubscribe from previous observable collection
         UnsubscribeFromCollection();
@@ -552,12 +626,16 @@ public class KumikoSource : IDisposable
 
     /// <summary>
     /// Resumes observing the collection set by <see cref="SetItems"/> after <see cref="Detach"/>. The collection
-    /// may have changed meanwhile, so the view is rebuilt. Does nothing unless the source is detached.
+    /// may have changed meanwhile, so the view is rebuilt. Does nothing unless the source is detached. The calling
+    /// thread becomes the source's thread, as for <see cref="SetItems"/>.
     /// </summary>
     public void Attach()
     {
         if (_disposed || !_detached) return;
         _detached = false;
+        CaptureOwner();
+        _needsResync = false;
+        _sourceIndexByItem = null;
         SubscribeToColumns();
         if (_sourceItems is INotifyCollectionChanged incc)
         {
@@ -590,13 +668,75 @@ public class KumikoSource : IDisposable
         _updateDepth = 0;
         _pendingRebuild = false;
         _pendingStructural = false;
+        _pendingSummaries = false;
+        _needsResync = false;
+        _sourceIndexByItem = null;
+        _ownerContext = null;
         RebuildCore();
+        _tableAggregates.Clear(); // drop the row values they hold
+    }
+
+    // ── Thread affinity ──────────────────────────────────────────
+
+    /// <summary>Make the calling thread (and its synchronization context) the source's thread.</summary>
+    private void CaptureOwner()
+    {
+        _ownerThreadId = Environment.CurrentManagedThreadId;
+        _ownerContext = SynchronizationContext.Current;
+    }
+
+    /// <summary>
+    /// Whether the calling code may change the source: it runs on the source's thread, or under the synchronization
+    /// context captured there, or the source has no thread yet.
+    /// </summary>
+    private bool CheckAccess()
+    {
+        if (_ownerThreadId == 0 || _ownerThreadId == Environment.CurrentManagedThreadId) return true;
+        var context = SynchronizationContext.Current;
+        return context != null && ReferenceEquals(context, _ownerContext);
+    }
+
+    /// <summary>Throw <see cref="WrongThreadMessage"/> unless the calling code may change the source.</summary>
+    private void VerifyAccess()
+    {
+        if (!CheckAccess())
+            throw new InvalidOperationException(WrongThreadMessage);
+    }
+
+    /// <summary>
+    /// A change notification arrived on another thread: the collection or an item has changed already, so the view
+    /// no longer matches it. Re-read everything on the source's thread (posted to its context when there is one,
+    /// otherwise on the next <see cref="Refresh"/>), then throw to the code that made the change.
+    /// </summary>
+    private void RejectForeignThreadChange()
+    {
+        if (!_needsResync)
+        {
+            _needsResync = true;
+            _ownerContext?.Post(static state => ((KumikoSource)state!).Resync(), this);
+        }
+        throw new InvalidOperationException(WrongThreadMessage);
+    }
+
+    /// <summary>Re-subscribe to every item and rebuild the view after a rejected change (on the source's thread).</summary>
+    private void Resync()
+    {
+        if (!_needsResync || _disposed) return;
+        _needsResync = false;
+        if (_detached) return; // Attach re-reads everything anyway
+        UnsubscribeFromItemPropertyChanged();
+        SubscribeToItemPropertyChanged();
+        _sourceIndexByItem = null;
+        InvalidateCellText();
+        RequestRebuild();
     }
 
     private void OnSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (_disposed || _detached) return;
+        if (!CheckAccess()) RejectForeignThreadChange();
         ContentVersion++;
+        _sourceIndexByItem = null; // source indices may have moved
         // During ReorderRow we do RemoveAt+Insert on the source list;
         // skip the intermediate rebuilds; ReorderRow rebuilds once afterwards.
         if (_isReordering)
@@ -659,15 +799,26 @@ public class KumikoSource : IDisposable
         }
 
         // For simple Add/Remove with no active sort, filter, or grouping we can
-        // do an incremental update instead of a full O(n) rebuild. Inside BeginUpdate/EndUpdate the view
-        // still follows the collection at once (rows are read while rendering); only the event waits.
+        // do an incremental update instead of a full O(n) rebuild. Inside BeginUpdate/EndUpdate a change that
+        // needs a full rebuild only marks the view stale: the batch rebuilds once, at EndUpdate or at the first
+        // read of a row before it, so a loop of Adds under a sort does not re-sort per item.
         // The collection has already changed, so the old rows come from the record kept since the last
         // notification, not from the (now stale) view.
         var oldRowKeys = _rowKeys;
         _rowKeyIndex = null; // the rows move; the index is rebuilt on the next lookup
-        bool incremental = TryIncrementalUpdate(e, out int viewIndex, out bool rowsChanged);
+        int viewIndex = -1;
+        bool rowsChanged = true;
+        bool incremental = !_viewStale && TryIncrementalUpdate(e, out viewIndex, out rowsChanged);
         if (!incremental)
+        {
+            if (_updateDepth > 0)
+            {
+                _viewStale = true;
+                _pendingRebuild = true;
+                return;
+            }
             RebuildCore();
+        }
 
         if (incremental && !rowsChanged)
             NotifyRedraw(); // the change is to an item no row shows (filtered out): the rows keep their keys
@@ -716,25 +867,41 @@ public class KumikoSource : IDisposable
 
     /// <summary>
     /// Handles an item's <c>PropertyChanged</c>: a redraw, or a rebuild when the property drives sorting,
-    /// grouping, filtering or a summary. A <c>null</c> or empty property name means every property changed.
+    /// grouping, filtering or (while grouping) a group or caption summary. A <c>null</c> or empty property name
+    /// means every property changed.
     /// Names match a column, group or summary property ignoring case, as columns bind to properties that way;
     /// a change of <c>Address</c> also counts for the path <c>Address.City</c>. With a filter predicate set, any
     /// change may change its result, so any change rebuilds.
     /// Only the item itself is observed: a nested object must raise <c>PropertyChanged</c> through the root item
     /// (for example <c>Address</c>) for a change to <c>Address.City</c> to be seen.
+    /// <para>
+    /// A change of a property that only table summaries use rebuilds nothing: Sum, Average and Count are updated
+    /// from the item's old and new value in constant time, and Min, Max and Custom aggregates are recomputed over
+    /// the visible rows without filtering, sorting or grouping them again (once per batch inside
+    /// <see cref="BeginUpdate"/>). Either way the change is a <see cref="KumikoViewChangeKind.Redraw"/>.
+    /// </para>
     /// </summary>
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_disposed || _detached) return;
+        if (!CheckAccess()) RejectForeignThreadChange();
         if (sender != null)
             InvalidateCellText(sender, e.PropertyName);
         if (ItemPropertyAffectsView(e.PropertyName))
+        {
             RequestRebuild();
-        else
-            NotifyRedraw(); // just a display property change
+            return;
+        }
+        if (_tableAggregates.Count > 0)
+            UpdateTableSummaries(sender, e.PropertyName!);
+        NotifyRedraw(); // a display property, or a table summary that was updated in place
     }
 
-    /// <summary>Whether a change of <paramref name="propName"/> (null or empty: all) can change the visible rows or summaries.</summary>
+    /// <summary>
+    /// Whether a change of <paramref name="propName"/> (null or empty: all) can change the visible rows, the group
+    /// structure or a group or caption summary: everything but table summaries, which
+    /// <see cref="UpdateTableSummaries"/> keeps current without a rebuild.
+    /// </summary>
     private bool ItemPropertyAffectsView(string? propName)
     {
         // All properties changed, or an opaque filter predicate that may read any of them
@@ -749,16 +916,23 @@ public class KumikoSource : IDisposable
                 return true;
         }
 
+        // Group keys, group summaries and caption summaries exist only while grouping
+        if (_groupDescriptions.Count == 0)
+            return false;
+
         foreach (var group in _groupDescriptions)
             if (PropertyPathAffected(group.PropertyName, propName)) return true;
-
-        // Also rebuild if the property is used in any summary aggregate
-        foreach (var tsr in _tableSummaryRows)
-            if (tsr.Columns.Any(c => PropertyPathAffected(c.PropertyName, propName))) return true;
         foreach (var gsr in _groupSummaryRows)
-            if (gsr.Columns.Any(c => PropertyPathAffected(c.PropertyName, propName))) return true;
-        return _captionSummary != null &&
-               _captionSummary.Columns.Any(c => PropertyPathAffected(c.PropertyName, propName));
+            if (UsesProperty(gsr.Columns, propName)) return true;
+        return _captionSummary != null && UsesProperty(_captionSummary.Columns, propName);
+    }
+
+    /// <summary>Whether any of <paramref name="descriptions"/> aggregates a property a change of <paramref name="changed"/> affects.</summary>
+    private static bool UsesProperty(List<SummaryColumnDescription> descriptions, string changed)
+    {
+        foreach (var description in descriptions)
+            if (PropertyPathAffected(description.PropertyName, changed)) return true;
+        return false;
     }
 
     /// <summary>Whether a change of <paramref name="changed"/> affects the value at <paramref name="path"/>: the same property, or a parent of a dotted path.</summary>
@@ -772,6 +946,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void SetColumns(IEnumerable<KumikoColumn> columns)
     {
+        VerifyAccess();
         UnsubscribeFromColumns();
         _columns = columns.ToList();
         if (!_disposed && !_detached) SubscribeToColumns();
@@ -799,6 +974,7 @@ public class KumikoSource : IDisposable
     private void OnColumnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_disposed || _detached) return;
+        VerifyAccess(); // column settings follow the source's UI-thread contract
         if (sender is KumikoColumn column &&
             e.PropertyName is nameof(KumikoColumn.PropertyName) or nameof(KumikoColumn.ValueAccessor)
                 or nameof(KumikoColumn.CustomComparer) or nameof(KumikoColumn.ColumnType) &&
@@ -816,6 +992,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void ReorderColumn(int fromIndex, int toIndex)
     {
+        VerifyAccess();
         if (fromIndex < 0 || fromIndex >= _columns.Count) return;
         if (toIndex < 0 || toIndex >= _columns.Count) return;
         if (fromIndex == toIndex) return;
@@ -848,6 +1025,7 @@ public class KumikoSource : IDisposable
     /// <returns><see cref="KumikoReorderResult.Moved"/> when the item moved, otherwise the reason it did not.</returns>
     public KumikoReorderResult ReorderRow(int fromVisibleRow, int toVisibleRow)
     {
+        VerifyAccess();
         int rowCount = RowCount;
         if (fromVisibleRow < 0 || fromVisibleRow >= rowCount || toVisibleRow < 0 || toVisibleRow >= rowCount ||
             IsNonDataRow(fromVisibleRow) || IsNonDataRow(toVisibleRow))
@@ -896,6 +1074,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     internal bool AreInSameGroup(int visibleRowA, int visibleRowB)
     {
+        EnsureView();
         if (_flatView == null) return true;
         int level = _groupDescriptions.Count - 1;
         return TryGetEnclosingGroup(visibleRowA, level, out int headerA, out _) &&
@@ -909,6 +1088,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public object GetItem(int visibleRow)
     {
+        EnsureView();
         if (_flatView != null)
         {
             if (visibleRow < 0 || visibleRow >= _flatView.Count)
@@ -929,6 +1109,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public bool IsGroupHeaderRow(int visibleRow)
     {
+        EnsureView();
         if (_flatView == null) return false;
         if (visibleRow < 0 || visibleRow >= _flatView.Count) return false;
         return _flatView[visibleRow].Kind == FlatRowKind.GroupHeader;
@@ -939,6 +1120,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public bool IsGroupSummaryRow(int visibleRow)
     {
+        EnsureView();
         if (_flatView == null) return false;
         if (visibleRow < 0 || visibleRow >= _flatView.Count) return false;
         return _flatView[visibleRow].Kind == FlatRowKind.GroupSummary;
@@ -958,6 +1140,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public (string GroupPath, int SummaryIndex)? GetGroupSummaryRowInfo(int visibleRow)
     {
+        EnsureView();
         if (_flatView == null) return null;
         if (visibleRow < 0 || visibleRow >= _flatView.Count) return null;
         var entry = _flatView[visibleRow];
@@ -971,6 +1154,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public GroupHeaderInfo? GetGroupHeaderInfo(int visibleRow)
     {
+        EnsureView();
         if (_flatView == null) return null;
         if (visibleRow < 0 || visibleRow >= _flatView.Count) return null;
         var entry = _flatView[visibleRow];
@@ -986,6 +1170,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     internal bool TryGetEnclosingGroup(int visibleRow, int level, out int headerRow, out int endRow)
     {
+        EnsureView();
         headerRow = endRow = -1;
         if (_flatView == null || visibleRow < 0 || visibleRow >= _flatView.Count || _groupHeaderRows.Count == 0)
             return false;
@@ -1036,6 +1221,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void ToggleGroupExpansion(int visibleRow)
     {
+        VerifyAccess();
         var info = GetGroupHeaderInfo(visibleRow);
         if (info == null) return;
 
@@ -1050,7 +1236,18 @@ public class KumikoSource : IDisposable
         _groupExpandedState[info.KeyPath!] = isExpanding;
         RequestRebuild();
 
-        var rebuilt = _flatView?.FirstOrDefault(r => r.Kind == FlatRowKind.GroupHeader && r.GroupInfo!.GroupPath == info.GroupPath)?.GroupInfo;
+        GroupHeaderInfo? rebuilt = null;
+        if (_flatView != null)
+        {
+            foreach (var row in _flatView)
+            {
+                if (row.Kind == FlatRowKind.GroupHeader && row.GroupInfo!.GroupPath == info.GroupPath)
+                {
+                    rebuilt = row.GroupInfo;
+                    break;
+                }
+            }
+        }
         GroupExpandedChanged?.Invoke(this, new GroupExpandedChangedEventArgs(rebuilt ?? info, isExpanding));
     }
 
@@ -1130,6 +1327,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void ExpandAllGroups()
     {
+        VerifyAccess();
         _defaultGroupExpanded = true;
         _groupExpandedState.Clear();
         RequestRebuild();
@@ -1140,6 +1338,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void CollapseAllGroups()
     {
+        VerifyAccess();
         _defaultGroupExpanded = false;
         _groupExpandedState.Clear();
         RequestRebuild();
@@ -1163,6 +1362,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void AddGroupDescription(GroupDescription group)
     {
+        VerifyAccess();
         _groupDescriptions.Add(group);
         PruneGroupExpandedState();
         RequestRebuild();
@@ -1173,6 +1373,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void InsertGroupDescription(int index, GroupDescription group)
     {
+        VerifyAccess();
         _groupDescriptions.Insert(index, group);
         PruneGroupExpandedState();
         RequestRebuild();
@@ -1183,6 +1384,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void RemoveGroupDescription(string propertyName)
     {
+        VerifyAccess();
         _groupDescriptions.RemoveAll(g => g.PropertyName == propertyName);
         PruneGroupExpandedState();
         RequestRebuild();
@@ -1193,6 +1395,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void ClearGroupDescriptions()
     {
+        VerifyAccess();
         _groupDescriptions.Clear();
         PruneGroupExpandedState();
         _flatView = null;
@@ -1206,6 +1409,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void SetGroupDescriptions(IEnumerable<GroupDescription>? groups)
     {
+        VerifyAccess();
         BeginUpdate();
         try
         {
@@ -1223,6 +1427,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void SetGroupSummaryRows(IEnumerable<GroupSummaryRow>? rows)
     {
+        VerifyAccess();
         BeginUpdate();
         try
         {
@@ -1259,6 +1464,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void SetFilter(Func<object, bool>? predicate)
     {
+        VerifyAccess();
         if (_filterPredicate == null && predicate == null) return;
         _filterPredicate = predicate;
         RequestRebuild();
@@ -1270,6 +1476,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void SetColumnFilter(KumikoColumn column, FilterDescription? filter)
     {
+        VerifyAccess();
         if (!column.AllowFiltering) return;
         if (filter == null && column.ActiveFilter == null) return; // nothing to clear
 
@@ -1290,6 +1497,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void ClearAllFilters()
     {
+        VerifyAccess();
         if (_filterPredicate == null && _columns.All(c => c.ActiveFilter == null)) return;
         foreach (var col in _columns)
             col.ActiveFilter = null;
@@ -1333,6 +1541,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void ToggleSort(KumikoColumn column)
     {
+        VerifyAccess();
         if (!column.AllowSorting) return;
         ApplySort(column, NextDirection(column), 0, isMultiSort: false);
     }
@@ -1344,6 +1553,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void ToggleMultiSort(KumikoColumn column)
     {
+        VerifyAccess();
         if (!column.AllowSorting) return;
 
         var direction = NextDirection(column);
@@ -1364,6 +1574,7 @@ public class KumikoSource : IDisposable
     /// <exception cref="ArgumentException">The column is not one of <see cref="Columns"/>.</exception>
     public void SetSort(KumikoColumn column, KumikoSortDirection direction, int order = 0)
     {
+        VerifyAccess();
         ArgumentNullException.ThrowIfNull(column);
         if (!_columns.Contains(column))
             throw new ArgumentException("The column is not one of this source's columns.", nameof(column));
@@ -1377,6 +1588,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public void ClearSort()
     {
+        VerifyAccess();
         if (_columns.All(c => c.SortDirection == KumikoSortDirection.None && c.SortOrder == 0)) return;
         foreach (var c in _columns)
         {
@@ -1451,13 +1663,25 @@ public class KumikoSource : IDisposable
     /// <summary>
     /// Start a batch: changes until the matching <see cref="EndUpdate"/> raise a single
     /// <see cref="ViewChanged"/>, and sort, filter, grouping and summary changes rebuild the view once.
-    /// Batches nest. Collection changes still update the view immediately, so rows stay readable.
+    /// Batches nest. A collection change that the view can follow incrementally is applied at once; one that needs
+    /// a rebuild (an active sort, grouping or summary, a reset, a replace) marks the view stale instead, so many
+    /// changes cost one rebuild. Rows stay readable: reading one from a stale view rebuilds it first.
+    /// <para>
+    /// Dispose the returned scope to end the batch, so it ends even if the changes throw:
+    /// <c>using (source.BeginUpdate()) { ... }</c>. Dispose it once; it calls <see cref="EndUpdate"/>.
+    /// </para>
     /// </summary>
-    public void BeginUpdate()
+    /// <returns>A scope whose <see cref="KumikoUpdateScope.Dispose"/> calls <see cref="EndUpdate"/>.</returns>
+    /// <exception cref="InvalidOperationException">Called from a thread other than the source's.</exception>
+    public KumikoUpdateScope BeginUpdate()
     {
-        if (_updateDepth++ > 0) return;
-        _pendingRebuild = _pendingStructural = _pendingRedraw = false;
-        _batchOldRowKeys = _rowKeys;
+        VerifyAccess();
+        if (_updateDepth++ == 0)
+        {
+            _pendingRebuild = _pendingStructural = _pendingRedraw = _pendingSummaries = false;
+            _batchOldRowKeys = _rowKeys;
+        }
+        return new KumikoUpdateScope(this);
     }
 
     /// <summary>
@@ -1468,6 +1692,7 @@ public class KumikoSource : IDisposable
     /// <exception cref="InvalidOperationException">No batch is open.</exception>
     public void EndUpdate()
     {
+        VerifyAccess();
         if (_updateDepth == 0)
             throw new InvalidOperationException("EndUpdate was called without a matching BeginUpdate.");
         if (--_updateDepth > 0) return;
@@ -1476,6 +1701,9 @@ public class KumikoSource : IDisposable
         _batchOldRowKeys = null;
         if (_pendingRebuild)
             RebuildCore();
+        else if (_pendingSummaries)
+            ComputeTableSummaries();
+        _pendingSummaries = false;
 
         bool structural = _pendingRebuild || _pendingStructural;
         bool redraw = _pendingRedraw;
@@ -1496,6 +1724,7 @@ public class KumikoSource : IDisposable
     /// <summary>Rebuild the view now and raise <see cref="KumikoViewChangeKind.Rebuild"/>, or defer both in a batch.</summary>
     private void RequestRebuild()
     {
+        VerifyAccess();
         if (_updateDepth > 0)
         {
             _pendingRebuild = true;
@@ -1513,6 +1742,7 @@ public class KumikoSource : IDisposable
     /// <summary>Raise <see cref="KumikoViewChangeKind.Redraw"/>, or note it for the end of a batch.</summary>
     private void NotifyRedraw()
     {
+        VerifyAccess();
         ContentVersion++;
         if (_updateDepth > 0)
             _pendingRedraw = true;
@@ -1532,6 +1762,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     internal object? GetRowKey(int visibleRow)
     {
+        EnsureView();
         if (_flatView == null)
             return visibleRow >= 0 && visibleRow < _viewIndices.Count ? _sourceItems[_viewIndices[visibleRow]] : null;
         if (visibleRow < 0 || visibleRow >= _flatView.Count) return null;
@@ -1550,6 +1781,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     internal int IndexOfRowKey(object key)
     {
+        EnsureView();
         var index = _rowKeyIndex;
         if (index == null)
         {
@@ -1570,6 +1802,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     private object?[] GetRowKeys()
     {
+        EnsureView();
         if (_flatView == null)
         {
             var keys = new object?[_viewIndices.Count];
@@ -1595,12 +1828,29 @@ public class KumikoSource : IDisposable
     /// <summary>
     /// Force a full rebuild of the sorted/filtered view, and read every drawn cell again. The grid caches each
     /// drawn cell's display text until the item raises <see cref="INotifyPropertyChanged.PropertyChanged"/> or the
-    /// view changes, so call this after changing items that do not raise it.
+    /// view changes, so call this after changing items that do not raise it. After a change from another thread
+    /// was rejected (see <see cref="KumikoSource"/>), it also re-reads the collection and its items.
     /// </summary>
     public void Refresh()
     {
+        VerifyAccess();
+        if (_needsResync)
+        {
+            Resync();
+            return;
+        }
+        _sourceIndexByItem = null; // items may have moved without a notification
         InvalidateCellText();
         RequestRebuild();
+    }
+
+    /// <summary>
+    /// Rebuild a view that a collection change inside a batch left stale (see <see cref="BeginUpdate"/>) before
+    /// anything reads a row. One field check when the view is current.
+    /// </summary>
+    private void EnsureView()
+    {
+        if (_viewStale) RebuildCore(); // the batch still raises its one notification at EndUpdate
     }
 
     /// <summary>
@@ -1613,6 +1863,7 @@ public class KumikoSource : IDisposable
     /// </summary>
     public bool SetCellValue(int visibleRow, KumikoColumn column, object? value)
     {
+        VerifyAccess();
         if (visibleRow < 0 || visibleRow >= RowCount || IsNonDataRow(visibleRow)) return false;
         return TrySetItemValue(GetItem(visibleRow), column, value, out _);
     }
@@ -1693,7 +1944,8 @@ public class KumikoSource : IDisposable
         foreach (var (col, filter, values) in filters)
         {
             var cellValue = GetCellValueDirect(item, col);
-            string displayText = FormatCellValue(cellValue, col);
+            // Only a value list compares display text; conditions read the value, so don't format for them.
+            string displayText = values != null ? FormatCellValue(cellValue, col) : string.Empty;
             if (!filter.Evaluate(cellValue, displayText, values, _comparer))
                 return false;
         }
@@ -1935,6 +2187,7 @@ public class KumikoSource : IDisposable
     /// <summary>Rebuild the visible rows from the source items and the current state. Raises nothing.</summary>
     private void RebuildCore()
     {
+        _viewStale = false;
         _rowKeyIndex = null;
         InvalidateCellText();
         _viewIndices.Clear();
@@ -1998,7 +2251,8 @@ public class KumikoSource : IDisposable
         // Build grouped flat view if grouping is active
         if (_groupDescriptions.Count > 0)
         {
-            _flatView = new List<FlatViewRow>();
+            _flatViewBuffer.Clear();
+            _flatView = _flatViewBuffer;
             _computedGroupSummaries.Clear();
             _computedCaptionSummaries.Clear();
             BuildGroupedFlatView(_viewIndices, 0, "", null);
@@ -2037,7 +2291,7 @@ public class KumikoSource : IDisposable
         {
             // No more group levels — add as data rows
             foreach (var idx in sourceIndices)
-                _flatView!.Add(new FlatViewRow { Kind = FlatRowKind.Data, SourceIndex = idx });
+                _flatView!.Add(FlatViewRow.Data(idx));
             return;
         }
 
@@ -2136,11 +2390,7 @@ public class KumikoSource : IDisposable
                 _computedCaptionSummaries[groupPath] = captionText;
             }
 
-            _flatView!.Add(new FlatViewRow
-            {
-                Kind = FlatRowKind.GroupHeader,
-                GroupInfo = groupInfo
-            });
+            _flatView!.Add(FlatViewRow.Header(groupInfo));
 
             if (isExpanded)
             {
@@ -2157,12 +2407,7 @@ public class KumikoSource : IDisposable
 
                     for (int si = 0; si < computedRows.Count; si++)
                     {
-                        _flatView.Add(new FlatViewRow
-                        {
-                            Kind = FlatRowKind.GroupSummary,
-                            GroupPath = groupPath,
-                            GroupSummaryIndex = si
-                        });
+                        _flatView.Add(FlatViewRow.Summary(groupPath, si));
                     }
                 }
             }
@@ -2170,6 +2415,18 @@ public class KumikoSource : IDisposable
     }
 
     // ── Summary computation ──────────────────────────────────────
+    //
+    // Every summary is computed in one pass per property over its rows, with streaming aggregates: nothing collects
+    // a list of boxed values except a Custom aggregate, which receives one (#69). Table summaries keep their
+    // aggregates between rebuilds (_tableAggregates); a property aggregated only by Sum, Average and Count also keeps
+    // each visible row's value, so an item's PropertyChanged updates its totals from the old and the new value without
+    // reading the other rows (UpdateTableSummaries).
+
+    /// <summary>Marks, in <see cref="PropertyAggregate.Values"/>, a source index that has no visible row.</summary>
+    private static readonly object s_noRow = new();
+
+    /// <summary>The number of source items when the table aggregates kept their row values.</summary>
+    private int _tableValuesCount;
 
     /// <summary>
     /// Compute table-level summaries (top/bottom) from all visible data rows.
@@ -2178,29 +2435,139 @@ public class KumikoSource : IDisposable
     {
         _computedTopSummaries.Clear();
         _computedBottomSummaries.Clear();
+        _tableSummarySlots.Clear();
 
-        if (_tableSummaryRows.Count == 0) return;
+        // One aggregate per property for every table summary row: they all cover the visible rows.
+        foreach (var aggregate in _tableAggregates.Values)
+            aggregate.ResetRequirements();
+        foreach (var sumRow in _tableSummaryRows)
+            Require(_tableAggregates, sumRow.Columns);
+        if (_tableAggregates.Values.Any(a => !a.InUse)) // a summary was removed: rare, so LINQ is fine
+        {
+            foreach (var unused in _tableAggregates.Values.Where(a => !a.InUse).ToList())
+                _tableAggregates.Remove(unused.PropertyName);
+        }
+
+        Accumulate(_tableAggregates, _viewIndices, keepValues: true);
+        _tableValuesCount = _sourceItems.Count;
 
         foreach (var sumRow in _tableSummaryRows)
         {
-            var computed = ComputeSummaryRow(sumRow.Name, sumRow.Title, sumRow.Columns, _viewIndices);
-            if (sumRow.Position == SummaryPosition.Top)
-                _computedTopSummaries.Add(computed);
-            else
-                _computedBottomSummaries.Add(computed);
+            var list = sumRow.Position == SummaryPosition.Top ? _computedTopSummaries : _computedBottomSummaries;
+            _tableSummarySlots.Add((sumRow, list, list.Count));
+            list.Add(BuildSummaryRow(sumRow.Name, sumRow.Title, sumRow.Columns, _tableAggregates));
         }
     }
 
     /// <summary>
-    /// Compute group-level summaries for a set of source indices belonging to a group.
+    /// Keep the table summaries current after <paramref name="item"/> raised <c>PropertyChanged</c> for
+    /// <paramref name="changed"/>, a property that does not change the visible rows (see
+    /// <see cref="ItemPropertyAffectsView"/>). Sum and Average subtract the item's old value and add its new one,
+    /// O(1); Count does not change. A property with a Min, Max or Custom aggregate, or an item whose old value is
+    /// unknown, recomputes the table summaries over the visible rows (no filtering, sorting or grouping), once per
+    /// batch.
+    /// </summary>
+    private void UpdateTableSummaries(object? item, string changed)
+    {
+        bool affected = false;
+        bool inPlace = item != null;
+        foreach (var aggregate in _tableAggregates.Values)
+        {
+            if (!PropertyPathAffected(aggregate.PropertyName, changed) || !aggregate.DependsOnValues) continue;
+            affected = true;
+            if (aggregate.Values == null) inPlace = false;
+        }
+        if (!affected) return;                           // not summarized, or Count only
+        if (_pendingRebuild || _pendingSummaries) return; // the batch recomputes them at EndUpdate anyway
+
+        int index = -1;
+        if (inPlace && (_sourceItems.Count != _tableValuesCount || !TryGetSourceIndex(item!, out index)))
+            inPlace = false; // a duplicate item, or the collection changed without a notification
+
+        if (inPlace)
+        {
+            bool updated = false;
+            foreach (var aggregate in _tableAggregates.Values)
+            {
+                var values = aggregate.Values;
+                if (values == null || !PropertyPathAffected(aggregate.PropertyName, changed)) continue;
+                var oldValue = values[index];
+                if (ReferenceEquals(oldValue, s_noRow)) continue; // the item has no visible row
+                var newValue = aggregate.Reader(item!);
+                aggregate.Total.Remove(oldValue);
+                aggregate.Total.Add(newValue);
+                values[index] = newValue;
+                updated = true;
+                if (aggregate.Total.Overflow)
+                {
+                    inPlace = false; // the exact decimal total no longer fits: recompute it in order
+                    break;
+                }
+            }
+
+            if (inPlace)
+            {
+                if (updated)
+                    RebuildTableSummaryRows(changed);
+                return;
+            }
+        }
+
+        if (_updateDepth > 0)
+            _pendingSummaries = true;
+        else
+            ComputeTableSummaries();
+    }
+
+    /// <summary>Rebuild the computed rows of the table summaries that aggregate a property a change of <paramref name="changed"/> affects.</summary>
+    private void RebuildTableSummaryRows(string changed)
+    {
+        foreach (var (definition, list, index) in _tableSummarySlots)
+        {
+            if (UsesProperty(definition.Columns, changed))
+                list[index] = BuildSummaryRow(definition.Name, definition.Title, definition.Columns, _tableAggregates);
+        }
+    }
+
+    /// <summary>
+    /// The index of <paramref name="item"/> in the items source, from a map built on first use after the indices
+    /// last moved. False for an item that is not there or appears more than once (one notification, several rows).
+    /// </summary>
+    private bool TryGetSourceIndex(object item, out int index)
+    {
+        var map = _sourceIndexByItem;
+        if (map == null)
+        {
+            map = new Dictionary<object, int>(_sourceItems.Count, ReferenceEqualityComparer.Instance);
+            for (int i = 0; i < _sourceItems.Count; i++)
+            {
+                if (_sourceItems[i] is { } candidate && !map.TryAdd(candidate, i))
+                    map[candidate] = -1;
+            }
+            _sourceIndexByItem = map;
+        }
+        return map.TryGetValue(item, out index) && index >= 0;
+    }
+
+    /// <summary>
+    /// Compute group-level summaries for a set of source indices belonging to a group: one pass per property for
+    /// every group summary row that applies at this level.
     /// </summary>
     private List<ComputedSummaryRow> ComputeGroupSummaries(List<int> sourceIndices, bool isInnermost)
     {
+        var aggregates = new Dictionary<string, PropertyAggregate>(StringComparer.OrdinalIgnoreCase);
+        foreach (var sumRow in _groupSummaryRows)
+        {
+            if (sumRow.Levels == GroupSummaryLevels.Innermost && !isInnermost) continue;
+            Require(aggregates, sumRow.Columns);
+        }
+        Accumulate(aggregates, sourceIndices, keepValues: false);
+
         var result = new List<ComputedSummaryRow>();
         foreach (var sumRow in _groupSummaryRows)
         {
             if (sumRow.Levels == GroupSummaryLevels.Innermost && !isInnermost) continue;
-            result.Add(ComputeSummaryRow(sumRow.Name, sumRow.Title, sumRow.Columns, sourceIndices));
+            result.Add(BuildSummaryRow(sumRow.Name, sumRow.Title, sumRow.Columns, aggregates));
         }
         return result;
     }
@@ -2212,18 +2579,18 @@ public class KumikoSource : IDisposable
     {
         if (_captionSummary == null) return "";
 
-        var summaryValues = new List<string>();
-        var rawValues = new List<object?>();
+        var aggregates = new Dictionary<string, PropertyAggregate>(StringComparer.OrdinalIgnoreCase);
+        Require(aggregates, _captionSummary.Columns);
+        Accumulate(aggregates, sourceIndices, keepValues: false);
 
+        var summaryValues = new List<string>(_captionSummary.Columns.Count);
         foreach (var colDesc in _captionSummary.Columns)
         {
-            var values = CollectColumnValues(colDesc.PropertyName, sourceIndices);
-            object? rawResult = ComputeAggregate(colDesc.SummaryType, values, colDesc.CustomAggregate);
+            object? rawResult = aggregates[colDesc.PropertyName].Result(colDesc);
             string formatted = FormatSummaryValue(rawResult, colDesc, _comparer.Culture);
 
             string label = colDesc.Label ?? _strings.SummaryLabel(colDesc.SummaryType);
             summaryValues.Add($"{label}{formatted}");
-            rawValues.Add(rawResult);
         }
 
         if (_captionSummary.FormatTemplate != null)
@@ -2243,32 +2610,30 @@ public class KumikoSource : IDisposable
     }
 
     /// <summary>
-    /// Compute a single summary row from column descriptions and source indices. Every description is kept:
-    /// several aggregates of one property show side by side in that property's cell.
+    /// Build a computed summary row from its descriptions and the aggregates of their properties. Every
+    /// description is kept: several aggregates of one property show side by side in that property's cell.
     /// </summary>
-    private ComputedSummaryRow ComputeSummaryRow(
+    private ComputedSummaryRow BuildSummaryRow(
         string name, string? title,
         List<SummaryColumnDescription> columnDescs,
-        List<int> sourceIndices)
+        Dictionary<string, PropertyAggregate> aggregates)
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var rawValues = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-        var aggregates = new List<ComputedSummaryValue>(columnDescs.Count);
-        var valuesByProperty = new Dictionary<string, List<object?>>(StringComparer.OrdinalIgnoreCase);
+        var computed = new List<ComputedSummaryValue>(columnDescs.Count);
 
         foreach (var colDesc in columnDescs)
         {
-            // Several aggregates of one property read its values once
-            if (!valuesByProperty.TryGetValue(colDesc.PropertyName, out var colValues))
-                valuesByProperty[colDesc.PropertyName] = colValues = CollectColumnValues(colDesc.PropertyName, sourceIndices);
-
-            object? rawResult = ComputeAggregate(colDesc.SummaryType, colValues, colDesc.CustomAggregate);
+            // A description added to the row's list after the last rebuild has no aggregate until the next one.
+            object? rawResult = aggregates.TryGetValue(colDesc.PropertyName, out var aggregate)
+                ? aggregate.Result(colDesc)
+                : null;
 
             string label = colDesc.Label ?? _strings.SummaryLabel(colDesc.SummaryType);
             string formatted = FormatSummaryValue(rawResult, colDesc, _comparer.Culture);
             string text = $"{label}{formatted}";
 
-            aggregates.Add(new ComputedSummaryValue
+            computed.Add(new ComputedSummaryValue
             {
                 PropertyName = colDesc.PropertyName,
                 SummaryType = colDesc.SummaryType,
@@ -2292,114 +2657,185 @@ public class KumikoSource : IDisposable
             Title = title,
             Values = values,
             RawValues = rawValues,
-            Aggregates = aggregates
+            Aggregates = computed
         };
     }
 
     /// <summary>Separates the aggregates of one property in a summary cell.</summary>
     private const string SummarySeparator = "  |  ";
 
-    /// <summary>
-    /// Collect raw cell values for a property from a set of source indices. The property need not have a
-    /// column; without one it is read from the items directly.
-    /// </summary>
-    private List<object?> CollectColumnValues(string propertyName, List<int> sourceIndices)
+    /// <summary>Add an aggregate (or a requirement of an existing one) for each of <paramref name="descriptions"/>.</summary>
+    private static void Require(Dictionary<string, PropertyAggregate> aggregates, List<SummaryColumnDescription> descriptions)
     {
-        var column = _columns.FirstOrDefault(c =>
-            string.Equals(c.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase))
-            ?? new KumikoColumn { PropertyName = propertyName };
-
-        var result = new List<object?>(sourceIndices.Count);
-
-        if (_sourceItems.Count == 0) return result;
-
-        var reader = CreateColumnReader(column);
-        foreach (var idx in sourceIndices)
+        foreach (var description in descriptions)
         {
-            if (_sourceItems[idx] is { } item)
-                result.Add(reader(item));
-        }
-        return result;
-    }
-
-    /// <summary>
-    /// Compute an aggregate value from a list of raw values.
-    /// </summary>
-    private object? ComputeAggregate(
-        SummaryType summaryType,
-        List<object?> values,
-        Func<IReadOnlyList<object?>, object?>? customAggregate)
-    {
-        switch (summaryType)
-        {
-            case SummaryType.Count:
-                return values.Count;
-
-            case SummaryType.Sum:
-            {
-                SumNumbers(values, out bool exact, out var dec, out var dbl, out _);
-                return exact ? dec : dbl;
-            }
-
-            case SummaryType.Average:
-            {
-                SumNumbers(values, out bool exact, out var dec, out var dbl, out int count);
-                if (count == 0) return null;
-                return exact ? dec / count : dbl / count;
-            }
-
-            case SummaryType.Min:
-            {
-                object? min = null;
-                foreach (var v in values)
-                {
-                    if (v != null && (min == null || _comparer.Compare(v, min) < 0))
-                        min = v;
-                }
-                return min;
-            }
-
-            case SummaryType.Max:
-            {
-                object? max = null;
-                foreach (var v in values)
-                {
-                    if (v != null && (max == null || _comparer.Compare(v, max) > 0))
-                        max = v;
-                }
-                return max;
-            }
-
-            case SummaryType.Custom:
-                return customAggregate?.Invoke(values);
-
-            default:
-                return null;
+            if (!aggregates.TryGetValue(description.PropertyName, out var aggregate))
+                aggregates[description.PropertyName] = aggregate = new PropertyAggregate(description.PropertyName);
+            aggregate.Require(description.SummaryType);
         }
     }
 
     /// <summary>
-    /// Totals the numeric values. When a <c>decimal</c> is present and no floating-point value is, the total is
-    /// exact (<paramref name="exact"/>, in <paramref name="decimalSum"/>); otherwise it is in
-    /// <paramref name="doubleSum"/>. Values that are not numbers (text, dates, booleans, other objects) are
-    /// skipped by a type-code switch, so no exception is raised per value.
+    /// One pass per aggregate over the items at <paramref name="sourceIndices"/>. The property need not have a
+    /// column; without one it is read from the items directly. With <paramref name="keepValues"/>, an aggregate
+    /// that can follow a changed value keeps each row's value by source index (in a buffer reused across rebuilds).
     /// </summary>
-    private static void SumNumbers(List<object?> values, out bool exact, out decimal decimalSum,
-        out double doubleSum, out int count)
+    private void Accumulate(Dictionary<string, PropertyAggregate> aggregates, List<int> sourceIndices, bool keepValues)
     {
-        decimal dec = 0;
-        double dbl = 0;
-        int n = 0;
-        bool hasDecimal = false, hasFloat = false, decimalOverflow = false;
-
-        foreach (var v in values)
+        int itemCount = _sourceItems.Count;
+        foreach (var aggregate in aggregates.Values)
         {
-            if (v == null) continue;
+            aggregate.Reader = CreateColumnReader(FindSummaryColumn(aggregate.PropertyName));
+            aggregate.Begin();
+
+            object?[]? values = null;
+            if (keepValues && aggregate.CanUpdateInPlace && aggregate.DependsOnValues)
+            {
+                values = aggregate.Values is { } buffer && buffer.Length >= itemCount && buffer.Length <= 2 * itemCount + 16
+                    ? buffer
+                    : new object?[itemCount];
+                Array.Fill(values, s_noRow);
+            }
+            aggregate.Values = values;
+
+            foreach (int sourceIndex in sourceIndices)
+            {
+                if (_sourceItems[sourceIndex] is not { } item) continue;
+                object? value = aggregate.Reader(item);
+                aggregate.Add(value, _comparer);
+                if (values != null) values[sourceIndex] = value;
+            }
+        }
+    }
+
+    /// <summary>The first column bound to <paramref name="propertyName"/> (ignoring case), or a column made for it.</summary>
+    private KumikoColumn FindSummaryColumn(string propertyName)
+    {
+        foreach (var column in _columns)
+        {
+            if (string.Equals(column.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase))
+                return column;
+        }
+        return new KumikoColumn { PropertyName = propertyName };
+    }
+
+    /// <summary>
+    /// The aggregates of one property over a set of rows, computed in a single pass without collecting the values
+    /// (except for a Custom aggregate, which receives them as a list).
+    /// </summary>
+    private sealed class PropertyAggregate
+    {
+        public PropertyAggregate(string propertyName) => PropertyName = propertyName;
+
+        /// <summary>The aggregated property.</summary>
+        public string PropertyName { get; }
+
+        /// <summary>Reads the property from an item (set by each pass).</summary>
+        public Func<object, object?> Reader { get; set; } = static _ => null;
+
+        /// <summary>Whether a description still uses this aggregate (table summaries keep it between rebuilds).</summary>
+        public bool InUse { get; private set; }
+
+        private bool _numeric, _minMax, _custom;
+
+        /// <summary>Rows aggregated: the result of Count.</summary>
+        public int Rows { get; private set; }
+
+        /// <summary>Totals of the numeric values: Sum and Average. A field, so it can be updated in place.</summary>
+        public NumericTotal Total;
+
+        private object? _min, _max;
+        private List<object?>? _customValues;
+
+        /// <summary>
+        /// Each source index's value for a table aggregate that can follow a changed value, or <see cref="s_noRow"/>
+        /// for an index without a visible row; null otherwise.
+        /// </summary>
+        public object?[]? Values { get; set; }
+
+        /// <summary>Whether a changed value can change a result (anything but Count).</summary>
+        public bool DependsOnValues => _numeric || _minMax || _custom;
+
+        /// <summary>Whether a changed value can be applied without the other rows: only Sum, Average and Count.</summary>
+        public bool CanUpdateInPlace => !_minMax && !_custom;
+
+        public void ResetRequirements() => InUse = _numeric = _minMax = _custom = false;
+
+        public void Require(SummaryType type)
+        {
+            InUse = true;
+            switch (type)
+            {
+                case SummaryType.Sum:
+                case SummaryType.Average: _numeric = true; break;
+                case SummaryType.Min:
+                case SummaryType.Max: _minMax = true; break;
+                case SummaryType.Custom: _custom = true; break;
+            }
+        }
+
+        /// <summary>Start a pass.</summary>
+        public void Begin()
+        {
+            Rows = 0;
+            Total = default;
+            _min = _max = null;
+            _customValues = _custom ? new List<object?>() : null;
+        }
+
+        public void Add(object? value, KumikoComparer comparer)
+        {
+            Rows++;
+            if (_numeric) Total.Add(value);
+            if (_minMax && value != null)
+            {
+                if (_min == null || comparer.Compare(value, _min) < 0) _min = value;
+                if (_max == null || comparer.Compare(value, _max) > 0) _max = value;
+            }
+            _customValues?.Add(value);
+        }
+
+        public object? Result(SummaryColumnDescription description) => description.SummaryType switch
+        {
+            SummaryType.Count => Rows,
+            SummaryType.Sum => Total.Sum,
+            SummaryType.Average => Total.Average,
+            SummaryType.Min => _min,
+            SummaryType.Max => _max,
+            SummaryType.Custom => description.CustomAggregate?.Invoke(
+                (IReadOnlyList<object?>?)_customValues ?? Array.Empty<object?>()),
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Totals of numeric values that can be added and removed. When a <c>decimal</c> is present and no floating-point
+    /// value is, the total is exact (a <c>decimal</c>); otherwise it is a <c>double</c>. Values that are not numbers
+    /// (text, dates, booleans, other objects) are skipped by a type-code switch, so no exception is raised per value.
+    /// Removing values keeps the double total within rounding of a fresh sum, not bit-identical to it.
+    /// </summary>
+    private struct NumericTotal
+    {
+        private decimal _decimalSum;
+        private double _doubleSum;
+        private int _count, _decimals, _floats;
+
+        /// <summary>The decimal total overflowed; it stays unusable until the totals are computed again.</summary>
+        public bool Overflow { get; private set; }
+
+        public void Add(object? value) => Apply(value, add: true);
+
+        public void Remove(object? value) => Apply(value, add: false);
+
+        private void Apply(object? v, bool add)
+        {
+            if (v == null) return;
             decimal m = 0;
             double d;
+            int isDecimal = 0, isFloat = 0;
             switch (Type.GetTypeCode(v.GetType()))
             {
-                case TypeCode.Decimal: m = (decimal)v; d = (double)m; hasDecimal = true; break;
+                case TypeCode.Decimal: m = (decimal)v; d = (double)m; isDecimal = 1; break;
                 case TypeCode.Int32: m = (int)v; d = (int)v; break;
                 case TypeCode.Int64: m = (long)v; d = (long)v; break;
                 case TypeCode.Int16: m = (short)v; d = (short)v; break;
@@ -2408,24 +2844,30 @@ public class KumikoSource : IDisposable
                 case TypeCode.UInt16: m = (ushort)v; d = (ushort)v; break;
                 case TypeCode.UInt32: m = (uint)v; d = (uint)v; break;
                 case TypeCode.UInt64: m = (ulong)v; d = (ulong)v; break;
-                case TypeCode.Double: d = (double)v; hasFloat = true; break;
-                case TypeCode.Single: d = (float)v; hasFloat = true; break;
-                default: continue; // not a number
+                case TypeCode.Double: d = (double)v; isFloat = 1; break;
+                case TypeCode.Single: d = (float)v; isFloat = 1; break;
+                default: return; // not a number
             }
 
-            n++;
-            dbl += d;
-            if (!decimalOverflow && !hasFloat)
+            int sign = add ? 1 : -1;
+            _count += sign;
+            _decimals += sign * isDecimal;
+            _floats += sign * isFloat;
+            _doubleSum += add ? d : -d;
+            if (isFloat == 0 && !Overflow)
             {
-                try { dec = checked(dec + m); }
-                catch (OverflowException) { decimalOverflow = true; }
+                try { _decimalSum = add ? _decimalSum + m : _decimalSum - m; }
+                catch (OverflowException) { Overflow = true; }
             }
         }
 
-        count = n;
-        decimalSum = dec;
-        doubleSum = dbl;
-        exact = hasDecimal && !hasFloat && !decimalOverflow;
+        private readonly bool Exact => _decimals > 0 && _floats == 0 && !Overflow;
+
+        /// <summary>The total: <c>decimal</c> when exact, otherwise <c>double</c> (0 when there are no numbers).</summary>
+        public readonly object Sum => Exact ? (object)_decimalSum : _doubleSum;
+
+        /// <summary>The mean of the numbers, or null when there are none.</summary>
+        public readonly object? Average => _count == 0 ? null : Exact ? (object)(_decimalSum / _count) : _doubleSum / _count;
     }
 
     /// <summary>
