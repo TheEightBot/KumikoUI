@@ -132,6 +132,36 @@ public class FrozenPaneOverflowTests
         Assert.True(leftEnd <= rightStart);
     }
 
+    [Theory]
+    [InlineData(375f)]
+    [InlineData(390f)]
+    [InlineData(1000f)]
+    public void HeaderDrag_ScreenLeft_MatchesWhereTheColumnIsDrawn(float width)
+    {
+        var g = new Grid(width);
+
+        for (int i = 0; i < g.Source.Columns.Count; i++)
+        {
+            float drawn = KumikoScroller.GetColumnX(g.Source.Columns, g.Style, g.Scroll, i);
+            Assert.Equal(drawn, ColumnDragGeometry.ScreenLeft(g.Source.Columns, i, g.Scroll, g.Style), 3);
+        }
+    }
+
+    [Fact]
+    public void HeaderDrag_DropSlot_UsesTheDrawnPositionsOfUnpinnedColumns()
+    {
+        // At 390 px City is unpinned and drawn last in the scrolling pane, after Level, so it must not shift the
+        // drop slots of the columns drawn before it.
+        var g = new Grid(390, x => x.Scroll.OffsetX = 200);
+        int department = g.Index("Department");
+
+        // Dropped over the right half of Salary: Department goes after Salary.
+        int index = ColumnDragGeometry.DropIndex(
+            g.Source.Columns, department, g.X("Salary") + 100, g.Scroll, g.Style);
+
+        Assert.Equal(g.Index("Salary"), index);
+    }
+
     [Fact]
     public void WideViewport_PinsEverythingAsDeclared()
     {
