@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- MAUI: `KumikoFonts` (KumikoUI.Maui) registers fonts from the app package with the grid renderer, matching the Uno helper (#75). `RegisterFromAppPackageAsync(family, fileName)` and the overload taking a sequence of `(family, fileName)` pairs open the file with `FileSystem.OpenAppPackageFileAsync` without blocking and never fault for a missing or unreadable font (the grid uses the system font); `RegisterFromStream` registers a stream you opened.
+- `THIRD-PARTY-NOTICES.md` and the license texts of the sample fonts (Open Sans and Material Icons under Apache-2.0, Noto Sans JP under the SIL OFL 1.1) next to them in `samples/Shared/Fonts` (#75).
+
+### Changed
+- The MAUI and Uno samples share one `samples/Shared/Fonts` folder instead of keeping two copies of the fonts, and the MAUI sample registers its fonts through `KumikoFonts` instead of private blocking code (#75).
+
 ## [0.2.0] - 2026-11-11
 
 ### Added
