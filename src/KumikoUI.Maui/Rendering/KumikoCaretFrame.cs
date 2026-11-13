@@ -21,6 +21,7 @@ internal sealed class KumikoCaretFrame : IDisposable
     public const int MarginPixels = 4;
 
     private SKBitmap? _pixels;
+    private SKImage? _image; // over _pixels' memory, not a copy
     private bool _hasFrame;
     private SKPaint? _copyPaint;
 
@@ -40,6 +41,8 @@ internal sealed class KumikoCaretFrame : IDisposable
     public void Capture(SKSurface surface, SKImageInfo info)
     {
         _hasFrame = false;
+        _image?.Dispose(); // before the pixels it reads are replaced
+        _image = null;
         if (surface.Context is not null || info.Width <= 0 || info.Height <= 0 || info.ColorType == SKColorType.Unknown)
             return;
         if (_pixels is null || _pixels.Info != info)
@@ -47,7 +50,10 @@ internal sealed class KumikoCaretFrame : IDisposable
             _pixels?.Dispose();
             _pixels = new SKBitmap(info);
         }
-        _hasFrame = surface.ReadPixels(_pixels.Info, _pixels.GetPixels(), _pixels.RowBytes, 0, 0);
+        if (!surface.ReadPixels(_pixels.Info, _pixels.GetPixels(), _pixels.RowBytes, 0, 0)) return;
+        using var pixmap = _pixels.PeekPixels();
+        _image = SKImage.FromPixels(pixmap);
+        _hasFrame = _image is not null;
     }
 
     /// <summary>
@@ -56,9 +62,9 @@ internal sealed class KumikoCaretFrame : IDisposable
     /// </summary>
     public bool TryRestore(SKCanvas canvas, SKImageInfo info)
     {
-        if (!_hasFrame || _pixels is null || _pixels.Width != info.Width || _pixels.Height != info.Height) return false;
+        if (!_hasFrame || _image is null || _image.Width != info.Width || _image.Height != info.Height) return false;
         _copyPaint ??= new SKPaint { BlendMode = SKBlendMode.Src };
-        canvas.DrawBitmap(_pixels, 0, 0, _copyPaint);
+        canvas.DrawImage(_image, 0, 0, SKSamplingOptions.Default, _copyPaint);
         return true;
     }
 
@@ -66,6 +72,8 @@ internal sealed class KumikoCaretFrame : IDisposable
     public void Clear()
     {
         _hasFrame = false;
+        _image?.Dispose(); // before the pixels it reads
+        _image = null;
         _pixels?.Dispose();
         _pixels = null;
     }

@@ -394,7 +394,7 @@ public class AndroidTextInputMapperTests
     [Fact]
     public void SelectionReport_FollowsTheAdapterCalls()
     {
-        var (m, box, _) = Bound("ab");
+        var (m, _, _) = Bound("ab");
 
         Assert.False(m.TryTakeSelectionReport(out _));
 
