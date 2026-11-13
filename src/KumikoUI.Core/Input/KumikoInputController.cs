@@ -274,7 +274,7 @@ public partial class KumikoInputController
         }
 
         // A long press that raised ContextRequested ends the gesture: lifting or moving the finger does nothing.
-        if (partOfPress && _pressConsumedByContext && action != InputAction.Pressed)
+        if (partOfPress && _pressConsumedByContext) // always false on a new press, which resets it above
         {
             e.Handled = true;
             return;
