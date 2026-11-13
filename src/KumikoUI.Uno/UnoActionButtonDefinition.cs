@@ -6,7 +6,7 @@ using Windows.UI;
 namespace KumikoUI.Uno;
 
 /// <summary>
-/// An Uno <see cref="DependencyObject"/> implementation of <see cref="IActionButtonDefinition"/>
+/// An Uno <see cref="FrameworkElement"/> implementation of <see cref="IActionButtonDefinition"/>
 /// that supports XAML data-binding on every property, including <see cref="Command"/>.
 /// </summary>
 /// <remarks>
@@ -22,7 +22,9 @@ namespace KumikoUI.Uno;
 /// </render:ActionButtonsCellRenderer.Buttons>
 /// ]]></code>
 ///
-/// A button definition is not part of the visual tree, so it does not inherit
+/// It derives from <see cref="FrameworkElement"/> only for <c>DataContext</c>, which WinUI on Windows offers
+/// on framework elements alone; it is never added to the visual tree and never measured or drawn.
+/// Because it is not part of the visual tree, it does not inherit
 /// <c>DataContext</c> by itself. <see cref="KumikoDataGrid"/> hands its own <c>DataContext</c> to the
 /// definitions of every column whose <c>CustomCellRenderer</c> is an
 /// <see cref="ActionButtonsCellRenderer"/>, so a plain <c>{Binding Path}</c> resolves against the grid's
@@ -31,7 +33,7 @@ namespace KumikoUI.Uno;
 /// <see cref="IActionButtonDefinition"/> members expose them as <see cref="KumikoColor"/>.
 /// The values are cached when they change, so the render pass reads them without allocating.
 /// </remarks>
-public partial class UnoActionButtonDefinition : DependencyObject, IActionButtonDefinition
+public partial class UnoActionButtonDefinition : FrameworkElement, IActionButtonDefinition
 {
     private static readonly Color DefaultBackgroundColor = Color.FromArgb(255, 13, 110, 253);
     private static readonly Color DefaultTextColor = Color.FromArgb(255, 255, 255, 255);
