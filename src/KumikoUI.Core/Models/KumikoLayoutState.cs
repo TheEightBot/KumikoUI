@@ -128,11 +128,11 @@ public sealed class KumikoLayoutState
         // The saved columns the source still has, in saved order (the first entry for a name wins).
         var matched = new List<(KumikoColumnLayoutState State, KumikoColumn Column)>();
         var matchedColumns = new HashSet<KumikoColumn>();
-        foreach (var state in saved.Where(s => s is not null && !string.IsNullOrEmpty(s.Key)))
-        {
-            if (byKey.TryGetValue(state.Key, out var column) && matchedColumns.Add(column))
-                matched.Add((state, column));
-        }
+        matched.AddRange(saved
+            .Where(s => s is not null && !string.IsNullOrEmpty(s.Key))
+            .Select(s => (State: s, Column: byKey.GetValueOrDefault(s.Key!)))
+            .Where(m => m.Column is not null && matchedColumns.Add(m.Column))
+            .Select(m => (m.State, m.Column!)));
 
         // Order: the positions the matched columns hold now get the matched columns in saved order, so columns the
         // layout does not know stay where they are.
