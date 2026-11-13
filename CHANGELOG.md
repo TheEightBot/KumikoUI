@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- `SampleApp.Maui` hosts the [.NET MAUI DevFlow](https://learn.microsoft.com/dotnet/maui/developer-tools/devflow/) agent in Debug builds (never in Release or in the packages), with a `com.kumikoui.sample` agent extension that reports the canvas-drawn grid's state and cell geometry, and `eng/devflow/verify.sh` drives the sample page by page through the `maui devflow` CLI on Mac Catalyst and the iOS Simulator: sorting, filtering, grouping, selection, editing, column resize and reorder, frozen panes, summaries and themes, with a screenshot per step. See [eng/devflow/README.md](eng/devflow/README.md). (#262)
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

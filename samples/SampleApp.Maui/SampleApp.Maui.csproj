@@ -70,6 +70,32 @@
 	</ItemGroup>
 
 	<!--
+		.NET MAUI DevFlow (#262): the in-app automation agent and the sample's KumikoUI extension (DevFlow/), so
+		eng/devflow and the maui devflow CLI can drive the sample. On by default in Debug builds; pass
+		-p:KumikoDevFlow=false to build a Debug sample without it. Never in Release: other configurations reference
+		and compile none of it, whatever KumikoDevFlow says.
+		- The agent needs a newer Microsoft.Maui.Core than MauiVersion (the library's floor), so Microsoft.Maui.Controls
+		  follows MauiDevFlowMauiVersion while DevFlow is on, keeping Controls and Core from the same MAUI release.
+		- Mac Catalyst signs with Entitlements.Debug.plist, which adds the network.server entitlement the agent's HTTP
+		  listener needs inside the sandbox.
+	-->
+	<PropertyGroup>
+		<KumikoDevFlow Condition="'$(KumikoDevFlow)' == ''">true</KumikoDevFlow>
+		<KumikoDevFlow Condition="'$(Configuration)' != 'Debug'">false</KumikoDevFlow>
+		<DefineConstants Condition="'$(KumikoDevFlow)' == 'true'">$(DefineConstants);KUMIKO_DEVFLOW</DefineConstants>
+	</PropertyGroup>
+	<ItemGroup Condition="'$(KumikoDevFlow)' == 'true'">
+		<PackageReference Include="Microsoft.Maui.DevFlow.Agent" />
+		<PackageReference Update="Microsoft.Maui.Controls" VersionOverride="$(MauiDevFlowMauiVersion)" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(KumikoDevFlow)' != 'true'">
+		<Compile Remove="DevFlow/**" />
+	</ItemGroup>
+	<PropertyGroup Condition="'$(KumikoDevFlow)' == 'true' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">
+		<CodeSignEntitlements>Platforms/MacCatalyst/Entitlements.Debug.plist</CodeSignEntitlements>
+	</PropertyGroup>
+
+	<!--
 		The KumikoUI.Core package delivers the [KumikoGridItem] source generator as an analyzer; a project reference
 		does not, so the sample references it directly. The sample's row types then read through generated accessors,
 		which is what Native AOT and full trimming need (#76).

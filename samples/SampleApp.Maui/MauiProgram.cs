@@ -29,6 +29,12 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
+#if KUMIKO_DEVFLOW
+		// .NET MAUI DevFlow agent plus the sample's KumikoUI extension (DevFlow/KumikoDevFlowExtension.cs), Debug
+		// builds only (SampleApp.Maui.csproj): eng/devflow drives and inspects the sample through them (#262).
+		builder.AddKumikoDevFlow();
+#endif
+
 		return builder.Build();
 	}
 
