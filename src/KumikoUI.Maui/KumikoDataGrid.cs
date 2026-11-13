@@ -151,6 +151,8 @@ public partial class KumikoDataGrid : ContentView
         InitializeScrolling();
 
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        // The source is the grid's own, so this never needs removing (KumikoDataGrid.Layout.cs)
+        _dataSource.ColumnOrderChanged += OnDataSourceColumnOrderChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
@@ -630,6 +632,7 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnColumnsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (_syncingFromSource) return; // the grid is copying the source's column order in (KumikoDataGrid.Layout.cs)
         _dataSource.SetColumns(Columns);
         InvalidateSurface();
     }
@@ -996,7 +999,8 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
     {
-        _dataSource.ReorderColumn(e.OldIndex, e.NewIndex);
+        _dataSource.ReorderColumn(e.OldIndex, e.NewIndex); // Columns follows (KumikoDataGrid.Layout.cs)
+        ColumnReordered?.Invoke(this, e);
     }
 
     // ── Auto-fit column event ──

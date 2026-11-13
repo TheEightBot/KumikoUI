@@ -78,7 +78,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Hosts | `KumikoDataGrid` for .NET MAUI and for the Uno Platform, with the same properties, commands and events |
 | Rendering | Only visible rows and columns are drawn; steady-state frames allocate nothing in the managed render loop ([Performance](#performance)) |
 | Column types | Text, Numeric, Boolean (optionally three-state), Date, ComboBox, Picker, Image, ProgressBar, Template (custom renderers such as the built-in action buttons) |
-| Column layout | Fixed, Star and Auto (fitted to content) sizing; headers fit unless you set a width; resize by dragging or double-click auto-fit; wrapping text cells; drag a header to reorder; freeze columns left or right and rows at the top |
+| Column layout | Fixed, Star and Auto (fitted to content) sizing; headers fit unless you set a width; resize by dragging or double-click auto-fit; wrapping text cells; drag a header to reorder; freeze columns left or right and rows at the top; save and restore the layout as JSON |
 | Sorting | Header tap cycles through a type-aware first direction, the opposite direction and none; Shift or Ctrl adds columns to a multi-column sort |
 | Filtering | Filter popup per column with search, a value checklist, sort rows and OK / Cancel / Clear; programmatic predicate and column filters |
 | Grouping | Nested groups, expand and collapse, sticky group headers, a grouping panel with chips |
@@ -425,18 +425,47 @@ With a mouse, the cursor shows what a click does:
 
 ### Reordering columns
 
-Drag a column header sideways to move the column. A drag that starts on a header and moves more horizontally than vertically reorders instead of scrolling; set `AllowReorder="False"` on a column to keep it in place. The new order is in `DataSource.Columns`, and `ColumnReordered` reports the move:
+Drag a column header sideways to move the column. A drag that starts on a header and moves more horizontally than vertically reorders instead of scrolling; set `AllowReorder="False"` on a column to keep it in place. The dragged header follows the pointer, and on release the column lands between the two columns on either side of the pointer: before the first column whose middle is right of it, or after the last one.
+
+A column moves only within its own pane: left-frozen columns among the left-frozen ones, scrolling columns among the scrolling ones and right-frozen columns among the right-frozen ones. A drop over another pane or over the row drag handle lands at the near end of the column's own pane, and a scrolling column hidden under a frozen pane is never the target. To move a column to another pane, change its `FreezeMode`.
+
+The grid moves the column in both `DataSource.Columns` and its own `Columns` collection, then raises `ColumnReordered`. `OldIndex` and `NewIndex` are positions in `Columns` (the definition order, hidden columns included): the column is removed at `OldIndex` and inserted at `NewIndex`, so `NewIndex` is its index after the move. The on-screen position is its display index: left-frozen columns first, then scrolling, then right-frozen columns, each in `Columns` order, without hidden ones (`DataSource.DisplayColumns`).
 
 ```csharp
 kumiko.ColumnReordered += (_, e) =>
 {
-    // e.Column moved from e.OldIndex to e.NewIndex
-    var order = string.Join(", ", kumiko.DataSource.Columns.Select(c => c.Header));
-    Console.WriteLine($"Column order: {order}");
+    // e.Column moved from Columns[e.OldIndex] to Columns[e.NewIndex]
+    int onScreen = kumiko.DataSource.GetDisplayIndex(e.Column);
+    Console.WriteLine($"{e.Column.Header} is now column {onScreen + 1} on screen");
 };
 ```
 
-The grid's `Columns` collection keeps the order you declared: a user's reorder is applied to `DataSource.Columns` only, and adding or removing a column in `Columns` resets the order to the collection's.
+Move a column in code by display index; the index is kept within the column's pane and `Columns` follows:
+
+```csharp
+var total = kumiko.Columns.First(c => c.PropertyName == "Total");
+kumiko.DataSource.SetDisplayIndex(total, 0); // first in its pane
+```
+
+### Saving and restoring the layout
+
+`GetLayoutState()` takes what the user can change: column order, width, visibility and freeze mode, the sort, the column filters and the grouping. `KumikoLayoutState.ToJson()` turns it into a string to keep in a file or in preferences (MAUI's `Preferences`, Uno's `ApplicationData.Current.LocalSettings`), and `ApplyLayoutState` puts it back:
+
+```csharp
+string layoutPath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "orders-grid-layout.json");
+
+// Save, for example when the page closes
+File.WriteAllText(layoutPath, kumiko.GetLayoutState().ToJson());
+
+// Restore, after the columns are set up
+if (File.Exists(layoutPath))
+    kumiko.ApplyLayoutState(KumikoLayoutState.FromJson(File.ReadAllText(layoutPath)));
+```
+
+The JSON comes from a System.Text.Json source generator, so it works with Native AOT and full trimming. `FromJson` ignores properties it does not know and throws a `JsonException` for text that is not a layout.
+
+Columns are matched by name: `KumikoColumn.Key` when you set it, otherwise `PropertyName`. Give a column a `Key` when it has no property name (a template or action column) or when two columns show the same property; a column with neither is not saved. Saved layouts survive changes to the columns: a saved column the grid no longer has is ignored, and a column the layout does not mention keeps its place and settings. The sort and the grouping are replaced as a whole. Restoring is one change (one rebuild); it raises the sort and filter events. A predicate set with `DataSource.SetFilter`, delegates such as `GroupDescription.KeySelector` and which groups are expanded are not saved; a saved group whose property is already grouped by keeps your `GroupDescription` with its selectors. Without a host control, `KumikoLayoutState.Capture(source)` and `state.ApplyTo(source)` do the same on a `KumikoSource`.
 
 ### Frozen columns and rows
 
@@ -1276,7 +1305,7 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `IsReadOnly` | `bool` | false | True refuses every edit, Boolean toggle and Tab stop; combines with `KumikoColumn.IsReadOnly`. |
 | `AllowSorting`, `AllowFiltering` | `bool` | true | False stops header-tap sorting, or hides and disables the header filter icons; a grid-level false wins over the column's setting. |
 
-Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
+Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)), `GetLayoutState` and `ApplyLayoutState` ([Saving and restoring the layout](#saving-and-restoring-the-layout)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
 
 ### Commands
 
@@ -1291,7 +1320,7 @@ Each command is executed with the event arguments as its parameter (`SelectionCh
 
 ### Events
 
-`RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled` and `SelectionChanged`. They forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection`, which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
+`RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled` and `SelectionChanged`. They forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection` (`ColumnReordered` is raised by the grid once it has moved the column), which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
 
 `DataSource.ViewChanged` reports every change of the view once, with its kind (`Redraw`, `Rebuild`, `Insert`, `Remove`); `MapRow(oldRow)` follows a row from before the change to after it, and `GetViewRow(item)` finds an item's row.
 
@@ -1695,8 +1724,8 @@ Yes: `Theme`, `GridStyle` and `ScrollSettings` are bindable, including `Theme="{
 **Does the grid support right-to-left languages?**
 Text in Arabic or Hebrew is drawn, but the grid layout is not mirrored: it draws left to right under a right-to-left `FlowDirection`. Full right-to-left layout is not part of 1.0 (#80).
 
-**After the user drags a column, `Columns` still has the old order.**
-A user's reorder changes `DataSource.Columns`, not the grid's `Columns` collection. Read the order from `DataSource.Columns` or handle `ColumnReordered` ([Reordering columns](#reordering-columns)).
+**How do I keep the column order, widths and sort between sessions?**
+Save `GetLayoutState().ToJson()` and restore it with `ApplyLayoutState(KumikoLayoutState.FromJson(json))` ([Saving and restoring the layout](#saving-and-restoring-the-layout)). A user's column drag also moves the column in the grid's `Columns` collection.
 
 **Where are the scrollbars?**
 The grid doesn't draw scrollbars yet. It scrolls by touch, mouse wheel, trackpad and keyboard, and from code with the `ScrollTo` methods and `VerticalOffset`.

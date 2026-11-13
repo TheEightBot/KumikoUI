@@ -273,6 +273,17 @@ public class KumikoColumn
     internal static KumikoSortDirection Opposite(KumikoSortDirection direction) =>
         direction == KumikoSortDirection.Ascending ? KumikoSortDirection.Descending : KumikoSortDirection.Ascending;
 
+    /// <summary>
+    /// The stable name that identifies this column in a saved layout (<see cref="KumikoLayoutState"/>), or null (the
+    /// default) to use <see cref="PropertyName"/>. Set it for a column without a property name, such as a template
+    /// column, for two columns bound to the same property, and to keep a saved layout working after renaming the
+    /// property. A column with neither is left out of saved layouts.
+    /// </summary>
+    public string? Key { get; set; }
+
+    /// <summary>The name a saved layout knows this column by: <see cref="Key"/>, else <see cref="PropertyName"/>.</summary>
+    internal string LayoutKey => string.IsNullOrEmpty(Key) ? PropertyName : Key;
+
     /// <summary>Current sort direction. Set it with <see cref="KumikoSource.SetSort"/>.</summary>
     public KumikoSortDirection SortDirection { get; internal set; } = KumikoSortDirection.None;
 

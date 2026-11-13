@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Saved layouts (#98): `KumikoLayoutState` holds column order, width, visibility and freeze mode, the sort, the column filters and the grouping. Take it with `GetLayoutState()` on the MAUI and Uno grids (or `KumikoLayoutState.Capture(source)`), store it with `ToJson()`, and restore it with `KumikoLayoutState.FromJson(json)` and `ApplyLayoutState(state)` (or `state.ApplyTo(source)`) as one change. The JSON uses System.Text.Json source generation, so it is Native AOT and trimming safe. Columns are matched by the new `KumikoColumn.Key`, else `PropertyName`; saved columns the grid no longer has are ignored, and columns the layout does not mention keep their place. New types: `KumikoColumnLayoutState`, `KumikoGroupLayoutState`, `KumikoFilterLayoutState`, `KumikoFilterConditionLayoutState`, `KumikoFilterValueKind`. See "Saving and restoring the layout" in the README.
+- `KumikoSource.SetDisplayIndex(column, displayIndex)` moves a column to an on-screen position within its pane, the counterpart of `GetDisplayIndex` (#98).
+- `KumikoSource.ColumnOrderChanged`, raised when `ReorderColumn` (and so a header drag, `SetDisplayIndex` or a layout) changes the order of `Columns` (#98).
+- The README documents column reordering: what a drag does, panes, and what `ColumnReordered`'s indices mean (#98).
+
+### Changed
+- **Behavior change:** a user's column drag now moves the column in the grid's `Columns` collection as well as in `DataSource.Columns`, so the collection keeps the on-screen order and adding a column, or returning to the page, no longer undoes the drag (#98). The grids' `ColumnReordered` event is raised by the grid (the sender) after the column moved, whatever the order handlers were added in; it used to forward `InputController.ColumnReordered` and could run before the move.
+
+### Fixed
+- Column header drag-reorder is pane-aware (#98). The drop slot comes from the on-screen boundaries of the other columns in the dragged column's own pane (left-frozen, scrolling or right-frozen), with the row drag handle and the horizontal scroll taken into account; a drop over another pane or the drag handle lands at the near end of the column's pane. Before, the slot ignored frozen panes and the handle, added the scroll offset over frozen columns, and could pick a slot among another pane's columns. `KumikoColumnReorderedEventArgs.NewIndex` is the column's index in `Columns` after the move (remove at `OldIndex`, insert at `NewIndex`); a drag to the right used to land one column too far. The dragged header now keeps the point where it was grabbed.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

@@ -26,6 +26,8 @@
             <Button x:Name="themeToggle" Text="Theme: Light" Clicked="OnToggleThemeClicked" Margin="4,0,0,4" />
             <Button x:Name="editTriggerToggle" Text="Edit: Double Tap" Clicked="OnToggleEditTriggerClicked" Margin="4,0,0,4" />
             <Button x:Name="selectionModeToggle" Text="Select: All" Clicked="OnToggleSelectionModeClicked" Margin="4,0,0,4" />
+            <Button Text="Save Layout" Clicked="OnSaveLayoutClicked" Margin="4,0,0,4" />
+            <Button x:Name="restoreLayoutButton" Text="Restore Layout" Clicked="OnRestoreLayoutClicked" Margin="4,0,0,4" />
         </FlexLayout>
 
         <dg:KumikoDataGrid x:Name="kumiko"

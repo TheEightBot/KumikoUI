@@ -123,6 +123,27 @@ public sealed partial class BasicGridPage : Page
             ? "Select: All"
             : "Select: Single";
     }
+
+    // Column order, widths, visibility, sort, filters and grouping, kept across app runs (#98).
+    private const string LayoutKey = "BasicGridPage.GridLayout";
+
+    private void OnSaveLayoutClicked(object sender, RoutedEventArgs e)
+    {
+        Windows.Storage.ApplicationData.Current.LocalSettings.Values[LayoutKey] = kumiko.GetLayoutState().ToJson();
+        restoreLayoutButton.Content = "Restore Layout (saved)";
+    }
+
+    private void OnRestoreLayoutClicked(object sender, RoutedEventArgs e)
+    {
+        if (Windows.Storage.ApplicationData.Current.LocalSettings.Values[LayoutKey] is not string json)
+        {
+            restoreLayoutButton.Content = "Restore Layout (nothing saved)";
+            return;
+        }
+
+        kumiko.ApplyLayoutState(KumikoLayoutState.FromJson(json));
+        restoreLayoutButton.Content = "Restore Layout";
+    }
 }
 
 /// <summary>Simple ViewModel with an ObservableCollection for data binding demo.</summary>

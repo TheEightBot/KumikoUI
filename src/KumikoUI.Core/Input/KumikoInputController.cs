@@ -135,7 +135,13 @@ public partial class KumikoInputController
     /// <see cref="KumikoColumn.SizeMode"/>).
     /// </summary>
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized;
-    /// <summary>Raised when the user drops a dragged column header at a new position.</summary>
+    /// <summary>
+    /// Raised when the user drops a dragged column header at a new position, before anything moved: the host
+    /// applies the move with <see cref="KumikoSource.ReorderColumn"/> (the MAUI and Uno grids do, and keep their
+    /// <c>Columns</c> collection in step). A column moves only within its own pane (left-frozen, scrolling or
+    /// right-frozen), and only when <see cref="KumikoColumn.AllowReorder"/> is true. See
+    /// <see cref="KumikoColumnReorderedEventArgs"/> for what the indices mean.
+    /// </summary>
     public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered;
     /// <summary>
     /// Raised once when the user drops a dragged row at a new position and the row moved: the controller has already
@@ -950,7 +956,9 @@ public partial class KumikoInputController
                 {
                     _isDraggingColumn = true;
                     _dragColumnIndex = startHit.ColumnIndex;
-                    _dragColumnOffset = _lastPanX - (startHit.ContentX - scroll.OffsetX);
+                    // The ghost keeps the point where the header was grabbed, whatever pane it is in.
+                    float columnLeft = ColumnDragGeometry.ScreenLeft(columns, startHit.ColumnIndex, scroll, style);
+                    _dragColumnOffset = float.IsNaN(columnLeft) ? 0 : _lastPanX - columnLeft;
                     DragColumnScreenX = e.X - _dragColumnOffset;
                     e.Handled = true;
                     return;
@@ -1430,28 +1438,13 @@ public partial class KumikoInputController
         float dropX, ScrollState scroll,
         IReadOnlyList<KumikoColumn> columns, KumikoStyle style)
     {
-        if (_dragColumnIndex < 0) return;
+        if (_dragColumnIndex < 0 || _dragColumnIndex >= columns.Count) return;
 
-        // Find drop target column
-        float contentDropX = dropX + scroll.OffsetX;
-        float x = 0;
-        int dropIndex = columns.Count - 1;
-        for (int i = 0; i < columns.Count; i++)
+        // Pane-aware: the slot among the other columns of the dragged column's own pane (ColumnDragGeometry).
+        int dropIndex = ColumnDragGeometry.DropIndex(columns, _dragColumnIndex, dropX, scroll, style);
+        if (dropIndex >= 0 && dropIndex != _dragColumnIndex)
         {
-            if (!columns[i].IsVisible) continue;
-            float midX = x + columns[i].Width / 2;
-            if (contentDropX < midX)
-            {
-                dropIndex = i;
-                break;
-            }
-            x += columns[i].Width;
-        }
-
-        if (dropIndex != _dragColumnIndex)
-        {
-            // The columns list is from KumikoSource which uses List<KumikoColumn>
-            // We need to reorder via the source
+            // The host applies the move (KumikoSource.ReorderColumn), so it can keep its own column list in step.
             ColumnReordered?.Invoke(this, new KumikoColumnReorderedEventArgs(
                 _dragColumnIndex, dropIndex, columns[_dragColumnIndex]));
         }
