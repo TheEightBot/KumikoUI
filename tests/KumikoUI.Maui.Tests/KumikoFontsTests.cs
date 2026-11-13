@@ -27,11 +27,12 @@ public class KumikoFontsTests : IDisposable
     public async Task RegisterFromAppPackageAsync_RegistersTheFontUnderTheFamily()
     {
         string? opened = null;
+        using var font = new MemoryStream(FontBytes());
 
         await KumikoFonts.RegisterFromAppPackageAsync(Family, "OpenSans-Regular.ttf", name =>
         {
             opened = name;
-            return Task.FromResult<Stream>(new MemoryStream(FontBytes()));
+            return Task.FromResult<Stream>(font);
         });
 
         Assert.Equal("OpenSans-Regular.ttf", opened);
@@ -43,13 +44,14 @@ public class KumikoFontsTests : IDisposable
     public async Task RegisterFromAppPackageAsync_DoesNotBlockOnAnAsynchronousOpen()
     {
         var gate = new TaskCompletionSource<Stream>();
+        using var font = new MemoryStream(FontBytes());
 
         var task = KumikoFonts.RegisterFromAppPackageAsync(Family, "OpenSans-Regular.ttf", _ => gate.Task);
 
         Assert.False(task.IsCompleted);
         Assert.False(IsRegistered(Family));
 
-        gate.SetResult(new MemoryStream(FontBytes()));
+        gate.SetResult(font);
         await task;
 
         Assert.True(IsRegistered(Family));
@@ -76,8 +78,9 @@ public class KumikoFontsTests : IDisposable
     [Fact]
     public async Task RegisterFromAppPackageAsync_CorruptFont_IsSwallowed()
     {
+        using var corrupt = new MemoryStream([1, 2, 3, 4]);
         await KumikoFonts.RegisterFromAppPackageAsync(Family, "Corrupt.ttf",
-            _ => Task.FromResult<Stream>(new MemoryStream([1, 2, 3, 4])));
+            _ => Task.FromResult<Stream>(corrupt));
 
         Assert.False(IsRegistered(Family));
     }
@@ -85,11 +88,12 @@ public class KumikoFontsTests : IDisposable
     [Fact]
     public async Task RegisterFromAppPackageAsync_Sequence_ContinuesPastAFailedEntry()
     {
+        using var font = new MemoryStream(FontBytes());
         await KumikoFonts.RegisterFromAppPackageAsync(
             [("Broken" + Family, "Missing.ttf"), (Family, "OpenSans-Regular.ttf")],
             name => name == "Missing.ttf"
                 ? throw new FileNotFoundException(name)
-                : Task.FromResult<Stream>(new MemoryStream(FontBytes())));
+                : Task.FromResult<Stream>(font));
 
         Assert.True(IsRegistered(Family));
         Assert.False(IsRegistered("Broken" + Family));
@@ -106,7 +110,7 @@ public class KumikoFontsTests : IDisposable
     public async Task RegisterFromAppPackageAsync_NullSequence_Throws()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => KumikoFonts.RegisterFromAppPackageAsync((IEnumerable<(string, string)>)null!));
+            () => KumikoFonts.RegisterFromAppPackageAsync(null!));
     }
 
     [Fact]
