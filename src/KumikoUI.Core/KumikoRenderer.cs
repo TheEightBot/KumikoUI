@@ -45,6 +45,10 @@ public class KumikoRenderer : IDisposable
     // Summary values that do not fit their column, reused for every summary row
     private readonly List<string> _overflowValues = new();
 
+    // Horizontal extents (left, width) of the scrollable, left-frozen and right-frozen panes this frame; summary
+    // values are clipped to their pane so a scrolled column's total never slides over a frozen one
+    private (float Left, float Width) _scrollPane, _leftPane, _rightPane;
+
     // Group headers pinned at the top of the data area this frame (#174), outermost first; reused every frame
     private readonly List<PinnedGroupHeader> _pinnedGroupHeaders = new();
 
@@ -372,6 +376,10 @@ public class KumikoRenderer : IDisposable
             float dividerY = dataAreaTop + frozenRowHeight;
             DrawFrozenRowDivider(ctx, dividerY, scroll, style);
         }
+
+        _scrollPane = (scrollClipLeft, scrollClipWidth);
+        _leftPane = (handleOffset, frozenWidth);
+        _rightPane = (scroll.ViewportWidth - rightHandleWidth - rightFrozenWidth, rightFrozenWidth);
 
         // ── Draw table summary rows outside clip regions (they span full width) ──
         // Reuse allCols list to avoid per-frame allocation
@@ -939,6 +947,13 @@ public class KumikoRenderer : IDisposable
 
             DrawRowCells(ctx, dataSource, visibleCols, row, rowY, dataItem, dynamicRowStyle, scroll, style,
                 isSelected, editSession);
+
+            // The row fill covers the grid lines drawn before it, so a frozen row gets its own
+            if (style.ShowHorizontalGridLines)
+            {
+                float lineY = rowY + style.RowHeight;
+                ctx.DrawLine(0, lineY, scroll.ViewportWidth, lineY, _paintCache.GridLine);
+            }
         }
     }
 
@@ -1442,7 +1457,8 @@ public class KumikoRenderer : IDisposable
 
             // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
             // after the title
-            DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.SummaryRowHeight, valuePaint);
+            DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.SummaryRowHeight, valuePaint,
+                SummaryTitleEnd(ctx, summary, titlePaint, handleOffset + style.CellPadding * 2, frozenWidth, style));
             DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.SummaryRowHeight,
                 handleOffset + style.CellPadding * 2, titlePaint, valuePaint);
 
@@ -1453,8 +1469,23 @@ public class KumikoRenderer : IDisposable
     }
 
     /// <summary>
-    /// Draw a summary row's values in their columns; values whose column is too narrow (under 70 px of text
-    /// width) are collected in <see cref="_overflowValues"/> instead.
+    /// The X where a summary row's title stops (its left edge when it has none), so values start after it.
+    /// </summary>
+    private static float SummaryTitleEnd(
+        IDrawingContext ctx, ComputedSummaryRow summary, KumikoPaint titlePaint,
+        float titleStartX, float frozenWidth, KumikoStyle style)
+    {
+        if (summary.Title == null) return float.NegativeInfinity;
+        float titleBoxWidth = frozenWidth > 0 ? frozenWidth - style.CellPadding * 3 : 200f;
+        float textWidth = Math.Min(ctx.MeasureText(summary.Title, titlePaint).Width, Math.Max(0, titleBoxWidth));
+        return titleStartX + textWidth + style.CellPadding;
+    }
+
+    /// <summary>
+    /// Draw a summary row's values in their columns, each inside its own column and pane: the text is laid out
+    /// (and ellipsised) in the part of the column that is visible in its pane and to the right of the row's
+    /// title. Values whose column is too narrow (under 70 px of text width) are collected in
+    /// <see cref="_overflowValues"/> instead.
     /// </summary>
     private void DrawSummaryValues(
         IDrawingContext ctx,
@@ -1464,7 +1495,8 @@ public class KumikoRenderer : IDisposable
         ComputedSummaryRow summary,
         float rowY,
         float rowHeight,
-        KumikoPaint valuePaint)
+        KumikoPaint valuePaint,
+        float titleEnd)
     {
         _overflowValues.Clear();
         foreach (var (col, colX, _) in allCols)
@@ -1482,11 +1514,32 @@ public class KumikoRenderer : IDisposable
                 continue;
             }
 
-            var cellRect = new KumikoRect(screenX + style.CellPadding, rowY, usableWidth, rowHeight);
+            var (paneLeft, paneWidth) = col.FreezeMode switch
+            {
+                ColumnFreezeMode.Left => _leftPane,
+                ColumnFreezeMode.Right => _rightPane,
+                _ => _scrollPane,
+            };
+
+            float left = screenX + style.CellPadding;
+            float right = left + usableWidth;
+            // The title owns the space it occupies: a value starts after it
+            left = Math.Max(left, titleEnd);
+            left = Math.Max(left, paneLeft);
+            right = Math.Min(right, paneLeft + paneWidth);
+            if (right - left < MinSummaryValueWidth) continue;
+
+            var cellRect = new KumikoRect(left, rowY, right - left, rowHeight);
+            ctx.Save();
+            ctx.ClipRect(new KumikoRect(paneLeft, rowY, paneWidth, rowHeight));
             ctx.DrawTextInRect(displayText, cellRect, valuePaint,
                 col.TextAlignment, KumikoVerticalAlignment.Center);
+            ctx.Restore();
         }
     }
+
+    // Narrowest visible part of a column that still shows a summary value
+    private const float MinSummaryValueWidth = 16f;
 
     /// <summary>
     /// Draw the values <see cref="DrawSummaryValues"/> could not fit, joined with " | ", after the row's title
@@ -1562,7 +1615,8 @@ public class KumikoRenderer : IDisposable
 
         // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
         // after the title
-        DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.RowHeight, textPaint);
+        DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.RowHeight, textPaint,
+            SummaryTitleEnd(ctx, summary, textPaint, titleStartX, frozenWidth, style));
         DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.RowHeight,
             titleStartX, textPaint, textPaint);
     }
