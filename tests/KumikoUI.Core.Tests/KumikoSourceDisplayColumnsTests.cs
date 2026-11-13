@@ -51,6 +51,60 @@ public class KumikoSourceDisplayColumnsTests
     }
 
     [Fact]
+    public void SetDisplayIndex_MovesTheColumnOnScreen_AndRaisesColumnOrderChanged()
+    {
+        var source = NewSource(out var c);
+        int changes = 0;
+        source.ColumnOrderChanged += (_, _) => changes++;
+
+        Assert.Equal(3, source.SetDisplayIndex(c[0], 3)); // right: after the column it displaces
+        Assert.Equal(new[] { c[1], c[2], c[3], c[0], c[4] }, source.DisplayColumns);
+        Assert.Equal(0, source.SetDisplayIndex(c[4], 0)); // left: before it
+        Assert.Equal(new[] { c[4], c[1], c[2], c[3], c[0] }, source.DisplayColumns);
+        Assert.Equal(2, changes);
+
+        Assert.Equal(0, source.SetDisplayIndex(c[4], 0)); // already there
+        Assert.Equal(2, changes);
+    }
+
+    [Fact]
+    public void SetDisplayIndex_StaysInThePane_AndHiddenColumnsKeepTheirPlace()
+    {
+        var source = NewSource(out var c);
+        c[0].FreezeMode = ColumnFreezeMode.Left;
+        c[4].FreezeMode = ColumnFreezeMode.Right;
+        c[2].IsVisible = false;
+        // Display: c0 | c1 c3 | c4
+
+        Assert.Equal(1, source.SetDisplayIndex(c[3], 0)); // clamped to the scrolling pane's start
+        Assert.Equal(new[] { c[0], c[3], c[1], c[4] }, source.DisplayColumns);
+        Assert.Equal(new[] { c[0], c[3], c[1], c[2], c[4] }, source.Columns);
+
+        Assert.Equal(2, source.SetDisplayIndex(c[3], 10)); // clamped to the pane's end
+        Assert.Equal(new[] { c[0], c[1], c[3], c[4] }, source.DisplayColumns);
+
+        Assert.Equal(0, source.SetDisplayIndex(c[0], 3)); // the only left-frozen column
+        Assert.Equal(-1, source.SetDisplayIndex(c[2], 0)); // hidden
+        Assert.Throws<ArgumentException>(() => source.SetDisplayIndex(new KumikoColumn(), 0));
+    }
+
+    [Fact]
+    public void ReorderColumn_RaisesColumnOrderChanged_OnlyWhenTheOrderChanges()
+    {
+        var source = NewSource(out _);
+        int changes = 0;
+        source.ColumnOrderChanged += (_, _) => changes++;
+
+        source.ReorderColumn(1, 1);
+        source.ReorderColumn(-1, 2);
+        source.SetColumns(source.Columns.Reverse().ToList());
+        Assert.Equal(0, changes);
+
+        source.ReorderColumn(0, 2);
+        Assert.Equal(1, changes);
+    }
+
+    [Fact]
     public void ToColumnIndexAndToDisplayIndex_OutOfRange_ReturnMinusOne()
     {
         var source = NewSource(out _);

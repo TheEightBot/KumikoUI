@@ -63,10 +63,16 @@ source.GetItem(rowIndex)                       // raw data item
 source.RowCount                                // visible row count (after filter/group)
 source.Columns                                 // column list
 
-// Batch changes: one rebuild and one ViewChanged at EndUpdate (batches nest):
-source.BeginUpdate();
-// ... sort, filter, grouping, summary changes
-source.EndUpdate();
+// Batch changes: one rebuild and one ViewChanged at the end (batches nest). Collection changes that need a
+// rebuild are coalesced too. BeginUpdate returns a scope whose Dispose calls EndUpdate:
+using (source.BeginUpdate())
+{
+    // ... sort, filter, grouping, summary and collection changes
+}
+
+// UI-thread only: the source belongs to the thread that called SetItems/Attach. A collection change, item
+// PropertyChanged or call from another thread throws InvalidOperationException (KumikoSource.WrongThreadMessage).
+// A PropertyChanged of a property only table summaries use updates Sum/Average/Count in place (a Redraw).
 
 // Every change raises ViewChanged exactly once: Redraw, Rebuild, Insert or Remove.
 source.ViewChanged += (_, e) => { int newRow = e.MapRow(oldRow); };

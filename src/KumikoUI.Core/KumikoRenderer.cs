@@ -45,6 +45,10 @@ public class KumikoRenderer : IDisposable
     // Summary values that do not fit their column, reused for every summary row
     private readonly List<string> _overflowValues = new();
 
+    // Horizontal extents (left, width) of the scrollable, left-frozen and right-frozen panes this frame; summary
+    // values are clipped to their pane so a scrolled column's total never slides over a frozen one
+    private (float Left, float Width) _scrollPane, _leftPane, _rightPane;
+
     // Group headers pinned at the top of the data area this frame (#174), outermost first; reused every frame
     private readonly List<PinnedGroupHeader> _pinnedGroupHeaders = new();
 
@@ -208,6 +212,8 @@ public class KumikoRenderer : IDisposable
             scroll, style, dataSource.RowCount, topSummaryHeight, frozenRowCount);
 
         _layout.ComputeColumnWidths(columns, effectiveViewportWidth, ctx, style, dataSource, firstRow, lastRow);
+        // Frozen panes that do not fit the viewport give columns back to the scrolling pane (#268).
+        FrozenPanes.Resolve(columns, style, scroll.ViewportWidth);
         scroll.ContentWidth = _layout.GetContentWidth(columns) + handleOffset + rightHandleWidth;
         scroll.ContentHeight = _layout.GetContentHeight(dataSource.RowCount, style)
             + groupPanelOffset + topSummaryHeight + bottomSummaryHeight;
@@ -373,6 +379,10 @@ public class KumikoRenderer : IDisposable
             DrawFrozenRowDivider(ctx, dividerY, scroll, style);
         }
 
+        _scrollPane = (scrollClipLeft, scrollClipWidth);
+        _leftPane = (handleOffset, frozenWidth);
+        _rightPane = (scroll.ViewportWidth - rightHandleWidth - rightFrozenWidth, rightFrozenWidth);
+
         // ── Draw table summary rows outside clip regions (they span full width) ──
         // Reuse allCols list to avoid per-frame allocation
         _allCols.Clear();
@@ -501,9 +511,9 @@ public class KumikoRenderer : IDisposable
         var match = Find(_frozenCols, cell.Column) ?? Find(_scrollableCols, cell.Column) ?? Find(_rightFrozenCols, cell.Column);
         if (match is not { } found) return null;
 
-        float x = ColumnScreenX(found.X, scroll, found.Column.FreezeMode);
+        float x = ColumnScreenX(found.X, scroll, found.Column.Pane);
         float width = found.Column.Width;
-        if (found.Column.FreezeMode == ColumnFreezeMode.None && (x + width <= scrollPaneLeft || x >= scrollPaneRight))
+        if (found.Column.Pane == ColumnFreezeMode.None && (x + width <= scrollPaneLeft || x >= scrollPaneRight))
             return null;
 
         float y;
@@ -658,7 +668,7 @@ public class KumikoRenderer : IDisposable
 
         foreach (var (col, colX, _) in visibleCols)
         {
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
 
             // Per-column header style overrides
             var hStyle = col.HeaderCellStyle;
@@ -818,7 +828,7 @@ public class KumikoRenderer : IDisposable
     {
         foreach (var (col, colX, origIdx) in visibleCols)
         {
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
 
             // The column's style with the resolvers' overrides, never written into either
             var colCellStyle = ResolveCellStyle(style, col, dataItem, dynamicRowStyle);
@@ -939,6 +949,13 @@ public class KumikoRenderer : IDisposable
 
             DrawRowCells(ctx, dataSource, visibleCols, row, rowY, dataItem, dynamicRowStyle, scroll, style,
                 isSelected, editSession);
+
+            // The row fill covers the grid lines drawn before it, so a frozen row gets its own
+            if (style.ShowHorizontalGridLines)
+            {
+                float lineY = rowY + style.RowHeight;
+                ctx.DrawLine(0, lineY, scroll.ViewportWidth, lineY, _paintCache.GridLine);
+            }
         }
     }
 
@@ -986,27 +1003,11 @@ public class KumikoRenderer : IDisposable
             chevronX - 4f, chevronCenterY - pillH / 2, pillW, pillH);
         ctx.FillRoundRect(pillRect, 4f, _paintCache.GroupChevronBackground);
 
-        // One filled, anti-aliased triangle: down (expanded) or right (collapsed).
-        var chevronPaint = _paintCache.GroupChevron;
-
-        if (groupInfo.IsExpanded)
-        {
-            float triW = chevronSize * 0.7f;
-            float triH = chevronSize * 0.45f;
-            float cx = chevronX + chevronSize / 2;
-            GlyphDrawing.FillTriangleDown(ctx, cx, chevronCenterY, triW / 2, triH / 2, chevronPaint);
-        }
-        else
-        {
-            float triW = chevronSize * 0.45f;
-            float triH = chevronSize * 0.7f;
-            float leftX = chevronX + chevronSize * 0.3f;
-            float rightX = leftX + triW;
-            GlyphDrawing.FillTriangle(ctx,
-                leftX, chevronCenterY - triH / 2,
-                rightX, chevronCenterY,
-                leftX, chevronCenterY + triH / 2, chevronPaint);
-        }
+        // The disclosure glyph, in the chevron's square: expanded or collapsed
+        style.IconProvider.DrawIcon(ctx,
+            groupInfo.IsExpanded ? KumikoIcon.GroupExpanded : KumikoIcon.GroupCollapsed,
+            new KumikoRect(chevronX, chevronCenterY - chevronSize / 2, chevronSize, chevronSize),
+            _paintCache.GroupChevron);
 
         // Draw group text in up to three runs: "Header: DisplayText", " (count)" and the caption summary, each
         // with its own paint (group header text, count, caption summary).
@@ -1092,7 +1093,7 @@ public class KumikoRenderer : IDisposable
 
             foreach (var (col, colX, _) in visibleCols)
             {
-                float screenX = ColumnScreenX(colX, scroll, col.FreezeMode) + col.Width;
+                float screenX = ColumnScreenX(colX, scroll, col.Pane) + col.Width;
                 ctx.DrawLine(screenX, 0, screenX, maxY, linePaint);
             }
         }
@@ -1141,7 +1142,7 @@ public class KumikoRenderer : IDisposable
         {
             if (origIdx == targetOrigIdx)
             {
-                float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+                float screenX = ColumnScreenX(colX, scroll, col.Pane);
                 float rowY;
                 if (row < frozenRowCount)
                 {
@@ -1189,16 +1190,15 @@ public class KumikoRenderer : IDisposable
         {
             if (col.SortDirection == KumikoSortDirection.None) continue;
 
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
             float arrowX = screenX + col.Width - style.CellPadding - 8;
             float arrowCenterY = style.HeaderHeight / 2;
 
-            var paint = _paintCache.SortIndicator;
-
-            if (col.SortDirection == KumikoSortDirection.Ascending)
-                GlyphDrawing.FillTriangleUp(ctx, arrowX + 4, arrowCenterY, 4, 3, paint);
-            else
-                GlyphDrawing.FillTriangleDown(ctx, arrowX + 4, arrowCenterY, 4, 3, paint);
+            // The arrow's 12 px square, centered on the 8 px wide arrow slot
+            style.IconProvider.DrawIcon(ctx,
+                col.SortDirection == KumikoSortDirection.Ascending ? KumikoIcon.SortAscending : KumikoIcon.SortDescending,
+                new KumikoRect(arrowX - 2, arrowCenterY - 6, 12, 12),
+                _paintCache.SortIndicator);
 
             // Draw sort order number badge for multi-sort
             if (isMultiSort && col.SortOrder > 0)
@@ -1230,12 +1230,11 @@ public class KumikoRenderer : IDisposable
         ColumnFreezeMode freezeMode,
         float frozenWidth)
     {
-        Span<KumikoPoint> outline = stackalloc KumikoPoint[7];
         foreach (var (col, colX, _) in visibleCols)
         {
             if (!AllowFiltering || !col.AllowFiltering) continue;
 
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
             bool hasActiveFilter = col.ActiveFilter != null && col.ActiveFilter.IsActive;
 
             // Position filter icon: right of header text, left of the sort arrow when one is drawn
@@ -1244,34 +1243,10 @@ public class KumikoRenderer : IDisposable
             float iconX = screenX + col.Width - style.CellPadding - sortSpace - iconSize;
             float iconCenterY = style.HeaderHeight / 2;
 
-            var paint = hasActiveFilter ? _paintCache.FilterActiveIcon : _paintCache.FilterIcon;
-
-            // Draw funnel icon: wider at top, narrow at bottom, with a stem
-            float top = iconCenterY - iconSize / 2;
-            float bottom = iconCenterY + iconSize / 2;
-            float mid = top + iconSize * 0.45f;
-
-            // One closed outline (top edge, right slope, right stem, bottom, left stem, left slope), joined at
-            // every corner: the last point repeats the first.
-            outline[0] = new KumikoPoint(iconX, top);
-            outline[1] = new KumikoPoint(iconX + iconSize, top);
-            outline[2] = new KumikoPoint(iconX + iconSize * 0.65f, mid);
-            outline[3] = new KumikoPoint(iconX + iconSize * 0.65f, bottom);
-            outline[4] = new KumikoPoint(iconX + iconSize * 0.35f, bottom);
-            outline[5] = new KumikoPoint(iconX + iconSize * 0.35f, mid);
-            outline[6] = outline[0];
-            ctx.DrawPolyline(outline, paint);
-
-            // Fill the funnel if filter is active
-            if (hasActiveFilter)
-            {
-                var fillPaint = _paintCache.FilterActiveIcon;
-                // Simple fill indication: draw a filled circle dot
-                float dotR = 2.5f;
-                float dotX = iconX + iconSize / 2;
-                float dotY = mid + (bottom - mid) / 2;
-                ctx.FillRect(new KumikoRect(dotX - dotR, dotY - dotR, dotR * 2, dotR * 2), fillPaint);
-            }
+            style.IconProvider.DrawIcon(ctx,
+                hasActiveFilter ? KumikoIcon.FilterActive : KumikoIcon.Filter,
+                new KumikoRect(iconX, iconCenterY - iconSize / 2, iconSize, iconSize),
+                hasActiveFilter ? _paintCache.FilterActiveIcon : _paintCache.FilterIcon);
         }
     }
 
@@ -1359,28 +1334,24 @@ public class KumikoRenderer : IDisposable
             // Draw sort direction arrow
             float arrowX = textStartX + textSize.Width + 4;
             float arrowCY = chipY + chipHeight / 2;
-            var arrowPaint = _paintCache.GroupChipArrow;
             float ax = arrowX + 6;
-            if (group.GroupSortDirection == KumikoSortDirection.Ascending)
-                GlyphDrawing.FillTriangleUp(ctx, ax, arrowCY, 4, 4, arrowPaint);
-            else
-                GlyphDrawing.FillTriangleDown(ctx, ax, arrowCY, 4, 4, arrowPaint);
+            style.IconProvider.DrawIcon(ctx,
+                group.GroupSortDirection == KumikoSortDirection.Ascending ? KumikoIcon.SortAscending : KumikoIcon.SortDescending,
+                new KumikoRect(ax - 6, arrowCY - 6, 12, 12),
+                _paintCache.GroupChipArrow);
 
-            // Draw "×" remove button (circle + x)
+            // Remove button: a circle with the remove glyph
             float removeX = chipX + chipWidth - removeButtonSize - chipPadding / 2 + removeButtonSize / 2;
             float removeCenterY = chipY + chipHeight / 2;
-            float removeHalf = 3.5f;
 
             // Small circle background for remove
             ctx.FillRoundRect(
                 new KumikoRect(removeX - 7, removeCenterY - 7, 14, 14), 7,
                 _paintCache.GroupChipRemoveBackground);
 
-            var removePaint = _paintCache.GroupChipRemove;
-            ctx.DrawLine(removeX - removeHalf, removeCenterY - removeHalf,
-                         removeX + removeHalf, removeCenterY + removeHalf, removePaint);
-            ctx.DrawLine(removeX - removeHalf, removeCenterY + removeHalf,
-                         removeX + removeHalf, removeCenterY - removeHalf, removePaint);
+            style.IconProvider.DrawIcon(ctx, KumikoIcon.Remove,
+                new KumikoRect(removeX - 5, removeCenterY - 5, 10, 10),
+                _paintCache.GroupChipRemove);
 
             // Advance to next chip
             chipX += chipWidth + chipGap;
@@ -1390,9 +1361,9 @@ public class KumikoRenderer : IDisposable
             {
                 float sepX = chipX + 2;
                 float sepCY = chipY + chipHeight / 2;
-                var sepPaint = _paintCache.GroupChipSeparator;
-                // Right-pointing chevron >
-                GlyphDrawing.Chevron(ctx, sepX, sepCY - 4, sepX + 5, sepCY, sepX, sepCY + 4, sepPaint);
+                style.IconProvider.DrawIcon(ctx, KumikoIcon.GroupSeparator,
+                    new KumikoRect(sepX - 2.5f, sepCY - 5, 10, 10),
+                    _paintCache.GroupChipSeparator);
                 chipX += 14 + chipGap;
             }
         }
@@ -1442,7 +1413,8 @@ public class KumikoRenderer : IDisposable
 
             // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
             // after the title
-            DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.SummaryRowHeight, valuePaint);
+            DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.SummaryRowHeight, valuePaint,
+                SummaryTitleEnd(ctx, summary, titlePaint, handleOffset + style.CellPadding * 2, frozenWidth, style));
             DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.SummaryRowHeight,
                 handleOffset + style.CellPadding * 2, titlePaint, valuePaint);
 
@@ -1453,8 +1425,23 @@ public class KumikoRenderer : IDisposable
     }
 
     /// <summary>
-    /// Draw a summary row's values in their columns; values whose column is too narrow (under 70 px of text
-    /// width) are collected in <see cref="_overflowValues"/> instead.
+    /// The X where a summary row's title stops (its left edge when it has none), so values start after it.
+    /// </summary>
+    private static float SummaryTitleEnd(
+        IDrawingContext ctx, ComputedSummaryRow summary, KumikoPaint titlePaint,
+        float titleStartX, float frozenWidth, KumikoStyle style)
+    {
+        if (summary.Title == null) return float.NegativeInfinity;
+        float titleBoxWidth = frozenWidth > 0 ? frozenWidth - style.CellPadding * 3 : 200f;
+        float textWidth = Math.Min(ctx.MeasureText(summary.Title, titlePaint).Width, Math.Max(0, titleBoxWidth));
+        return titleStartX + textWidth + style.CellPadding;
+    }
+
+    /// <summary>
+    /// Draw a summary row's values in their columns, each inside its own column and pane: the text is laid out
+    /// (and ellipsised) in the part of the column that is visible in its pane and to the right of the row's
+    /// title. Values whose column is too narrow (under 70 px of text width) are collected in
+    /// <see cref="_overflowValues"/> instead.
     /// </summary>
     private void DrawSummaryValues(
         IDrawingContext ctx,
@@ -1464,7 +1451,8 @@ public class KumikoRenderer : IDisposable
         ComputedSummaryRow summary,
         float rowY,
         float rowHeight,
-        KumikoPaint valuePaint)
+        KumikoPaint valuePaint,
+        float titleEnd)
     {
         _overflowValues.Clear();
         foreach (var (col, colX, _) in allCols)
@@ -1472,7 +1460,7 @@ public class KumikoRenderer : IDisposable
             if (!summary.Values.TryGetValue(col.PropertyName, out var displayText)) continue;
 
             // Use correct screen X depending on whether column is frozen
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
             float usableWidth = col.Width - style.CellPadding * 2;
 
             // If the column is too narrow for the label+value, overflow it
@@ -1482,11 +1470,32 @@ public class KumikoRenderer : IDisposable
                 continue;
             }
 
-            var cellRect = new KumikoRect(screenX + style.CellPadding, rowY, usableWidth, rowHeight);
+            var (paneLeft, paneWidth) = col.FreezeMode switch
+            {
+                ColumnFreezeMode.Left => _leftPane,
+                ColumnFreezeMode.Right => _rightPane,
+                _ => _scrollPane,
+            };
+
+            float left = screenX + style.CellPadding;
+            float right = left + usableWidth;
+            // The title owns the space it occupies: a value starts after it
+            left = Math.Max(left, titleEnd);
+            left = Math.Max(left, paneLeft);
+            right = Math.Min(right, paneLeft + paneWidth);
+            if (right - left < MinSummaryValueWidth) continue;
+
+            var cellRect = new KumikoRect(left, rowY, right - left, rowHeight);
+            ctx.Save();
+            ctx.ClipRect(new KumikoRect(paneLeft, rowY, paneWidth, rowHeight));
             ctx.DrawTextInRect(displayText, cellRect, valuePaint,
                 col.TextAlignment, KumikoVerticalAlignment.Center);
+            ctx.Restore();
         }
     }
+
+    // Narrowest visible part of a column that still shows a summary value
+    private const float MinSummaryValueWidth = 16f;
 
     /// <summary>
     /// Draw the values <see cref="DrawSummaryValues"/> could not fit, joined with " | ", after the row's title
@@ -1562,7 +1571,8 @@ public class KumikoRenderer : IDisposable
 
         // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
         // after the title
-        DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.RowHeight, textPaint);
+        DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.RowHeight, textPaint,
+            SummaryTitleEnd(ctx, summary, textPaint, titleStartX, frozenWidth, style));
         DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.RowHeight,
             titleStartX, textPaint, textPaint);
     }
@@ -1627,7 +1637,7 @@ public class KumikoRenderer : IDisposable
         {
             if (dataSource.IsNonDataRow(row)) continue;
             float rowY = dataAreaTop + row * style.RowHeight;
-            DrawGripIcon(ctx, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
+            DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
         }
 
         // Draw grip icons for scrollable visible rows (clipped below frozen rows)
@@ -1639,7 +1649,7 @@ public class KumikoRenderer : IDisposable
             if (rowY + style.RowHeight <= scrollableAreaTop || rowY > adjustedViewportHeight) continue;
             // No grip for a row whose middle is under the sticky group headers (#174)
             if (rowY + style.RowHeight / 2 < pinnedBandBottom) continue;
-            DrawGripIcon(ctx, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
+            DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
         }
 
         // Draw a subtle vertical divider between handle and columns
@@ -1648,29 +1658,15 @@ public class KumikoRenderer : IDisposable
     }
 
     /// <summary>
-    /// Draws a grip/drag icon (2-column × 3-row dot pattern) centered in the given cell area.
+    /// Draws the drag handle glyph in a 16 px square centered in the given cell area.
     /// </summary>
-    private static void DrawGripIcon(
-        IDrawingContext ctx, float cellX, float cellY, float cellWidth, float cellHeight, KumikoPaint paint)
+    private static void DrawGripIcon(IDrawingContext ctx, IKumikoIconProvider icons,
+        float cellX, float cellY, float cellWidth, float cellHeight, KumikoPaint paint)
     {
+        const float size = 16f;
         float centerX = cellX + cellWidth / 2;
         float centerY = cellY + cellHeight / 2;
-        float dotRadius = 1.5f;
-        float colSpacing = 5f;  // horizontal distance between dot centers
-        float rowSpacing = 5f;  // vertical distance between dot centers
-
-        // Draw 2-column × 3-row dot grid (modern grab handle)
-        for (int row = -1; row <= 1; row++)
-        {
-            for (int col = 0; col <= 1; col++)
-            {
-                float dx = centerX + (col - 0.5f) * colSpacing;
-                float dy = centerY + row * rowSpacing;
-                ctx.FillRoundRect(
-                    new KumikoRect(dx - dotRadius, dy - dotRadius, dotRadius * 2, dotRadius * 2),
-                    dotRadius, paint);
-            }
-        }
+        icons.DrawIcon(ctx, KumikoIcon.DragHandle, new KumikoRect(centerX - size / 2, centerY - size / 2, size, size), paint);
     }
 
     /// <summary>

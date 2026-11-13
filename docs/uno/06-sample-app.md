@@ -83,9 +83,9 @@ with the same data/columns. **All six pages were ported** (none deferred), reach
   `KumikoDataGrid` exposes **no `Theme` DP** (unlike MAUI's `kumiko.Theme`); themes are applied by assigning the
   produced `KumikoStyle` to `kumiko.GridStyle` — same end result. (← `ThemingPage`)
 - [x] **MVVM actions** — `MvvmActionsPage`: per-column `EditTriggers` overrides + an Actions column
-  (`ActionButtonsCellRenderer` w/ Details/Delete). **Note:** uses the framework-agnostic Core
-  `ActionButtonDefinition.Command` (`ICommand`) built in code-behind with a small `RelayCommand<T>` — **not**
-  MAUI's `MauiActionButtonDefinition` XAML binding (MAUI-specific). Confirmation/details use a WinUI
+  (`ActionButtonsCellRenderer` w/ Details/Delete). The columns and buttons are declared in XAML as
+  `UnoActionButtonDefinition`s (the Uno counterpart of MAUI's `MauiActionButtonDefinition`) whose `Command`s are
+  bound with `{Binding}` to the page's view model; the grid hands the definitions its `DataContext`. Confirmation/details use a WinUI
   `ContentDialog` instead of MAUI's `DisplayAlert`/modal page. (← `MvvmActionsPage`)
 - [x] **Custom fonts** — `CustomFontsPage`: Japanese (CJK) headers via `NotoSansJP` (`KumikoStyle`
   header/cell fonts) + a Material-Icons status column via a small `IconFontCellRenderer : ICellRenderer`,
