@@ -18,31 +18,25 @@ using Foundation;
 using CoreGraphics;
 using ObjCRuntime;
 #endif
-#if ANDROID
-using AndroidInputTypes = Android.Text.InputTypes;
-using AndroidImeAction = Android.Views.InputMethods.ImeAction;
-#endif
 
 namespace KumikoUI.Maui;
 
 /// <summary>
 /// .NET MAUI KumikoUI DataGrid control backed by SkiaSharp rendering.
 /// Drop this into any MAUI page. All rendering is done on the SKCanvas.
-/// Keyboard input arrives through a native responder on iOS and Mac Catalyst, the grid's own platform view
-/// (WinUI key events and the Windows text services) on Windows, and a hidden <c>Entry</c> on Android.
+/// Keyboard input reaches it through each platform's own text input: a <c>UITextInput</c> responder on iOS and
+/// Mac Catalyst, an input view with an <c>InputConnection</c> on Android, and the grid's platform view (WinUI
+/// key events and the Windows text services) on Windows.
 /// </summary>
 /// <remarks>
-/// The control is a <see cref="ContentView"/> whose content (the canvas, and the keyboard proxy where there
-/// is one) is private: it has no layout API, and its XAML content is <see cref="Columns"/>.
+/// The control is a <see cref="ContentView"/> whose content (the canvas) is private: it has no layout API, and
+/// its XAML content is <see cref="Columns"/>.
 /// </remarks>
 [ContentProperty(nameof(Columns))]
 public partial class KumikoDataGrid : ContentView
 {
     private readonly Grid _root = new();
     private readonly SKCanvasView _canvasView = new();
-#if !WINDOWS
-    private readonly Entry _keyboardProxy;
-#endif
     private readonly KumikoRenderer _renderer = new();
     private readonly KumikoSource _dataSource = new();
     private readonly ScrollState _scroll = new();
@@ -83,11 +77,6 @@ public partial class KumikoDataGrid : ContentView
     // The device of the press in progress, for the long press synthesized from it
     private KumikoPointerDeviceType _pressedDeviceType;
 
-#if !WINDOWS
-    // Track if we are suppressing TextChanged because we set the text programmatically
-    private bool _suppressTextChanged;
-#endif
-
     // Track whether Cleanup has been called so Reconnect knows to re-wire
     private bool _wasCleanedUp;
 
@@ -97,16 +86,10 @@ public partial class KumikoDataGrid : ContentView
 
     private SkiaResourceCache ResourceCache => _resourceCache ??= new SkiaResourceCache();
 
-#if !WINDOWS
-    // Sentinel character used to detect backspace on Entry.
-    // Zero-width space avoids collision with user-typed spaces and reduces
-    // interference from Android IME composing/replacement behavior.
-    private const string KeyboardSentinel = "\u200B";
-#endif
-
 #if MACCATALYST || IOS
     private KeyInputResponder? _nativeKeyInput;
     private UIPanGestureRecognizer? _nativeScrollGesture;
+    private UITapGestureRecognizer? _nativeSecondaryClickGesture;
     private bool _useNativeKeyInput;
 #endif
 
@@ -117,23 +100,6 @@ public partial class KumikoDataGrid : ContentView
         _selection = new KumikoSelectionModel(_dataSource);
         InitializeSelectionBinding();
 
-#if !WINDOWS
-        // Set up the hidden keyboard proxy entry (Android, and the Apple fallback). Windows has none: keys and
-        // text arrive on the grid's platform view (KumikoDataGrid.TextInput.cs).
-        _keyboardProxy = new Entry
-        {
-            Opacity = 0,
-            HeightRequest = 0,
-            WidthRequest = 0,
-            InputTransparent = false,
-            IsVisible = true,
-            Text = KeyboardSentinel,
-            ReturnType = ReturnType.Done,   // Ensures Completed fires on Android
-            IsTextPredictionEnabled = false, // Reduce IME composing interference
-            IsSpellCheckEnabled = false,
-        };
-#endif
-
         // Layout: canvas fills the grid, keyboard proxy sits hidden at top-left
         _canvasView.HorizontalOptions = LayoutOptions.Fill;
         _canvasView.VerticalOptions = LayoutOptions.Fill;
@@ -143,9 +109,6 @@ public partial class KumikoDataGrid : ContentView
         _canvasView.FlowDirection = FlowDirection.LeftToRight;
 
         _root.Children.Add(_canvasView);
-#if !WINDOWS
-        _root.Children.Add(_keyboardProxy);
-#endif
         InitializeAccessibility();
         Content = _root;
         _contentSealed = true;
@@ -162,7 +125,12 @@ public partial class KumikoDataGrid : ContentView
         // Scroll offsets and the Scrolled event (KumikoDataGrid.Scrolling.cs)
         InitializeScrolling();
 
+        // Image cells load through the grid's image cache (KumikoDataGrid.Images.cs)
+        InitializeImages();
+
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        // The source is the grid's own, so this never needs removing (KumikoDataGrid.Layout.cs)
+        _dataSource.ColumnOrderChanged += OnDataSourceColumnOrderChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
@@ -191,12 +159,6 @@ public partial class KumikoDataGrid : ContentView
         _canvasView.HandlerChanged += OnCanvasHandlerChanged_Pointer;
 #endif
 
-#if !WINDOWS
-        // Wire keyboard proxy events (used on Android, or as fallback)
-        _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
-        _keyboardProxy.Completed += OnKeyboardProxyCompleted;
-#endif
-
 #if MACCATALYST || IOS
         // Set up native keyboard input and scroll gesture after the view is loaded
         this.HandlerChanged += OnHandlerChanged_SetupNativeKeyboard;
@@ -204,8 +166,8 @@ public partial class KumikoDataGrid : ContentView
 #endif
 
 #if ANDROID
-        // Configure Android-specific keyboard proxy once its handler is connected
-        _keyboardProxy.HandlerChanged += OnKeyboardProxyHandlerChanged_Android;
+        // The native input view joins the grid's platform view once the handler is connected (#41)
+        this.HandlerChanged += OnHandlerChanged_SetupAndroidTextInput;
 #endif
     }
 
@@ -337,7 +299,9 @@ public partial class KumikoDataGrid : ContentView
     private void OnBoundItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         // KumikoSource already handles the rebuild; we just ensure canvas invalidation
-        // happens on the UI thread
+        // happens on the UI thread. A change raised on a background thread never gets here:
+        // KumikoSource subscribed first and throws (#69), then resyncs on the UI thread and
+        // raises ViewChanged. The dispatch is a safety net.
         if (Dispatcher.IsDispatchRequired)
             Dispatcher.Dispatch(InvalidateSurface);
         else
@@ -648,6 +612,7 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnColumnsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (_syncingFromSource) return; // the grid is copying the source's column order in (KumikoDataGrid.Layout.cs)
         _dataSource.SetColumns(Columns);
         InvalidateSurface();
     }
@@ -761,6 +726,7 @@ public partial class KumikoDataGrid : ContentView
 
         var action = MapAction(e.ActionType, e.InContact);
         var deviceType = MapDeviceType(e.DeviceType);
+        var button = action is InputAction.Hover or InputAction.Exited ? PointerButton.None : GetPointerButton(e);
         float x = e.Location.X / scale;
         float y = e.Location.Y / scale;
 
@@ -797,8 +763,14 @@ public partial class KumikoDataGrid : ContentView
         {
 #if WINDOWS || MACCATALYST
             FocusKeyboardInput();
+#elif ANDROID
+            FocusAndroidTextInputForKeys(x, y); // focus for a hardware keyboard; no soft keyboard
 #endif
         }
+#if ANDROID
+        else if (e.ActionType == SKTouchAction.Released)
+            ReshowAndroidSoftInput(); // a tap during an edit brings back a dismissed soft keyboard
+#endif
 
         // Detect double-tap — store on Pressed so Released also gets ClickCount=2
         int clickCount = 1;
@@ -822,11 +794,15 @@ public partial class KumikoDataGrid : ContentView
             _lastTapY = y;
             _pendingClickCount = clickCount;
 
-            // Start long press detection
+            // Start long press detection (a right or middle button held down is not a long press: its release
+            // must still reach Core, which raises the context menu on it)
             _longPressFired = false;
             _longPressX = x;
             _longPressY = y;
-            StartLongPressTimer(x, y);
+            if (button == PointerButton.Primary)
+                StartLongPressTimer(x, y);
+            else
+                CancelLongPressTimer();
         }
         else if (e.ActionType == SKTouchAction.Released)
         {
@@ -871,12 +847,7 @@ public partial class KumikoDataGrid : ContentView
             X = x,
             Y = y,
             Action = action,
-            Button = action is InputAction.Hover or InputAction.Exited ? PointerButton.None : e.MouseButton switch
-            {
-                SKMouseButton.Right => PointerButton.Secondary,
-                SKMouseButton.Middle => PointerButton.Middle,
-                _ => PointerButton.Primary
-            },
+            Button = button,
             Modifiers = GetPointerModifiers(),
             PointerId = e.Id,
             DeviceType = deviceType,
@@ -1014,7 +985,8 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
     {
-        _dataSource.ReorderColumn(e.OldIndex, e.NewIndex);
+        _dataSource.ReorderColumn(e.OldIndex, e.NewIndex); // Columns follows (KumikoDataGrid.Layout.cs)
+        ColumnReordered?.Invoke(this, e);
     }
 
     // ── Auto-fit column event ──
@@ -1041,13 +1013,18 @@ public partial class KumikoDataGrid : ContentView
             UpdateAccessibilityHint();
     }
 
-    private void OnInputControllerNeedsRedraw() => _canvasView.InvalidateSurface();
+    private void OnInputControllerNeedsRedraw()
+    {
+        _canvasView.InvalidateSurface();
+        SyncNativeTextInput(); // an editor or the filter search box may have opened or closed
+    }
 
     private void OnEditSessionNeedsRedraw()
     {
         _canvasView.InvalidateSurface();
+        SyncNativeTextInput();
 #if WINDOWS
-        // An editor opened or closed: attach the Windows text services to it (KumikoDataGrid.TextInput.cs)
+        // An editor opened or closed: attach the Windows text services to it (KumikoDataGrid.TextInput.Windows.cs)
         SyncTextServices();
 #endif
     }
@@ -1084,6 +1061,9 @@ public partial class KumikoDataGrid : ContentView
     {
         _filterPopupActive = false;
         StopCursorBlinkTimer();
+#if ANDROID
+        ScheduleAndroidImeUpdate(); // the search box is gone: hide the soft keyboard unless an edit is open
+#endif
     }
 
     private void OnEditSessionCellEndEdit(object? sender, CellEndEditEventArgs e)
@@ -1148,11 +1128,8 @@ public partial class KumikoDataGrid : ContentView
         _resourceCache?.Dispose();
         _resourceCache = null;
 
-#if !WINDOWS
-        // Unsubscribe keyboard proxy events
-        _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;
-        _keyboardProxy.Completed -= OnKeyboardProxyCompleted;
-#endif
+        // Cancel image loads and dispose the cached images; the next frame after Reconnect loads them again.
+        DisconnectImages();
 
         // Unsubscribe the bound items and the Columns/summary/grouping collections (Reconnect restores them)
         UnsubscribeObservedCollections();
@@ -1162,12 +1139,7 @@ public partial class KumikoDataGrid : ContentView
         // Remove native keyboard input
         if (_nativeKeyInput != null)
         {
-            _nativeKeyInput.TextInserted -= OnNativeTextInserted;
-            _nativeKeyInput.BackspaceDeleted -= OnNativeBackspace;
-            _nativeKeyInput.KeyPressed -= OnNativeKeyPress;
-            _nativeKeyInput.TabKeyReceived -= OnNativeTabKey;
-            _nativeKeyInput.NavigationKeyReceived -= OnNativeNavigationKey;
-            _nativeKeyInput.CanHandleTab = null;
+            _nativeKeyInput.Detach();
             _nativeKeyInput.RemoveFromSuperview();
             _nativeKeyInput = null;
             _useNativeKeyInput = false;
@@ -1180,6 +1152,12 @@ public partial class KumikoDataGrid : ContentView
                 platformView.RemoveGestureRecognizer(_nativeScrollGesture);
             _nativeScrollGesture = null;
         }
+        if (_nativeSecondaryClickGesture != null)
+        {
+            if (Handler?.PlatformView is UIView platformView)
+                platformView.RemoveGestureRecognizer(_nativeSecondaryClickGesture);
+            _nativeSecondaryClickGesture = null;
+        }
 #if MACCATALYST
         TeardownNativeHover(Handler?.PlatformView as UIView);
 #endif
@@ -1190,7 +1168,8 @@ public partial class KumikoDataGrid : ContentView
 #endif
 
 #if ANDROID
-        _keyboardProxy.HandlerChanged -= OnKeyboardProxyHandlerChanged_Android;
+        this.HandlerChanged -= OnHandlerChanged_SetupAndroidTextInput;
+        DetachAndroidTextInput();
 #endif
     }
 
@@ -1218,6 +1197,7 @@ public partial class KumikoDataGrid : ContentView
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
         SubscribeAccessibility();
+        ConnectImages();
 
         _canvasView.PaintSurface += OnPaintSurface;
         _canvasView.Touch += OnCanvasTouch;
@@ -1226,18 +1206,14 @@ public partial class KumikoDataGrid : ContentView
         AttachNativePointer();
 #endif
 
-#if !WINDOWS
-        _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
-        _keyboardProxy.Completed += OnKeyboardProxyCompleted;
-#endif
-
 #if MACCATALYST || IOS
         this.HandlerChanged += OnHandlerChanged_SetupNativeKeyboard;
         this.HandlerChanged += OnHandlerChanged_SetupNativeScroll;
 #endif
 
 #if ANDROID
-        _keyboardProxy.HandlerChanged += OnKeyboardProxyHandlerChanged_Android;
+        this.HandlerChanged += OnHandlerChanged_SetupAndroidTextInput;
+        AttachAndroidTextInput(); // the handler is already connected: HandlerChanged has fired
 #endif
     }
 
@@ -1255,6 +1231,40 @@ public partial class KumikoDataGrid : ContentView
     {
         add => _inputController.RowDoubleTapped += value;
         remove => _inputController.RowDoubleTapped -= value;
+    }
+
+    /// <summary>
+    /// Fires when a data cell is tapped with the primary button or a finger, with the column, the position and the
+    /// click count (see <see cref="KumikoInputController.CellTapped"/>).
+    /// </summary>
+    public event EventHandler<KumikoCellTappedEventArgs>? CellTapped
+    {
+        add => _inputController.CellTapped += value;
+        remove => _inputController.CellTapped -= value;
+    }
+
+    /// <summary>
+    /// Fires when a column header is tapped with the primary button or a finger, after the tap sorted the column
+    /// (see <see cref="KumikoInputController.HeaderTapped"/>).
+    /// </summary>
+    public event EventHandler<KumikoHeaderTappedEventArgs>? HeaderTapped
+    {
+        add => _inputController.HeaderTapped += value;
+        remove => _inputController.HeaderTapped -= value;
+    }
+
+    /// <summary>
+    /// Fires when the user asks for a context menu: a right click (on its release; on Mac Catalyst and iPad a
+    /// secondary click) or a touch or pen long press that neither starts a row drag nor edits the cell. A right
+    /// click never sorts, scrolls, drags or edits; on a data row the row is selected first unless it already is (see
+    /// <see cref="KumikoContextRequestedEventArgs"/>). <see cref="KumikoContextRequestedEventArgs.X"/> and
+    /// <see cref="KumikoContextRequestedEventArgs.Y"/> are in device-independent units relative to this control. It
+    /// re-surfaces <see cref="KumikoInputController.ContextRequested"/>, under the same name as on the Uno control.
+    /// </summary>
+    public event EventHandler<KumikoContextRequestedEventArgs>? ContextMenuRequested
+    {
+        add => _inputController.ContextRequested += value;
+        remove => _inputController.ContextRequested -= value;
     }
 
     /// <summary>Fires before a cell enters edit mode. Set Cancel=true to prevent.</summary>
@@ -1278,116 +1288,33 @@ public partial class KumikoDataGrid : ContentView
         remove => _editSession.CellValueChanged -= value;
     }
 
-#if !WINDOWS
-    // ── Keyboard Proxy Handlers (Entry-based, Android and the Apple fallback) ──
-
-    private void OnKeyboardProxyTextChanged(object? sender, TextChangedEventArgs e)
-    {
-        if (_suppressTextChanged) return;
-
-#if MACCATALYST || IOS
-        // On Apple platforms, prefer native keyboard input
-        if (_useNativeKeyInput) return;
-#endif
-
-        string oldText = e.OldTextValue ?? string.Empty;
-        string newText = e.NewTextValue ?? string.Empty;
-
-        // No meaningful change
-        if (newText == oldText) return;
-
-        // Programmatic reset back to sentinel — ignore
-        if (newText == KeyboardSentinel) return;
-
-        // Detect backspace: text became empty (user deleted the sentinel)
-        if (string.IsNullOrEmpty(newText))
-        {
-            SendKeyEvent(KumikoKey.Backspace);
-            ResetKeyboardProxy();
-            return;
-        }
-
-        // Extract new characters using content-based diffing.
-        // This handles both standard append behavior (e.g., sentinel + "a" on desktop)
-        // and Android IME replacement behavior (sentinel replaced entirely with "a").
-        string newInput;
-
-        if (newText.Length > oldText.Length && newText.StartsWith(oldText))
-        {
-            // Standard append: characters added after existing text
-            newInput = newText.Substring(oldText.Length);
-        }
-        else
-        {
-            // IME replacement or other non-standard input:
-            // Remove the sentinel character if still present, treat rest as input.
-            int sentinelIdx = newText.IndexOf(KeyboardSentinel, StringComparison.Ordinal);
-            if (sentinelIdx >= 0)
-                newInput = newText.Remove(sentinelIdx, KeyboardSentinel.Length);
-            else
-                newInput = newText; // Sentinel fully replaced — all chars are new input
-        }
-
-        // Forward each new character
-        foreach (char ch in newInput)
-        {
-            SendKeyEvent(KumikoKey.Character, ch);
-        }
-
-        ResetKeyboardProxy();
-    }
-
-    private void OnKeyboardProxyCompleted(object? sender, EventArgs e)
-    {
-#if MACCATALYST || IOS
-        if (_useNativeKeyInput) return;
-#endif
-        SendKeyEvent(KumikoKey.Enter);
-        // Only re-focus if editing continues (e.g. DismissKeyboardOnEnter=false
-        // auto-edits the next cell). When editing has ended, the keyboard should
-        // stay dismissed — UnfocusKeyboardInput() was already called by CellEndEdit.
-        if (_editSession.IsEditing)
-            FocusKeyboardInput();
-    }
-
-    private void ResetKeyboardProxy()
-    {
-        _suppressTextChanged = true;
-        _keyboardProxy.Text = KeyboardSentinel;
-        _suppressTextChanged = false;
-    }
-
+#if !WINDOWS // Windows: KumikoDataGrid.TextInput.Windows.cs
     /// <summary>Focus the appropriate keyboard input mechanism for the current platform.</summary>
     private void FocusKeyboardInput()
     {
-#if MACCATALYST || IOS
+#if ANDROID
+        ScheduleAndroidImeUpdate(); // the input view takes focus and shows the soft keyboard once the editor exists
+#elif MACCATALYST || IOS
         if (_useNativeKeyInput && _nativeKeyInput != null)
         {
             _nativeKeyInput.BecomeFirstResponder();
-            return;
+            SyncNativeTextInput();
         }
 #endif
-        if (!_keyboardProxy.IsFocused)
-        {
-            ResetKeyboardProxy();
-            _keyboardProxy.Focus();
-        }
     }
 
     /// <summary>Dismiss the software keyboard by removing focus from the keyboard input mechanism.</summary>
     private void UnfocusKeyboardInput()
     {
-#if MACCATALYST || IOS
+#if ANDROID
+        ScheduleAndroidImeUpdate(); // hides the soft keyboard unless another edit began meanwhile
+#elif MACCATALYST || IOS
         if (_useNativeKeyInput && _nativeKeyInput != null)
         {
+            SyncNativeTextInput();
             _nativeKeyInput.ResignFirstResponder();
-            return;
         }
 #endif
-        if (_keyboardProxy.IsFocused)
-        {
-            _keyboardProxy.Unfocus();
-        }
     }
 #endif
 
@@ -1421,34 +1348,21 @@ public partial class KumikoDataGrid : ContentView
         }
     }
 
-    private void SendKeyEvent(KumikoKey key, char? character = null, InputModifiers modifiers = InputModifiers.None)
-    {
-        var keyEvent = new KumikoKeyEventArgs
+    private void SendKeyEvent(KumikoKey key, char? character = null, InputModifiers modifiers = InputModifiers.None) =>
+        SendKeyEvent(new KumikoKeyEventArgs
         {
             Key = key,
             Character = character,
             Modifiers = modifiers
-        };
+        });
 
+    private void SendKeyEvent(KumikoKeyEventArgs keyEvent)
+    {
         _inputController.HandleKey(keyEvent, _scroll, _selection, _style, _dataSource);
         if (_editSession.IsAnimating)
             StartInertialScrollTimer(); // a held arrow key repeats a spin button from the frame loop
+        SyncNativeTextInput(); // the key may have opened or closed an editor
     }
-
-#if ANDROID
-    // ── Android Keyboard Configuration ───────────────────────────
-
-    private void OnKeyboardProxyHandlerChanged_Android(object? sender, EventArgs e)
-    {
-        if (_keyboardProxy.Handler?.PlatformView is Android.Widget.EditText editText)
-        {
-            // Disable IME predictions and composing behavior to ensure reliable
-            // character-by-character input through the hidden Entry proxy.
-            editText.InputType = AndroidInputTypes.ClassText | AndroidInputTypes.TextFlagNoSuggestions;
-            editText.ImeOptions = AndroidImeAction.Done;
-        }
-    }
-#endif
 
 #if MACCATALYST || IOS
     // ── Native Keyboard Input (Apple platforms) ──────────────────
@@ -1460,20 +1374,7 @@ public partial class KumikoDataGrid : ContentView
 
         if (Handler?.PlatformView is UIView platformView)
         {
-            _nativeKeyInput = new KeyInputResponder(CGRect.Empty)
-            {
-                Frame = new CGRect(0, 0, 0, 0),
-                Alpha = 0f
-            };
-
-            _nativeKeyInput.TextInserted += OnNativeTextInserted;
-            _nativeKeyInput.BackspaceDeleted += OnNativeBackspace;
-            _nativeKeyInput.KeyPressed += OnNativeKeyPress;
-            _nativeKeyInput.TabKeyReceived += OnNativeTabKey;
-            // Tab past the last (first) tab stop is left to UIKit so focus can leave the grid.
-            _nativeKeyInput.CanHandleTab = backwards => _inputController.WouldHandleTab(_selection, _dataSource, backwards);
-            _nativeKeyInput.NavigationKeyReceived += OnNativeNavigationKey;
-
+            _nativeKeyInput = CreateNativeTextInput(); // KumikoDataGrid.TextInput.cs
             platformView.AddSubview(_nativeKeyInput);
             _useNativeKeyInput = true;
         }
@@ -1498,83 +1399,14 @@ public partial class KumikoDataGrid : ContentView
             _nativeScrollGesture.AllowedScrollTypesMask = UIScrollTypeMask.Continuous | UIScrollTypeMask.Discrete;
             _nativeScrollGesture.MaximumNumberOfTouches = 0; // Only indirect (trackpad/mouse wheel)
             platformView.AddGestureRecognizer(_nativeScrollGesture);
-        }
-    }
 
-    private void OnNativeTextInserted(string text)
-    {
-        foreach (char ch in text)
-        {
-            if (ch == '\n' || ch == '\r')
+            // A secondary (right) click reaches no touch handler, SkiaSharp's included: it needs its own recognizer
+            _nativeSecondaryClickGesture = new UITapGestureRecognizer(HandleNativeSecondaryClick)
             {
-                // iOS software keyboard sends Return as InsertText("\n")
-                // rather than through PressesBegan, so map it to Enter.
-                SendKeyEvent(KumikoKey.Enter);
-            }
-            else if (ch == '\t')
-            {
-                // Tab character from software keyboard — map to KumikoKey.Tab
-                SendKeyEvent(KumikoKey.Tab);
-            }
-            else
-            {
-                SendKeyEvent(KumikoKey.Character, ch);
-            }
+                ButtonMaskRequired = UIEventButtonMask.Secondary,
+            };
+            platformView.AddGestureRecognizer(_nativeSecondaryClickGesture);
         }
-    }
-
-    private void OnNativeTabKey(bool hasShift)
-    {
-        var modifiers = hasShift ? InputModifiers.Shift : InputModifiers.None;
-        SendKeyEvent(KumikoKey.Tab, null, modifiers);
-    }
-
-    private void OnNativeNavigationKey(KumikoKey key, InputModifiers modifiers)
-    {
-        SendKeyEvent(key, null, modifiers);
-    }
-
-    private void OnNativeBackspace()
-    {
-        SendKeyEvent(KumikoKey.Backspace);
-    }
-
-    private void OnNativeKeyPress(UIPress press)
-    {
-        if (press.Key == null) return;
-
-        var modifiers = InputModifiers.None;
-        var flags = press.Key.ModifierFlags;
-        if (flags.HasFlag(UIKeyModifierFlags.Shift)) modifiers |= InputModifiers.Shift;
-        if (flags.HasFlag(UIKeyModifierFlags.Command)) modifiers |= InputModifiers.Control;
-        if (flags.HasFlag(UIKeyModifierFlags.Alternate)) modifiers |= InputModifiers.Alt;
-
-        var keyCode = press.Key.KeyCode;
-        KumikoKey? gridKey = keyCode switch
-        {
-            UIKeyboardHidUsage.KeyboardLeftArrow => KumikoKey.Left,
-            UIKeyboardHidUsage.KeyboardRightArrow => KumikoKey.Right,
-            UIKeyboardHidUsage.KeyboardUpArrow => KumikoKey.Up,
-            UIKeyboardHidUsage.KeyboardDownArrow => KumikoKey.Down,
-            UIKeyboardHidUsage.KeyboardHome => KumikoKey.Home,
-            UIKeyboardHidUsage.KeyboardEnd => KumikoKey.End,
-            UIKeyboardHidUsage.KeyboardPageUp => KumikoKey.PageUp,
-            UIKeyboardHidUsage.KeyboardPageDown => KumikoKey.PageDown,
-            UIKeyboardHidUsage.KeyboardEscape => KumikoKey.Escape,
-            UIKeyboardHidUsage.KeyboardDeleteForward => KumikoKey.Delete,
-            UIKeyboardHidUsage.KeyboardDeleteOrBackspace => KumikoKey.Backspace,
-            UIKeyboardHidUsage.KeyboardReturnOrEnter => KumikoKey.Enter,
-            UIKeyboardHidUsage.KeyboardTab => KumikoKey.Tab,
-            UIKeyboardHidUsage.KeyboardSpacebar => KumikoKey.Space,
-            UIKeyboardHidUsage.KeyboardF2 => KumikoKey.F2,
-            _ => null
-        };
-
-        if (gridKey.HasValue)
-        {
-            SendKeyEvent(gridKey.Value, null, modifiers);
-        }
-        // Character input is handled via InsertText, not PressesBegan
     }
 #endif
 }

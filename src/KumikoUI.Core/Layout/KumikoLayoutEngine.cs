@@ -357,26 +357,18 @@ public class KumikoLayoutEngine
     }
 
     /// <summary>
-    /// Calculate the total width of frozen (pinned left) columns.
+    /// Calculate the total width of frozen (pinned left) columns. A left-frozen column the last frame could not pin
+    /// because the viewport is too narrow (<see cref="KumikoStyle.MaxFrozenColumnsWidthRatio"/>) is a
+    /// scrolling column and is not counted.
     /// </summary>
-    public float GetFrozenColumnWidth(IReadOnlyList<KumikoColumn> columns)
-    {
-        float w = 0;
-        for (int i = 0; i < columns.Count; i++)
-            if (columns[i].IsVisible && columns[i].IsFrozen) w += columns[i].Width;
-        return w;
-    }
+    public float GetFrozenColumnWidth(IReadOnlyList<KumikoColumn> columns) => FrozenPanes.GetWidths(columns).Left;
 
     /// <summary>
-    /// Calculate the total width of right-frozen (pinned right) columns.
+    /// Calculate the total width of right-frozen (pinned right) columns. A right-frozen column the last frame
+    /// could not pin because the viewport is too narrow (<see cref="KumikoStyle.MaxFrozenColumnsWidthRatio"/>)
+    /// is a scrolling column and is not counted.
     /// </summary>
-    public float GetRightFrozenColumnWidth(IReadOnlyList<KumikoColumn> columns)
-    {
-        float w = 0;
-        for (int i = 0; i < columns.Count; i++)
-            if (columns[i].IsVisible && columns[i].IsFrozenRight) w += columns[i].Width;
-        return w;
-    }
+    public float GetRightFrozenColumnWidth(IReadOnlyList<KumikoColumn> columns) => FrozenPanes.GetWidths(columns).Right;
 
     /// <summary>
     /// Get only the frozen columns with their screen X positions.
@@ -404,7 +396,7 @@ public class KumikoLayoutEngine
         {
             var col = columns[i];
             if (!col.IsVisible) continue;
-            if (!col.IsFrozen) continue;
+            if (col.Pane != ColumnFreezeMode.Left) continue;
 
             result.Add((col, x, i));
             x += col.Width;
@@ -440,7 +432,7 @@ public class KumikoLayoutEngine
         {
             var col = columns[i];
             if (!col.IsVisible) continue;
-            if (!col.IsFrozenRight) continue;
+            if (col.Pane != ColumnFreezeMode.Right) continue;
 
             result.Add((col, x, i));
             x += col.Width;
@@ -475,17 +467,21 @@ public class KumikoLayoutEngine
         float adjustedOffsetX = scroll.OffsetX + frozenWidth;
         float viewportRight = scroll.OffsetX + scroll.ViewportWidth - rightFrozenWidth;
 
-        for (int i = 0; i < columns.Count; i++)
+        // In on-screen order: unpinned left-frozen columns, then the scrolling ones, then unpinned right-frozen ones.
+        for (int pass = 0; pass < 3; pass++)
         {
-            var col = columns[i];
-            if (!col.IsVisible || col.IsFrozen || col.IsFrozenRight) continue;
+            for (int i = 0; i < columns.Count; i++)
+            {
+                var col = columns[i];
+                if (!col.IsVisible || FrozenPanes.ScrollPass(col) != pass) continue;
 
-            float colRight = x + col.Width;
+                float colRight = x + col.Width;
 
-            if (colRight > adjustedOffsetX && x < viewportRight)
-                result.Add((col, x, i));
+                if (colRight > adjustedOffsetX && x < viewportRight)
+                    result.Add((col, x, i));
 
-            x += col.Width;
+                x += col.Width;
+            }
         }
     }
 

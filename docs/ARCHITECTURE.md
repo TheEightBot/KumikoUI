@@ -132,16 +132,21 @@ The `KumikoPaint` objects the grid draws with are built from `KumikoStyle` and r
 ### O(1) Incremental Updates
 `KumikoSource.TryIncrementalUpdate` handles simple `INotifyCollectionChanged` Add/Remove operations without a full `RebuildView()` when no sort, filter, group, or summary transforms are active.
 
+A `PropertyChanged` of a property that only table summaries use rebuilds nothing (#69): Sum, Average and Count keep each visible row's value and apply the change in O(1); Min, Max and Custom are recomputed over the visible rows without re-filtering, re-sorting or regrouping. Inside `BeginUpdate`/`EndUpdate`, a collection change that needs a rebuild only marks the view stale, so a batch rebuilds once (or at the first row read).
+
+### Thread affinity
+A `KumikoSource` belongs to the thread that called `SetItems` or `Attach` (the UI thread). Collection changes, item `PropertyChanged` and calls from any other thread throw `InvalidOperationException` before the view is touched; the source then resyncs on its own thread through the captured `SynchronizationContext` (or on the next `Refresh`). The view is therefore only ever read and written on the UI thread, and the hosts repaint from `ViewChanged`.
+
 ### Physics-Based Scrolling
 `InertialScroller` uses exponential moving average velocity tracking with configurable friction and frame-normalized deceleration for smooth momentum scrolling.
 
 ### Platform Keyboard Convergence
 Three different platform input mechanisms converge to the same `KumikoKeyEventArgs` → `HandleKey` path:
-- **iOS/macOS** — `KeyInputResponder` (UIView with `UIKeyCommand` + `IUIKeyInput`)
-- **Android** — Hidden `Entry` with text content diffing and IME configuration
+- **iOS/Mac Catalyst** — `KeyInputResponder` (UIView with `UIKeyCommand` + `UITextInput`): text and input-method composition go to the editor's `ITextInputSession` through `AppleTextInputBridge`; navigation keys go to `HandleKey`
+- **Android** — `KumikoTextInputView` with a `KumikoInputConnection` over `AndroidTextInputMapper`: the input method edits the editor's `ITextInputSession`; hardware keys go to `HandleKey`
 - **Windows** — The grid's platform view: WinUI `PreviewKeyDown`/`CharacterReceived` for keys and characters, and a `CoreTextEditContext` adapter (`ITextInputSession`) for the open text editor
 
-The others are being replaced by native text-input adapters that drive `ITextInputSession` (composition, grapheme-correct editing, undo/redo); see [TEXT-INPUT.md](TEXT-INPUT.md).
+Uno is being moved to a native text-input adapter that drives `ITextInputSession` (composition, grapheme-correct editing, undo/redo), as the MAUI host already does on every platform; see [TEXT-INPUT.md](TEXT-INPUT.md).
 
 ### Virtual Scrolling
 Only visible rows and columns are computed and drawn. Row range: `scrollOffset / rowHeight` to `(scrollOffset + viewportHeight) / rowHeight`. Column range computed by `KumikoLayoutEngine`.

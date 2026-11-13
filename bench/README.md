@@ -19,6 +19,7 @@ All use `[MemoryDiagnoser]` and deterministic data (row `i` is a pure function o
 - `RenderBenchmarks` (#68, #70): one `KumikoRenderer.Render` frame of a 30-row × 10-column visible grid into a no-op `IDrawingContext`. `Plain` is a bare grid, `Featured` adds multi-column sort, a filter, grouping, group, caption and table summaries, a frozen column and the drag handle. `Scrolling` moves the plain grid a row and 7 px further each frame (200 offsets, then wraps), so each frame reveals a row the display text cache hasn't seen. `Plain_FrameStatsOn` draws the frame-time overlay too. The first two and `FrameStatsOn` measure the steady state after warm-up frames.
 - `DataBenchmarks` (#70): the data pipeline on 100 000 rows, each benchmark one view rebuild: sort by int, string and date columns and by two columns; text-contains and numeric-greater-than filters; one- and two-level grouping with group and table summaries; sort, filter and group together; and `KumikoLayoutEngine.ComputeColumnWidths` for 10 columns.
 - `IncrementalBenchmarks` (#70): adding and removing one item at the end and in the middle of an `ObservableCollection` of 100 000 items with no sort, filter or grouping active (handled without rebuilding the view).
+- `LiveUpdateBenchmarks` (#69): 100 items of a 100 000-row source raise `PropertyChanged` for a summarized property, as a live feed does. `HundredChanges_Sum` has a Sum summary, which follows each change in constant time; `HundredChanges_Max_Batched` has a Max summary and makes the changes inside one `BeginUpdate` scope, so the table summaries are recomputed once over the visible rows (nothing is re-sorted, re-filtered or regrouped). Before #69 each change rebuilt the whole view.
 
 ## Measured numbers
 
@@ -36,16 +37,18 @@ Apple M4 Max (16 cores), macOS 27.2, .NET SDK 10.0.403 / runtime 10.0.14, Arm64 
 | Sort 100K rows, date column | 211 ms | 94 MB |
 | Sort 100K rows, two columns | 51 ms | 84 MB |
 | Filter 100K rows, text contains | 2.4 ms | 0.5 KB |
-| Filter 100K rows, numeric greater than | 2.2 ms | 5.3 MB |
-| Group 100K rows, one level, with summaries | 28 ms | 17.5 MB |
-| Group 100K rows, two levels, with summaries | 46 ms | 18.8 MB |
+| Filter 100K rows, numeric greater than | 1.5 ms | 2.4 MB |
+| Group 100K rows, one level, with summaries | 19 ms | 9.1 MB |
+| Group 100K rows, two levels, with summaries | 42 ms | 10.5 MB |
 | Sort + filter + group together | 83 ms | 96 MB |
 | `ObservableCollection` add and remove one item, 100K rows | 128 µs | 432 B |
 | `ObservableCollection` insert and remove in the middle, 100K rows | 178 µs | 432 B |
+| 100 `PropertyChanged` of a summed property, 100K rows (Sum summary) | 24 µs | 100 KB |
+| 100 `PropertyChanged` of a property with a Max summary, one batch, 100K rows | 1.9 ms | 2.3 MB |
 
 At 60 fps a frame has 16.7 ms; the render loop itself uses well under 1% of that for a 30 × 10 viewport. What a user sees also includes the drawing backend (SkiaSharp), which these benchmarks leave out by drawing into a no-op context, so per-device frame rates must be measured on the device with the frame-time overlay (below).
 
-Two numbers stand out and are the next targets rather than something to hide: sorting an int or date column allocates about 900 bytes per row (the string column sorts in place and allocates almost nothing, so the cost is in the int and date key handling; not yet investigated), and every sort, filter or grouping change rebuilds the whole 100K-row view on the calling thread.
+Two numbers stand out and are the next targets rather than something to hide: sorting an int or date column allocates about 900 bytes per row (the string column sorts in place and allocates almost nothing, so the cost is in the int and date key handling; not yet investigated), and every sort, filter or grouping change rebuilds the whole 100K-row view on the UI thread. The filter, grouping and live-update rows were remeasured for #69 on 2026-11-13 on the same machine (macOS 27.2.1, `--job short`).
 
 ## Performance budgets
 
@@ -57,9 +60,10 @@ A budget is a number a change must not break. The first column is the intent, th
 | Render with the frame-time overlay on, between text updates | ≤ 20 µs | exactly 0 B | `PerformanceBudgetTests` (0 B); time by benchmark |
 | Scrolling frame (one new row) | ≤ 20 µs | ≤ 2 KB | by benchmark |
 | Sort 100K rows | ≤ 300 ms | ≤ 160 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
-| Filter 100K rows (text or numeric) | ≤ 10 ms | ≤ 12 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
-| Group 100K rows, 1–2 levels, with summaries | ≤ 100 ms | ≤ 40 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
+| Filter 100K rows (text or numeric) | ≤ 10 ms | ≤ 5 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
+| Group 100K rows, 1–2 levels, with summaries | ≤ 100 ms | ≤ 20 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
 | Add or remove one item (`ObservableCollection`, no transforms) | ≤ 1 ms | ≤ 4 KB | `PerformanceBudgetTests` (allocation); time by benchmark |
+| 100 `PropertyChanged` of a summed property, 100K rows | ≤ 16 ms in total on the calling thread | — | `ViewPipelineTests` (time, `Category=Performance`); benchmark |
 
 - **Allocation budgets gate CI.** They are unit tests in `tests/KumikoUI.Core.Tests/Rendering` that count bytes with `GC.GetAllocatedBytesForCurrentThread`, which is deterministic. The data-pipeline ceilings are about 1.7 to 2× what the operations allocate today: they catch an accidental per-row allocation, not drift. When an optimization lowers the real number, lower the ceiling with it.
 - **Time budgets do not gate CI.** They are about 3× the measured mean, for the reference machine. Check them by running the benchmarks before and after a change to a hot path; a change that breaks one explains why in its pull request.

@@ -73,6 +73,24 @@ source.AddTableSummaryRow(new TableSummaryRow
 });
 Check(source.IsGroupingActive, "grouping is active");
 
+// Save the layout as JSON (System.Text.Json source generation) and restore it onto a fresh source.
+source.SetDisplayIndex(active, 0);
+string layoutJson = KumikoLayoutState.Capture(source).ToJson();
+var restored = new KumikoSource();
+restored.SetColumns(new[]
+{
+    new KumikoColumn { Header = "Name", PropertyName = nameof(Employee.Name) },
+    new KumikoColumn { Header = "Department", PropertyName = nameof(Employee.Department) },
+    new KumikoColumn { Header = "Salary", PropertyName = nameof(Employee.Salary), ColumnType = KumikoColumnType.Numeric },
+    new KumikoColumn { Header = "Hired", PropertyName = nameof(Employee.Hired), ColumnType = KumikoColumnType.Date },
+    new KumikoColumn { Header = "Active", PropertyName = nameof(Employee.Active), ColumnType = KumikoColumnType.Boolean },
+});
+restored.SetItems(items);
+KumikoLayoutState.FromJson(layoutJson).ApplyTo(restored);
+Check(restored.Columns[0].PropertyName == nameof(Employee.Active), "the restored layout keeps the column order");
+Check(restored.RowCount == source.RowCount, "the restored layout keeps the sort, filter and grouping");
+Check(KumikoLayoutState.Capture(restored).ToJson() == layoutJson, "the layout JSON round-trips");
+
 var style = new KumikoStyle();
 var scroll = new ScrollState { ViewportWidth = Width, ViewportHeight = Height };
 var selection = new KumikoSelectionModel(source);

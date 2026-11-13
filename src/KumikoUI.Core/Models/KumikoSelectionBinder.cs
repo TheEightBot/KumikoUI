@@ -33,6 +33,11 @@ public sealed class KumikoSelectionBinder
     private bool _syncing;
     private bool _detached;
 
+    // While SetSelectedItem runs, notifications wait here until the selection and the current cell are both
+    // up to date.
+    private bool _applyingItem;
+    private readonly List<KumikoSelectionChangedEventArgs> _deferredSelectionChanges = new();
+
     // What the last Changed notification reported.
     private object? _publishedItem;
     private int _publishedIndex = -1;
@@ -78,21 +83,36 @@ public sealed class KumikoSelectionBinder
     /// <summary>
     /// Select only <paramref name="item"/> and move the current cell to it (keeping its column). A null item
     /// clears the selection. An item that is not a visible data row, or any item in
-    /// <see cref="KumikoSelectionMode.None"/> mode, leaves nothing selected.
+    /// <see cref="KumikoSelectionMode.None"/> mode, leaves nothing selected. <see cref="SelectionChanged"/> and
+    /// <see cref="Changed"/> are raised after both the selection and the current cell are updated, so they never
+    /// report the previous item while the new one is being applied.
     /// </summary>
     public void SetSelectedItem(object? item)
     {
-        if (item == null)
+        // The whole update is reported once, at the end (#267). Moving the current cell first used to publish
+        // the previous item while a host was still applying the new one from a two-way binding, and the binding
+        // wrote that stale item back to its source, which set the new one again, forever. So the item is
+        // selected before the cell moves, and Changed / SelectionChanged wait until both are done.
+        _applyingItem = true;
+        try
         {
-            _model.SetSelectedItems(Array.Empty<object>());
-            return;
-        }
+            if (item == null)
+            {
+                _model.SetSelectedItems(Array.Empty<object>());
+            }
+            else
+            {
+                _model.SetSelectedItems(new[] { item });
+                if (_model.IsSelected(item)) _primary = item;
 
-        int row = _model.Source.IndexOfRowKey(item);
-        if (row >= 0 && !_model.Source.IsNonDataRow(row))
-            _model.SetCurrentCell(row, _model.CurrentCell.IsValid ? _model.CurrentCell.Column : 0);
-        _model.SetSelectedItems(new[] { item });
-        if (_model.IsSelected(item)) _primary = item;
+                int row = _model.Source.IndexOfRowKey(item);
+                if (row >= 0 && !_model.Source.IsNonDataRow(row))
+                    _model.SetCurrentCell(row, _model.CurrentCell.IsValid ? _model.CurrentCell.Column : 0);
+            }
+        }
+        finally { _applyingItem = false; }
+
+        RaiseDeferredSelectionChanges();
         Publish();
     }
 
@@ -170,8 +190,22 @@ public sealed class KumikoSelectionBinder
             finally { _syncing = false; }
         }
 
+        if (_applyingItem)
+        {
+            _deferredSelectionChanges.Add(e);
+            return;
+        }
+
         SelectionChanged?.Invoke(this, e);
         Publish();
+    }
+
+    private void RaiseDeferredSelectionChanges()
+    {
+        if (_deferredSelectionChanges.Count == 0) return;
+        var pending = _deferredSelectionChanges.ToArray();
+        _deferredSelectionChanges.Clear();
+        foreach (var e in pending) SelectionChanged?.Invoke(this, e);
     }
 
     private void UpdatePrimary(KumikoSelectionChangedEventArgs e)
@@ -200,6 +234,7 @@ public sealed class KumikoSelectionBinder
 
     private void Publish()
     {
+        if (_applyingItem) return; // SetSelectedItem publishes once it is done
         int index = SelectedIndex;
         var cell = _model.CurrentCell;
         if (ReferenceEquals(_publishedItem, _primary) && _publishedIndex == index && _publishedCell.Equals(cell))

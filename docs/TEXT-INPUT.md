@@ -1,6 +1,6 @@
 # Text input: the adapter contract
 
-**Status:** the Core contract shipped with #39. The host adapters that implement it are #40 (iOS and Mac Catalyst), #41 (Android), #42 (Windows on MAUI, done) and #43 (Uno). Until each one lands, that host keeps feeding text through its hidden native text box, one character at a time, as `KumikoKeyEventArgs` with `Character` set.
+**Status:** the Core contract shipped with #39. The host adapters that implement it are #40 (iOS and Mac Catalyst, done: `KeyInputResponder` and `AppleTextInputBridge` in KumikoUI.Maui), #41 (Android, done: see [Android](#android)), #42 (Windows on MAUI, done) and #43 (Uno). Until #43 lands, the Uno host keeps feeding text through its hidden native text box, one character at a time, as `KumikoKeyEventArgs` with `Character` set.
 
 **Windows on MAUI** (#42) has no hidden text box. The grid's platform view is a tab stop; its `PreviewKeyDown` sends keys to `KumikoInputController.HandleKey` and `CharacterReceived` sends characters (a surrogate pair joined into `Text`). While a text editor is open, a `CoreTextEditContext` is attached to its session: `TextUpdating` within `CompositionStarted`/`CompositionCompleted` is marked text, other `TextUpdating` is committed text, `SelectionUpdating` sets the selection, `LayoutRequested` gets the edited cell's screen rectangle, and `TextInputStateChanged` becomes `NotifyTextChanged`/`NotifySelectionChanged`. The bookkeeping (what the text services last saw, and the change that brings them back in step) is `TextEditContextState`, which has no Windows dependency and is unit-tested. Windows documents `CoreTextServicesManager` for desktop apps as available only in Insider builds; where it can't be created, or delivers no text, the adapter falls back to `CharacterReceived`, so typing and text committed by an input method's own window still work, without in-place composition.
 
@@ -123,3 +123,78 @@ Pointer input reaches the editor through `KumikoInputController` as before:
 - **Triple click** selects all.
 
 On touch, an adapter shows the platform's own selection handles and edit menu as part of its host issue; they call `SetSelection`.
+
+## Android
+
+The MAUI host on Android has no hidden `Entry`. Its adapter has three parts:
+
+- `KumikoTextInputView`: a native view added to the grid's platform view. It draws nothing and takes no touches, and it holds the keyboard focus.
+- `KumikoInputConnection`: the `BaseInputConnection` its `onCreateInputConnection` returns.
+- `AndroidTextInputMapper`: the platform-independent mapping between them and `ITextInputSession`, unit-tested in `KumikoUI.Maui.Tests`.
+
+### Focus and the soft keyboard
+
+- Pressing the grid focuses the input view, so a hardware keyboard drives the grid without an editor open. The soft keyboard doesn't appear, because the view is a text editor only while a cell editor or the filter popup's search box is open.
+- When an edit begins, the view takes focus, the input method restarts with the editor's keyboard type, and `InputMethodManager.showSoftInput` shows the keyboard.
+- When the edit ends, the keyboard is hidden and the connection is dropped.
+- An edit that ends and immediately begins again (Tab, or Enter with `DismissKeyboardOnEnter` off) keeps the keyboard up.
+- A tap during an edit brings back a keyboard the user dismissed with Back.
+
+### Input connection
+
+| `InputConnection` call | Core |
+|---|---|
+| `setComposingText(text, pos)` | `SetComposition`. `pos` is relative: `> 0` counts from the end of the text (1 = just after it), `<= 0` from its start. Core keeps the caret inside the composition, so the position is clamped there. |
+| `commitText(text, pos)` | `InsertText`, then the caret as `pos` asks. `"\n"` is Enter and `"\t"` is Tab, as keys. Committing `""` over a selection deletes it. |
+| `finishComposingText` | `CommitComposition` |
+| `setComposingRegion(a, b)` | Commits any composition, then marks the existing text as the composition (selection + `SetComposition` with the same text). |
+| `deleteSurroundingText(before, after)` | Commits any composition, then deletes the ranges before and after the selection and keeps the selection. Each range is UTF-16 code units, widened to whole grapheme clusters, so `(1, 0)` before 👍🏽 deletes the whole emoji. |
+| `deleteSurroundingTextInCodePoints` | The same, with the lengths counted in code points. |
+| `setSelection(a, b)` | `SetSelection`; out-of-range indices are ignored. |
+| `getTextBeforeCursor`, `getTextAfterCursor`, `getSelectedText`, `getSurroundingText`, `getExtractedText` | Read from `Text` and `Selection`. |
+| `sendKeyEvent` | The same path as a hardware key. |
+| `performEditorAction` | Enter. |
+| `performContextMenuAction` (select all, cut, copy, paste) | Ctrl+A, X, C, V. |
+| `beginBatchEdit` / `endBatchEdit` | The state is reported once, at the end of the batch. |
+
+After the input method's calls, the adapter reports the new selection and composition with `InputMethodManager.updateSelection`; a monitored extract gets `updateExtractedText`. When Core changes the text itself (undo, paste, a shortcut, a pointer gesture), the adapter calls `restartInput`. When only the selection moves, it calls `updateSelection`.
+
+With no text surface (the open editor is a combo box, a date picker or a picker), committed text becomes `KumikoKeyEventArgs` with `Text` set, deletions become Backspace and Delete, and a composition is typed when it finishes.
+
+### Keyboard type (`EditorInfo`)
+
+| Editor | `inputType` |
+|---|---|
+| Text editor | `TYPE_CLASS_TEXT`: suggestions on, no autocorrect |
+| Numeric editor (`NumericOnly`) | `TYPE_CLASS_NUMBER \| SIGNED`, plus `DECIMAL` unless the cell holds an integer |
+| `InputMask` of `#` placeholders only | `TYPE_CLASS_NUMBER` |
+| Any other `InputMask` | `TYPE_CLASS_TEXT \| NO_SUGGESTIONS` |
+| Filter popup search box | `TYPE_CLASS_TEXT \| VARIATION_FILTER \| NO_SUGGESTIONS` |
+| No text surface | `TYPE_CLASS_TEXT \| NO_SUGGESTIONS` |
+
+`imeOptions` is `IME_ACTION_NEXT` when Enter goes on to edit the next cell (`DismissKeyboardOnEnter` off), and `IME_ACTION_DONE` otherwise. It always includes `IME_FLAG_NO_EXTRACT_UI | IME_FLAG_NO_FULLSCREEN`, so landscape phones don't hide the grid behind a full-screen editor. The initial selection and, on Android 11 and later, the surrounding text are set too.
+
+### Hardware keys
+
+The input view's `dispatchKeyEvent` maps key codes and `MetaState` (Shift, Alt, Ctrl, Meta) to Core keys:
+- the arrow keys, Home, End, Page Up and Page Down;
+- Tab and Shift+Tab, left to Android when the grid has no further tab stop, so focus moves on;
+- Enter (and numpad Enter), Escape, F2, Space, Backspace and Delete;
+- Ctrl or Meta with A, C, V, X, Y or Z.
+
+Other keys type their character. Alt (AltGr) chooses the character and isn't a modifier, and dead keys compose with the next letter (´ then e types é). In an open text editor, typed text and plain Backspace and Delete edit it directly, as the input method's own calls do. Escape is taken in `onKeyPreIme`, before the input method sees it, unless a composition is active: then it belongs to the input method.
+
+### Keeping the edited cell visible
+
+The input view is placed over the edited cell, so the window's `adjustPan` and an enclosing scroll view bring that cell into view when the keyboard appears. When the window doesn't pan, the grid reads the keyboard's top from the root window insets (`WindowInsetsCompat.Type.ime()`) and scrolls the edited cell above it. A cell in a frozen row, or in the last rows, can only move as far as the grid scrolls.
+
+For an app whose grid fills the page, set the activity's soft-input mode. `adjustResize` shrinks the window, and the grid scrolls the cell into the smaller viewport. `adjustPan` pans the window to the cell instead.
+
+```csharp
+// Platforms/Android/MainActivity.cs
+[Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true,
+    WindowSoftInputMode = SoftInput.AdjustResize)]
+public class MainActivity : MauiAppCompatActivity { }
+```
+
+In shared code, set it with `Application.Current.On<Microsoft.Maui.Controls.PlatformConfiguration.Android>().UseWindowSoftInputModeAdjust(WindowSoftInputModeAdjust.Resize)`. On Android 15 and later, apps are drawn edge to edge and `adjustResize` no longer shrinks the window. The grid's inset-based scrolling still keeps the cell above the keyboard.
