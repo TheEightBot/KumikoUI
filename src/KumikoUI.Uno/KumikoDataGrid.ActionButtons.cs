@@ -14,14 +14,13 @@ public partial class KumikoDataGrid
     private void SyncActionButtonDefinitions()
     {
         var context = DataContext;
-        foreach (var column in Columns)
+        var renderers = Columns
+            .Select(column => column.CustomCellRenderer)
+            .OfType<ActionButtonsCellRenderer>();
+        foreach (var renderer in renderers)
         {
-            if (column.CustomCellRenderer is not ActionButtonsCellRenderer renderer) continue;
-
-            foreach (var button in renderer.Buttons)
+            foreach (var definition in renderer.Buttons.OfType<UnoActionButtonDefinition>())
             {
-                if (button is not UnoActionButtonDefinition definition) continue;
-
                 if (!ReferenceEquals(definition.DataContext, context))
                     definition.DataContext = context;
 
