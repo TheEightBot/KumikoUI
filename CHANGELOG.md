@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Icon packs (#119): every built-in glyph of the grid and of the drawn components (group chevrons, sort arrows, the filter button, the grouping chips' remove button and separator, the drag grip, check marks, the combo box arrow, the numeric plus and minus, the date picker's calendar, month and time arrows) is drawn by a replaceable `IKumikoIconProvider` (`KumikoUI.Core.Rendering`), set with `KumikoStyle.IconProvider` or, for a component used on its own, `DrawnComponent.IconProvider`. Each slot is a `KumikoIcon` value. `KumikoIconProvider.Default` is the built-in vector set (derive from it to replace a few glyphs); `KumikoFontIconProvider` draws glyphs of an icon font registered with `SkiaFontRegistrar` or `KumikoFonts`, with `CreateMaterialIcons` mapping every icon for Material Icons. The All Components sample page of both hosts switches between the built-in set and Material Icons. See "Icons" in the README.
+
+### Changed
+- The built-in glyphs are drawn by the new icon provider and look slightly different: the active filter button is a solid funnel instead of an outline with a dot, the grouping chip and filter popup sort arrows have the header arrow's proportions, the numeric editor's plus and minus are filled shapes, and the date picker's time arrows point up above the value and down below it (they pointed toward it).
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

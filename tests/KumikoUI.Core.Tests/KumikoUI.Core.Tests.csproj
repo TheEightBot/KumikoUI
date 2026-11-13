@@ -28,6 +28,9 @@
     <!-- Its semibold face, registered as a family's bold variant (#74). -->
     <EmbeddedResource Include="../../samples/SampleApp.Maui/Resources/Fonts/OpenSans-Semibold.ttf"
                       LogicalName="KumikoUI.Core.Tests.OpenSans-Semibold.ttf" Link="TestFonts/OpenSans-Semibold.ttf" />
+    <!-- An icon font for the font icon provider tests (#119). -->
+    <EmbeddedResource Include="../../samples/SampleApp.Maui/Resources/Raw/MaterialIcons-Regular.ttf"
+                      LogicalName="KumikoUI.Core.Tests.MaterialIcons-Regular.ttf" Link="TestFonts/MaterialIcons-Regular.ttf" />
   </ItemGroup>
 
   <ItemGroup>

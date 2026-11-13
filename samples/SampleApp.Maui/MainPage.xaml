@@ -24,6 +24,7 @@
             <Button x:Name="handlePosToggle" Text="Handle: Left" Clicked="OnToggleHandlePositionClicked" Margin="4,0,0,4" />
             <Button x:Name="dismissKbToggle" Text="Enter Dismisses KB: ON" Clicked="OnToggleDismissKeyboardClicked" Margin="4,0,0,4" />
             <Button x:Name="themeToggle" Text="Theme: Light" Clicked="OnToggleThemeClicked" Margin="4,0,0,4" />
+            <Button x:Name="iconsToggle" Text="Icons: Built-in" Clicked="OnToggleIconsClicked" Margin="4,0,0,4" />
             <Button x:Name="editTriggerToggle" Text="Edit: Double Tap" Clicked="OnToggleEditTriggerClicked" Margin="4,0,0,4" />
             <Button x:Name="selectionModeToggle" Text="Select: All" Clicked="OnToggleSelectionModeClicked" Margin="4,0,0,4" />
         </FlexLayout>

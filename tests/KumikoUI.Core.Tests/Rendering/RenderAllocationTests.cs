@@ -81,6 +81,38 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_GridUsingEveryPerFrameFeature_WithAFontIconProvider_AllocatesNothing()
+    {
+        // Every glyph of the featured grid drawn as an icon font glyph (#119): the glyph strings are built once.
+        var grid = CreateGrid(featured: true);
+        grid.Style.IconProvider = KumikoFontIconProvider.CreateMaterialIcons();
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
+    public void TheBuiltInAndTheFontIconProviders_DrawEveryIcon_WithoutAllocating()
+    {
+        var icons = Enum.GetValues<KumikoIcon>();
+        var paint = new KumikoPaint { Color = new KumikoColor(10, 20, 30), StrokeWidth = 1.5f };
+        IKumikoIconProvider[] providers =
+        {
+            KumikoIconProvider.Default,
+            KumikoFontIconProvider.CreateMaterialIcons(),
+            new KumikoFontIconProvider("Partial").SetGlyph(KumikoIcon.Check, 0xE5CA), // the rest falls back
+        };
+
+        foreach (var provider in providers)
+        {
+            Assert.Equal(0, MeasureSteadyState(ctx =>
+            {
+                for (int i = 0; i < icons.Length; i++)
+                    provider.DrawIcon(ctx, icons[i], new KumikoRect(i * 20, 4, 16, 16), paint);
+            }));
+        }
+    }
+
+    [Fact]
     public void SteadyState_ScrollingBackAndForthOverCachedRows_AllocatesNothing()
     {
         var grid = CreateGrid(featured: false);

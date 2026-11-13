@@ -566,7 +566,7 @@ public class KumikoRendererTests
     }
 
     [Fact]
-    public void FilterIcon_ActiveFilter_UsesTheActiveColourAndAFilledDot()
+    public void FilterIcon_ActiveFilter_IsASolidFunnelInTheActiveColour()
     {
         var h = Create();
         var city = h.Column("City");
@@ -574,11 +574,14 @@ public class KumikoRendererTests
 
         var ctx = h.Render();
 
-        Assert.Single(ctx.Polylines, l => l.Color == h.Style.FilterActiveIconColor);
+        // The active funnel is filled (#119), not an outline with a dot
+        var funnel = Assert.Single(ctx.Polygons, p => p.Color == h.Style.FilterActiveIconColor);
+        Assert.Equal(6, funnel.Points!.Length);
+        Assert.Equal(10, funnel.Rect.Width, 3);
+        Assert.True(funnel.Rect.Left >= 250 && funnel.Rect.Right <= 400);
+        Assert.DoesNotContain(ctx.Polylines, l => l.Color == h.Style.FilterActiveIconColor);
         Assert.DoesNotContain(ctx.Lines, l => l.Color == h.Style.FilterActiveIconColor);
-        var dot = Assert.Single(ctx.Fills, f => f.Color == h.Style.FilterActiveIconColor);
-        Assert.Equal(5, dot.Rect.Width);
-        Assert.True(dot.Rect.Left >= 250 && dot.Rect.Right <= 400);
+        Assert.DoesNotContain(ctx.Fills, f => f.Color == h.Style.FilterActiveIconColor);
     }
 
     private sealed class CapturingCellRenderer : ICellRenderer
