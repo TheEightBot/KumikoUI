@@ -479,6 +479,8 @@ Columns are matched by name: `KumikoColumn.Key` when you set it, otherwise `Prop
 <core:KumikoColumn Header="Total" PropertyName="Total" FreezeMode="Right" />
 ```
 
+On a narrow screen the frozen columns can take too much of the width. When the columns do not all fit and the frozen ones together are wider than `KumikoStyle.MaxFrozenColumnsWidthRatio` of the grid (two thirds by default, less the row drag handle), the grid unpins columns until they fit: right-frozen columns first, starting with the one next to the scrolling columns, then left-frozen columns from the rightmost. An unpinned column scrolls with the others in the same on-screen order and is pinned again when the grid is wide enough; its `FreezeMode` does not change. So the two panes never overlap and every column can be scrolled to, tapped and reached with the keyboard.
+
 Pin the first rows so they stay visible while the rest scroll:
 
 ```xml
@@ -1218,6 +1220,7 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | `RightFrozenColumnDividerColor` | `KumikoColor` | 180, 180, 180 | Divider between scrolling and right-frozen columns |
 | `RightFrozenColumnDividerWidth` | `float` | 2 | Width of that divider |
 | `RightFrozenColumnBackgroundColor` | `KumikoColor` | 250, 250, 250 | Background of right-frozen cells |
+| `MaxFrozenColumnsWidthRatio` | `float` | 0.667 (two thirds) | Largest share of the width the frozen columns keep when the grid scrolls; beyond it columns are unpinned (see [Frozen columns and rows](#frozen-columns-and-rows)) |
 | `FrozenRowDividerColor` | `KumikoColor` | 180, 180, 180 | Divider below frozen rows |
 | `FrozenRowDividerWidth` | `float` | 2 | Width of that divider |
 | `FrozenRowBackgroundColor` | `KumikoColor` | 250, 250, 250 | Background of frozen rows |

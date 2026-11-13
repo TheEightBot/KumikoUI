@@ -212,6 +212,8 @@ public class KumikoRenderer : IDisposable
             scroll, style, dataSource.RowCount, topSummaryHeight, frozenRowCount);
 
         _layout.ComputeColumnWidths(columns, effectiveViewportWidth, ctx, style, dataSource, firstRow, lastRow);
+        // Frozen panes that do not fit the viewport give columns back to the scrolling pane (#268).
+        FrozenPanes.Resolve(columns, style, scroll.ViewportWidth);
         scroll.ContentWidth = _layout.GetContentWidth(columns) + handleOffset + rightHandleWidth;
         scroll.ContentHeight = _layout.GetContentHeight(dataSource.RowCount, style)
             + groupPanelOffset + topSummaryHeight + bottomSummaryHeight;
@@ -509,9 +511,9 @@ public class KumikoRenderer : IDisposable
         var match = Find(_frozenCols, cell.Column) ?? Find(_scrollableCols, cell.Column) ?? Find(_rightFrozenCols, cell.Column);
         if (match is not { } found) return null;
 
-        float x = ColumnScreenX(found.X, scroll, found.Column.FreezeMode);
+        float x = ColumnScreenX(found.X, scroll, found.Column.Pane);
         float width = found.Column.Width;
-        if (found.Column.FreezeMode == ColumnFreezeMode.None && (x + width <= scrollPaneLeft || x >= scrollPaneRight))
+        if (found.Column.Pane == ColumnFreezeMode.None && (x + width <= scrollPaneLeft || x >= scrollPaneRight))
             return null;
 
         float y;
@@ -666,7 +668,7 @@ public class KumikoRenderer : IDisposable
 
         foreach (var (col, colX, _) in visibleCols)
         {
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
 
             // Per-column header style overrides
             var hStyle = col.HeaderCellStyle;
@@ -826,7 +828,7 @@ public class KumikoRenderer : IDisposable
     {
         foreach (var (col, colX, origIdx) in visibleCols)
         {
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
 
             // The column's style with the resolvers' overrides, never written into either
             var colCellStyle = ResolveCellStyle(style, col, dataItem, dynamicRowStyle);
@@ -1091,7 +1093,7 @@ public class KumikoRenderer : IDisposable
 
             foreach (var (col, colX, _) in visibleCols)
             {
-                float screenX = ColumnScreenX(colX, scroll, col.FreezeMode) + col.Width;
+                float screenX = ColumnScreenX(colX, scroll, col.Pane) + col.Width;
                 ctx.DrawLine(screenX, 0, screenX, maxY, linePaint);
             }
         }
@@ -1140,7 +1142,7 @@ public class KumikoRenderer : IDisposable
         {
             if (origIdx == targetOrigIdx)
             {
-                float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+                float screenX = ColumnScreenX(colX, scroll, col.Pane);
                 float rowY;
                 if (row < frozenRowCount)
                 {
@@ -1188,7 +1190,7 @@ public class KumikoRenderer : IDisposable
         {
             if (col.SortDirection == KumikoSortDirection.None) continue;
 
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
             float arrowX = screenX + col.Width - style.CellPadding - 8;
             float arrowCenterY = style.HeaderHeight / 2;
 
@@ -1232,7 +1234,7 @@ public class KumikoRenderer : IDisposable
         {
             if (!AllowFiltering || !col.AllowFiltering) continue;
 
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
             bool hasActiveFilter = col.ActiveFilter != null && col.ActiveFilter.IsActive;
 
             // Position filter icon: right of header text, left of the sort arrow when one is drawn
@@ -1458,7 +1460,7 @@ public class KumikoRenderer : IDisposable
             if (!summary.Values.TryGetValue(col.PropertyName, out var displayText)) continue;
 
             // Use correct screen X depending on whether column is frozen
-            float screenX = ColumnScreenX(colX, scroll, col.FreezeMode);
+            float screenX = ColumnScreenX(colX, scroll, col.Pane);
             float usableWidth = col.Width - style.CellPadding * 2;
 
             // If the column is too narrow for the label+value, overflow it
