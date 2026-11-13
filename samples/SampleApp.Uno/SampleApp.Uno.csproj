@@ -85,13 +85,22 @@
   </ItemGroup>
 
   <!--
-    Demo fonts (copied from samples/SampleApp.Maui/Resources/Raw). Marked as Content so they are
-    packaged into the app and resolvable via the ms-appx:///Assets/Fonts/<file>.ttf scheme used by
-    KumikoFonts.RegisterFromAppPackageAsync in App.OnLaunched. KumikoUI.Uno itself ships no fonts —
+    Demo fonts, shared with SampleApp.Maui from samples/Shared/Fonts (license texts live there too). Marked as
+    Content so they are packaged into the app and resolvable via the ms-appx:///Assets/Fonts/<file>.ttf scheme used
+    by KumikoFonts.RegisterFromAppPackageAsync in App.OnLaunched. KumikoUI.Uno itself ships no fonts —
     the consuming app supplies and registers them (see docs/uno/05-fonts-and-assets.md §4).
   -->
   <ItemGroup>
-    <Content Include="Assets/Fonts/*.ttf" />
+    <Content Include="../Shared/Fonts/NotoSansJP-Regular.ttf;../Shared/Fonts/MaterialIcons-Regular.ttf"
+             Link="Assets/Fonts/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!--
+    Avatars for the Images page, shared with SampleApp.Maui from samples/Shared/Images. Packaged as
+    ms-appx:///Assets/Avatars/avatar-N.png.
+  -->
+  <ItemGroup>
+    <Content Include="../Shared/Images/avatar-*.png" Link="Assets/Avatars/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!--
@@ -104,6 +113,11 @@
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false"
                       UndefineProperties="TargetFramework;TargetFrameworks" />
+  </ItemGroup>
+
+  <!-- Code shared with SampleApp.Maui, so both samples draw the same grid (the Grouping page's style). -->
+  <ItemGroup>
+    <Compile Include="../Shared/GroupingTheme.cs" Link="Shared/GroupingTheme.cs" />
   </ItemGroup>
 
   <!--

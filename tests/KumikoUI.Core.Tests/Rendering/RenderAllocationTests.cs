@@ -81,6 +81,38 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_GridUsingEveryPerFrameFeature_WithAFontIconProvider_AllocatesNothing()
+    {
+        // Every glyph of the featured grid drawn as an icon font glyph (#119): the glyph strings are built once.
+        var grid = CreateGrid(featured: true);
+        grid.Style.IconProvider = KumikoFontIconProvider.CreateMaterialIcons();
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
+    public void TheBuiltInAndTheFontIconProviders_DrawEveryIcon_WithoutAllocating()
+    {
+        var icons = Enum.GetValues<KumikoIcon>();
+        var paint = new KumikoPaint { Color = new KumikoColor(10, 20, 30), StrokeWidth = 1.5f };
+        IKumikoIconProvider[] providers =
+        {
+            KumikoIconProvider.Default,
+            KumikoFontIconProvider.CreateMaterialIcons(),
+            new KumikoFontIconProvider("Partial").SetGlyph(KumikoIcon.Check, 0xE5CA), // the rest falls back
+        };
+
+        foreach (var provider in providers)
+        {
+            Assert.Equal(0, MeasureSteadyState(ctx =>
+            {
+                for (int i = 0; i < icons.Length; i++)
+                    provider.DrawIcon(ctx, icons[i], new KumikoRect(i * 20f, 4, 16, 16), paint);
+            }));
+        }
+    }
+
+    [Fact]
     public void SteadyState_ScrollingBackAndForthOverCachedRows_AllocatesNothing()
     {
         var grid = CreateGrid(featured: false);
@@ -146,6 +178,36 @@ public class RenderAllocationTests
         Assert.Equal(0, MeasureSteadyState(grid.Render));
         Assert.All(grid.Source.Columns, c => Assert.False(c.HasExplicitWidth));
         Assert.True(grid.Source.Columns[0].Width >= grid.Source.Columns[0].HeaderFitWidth);
+    }
+
+    [Fact]
+    public async Task SteadyState_ImageColumnsWithCachedImages_AllocateNothing()
+    {
+        // Image cells resolve their values through the grid's image cache (#63): once the images are decoded, a
+        // cache hit (a URL string, a Uri, a byte array) allocates nothing.
+        var grid = CreateGrid(featured: false);
+        string[] urls = Enumerable.Range(0, 5).Select(i => TestImages.DataUri(8, 8, (byte)(i * 40))).ToArray();
+        Uri[] uris = Enumerable.Range(0, 5).Select(i => new Uri(TestImages.DataUri(8, 8, (byte)(i * 40 + 1)))).ToArray();
+        byte[][] bytes = Enumerable.Range(0, 5).Select(i => TestImages.Png(8, 8, (byte)(i * 40 + 2))).ToArray();
+        var columns = grid.Source.Columns;
+        columns[7].ColumnType = KumikoColumnType.Image;
+        columns[7].ValueAccessor = item => urls[((Row)item).Quantity % 5];
+        columns[8].ColumnType = KumikoColumnType.Image;
+        columns[8].ValueAccessor = item => uris[((Row)item).Quantity % 5];
+        columns[9].ColumnType = KumikoColumnType.Image;
+        columns[9].ValueAccessor = item => bytes[((Row)item).Quantity % 5];
+        grid.Source.Refresh();
+        using var cache = new KumikoUI.SkiaSharp.KumikoImageCache();
+        grid.Renderer.ImageResolver = cache;
+
+        grid.Render(new NoOpDrawingContext());
+        await cache.WhenIdleAsync();
+        int drawn = 0;
+        grid.Render(new NoOpDrawingContext { ImageDrawn = _ => drawn++ });
+
+        Assert.Equal(15, cache.Count);
+        Assert.True(drawn >= 3 * VisibleRows, $"every visible image cell draws its image ({drawn})");
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
     }
 
     [Fact]

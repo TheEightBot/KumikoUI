@@ -44,7 +44,6 @@
                              HeaderHeight="40"
                              ShowHorizontalGridLines="True"
                              ShowVerticalGridLines="False"
-                             AlternateRowBackground="#FFEEF4FF"
                              GridDescription="Grouped employee data grid"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch">

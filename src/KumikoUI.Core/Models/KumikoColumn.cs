@@ -1,4 +1,6 @@
 using System.Collections;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Rendering;
@@ -8,13 +10,44 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Platform-independent column definition.
 /// </summary>
-public class KumikoColumn
+/// <remarks>
+/// A column has two kinds of properties. <b>Configuration</b> (<see cref="Header"/>, <see cref="IsVisible"/>,
+/// <see cref="Width"/>, <see cref="MinWidth"/>, <see cref="MaxWidth"/>, <see cref="SizeMode"/>, <see cref="Format"/>,
+/// <see cref="IsReadOnly"/>, <see cref="FreezeMode"/>, alignment, styles and the like) is yours to set at any time,
+/// and the grid repaints and lays out again by itself: the column raises <see cref="PropertyChanged"/> and the
+/// <see cref="KumikoSource"/> that holds it requests a redraw. <b>Runtime state</b> (<see cref="SortDirection"/>,
+/// <see cref="SortOrder"/>, <see cref="ActiveFilter"/>, <see cref="HeaderFitWidth"/>, <see cref="ContentFitWidth"/>)
+/// is owned by the grid: it has no public setter and is changed through <see cref="KumikoSource.SetSort"/> and
+/// <see cref="KumikoSource.SetColumnFilter"/>. The editor settings (<c>Editor*</c> properties and editor factories)
+/// are read when an editor opens and raise no notification.
+/// </remarks>
+public class KumikoColumn : INotifyPropertyChanged
 {
-    /// <summary>Unique identifier.</summary>
-    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    /// <summary>
+    /// Raised after a configuration property changed; <see cref="PropertyChangedEventArgs.PropertyName"/> names it.
+    /// Runtime state, such as <see cref="SortDirection"/>, and the width layout computes for a Star or Auto
+    /// column do not raise it.
+    /// </summary>
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void RaisePropertyChanged(string propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+        field = value;
+        RaisePropertyChanged(propertyName!);
+        return true;
+    }
 
     /// <summary>Display header text.</summary>
-    public string Header { get; set; } = string.Empty;
+    public string Header
+    {
+        get => _header;
+        set => SetField(ref _header, value);
+    }
+    private string _header = string.Empty;
 
     /// <summary>
     /// Property path on the data item (supports nested: "Address.City"; empty means the item itself).
@@ -22,21 +55,36 @@ public class KumikoColumn
     /// <see cref="Data.KumikoGridItemAttribute"/>, registered providers, then reflection where it is
     /// supported. <see cref="ValueAccessor"/> and <see cref="ValueSetter"/> take precedence.
     /// </summary>
-    public string PropertyName { get; set; } = string.Empty;
+    public string PropertyName
+    {
+        get => _propertyName;
+        set => SetField(ref _propertyName, value);
+    }
+    private string _propertyName = string.Empty;
 
     /// <summary>
     /// Reads the cell value from a row item. When set, it is used instead of <see cref="PropertyName"/>
     /// for display, sorting, grouping, filtering and summaries. Reflection-free, so it works under
     /// Native AOT and full trimming.
     /// </summary>
-    public Func<object, object?>? ValueAccessor { get; set; }
+    public Func<object, object?>? ValueAccessor
+    {
+        get => _valueAccessor;
+        set => SetField(ref _valueAccessor, value);
+    }
+    private Func<object, object?>? _valueAccessor;
 
     /// <summary>
     /// Writes an edited value back to a row item. When set, it is used instead of
     /// <see cref="PropertyName"/>; the editor's value is passed as is, without conversion.
     /// Reflection-free, so it works under Native AOT and full trimming.
     /// </summary>
-    public Action<object, object?>? ValueSetter { get; set; }
+    public Action<object, object?>? ValueSetter
+    {
+        get => _valueSetter;
+        set => SetField(ref _valueSetter, value);
+    }
+    private Action<object, object?>? _valueSetter;
 
     // The path resolved for the last item type seen, so a cell read costs no registry lookup.
     private Data.KumikoValuePath? _resolvedPath;
@@ -54,7 +102,12 @@ public class KumikoColumn
     }
 
     /// <summary>Type of column for rendering dispatch.</summary>
-    public KumikoColumnType ColumnType { get; set; } = KumikoColumnType.Text;
+    public KumikoColumnType ColumnType
+    {
+        get => _columnType;
+        set => SetField(ref _columnType, value);
+    }
+    private KumikoColumnType _columnType = KumikoColumnType.Text;
 
     /// <summary>The width a column starts with when <see cref="Width"/> is never set: 120 pixels.</summary>
     public const float DefaultWidth = 120f;
@@ -77,8 +130,10 @@ public class KumikoColumn
         get => _width;
         set
         {
-            _width = value;
+            bool wasExplicit = HasExplicitWidth;
             HasExplicitWidth = true;
+            if (!SetField(ref _width, value) && !wasExplicit)
+                RaisePropertyChanged(nameof(Width)); // the explicit flag changed the header-fit minimum
         }
     }
     private float _width = DefaultWidth;
@@ -135,27 +190,52 @@ public class KumikoColumn
     }
 
     /// <summary>Minimum allowed width.</summary>
-    public float MinWidth { get; set; } = 40f;
+    public float MinWidth
+    {
+        get => _minWidth;
+        set => SetField(ref _minWidth, value);
+    }
+    private float _minWidth = 40f;
 
     /// <summary>Maximum allowed width.</summary>
-    public float MaxWidth { get; set; } = float.MaxValue;
+    public float MaxWidth
+    {
+        get => _maxWidth;
+        set => SetField(ref _maxWidth, value);
+    }
+    private float _maxWidth = float.MaxValue;
 
     /// <summary>
     /// Sizing mode for layout calculation. Dragging the resize grip of a <see cref="ColumnSizeMode.Star"/> or
     /// <see cref="ColumnSizeMode.Auto"/> column, or auto-fitting it, switches it to <see cref="ColumnSizeMode.Fixed"/>
     /// at the chosen width, so the width persists instead of being shared out or measured again on the next frame.
     /// </summary>
-    public ColumnSizeMode SizeMode { get; set; } = ColumnSizeMode.Fixed;
+    public ColumnSizeMode SizeMode
+    {
+        get => _sizeMode;
+        set => SetField(ref _sizeMode, value);
+    }
+    private ColumnSizeMode _sizeMode = ColumnSizeMode.Fixed;
 
     /// <summary>
     /// Star weight when SizeMode == Star: the column's share of the width Fixed and Auto columns leave, relative to
     /// the other Star columns' weights. A resize drag or an auto-fit does not change it; it switches the column to
     /// <see cref="ColumnSizeMode.Fixed"/> instead (see <see cref="SizeMode"/>).
     /// </summary>
-    public float StarWeight { get; set; } = 1f;
+    public float StarWeight
+    {
+        get => _starWeight;
+        set => SetField(ref _starWeight, value);
+    }
+    private float _starWeight = 1f;
 
     /// <summary>Is the column visible?</summary>
-    public bool IsVisible { get; set; } = true;
+    public bool IsVisible
+    {
+        get => _isVisible;
+        set => SetField(ref _isVisible, value);
+    }
+    private bool _isVisible = true;
 
     /// <summary>
     /// Whether a <see cref="KumikoColumnType.Boolean"/> column has three states. When true, a toggle (tap, Space,
@@ -163,28 +243,58 @@ public class KumikoColumn
     /// value is drawn as a filled dash; the column's property must be a <c>bool?</c> to hold the indeterminate
     /// state. When false (the default) a toggle flips between unchecked and checked, and null is drawn unchecked.
     /// </summary>
-    public bool IsThreeState { get; set; }
+    public bool IsThreeState
+    {
+        get => _isThreeState;
+        set => SetField(ref _isThreeState, value);
+    }
+    private bool _isThreeState;
 
     /// <summary>The value at the empty end of a <see cref="KumikoColumnType.ProgressBar"/> column's bar. Default: 0.</summary>
-    public double ProgressMinimum { get; set; }
+    public double ProgressMinimum
+    {
+        get => _progressMinimum;
+        set => SetField(ref _progressMinimum, value);
+    }
+    private double _progressMinimum;
 
     /// <summary>The value at the full end of a <see cref="KumikoColumnType.ProgressBar"/> column's bar. Default: 100.</summary>
-    public double ProgressMaximum { get; set; } = 100;
+    public double ProgressMaximum
+    {
+        get => _progressMaximum;
+        set => SetField(ref _progressMaximum, value);
+    }
+    private double _progressMaximum = 100;
 
     /// <summary>
     /// Whether a <see cref="KumikoColumnType.ProgressBar"/> column draws its value as text over the bar,
     /// formatted with <see cref="Format"/> ("N0" when that is not set). Default: true.
     /// </summary>
-    public bool ProgressShowText { get; set; } = true;
+    public bool ProgressShowText
+    {
+        get => _progressShowText;
+        set => SetField(ref _progressShowText, value);
+    }
+    private bool _progressShowText = true;
 
     /// <summary>
     /// The fill color of a <see cref="KumikoColumnType.ProgressBar"/> column's bar, or null (the default) for the
     /// style's <see cref="KumikoStyle.AccentColor"/>.
     /// </summary>
-    public KumikoColor? ProgressFillColor { get; set; }
+    public KumikoColor? ProgressFillColor
+    {
+        get => _progressFillColor;
+        set => SetField(ref _progressFillColor, value);
+    }
+    private KumikoColor? _progressFillColor;
 
     /// <summary>Is the column read-only?</summary>
-    public bool IsReadOnly { get; set; }
+    public bool IsReadOnly
+    {
+        get => _isReadOnly;
+        set => SetField(ref _isReadOnly, value);
+    }
+    private bool _isReadOnly;
 
     /// <summary>
     /// When true (the default), Tab and Shift+Tab stop on this column's cells, whether or not a cell is being
@@ -192,7 +302,12 @@ public class KumikoColumn
     /// Boolean (Space toggles it) and action-button columns. When false, Tab skips the column. Read-only and
     /// hidden columns are always skipped.
     /// </summary>
-    public bool AllowTabStop { get; set; } = true;
+    public bool AllowTabStop
+    {
+        get => _allowTabStop;
+        set => SetField(ref _allowTabStop, value);
+    }
+    private bool _allowTabStop = true;
 
     /// <summary>
     /// Can the user sort this column (header taps)? By default, true unless the column has nothing meaningful
@@ -204,18 +319,38 @@ public class KumikoColumn
     {
         get => _allowSorting ?? (ColumnType is not (KumikoColumnType.Template or KumikoColumnType.Image)
                                  && (!string.IsNullOrEmpty(PropertyName) || ValueAccessor != null));
-        set => _allowSorting = value;
+        set
+        {
+            if (_allowSorting == value) return;
+            _allowSorting = value;
+            RaisePropertyChanged(nameof(AllowSorting));
+        }
     }
     private bool? _allowSorting;
 
     /// <summary>Can this column be resized?</summary>
-    public bool AllowResize { get; set; } = true;
+    public bool AllowResize
+    {
+        get => _allowResize;
+        set => SetField(ref _allowResize, value);
+    }
+    private bool _allowResize = true;
 
     /// <summary>Can this column be reordered via drag?</summary>
-    public bool AllowReorder { get; set; } = true;
+    public bool AllowReorder
+    {
+        get => _allowReorder;
+        set => SetField(ref _allowReorder, value);
+    }
+    private bool _allowReorder = true;
 
     /// <summary>Can this column be filtered?</summary>
-    public bool AllowFiltering { get; set; } = true;
+    public bool AllowFiltering
+    {
+        get => _allowFiltering;
+        set => SetField(ref _allowFiltering, value);
+    }
+    private bool _allowFiltering = true;
 
     /// <summary>
     /// Active filter for this column. Null means no filter. Set it with
@@ -247,7 +382,27 @@ public class KumikoColumn
     /// <summary>
     /// Controls how the column is frozen (pinned). None = scrollable, Left = pinned left, Right = pinned right.
     /// </summary>
-    public ColumnFreezeMode FreezeMode { get; set; } = ColumnFreezeMode.None;
+    public ColumnFreezeMode FreezeMode
+    {
+        get => _freezeMode;
+        set => SetField(ref _freezeMode, value);
+    }
+    private ColumnFreezeMode _freezeMode = ColumnFreezeMode.None;
+
+    /// <summary>
+    /// The <see cref="FreezeMode"/> the layout last suspended because the frozen panes did not fit the viewport
+    /// (#268, see <see cref="Layout.FrozenPanes"/>), or <see cref="ColumnFreezeMode.None"/>. It only suspends the
+    /// value it was set for: change <see cref="FreezeMode"/> and the column is pinned again until the next layout
+    /// pass decides otherwise.
+    /// </summary>
+    internal ColumnFreezeMode SuspendedFreezeMode;
+
+    /// <summary>
+    /// The pane the column is drawn in: its <see cref="FreezeMode"/>, or <see cref="ColumnFreezeMode.None"/> (the
+    /// scrolling pane) while the layout has suspended that freeze mode because the frozen panes did not fit.
+    /// </summary>
+    internal ColumnFreezeMode Pane =>
+        FreezeMode != ColumnFreezeMode.None && FreezeMode == SuspendedFreezeMode ? ColumnFreezeMode.None : FreezeMode;
 
     /// <summary>
     /// The direction of the first header tap, or null (the default) for the column type's default: a
@@ -257,7 +412,12 @@ public class KumikoColumn
     /// opposite direction and then remove the sort. <see cref="KumikoSortDirection.None"/> is the same as null.
     /// The filter popup's first sort row follows it.
     /// </summary>
-    public KumikoSortDirection? InitialSortDirection { get; set; }
+    public KumikoSortDirection? InitialSortDirection
+    {
+        get => _initialSortDirection;
+        set => SetField(ref _initialSortDirection, value);
+    }
+    private KumikoSortDirection? _initialSortDirection;
 
     /// <summary>
     /// The direction of the first header tap: <see cref="InitialSortDirection"/>, or the column type's default.
@@ -273,6 +433,17 @@ public class KumikoColumn
     internal static KumikoSortDirection Opposite(KumikoSortDirection direction) =>
         direction == KumikoSortDirection.Ascending ? KumikoSortDirection.Descending : KumikoSortDirection.Ascending;
 
+    /// <summary>
+    /// The stable name that identifies this column in a saved layout (<see cref="KumikoLayoutState"/>), or null (the
+    /// default) to use <see cref="PropertyName"/>. Set it for a column without a property name, such as a template
+    /// column, for two columns bound to the same property, and to keep a saved layout working after renaming the
+    /// property. A column with neither is left out of saved layouts.
+    /// </summary>
+    public string? Key { get; set; }
+
+    /// <summary>The name a saved layout knows this column by: <see cref="Key"/>, else <see cref="PropertyName"/>.</summary>
+    internal string LayoutKey => string.IsNullOrEmpty(Key) ? PropertyName : Key;
+
     /// <summary>Current sort direction. Set it with <see cref="KumikoSource.SetSort"/>.</summary>
     public KumikoSortDirection SortDirection { get; internal set; } = KumikoSortDirection.None;
 
@@ -286,13 +457,28 @@ public class KumikoColumn
     /// Optional custom comparer for sorting this column.
     /// When set, this is used instead of the default Comparer&lt;object&gt;.Default.
     /// </summary>
-    public IComparer? CustomComparer { get; set; }
+    public IComparer? CustomComparer
+    {
+        get => _customComparer;
+        set => SetField(ref _customComparer, value);
+    }
+    private IComparer? _customComparer;
 
     /// <summary>Display format for the cell value (e.g., "C2", "yyyy-MM-dd").</summary>
-    public string? Format { get; set; }
+    public string? Format
+    {
+        get => _format;
+        set => SetField(ref _format, value);
+    }
+    private string? _format;
 
     /// <summary>Horizontal alignment of cell content.</summary>
-    public Rendering.KumikoTextAlignment TextAlignment { get; set; } = Rendering.KumikoTextAlignment.Left;
+    public Rendering.KumikoTextAlignment TextAlignment
+    {
+        get => _textAlignment;
+        set => SetField(ref _textAlignment, value);
+    }
+    private Rendering.KumikoTextAlignment _textAlignment = Rendering.KumikoTextAlignment.Left;
 
     /// <summary>
     /// How the text of this column's cells is laid out when it is wider than the cell. With
@@ -302,7 +488,12 @@ public class KumikoColumn
     /// with an ellipsis when there is more. Rows keep their height (<see cref="KumikoStyle.RowHeight"/>), so
     /// raise it to show more lines. Applies to the built-in text cells (Text, Numeric and Date columns).
     /// </summary>
-    public Rendering.KumikoTextWrap TextWrap { get; set; } = Rendering.KumikoTextWrap.None;
+    public Rendering.KumikoTextWrap TextWrap
+    {
+        get => _textWrap;
+        set => SetField(ref _textWrap, value);
+    }
+    private Rendering.KumikoTextWrap _textWrap = Rendering.KumikoTextWrap.None;
 
     // ── Editor configuration ─────────────────────────────────────
 
@@ -398,7 +589,12 @@ public class KumikoColumn
     /// Use for Template columns that need custom display rendering (e.g., progress bars, sparklines).
     /// Can be set declaratively in XAML.
     /// </summary>
-    public Rendering.ICellRenderer? CustomCellRenderer { get; set; }
+    public Rendering.ICellRenderer? CustomCellRenderer
+    {
+        get => _customCellRenderer;
+        set => SetField(ref _customCellRenderer, value);
+    }
+    private Rendering.ICellRenderer? _customCellRenderer;
 
     // ── Per-column editing behaviour ───────────────────────────────
 
@@ -418,11 +614,21 @@ public class KumikoColumn
     /// Style overrides for data cells in this column.
     /// Null properties fall back to the grid-level <see cref="KumikoStyle"/>.
     /// </summary>
-    public KumikoCellStyle? CellStyle { get; set; }
+    public KumikoCellStyle? CellStyle
+    {
+        get => _cellStyle;
+        set => SetField(ref _cellStyle, value);
+    }
+    private KumikoCellStyle? _cellStyle;
 
     /// <summary>
     /// Style overrides for the header cell of this column.
     /// Null properties fall back to the grid-level <see cref="KumikoStyle"/>.
     /// </summary>
-    public KumikoCellStyle? HeaderCellStyle { get; set; }
+    public KumikoCellStyle? HeaderCellStyle
+    {
+        get => _headerCellStyle;
+        set => SetField(ref _headerCellStyle, value);
+    }
+    private KumikoCellStyle? _headerCellStyle;
 }

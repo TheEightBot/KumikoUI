@@ -252,6 +252,66 @@ public class DrawnTextBoxTests
         Assert.Equal("ab", box.Text);
     }
 
+    // ── Geometry for text-input adapters ──────────────────────────
+
+    [Fact]
+    public void GetTextRangeBounds_RangeAndCaret_FollowTheMeasuredText()
+    {
+        var box = Box("hello");
+        box.Bounds = new KumikoRect(100, 50, 400, 30);
+
+        var range = box.GetTextRangeBounds(new KumikoTextRange(1, 3));
+        var caret = box.GetTextRangeBounds(new KumikoTextRange(5, 0));
+
+        // The recording context's text is 14 px tall (ascent -11, descent 3), centered in the 30 px box.
+        Assert.Equal(new KumikoRect(100 + W, 58, 3 * W, 14), range);
+        Assert.Equal(new KumikoRect(100 + 5 * W, 58, 0, 14), caret);
+    }
+
+    [Fact]
+    public void GetTextRangeBounds_OutOfRangeAndPadding_AreClampedToTheTextArea()
+    {
+        var box = Box("abc", configure: b => b.Padding = 4);
+
+        var range = box.GetTextRangeBounds(new KumikoTextRange(-3, 99));
+
+        Assert.Equal(4, range.X);
+        Assert.Equal(3 * W, range.Width);
+    }
+
+    [Fact]
+    public void GetTextRangeBounds_ScrolledText_StaysInsideTheBox()
+    {
+        var box = Box(new string('x', 100), width: 80); // 800 px of text in an 80 px box, caret at the end
+        box.OnDraw(new RecordingDrawingContext()); // scrolls the caret into view
+
+        var start = box.GetTextRangeBounds(new KumikoTextRange(0, 0));
+        var caret = box.GetTextRangeBounds(new KumikoTextRange(100, 0));
+
+        Assert.Equal(0, start.X); // scrolled out to the left: pinned to the edge
+        Assert.InRange(caret.X, 70, 80);
+    }
+
+    [Fact]
+    public void GetTextRangeBounds_BeforeMeasuring_IsACaretAtTheStartOfTheTextArea()
+    {
+        var box = new DrawnTextBox { Bounds = new KumikoRect(10, 20, 100, 30), Padding = 4, Text = "abc" };
+
+        Assert.Equal(new KumikoRect(14, 20, 0, 30), box.GetTextRangeBounds(new KumikoTextRange(1, 2)));
+    }
+
+    [Fact]
+    public void GetTextIndexAt_IsTheNearestGraphemeBoundary()
+    {
+        // a at 0..8, the thumb with its skin tone (4 code units) at 8..40, b at 40..48
+        var box = Box("a\U0001F44D\U0001F3FDb");
+
+        Assert.Equal(0, box.GetTextIndexAt(-5));
+        Assert.Equal(1, box.GetTextIndexAt(10));
+        Assert.Equal(5, box.GetTextIndexAt(30));
+        Assert.Equal(6, box.GetTextIndexAt(400));
+    }
+
     // ── Undo / redo ───────────────────────────────────────────────
 
     [Fact]

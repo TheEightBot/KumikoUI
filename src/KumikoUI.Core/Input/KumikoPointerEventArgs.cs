@@ -14,7 +14,12 @@ public class KumikoPointerEventArgs
     /// <summary>Action type.</summary>
     public InputAction Action { get; init; }
 
-    /// <summary>Which button.</summary>
+    /// <summary>
+    /// Which button. The controller reads it from the <see cref="InputAction.Pressed"/> event, and the moves, long
+    /// press and release of that press follow it, so a host that reports no button on a release is fine. Only the
+    /// primary button (and a finger) selects, sorts, scrolls, drags and edits; a secondary-button click raises
+    /// <see cref="KumikoInputController.ContextRequested"/> on its release, and a middle-button press does nothing.
+    /// </summary>
     public PointerButton Button { get; init; } = PointerButton.Primary;
 
     /// <summary>Active modifier keys.</summary>

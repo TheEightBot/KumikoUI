@@ -362,8 +362,10 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
 
     /// <inheritdoc />
     /// <remarks>
-    /// Supports <see cref="SKImage"/> and <see cref="SKBitmap"/> as the image object.
-    /// Other types are silently ignored.
+    /// Supports <see cref="SKImage"/> and <see cref="SKBitmap"/> as the image object. Other types draw nothing and
+    /// are reported once per type through <see cref="System.Diagnostics.Trace"/>; resolve other values (URLs, files,
+    /// bytes, host image sources) to an <see cref="SKImage"/> first with a <see cref="KumikoImageCache"/>, as both
+    /// hosts do for image cells.
     /// </remarks>
     public void DrawImage(object image, KumikoRect destRect)
     {
@@ -377,6 +379,24 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         {
             _canvas.DrawBitmap(skBitmap, ToSKRect(destRect), SKSamplingOptions.Default, null);
         }
+        else if (image is not null)
+        {
+            ReportUnsupportedImage(image.GetType());
+        }
+    }
+
+    private static readonly HashSet<Type> _reportedImageTypes = new();
+
+    /// <summary>Logs each image type <see cref="DrawImage"/> cannot draw once per process.</summary>
+    private static void ReportUnsupportedImage(Type type)
+    {
+        lock (_reportedImageTypes)
+        {
+            if (!_reportedImageTypes.Add(type)) return;
+        }
+        System.Diagnostics.Trace.TraceWarning(
+            $"KumikoUI: DrawImage cannot draw a '{type.FullName}'; only SKImage and SKBitmap are drawn. " +
+            "Resolve other image sources with a KumikoImageCache.");
     }
 
     // ── Conversion helpers ───────────────────────────────────────

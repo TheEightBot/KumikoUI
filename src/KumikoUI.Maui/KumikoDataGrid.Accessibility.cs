@@ -57,7 +57,7 @@ public partial class KumikoDataGrid
 
     private void InitializeAccessibility()
     {
-#if !ANDROID
+#if !(ANDROID || IOS || MACCATALYST)
         // The keyboard proxy is plumbing for the software keyboard; a screen reader must not land on it.
         // (Android's input view is marked unimportant for accessibility itself.)
         AutomationProperties.SetIsInAccessibleTree(_keyboardProxy, false);

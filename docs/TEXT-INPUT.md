@@ -1,6 +1,6 @@
 # Text input: the adapter contract
 
-**Status:** the Core contract shipped with #39. The host adapters that implement it are #40 (iOS and Mac Catalyst), #41 (Android, shipped: see [Android](#android)), #42 (Windows on MAUI) and #43 (Uno). Until each one lands, that host keeps feeding text through its hidden native text box, one character at a time, as `KumikoKeyEventArgs` with `Character` set.
+**Status:** the Core contract shipped with #39. The host adapters that implement it are #40 (iOS and Mac Catalyst, done: `KeyInputResponder` and `AppleTextInputBridge` in KumikoUI.Maui), #41 (Android, done: see [Android](#android)), #42 (Windows on MAUI) and #43 (Uno). Until each of the others lands, that host keeps feeding text through its hidden native text box, one character at a time, as `KumikoKeyEventArgs` with `Character` set.
 
 ## Why
 

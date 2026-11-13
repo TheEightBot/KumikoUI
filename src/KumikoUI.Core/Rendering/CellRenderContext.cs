@@ -39,6 +39,37 @@ public readonly struct CellRenderContext
         PaintCache paints,
         KumikoPaint textPaint,
         KumikoTextAlignment textAlignment)
+        : this(bounds, row, value, displayText, column, style, cellStyle, isSelected, paints, textPaint, textAlignment,
+            imageResolver: null)
+    {
+    }
+
+    /// <summary>Create the context for one cell, with the grid's image resolver.</summary>
+    /// <param name="bounds">The padded rectangle to draw the cell content within.</param>
+    /// <param name="row">The visible row index of the cell.</param>
+    /// <param name="value">The raw cell value.</param>
+    /// <param name="displayText">The cell value formatted with the column's format in the source's culture.</param>
+    /// <param name="column">The column definition.</param>
+    /// <param name="style">The grid style.</param>
+    /// <param name="cellStyle">The cell's effective style overrides, or null.</param>
+    /// <param name="isSelected">Whether the cell's row is selected.</param>
+    /// <param name="paints">The grid's shared paints for <paramref name="style"/>.</param>
+    /// <param name="textPaint">The paint for the cell's text (the style's cell text paint with the cell's overrides).</param>
+    /// <param name="textAlignment">The cell's effective horizontal text alignment.</param>
+    /// <param name="imageResolver">The grid's image resolver, or null when the host has none.</param>
+    public CellRenderContext(
+        KumikoRect bounds,
+        int row,
+        object? value,
+        string displayText,
+        KumikoColumn column,
+        KumikoStyle style,
+        KumikoCellStyle? cellStyle,
+        bool isSelected,
+        PaintCache paints,
+        KumikoPaint textPaint,
+        KumikoTextAlignment textAlignment,
+        IKumikoImageResolver? imageResolver)
     {
         Bounds = bounds;
         Row = row;
@@ -51,6 +82,7 @@ public readonly struct CellRenderContext
         Paints = paints;
         TextPaint = textPaint;
         TextAlignment = textAlignment;
+        ImageResolver = imageResolver;
     }
 
     /// <summary>The padded rectangle to draw the cell content within (the cell minus its horizontal padding).</summary>
@@ -95,4 +127,10 @@ public readonly struct CellRenderContext
 
     /// <summary>The cell's horizontal text alignment: the cell style's, else the column's.</summary>
     public KumikoTextAlignment TextAlignment { get; }
+
+    /// <summary>
+    /// The grid's image resolver (<see cref="KumikoRenderer.ImageResolver"/>), or null when the host has none. A
+    /// renderer that draws images from cell values resolves them through it, as <see cref="ImageCellRenderer"/> does.
+    /// </summary>
+    public IKumikoImageResolver? ImageResolver { get; }
 }

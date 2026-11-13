@@ -306,6 +306,49 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
         return _measureContext.MeasureText(_text.Substring(0, Math.Min(index, _text.Length)), new KumikoPaint { Font = Font }).Width;
     }
 
+    // ── Geometry for text-input adapters ────────────────────────
+
+    /// <summary>
+    /// The area a range of the text occupies, in the coordinates of <see cref="DrawnComponent.Bounds"/>: from the
+    /// left edge of its first character to the right edge of its last, as tall as the line of text. An empty range
+    /// gives the caret's area, with no width. The positions follow the horizontal scroll and stay inside the text
+    /// area. A host's text-input adapter places the input method's candidate window with it (UITextInput
+    /// <c>firstRectForRange:</c> and <c>caretRectForPosition:</c>).
+    /// </summary>
+    /// <param name="range">The range, in UTF-16 code units; clamped to the text.</param>
+    /// <returns>The area of the range; before the box is first measured, a caret at the start of the text area.</returns>
+    public KumikoRect GetTextRangeBounds(KumikoTextRange range)
+    {
+        var b = Bounds;
+        float innerLeft = b.X + Padding;
+        float innerRight = Math.Max(innerLeft, b.Right - Padding);
+        int start = Math.Clamp(range.Start, 0, _text.Length);
+        int end = Math.Clamp(range.End, start, _text.Length);
+        float left = Math.Clamp(innerLeft + XAt(start) - _scrollOffset, innerLeft, innerRight);
+        float right = Math.Clamp(innerLeft + XAt(end) - _scrollOffset, left, innerRight);
+
+        float top = b.Y, height = b.Height;
+        if (_measureContext != null)
+        {
+            _textPaint.Font = Font;
+            float textHeight = _measureContext.GetFontMetrics(_textPaint).TextHeight;
+            if (textHeight > 0 && textHeight < b.Height)
+            {
+                top = b.Y + (b.Height - textHeight) / 2;
+                height = textHeight;
+            }
+        }
+        return new KumikoRect(left, top, right - left, height);
+    }
+
+    /// <summary>
+    /// The text index nearest to an x position in the coordinates of <see cref="DrawnComponent.Bounds"/>, following
+    /// the horizontal scroll. The index is on a grapheme-cluster boundary; 0 before the box is first measured.
+    /// </summary>
+    /// <param name="x">The x position.</param>
+    /// <returns>An index from 0 to the text's length, in UTF-16 code units.</returns>
+    public int GetTextIndexAt(float x) => GetIndexAtX(x);
+
     // ── Drawing ─────────────────────────────────────────────────
 
     /// <inheritdoc />

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.ImagesPage"
+             Title="Images">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+        <Label Text="Image columns: bundled assets, an ImageSource and web URLs over 10,000 rows"
+               FontSize="16"
+               FontAttributes="Bold"
+               Padding="16,12,16,4"
+               Grid.Row="0" />
+
+        <!-- Updated every second from the grid's ImageCache: the count stays bounded however far you scroll. -->
+        <Label x:Name="cacheLabel"
+               FontSize="13"
+               TextColor="Gray"
+               Padding="16,0,16,6"
+               Grid.Row="1" />
+
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="2"
+                           RowHeight="44"
+                           HeaderHeight="40"
+                           EditTriggers="None"
+                           GridDescription="Image columns sample grid"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill">
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="#" PropertyName="Id" Width="80"
+                                   ColumnType="Numeric" TextAlignment="Right" IsFrozen="True" />
+                <core:KumikoColumn Header="Name" PropertyName="Name" Width="160" />
+
+                <!-- A file name of a MauiAsset (samples/Shared/Images, packaged as Avatars/avatar-N.png) -->
+                <core:KumikoColumn Header="Asset" PropertyName="Avatar" Width="70" ColumnType="Image" />
+
+                <!-- An ImageSource (FileImageSource) for the same assets: cached once per file name -->
+                <core:KumikoColumn Header="ImageSource" PropertyName="AvatarSource" Width="100" ColumnType="Image" />
+
+                <!-- Web images downloaded through the grid's shared HttpClient -->
+                <core:KumikoColumn Header="URL" PropertyName="PhotoUrl" Width="70" ColumnType="Image" />
+                <core:KumikoColumn Header="Photo URL" PropertyName="PhotoUrl" Width="320" />
+            </dg:KumikoDataGrid.Columns>
+        </dg:KumikoDataGrid>
+    </Grid>
+
+</ContentPage>
