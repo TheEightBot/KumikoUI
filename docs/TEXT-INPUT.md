@@ -1,6 +1,6 @@
 # Text input: the adapter contract
 
-**Status:** the Core contract shipped with #39. The host adapters that implement it are #40 (iOS and Mac Catalyst), #41 (Android), #42 (Windows on MAUI) and #43 (Uno). Until each one lands, that host keeps feeding text through its hidden native text box, one character at a time, as `KumikoKeyEventArgs` with `Character` set.
+**Status:** the Core contract shipped with #39. The host adapters that implement it are #40 (iOS and Mac Catalyst), #41 (Android), #42 (Windows on MAUI) and #43 (Uno). The Uno adapter has landed (`KumikoUI.Uno.Input.KumikoTextInputAdapter`). Until the others land, the MAUI hosts keep feeding text through their hidden native text box, one character at a time, as `KumikoKeyEventArgs` with `Character` set.
 
 ## Why
 
@@ -83,7 +83,7 @@ Platform mapping:
 | iOS / Mac Catalyst (`UITextInput`) | `setMarkedText:selectedRange:` | `unmarkText`, `insertText:` | `setMarkedText:` with an empty string |
 | Android (`InputConnection`) | `setComposingText` | `finishComposingText`, `commitText` | `setComposingText("")` |
 | Windows (`CoreTextEditContext`) | `TextUpdating` within a `CompositionStarted`/`CompositionCompleted` pair | `CompositionCompleted` | `NotifyFocusLeave` |
-| Uno | composition events of the hidden text box | the composition-completed event | an empty composition |
+| Uno | `TextCompositionStarted`/`TextCompositionChanged` of the hidden text box, which mirrors the editor's text | `TextCompositionEnded` | an empty composition, then `TextCompositionEnded` |
 
 ### State changes
 

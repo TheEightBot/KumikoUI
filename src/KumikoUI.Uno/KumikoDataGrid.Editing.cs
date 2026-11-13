@@ -1,6 +1,8 @@
 using KumikoUI.Core.Input;
 using KumikoUI.Uno.Input;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -8,248 +10,225 @@ using Microsoft.UI.Xaml.Media;
 namespace KumikoUI.Uno;
 
 /// <summary>
-/// Hidden-TextBox soft-keyboard proxy for <see cref="KumikoDataGrid"/>.
+/// Keyboard and text input for <see cref="KumikoDataGrid"/>: a hidden <c>TextBox</c> proxy and the text-input
+/// adapter (<see cref="KumikoTextInputAdapter"/>, <c>docs/TEXT-INPUT.md</c>) between it and Core.
 ///
 /// <para>
-/// <strong>Why this exists:</strong> on iOS and Android, focusing a non-text element (such as this
-/// grid control) does NOT summon the on-screen keyboard, and
-/// <c>CharacterReceived</c>/<c>KeyDown</c> do not fire from on-screen keys. The desktop-only approach
-/// of calling <c>Focus(FocusState.Programmatic)</c> on the grid therefore silently breaks typing on
-/// mobile. MAUI solves this with a hidden <c>Entry</c> that becomes first-responder; we do the same
-/// with a WinUI <c>TextBox</c>.
+/// <strong>Why a TextBox:</strong> on iOS, Android and in the browser, focusing a non-text element such as this
+/// control does not summon the on-screen keyboard, and on WASM/Skia its <c>KeyDown</c> and
+/// <c>CharacterReceived</c> don't fire. A real text box is the one element every head routes the keyboard and the
+/// input method to.
 /// </para>
 ///
-/// <para>
-/// <strong>Design (mirrors MAUI's <c>KumikoDataGrid._keyboardProxy</c> strategy):</strong>
-/// </para>
+/// <para><strong>Design:</strong></para>
 /// <list type="bullet">
-///   <item>A 1×1 <c>TextBox _inputProxy</c> is added to the visual tree with <c>Opacity=0</c> and
-///     <c>Visibility=Visible</c> (collapsed elements cannot focus). It is sized to 1×1 logical pixels
-///     and receives no borders, so it is invisible to the user but reachable by the focus system.</item>
-///   <item>A <em>sentinel</em> character (<c>"​"</c>, zero-width space) is kept in the TextBox at
-///     all times. This gives the TextBox a non-empty cursor position so:
-///     (a) a Backspace press makes the text empty → detected as Backspace, and
-///     (b) a typed character is appended after the sentinel → detected as new input.
-///     After each detected input the proxy is reset to the sentinel via <c>ResetProxy()</c>.</item>
-///   <item>WinUI's <c>TextBox.TextChanged</c> does not expose old/new text (unlike MAUI's
-///     <c>TextChangedEventArgs</c>), so we track the previous value ourselves in
-///     <c>_lastProxyText</c>.</item>
-///   <item><c>_suppressProxyTextChanged</c> prevents the reset itself from triggering another
-///     round-trip.</item>
-///   <item>On edit-begin (<c>OnEditSessionCellBeginEdit</c>): <c>FocusKeyboardInput()</c> resets the
-///     proxy and focuses the TextBox → the iOS/Android soft keyboard appears.</item>
-///   <item>On edit-end (<c>OnEditSessionCellEndEdit</c>): proxy is reset, focus returns to the grid
-///     → soft keyboard dismisses (WinUI has no Unfocus(); focusing another element is the idiom).</item>
-///   <item>On <c>_inputProxy.KeyDown</c> (hardware keyboards): special/navigation keys are mapped and
-///     forwarded, and <c>e.Handled=true</c> is set to prevent the TextBox from consuming Backspace,
-///     arrows, etc. This prevents Backspace from being double-handled (KeyDown handles it;
-///     the TextChanged path fires only for soft keyboards that bypass KeyDown). Keys Core leaves
-///     unhandled are not swallowed: Tab moves focus out of the grid, and Enter/Escape/F2 reach the page
-///     (see <c>InputMapping.GetProxyKeyOutcome</c>).</item>
-///   <item>On <c>_inputProxy.TextChanged</c> (soft keyboards): the sentinel-diff algorithm extracts
-///     any newly typed characters or detects Backspace, forwards to Core, then resets the proxy.</item>
+///   <item>The proxy mirrors the open editor's text and selection (it is empty with none open). Its synchronous
+///     <c>TextChanging</c> event reports each change the keyboard or input method makes; the adapter replays it on
+///     Core's <see cref="ITextInputSession"/> (or, with no editor open, sends typed characters to Core, which can
+///     start an edit), then sets the proxy back to Core's text and selection when they differ.</item>
+///   <item><c>TextCompositionStarted</c>/<c>Changed</c>/<c>Ended</c> carry input-method composition (Japanese,
+///     Chinese, Korean, dead keys) to <see cref="ITextInputSession.SetComposition"/> and
+///     <see cref="ITextInputSession.CommitComposition"/>; the proxy is never reset under a composition.</item>
+///   <item><c>KeyDown</c> sends command keys to Core and marks a key handled only when Core handled it, so the
+///     grid is no keyboard trap: Tab past the last (first) tab stop moves focus out of the grid, and Escape with
+///     nothing to cancel reaches the page.</item>
+///   <item>The proxy is invisible to the user, to pointer hit-testing and to assistive technology, and its focus
+///     never scrolls the page (see <see cref="SetupInputProxy"/>).</item>
 /// </list>
 /// </summary>
 public partial class KumikoDataGrid
 {
-    // ── Sentinel / suppression ───────────────────────────────────
-    // Zero-width space: avoids collision with user-typed spaces and is unlikely to appear in
-    // IME suggestion lists. Mirrors MAUI's KeyboardSentinel.
-    private const string ProxySentinel = "​";
-
     private readonly TextBox _inputProxy = new TextBox
     {
-        // Keep in the visual tree (Visible) so the focus system can reach it and
-        // the soft keyboard appears on focus. Opacity=0 makes it invisible to the user.
+        // Opacity=0 hides the proxy from the eye only: an element with Opacity=0 still takes pointer input and is
+        // still exposed to UI Automation, so it is also not hit-testable (focus is programmatic) and is marked Raw
+        // in SetupInputProxy. It stays Visible, since a collapsed element cannot take focus.
         Visibility = Visibility.Visible,
         Opacity = 0,
         Width = 1,
         Height = 1,
-        // No border / padding so the 1×1 pixel has zero visual footprint.
-        BorderThickness = new Thickness(0),
-        Padding = new Thickness(0),
-        // Disable IME features that would interfere with char-by-char sentinel diffing.
-        IsSpellCheckEnabled = false,
-        IsTextPredictionEnabled = false,
-        // Single-line; Enter/Tab/Backspace are handled in KeyDown before they reach the TextBox.
-        AcceptsReturn = false,
-        // MUST be a tab stop — WinUI/Uno Focus() returns false on a non-tab-stop element, so with
-        // IsTabStop=false the proxy could never become the keyboard sink (the whole keyboard pipeline
-        // silently did nothing). TabIndex is pushed high so it's effectively last in tab order.
-        IsTabStop = true,
-        TabIndex = int.MaxValue,
-        // Text starts at sentinel so the first Backspace is detectable.
-        Text = ProxySentinel,
-        // Opacity=0 hides the proxy from the eye only: it stays hit-testable and visible to UI Automation.
-        // The minimums beat the default style's 64x32 and it is not hit-testable, so it never takes clicks
-        // meant for cells (focus is programmatic). It is marked Raw in SetupInputProxy.
+        // The minimums beat the default style's 64x32, which would otherwise leave an invisible box in the grid.
         MinWidth = 0,
         MinHeight = 0,
         HorizontalAlignment = HorizontalAlignment.Left,
         VerticalAlignment = VerticalAlignment.Top,
         IsHitTestVisible = false,
+        BorderThickness = new Thickness(0),
+        Padding = new Thickness(0),
+        // iOS Safari zooms the page when an input with a font smaller than 16px gains focus (WASM).
+        FontSize = 16,
+        // A grid cell is data: no autocorrect or suggestions rewriting what the user types.
+        IsSpellCheckEnabled = false,
+        IsTextPredictionEnabled = false,
+        AcceptsReturn = false,
+        // Focus() does nothing on an element that is not a tab stop, and Uno's input method only serves text boxes
+        // that are tab stops. Set once here; its TabIndex is left at the default.
+        IsTabStop = true,
     };
 
-    private bool _suppressProxyTextChanged;
-    private string _lastProxyText = ProxySentinel;
+    private readonly KumikoTextInputAdapter _textInput;
 
-    // The command key (Tab or Enter) that OnProxyKeyDown last sent to Core. Some heads still let the
-    // TextBox insert its text form ("\t", "\n") even though KeyDown was marked handled; TextChanged
-    // drops that echo once instead of delivering the key a second time.
-    private KumikoKey _keyHandledOnKeyDown = KumikoKey.None;
+    // Syncs the proxy once the current input event is done: a text box can still move its own caret after
+    // TextChanging returns, which would put the next keystroke in the wrong place.
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueHandler _syncTextInput;
+    private bool _textInputSyncQueued;
 
     // ── Proxy setup / teardown ───────────────────────────────────
 
     /// <summary>
-    /// Adds the proxy TextBox to the grid's private content panel.
-    /// Called once from the KumikoDataGrid constructor (after <c>_canvasView</c> is added).
-    /// Event handlers are subscribed idempotently in <see cref="AttachInputHandlers"/>
-    /// (KumikoDataGrid.Input.cs) and unsubscribed in <see cref="TeardownInputProxy"/> so that
-    /// Uno's navigation-back <c>Loaded</c> re-raise never double-subscribes.
+    /// Adds the proxy TextBox to the grid's private content panel and creates the text-input adapter. Called once
+    /// from the constructor, after the drawing surface is added. Event handlers are subscribed idempotently in
+    /// <see cref="AttachInputProxy"/> (from <c>AttachInputHandlers</c>) and removed in
+    /// <see cref="TeardownInputProxy"/>.
     /// </summary>
-    private void SetupInputProxy()
+    private KumikoTextInputAdapter SetupInputProxy()
     {
-        // Raw keeps Narrator/VoiceOver from announcing an editable text box holding a zero-width space; the
-        // grid itself is exposed through KumikoDataGridAutomationPeer.
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAccessibilityView(
-            _inputProxy, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+        // Raw keeps Narrator/VoiceOver/TalkBack from announcing an empty editable text box; the grid itself is
+        // exposed through KumikoDataGridAutomationPeer.
+        AutomationProperties.SetAccessibilityView(_inputProxy, AccessibilityView.Raw);
         _root.Children.Add(_inputProxy);
-        // Note: handlers are NOT subscribed here; AttachInputHandlers owns subscription
-        // so idempotent re-attach on Loaded works correctly.
+        return new KumikoTextInputAdapter(new TextBoxTextInputProxy(_inputProxy), new GridTextInputTarget(this));
+    }
+
+    /// <summary>Subscribes the proxy's events. Idempotent: Uno raises <c>Loaded</c> again on navigation back.</summary>
+    private void AttachInputProxy()
+    {
+        TeardownInputProxy();
+        _inputProxy.TextChanging += OnProxyTextChanging;
+        _inputProxy.KeyDown += OnProxyKeyDown;
+        _inputProxy.Paste += OnProxyPaste;
+        _inputProxy.BringIntoViewRequested += OnProxyBringIntoViewRequested;
+#pragma warning disable Uno0001 // Flagged on the native-renderer reference assemblies; the Skia runtime every Uno head of this library uses raises them.
+        _inputProxy.TextCompositionStarted += OnProxyTextCompositionStarted;
+        _inputProxy.TextCompositionChanged += OnProxyTextCompositionChanged;
+        _inputProxy.TextCompositionEnded += OnProxyTextCompositionEnded;
+#pragma warning restore Uno0001
     }
 
     /// <summary>
-    /// Detaches proxy events. Called from <c>DetachInputHandlers</c> (OnUnloaded) so the
-    /// delegate does not root the control across navigation.
+    /// Detaches the proxy's events. Called from <c>DetachInputHandlers</c> (<c>OnUnloaded</c>) so no delegate
+    /// roots the control across navigation.
     /// </summary>
     private void TeardownInputProxy()
     {
-        _inputProxy.TextChanged -= OnProxyTextChanged;
+        _inputProxy.TextChanging -= OnProxyTextChanging;
         _inputProxy.KeyDown -= OnProxyKeyDown;
+        _inputProxy.Paste -= OnProxyPaste;
+        _inputProxy.BringIntoViewRequested -= OnProxyBringIntoViewRequested;
+#pragma warning disable Uno0001 // See AttachInputProxy.
+        _inputProxy.TextCompositionStarted -= OnProxyTextCompositionStarted;
+        _inputProxy.TextCompositionChanged -= OnProxyTextCompositionChanged;
+        _inputProxy.TextCompositionEnded -= OnProxyTextCompositionEnded;
+#pragma warning restore Uno0001
+        _textInput.Detach();
     }
 
-    // ── Reset helper ─────────────────────────────────────────────
+    // ── Focus and the soft keyboard ──────────────────────────────
 
     /// <summary>
-    /// Resets the proxy TextBox text to the sentinel without triggering the TextChanged handler.
-    /// Must be called on the UI thread.
-    /// </summary>
-    private void ResetProxy()
-    {
-        _suppressProxyTextChanged = true;
-        _inputProxy.Text = ProxySentinel;
-        _lastProxyText = ProxySentinel;
-        _suppressProxyTextChanged = false;
-    }
-
-    // ── Focus ────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Focuses the hidden TextBox proxy so the soft keyboard appears on iOS/Android,
-    /// and resets the sentinel so subsequent input is detected cleanly.
-    /// On desktop this also works — WinUI routes KeyDown/CharacterReceived to the focused element.
+    /// Mirrors the open editor into the proxy and focuses it, so the soft keyboard appears on iOS/Android and key
+    /// events reach the proxy on every head. Focusing an element that already has focus does not show the soft
+    /// keyboard again, so after a touch edit (which hid it but kept the focus) it is shown explicitly.
     /// </summary>
     private void FocusKeyboardInput()
     {
-        ResetProxy();
+        _textInput.Sync();
+        bool hadFocus = _inputProxy.FocusState != FocusState.Unfocused;
         _inputProxy.Focus(FocusState.Programmatic);
+        if (hadFocus && _lastPointerWasTouch)
+            ShowSoftKeyboard();
     }
 
-    // ── Proxy TextChanged (soft keyboard / IME path) ─────────────
-
-    private void OnProxyTextChanged(object sender, TextChangedEventArgs e)
+    private static void ShowSoftKeyboard()
     {
-        if (_suppressProxyTextChanged) return;
-
-        // Forward input even when NOT editing: a typed character reaches Core's Typing edit trigger,
-        // which starts an edit (type-to-edit). When editing is already in progress the same path
-        // continues the edit. HandleEditChar routes to Core.HandleKey in both cases — Core owns the
-        // "start edit vs. continue edit" decision; we are just the keyboard sink.
-
-        string newText = _inputProxy.Text ?? string.Empty;
-        string oldText = _lastProxyText;
-
-        // No meaningful change (e.g. WinUI raises TextChanged on focus-gain sometimes).
-        if (newText == oldText) return;
-
-        // Programmatic sentinel reset — ignore (double-guard in addition to _suppress flag).
-        if (newText == ProxySentinel) return;
-
-        // ── Backspace: sentinel was deleted, text is now empty ───
-        if (string.IsNullOrEmpty(newText))
+#if HAS_UNO
+        try
         {
-            HandleEditKey(KumikoKey.Backspace);
-            ResetProxy();
-            return;
+#pragma warning disable Uno0001 // See AttachInputProxy.
+            Windows.UI.ViewManagement.InputPane.GetForCurrentView().TryShow();
+#pragma warning restore Uno0001
         }
-
-        // ── Character input: extract newly inserted characters ───
-        // Same content-based diffing as MAUI's OnKeyboardProxyTextChanged (plain append or IME
-        // full replacement), then plan the Core events: typed characters, Tab/Enter from soft
-        // keyboards, minus the echo of a key KeyDown already handled and minus AppKit function-key
-        // characters (e.g. F2 arrives as U+F705 on macOS, which would otherwise start a type-to-edit
-        // that replaces the cell text with an undrawable glyph).
-        string inserted = ProxyTextInput.ExtractInserted(oldText, newText, ProxySentinel);
-        var dispatches = ProxyTextInput.Plan(inserted, _keyHandledOnKeyDown);
-        _keyHandledOnKeyDown = KumikoKey.None;
-
-        foreach (var d in dispatches)
+        catch (Exception ex) when (ex is NotImplementedException or InvalidOperationException)
         {
-            if (d.Key == KumikoKey.Character)
-                HandleEditChar(d.Character!.Value);
-            else
-                HandleEditKey(d.Key);
+            // No input pane on this head.
         }
-
-        ResetProxy();
+#endif
     }
 
-    // ── Proxy KeyDown (hardware keyboard path) ───────────────────
+    private static void HideSoftKeyboard()
+    {
+#if HAS_UNO
+        try
+        {
+            Windows.UI.ViewManagement.InputPane.GetForCurrentView().TryHide();
+        }
+        catch (Exception ex) when (ex is NotImplementedException or InvalidOperationException)
+        {
+            // No input pane on this head.
+        }
+#endif
+    }
+
+    // ── Proxy events ─────────────────────────────────────────────
+
+    private void OnProxyTextChanging(TextBox sender, TextBoxTextChangingEventArgs e)
+    {
+        _textInput.OnProxyTextChanged();
+        QueueTextInputSync();
+    }
+
+    private void OnProxyTextCompositionStarted(TextBox sender, TextCompositionStartedEventArgs e) =>
+        _textInput.OnCompositionStarted(e.StartIndex, e.Length);
+
+    private void OnProxyTextCompositionChanged(TextBox sender, TextCompositionChangedEventArgs e) =>
+        _textInput.OnCompositionChanged(e.StartIndex, e.Length);
+
+    private void OnProxyTextCompositionEnded(TextBox sender, TextCompositionEndedEventArgs e)
+    {
+        _textInput.OnCompositionEnded();
+        QueueTextInputSync();
+    }
+
+    /// <summary>
+    /// Core owns the clipboard (Ctrl/Cmd+V reaches the editor through <c>EditSession.ClipboardPasteRequested</c>):
+    /// a paste Core left alone must not reach the proxy, where it would arrive as typing.
+    /// </summary>
+    private void OnProxyPaste(object sender, TextControlPasteEventArgs e) => e.Handled = true;
+
+    /// <summary>Focusing the proxy must not scroll a page that hosts the grid in a <c>ScrollViewer</c>.</summary>
+    private void OnProxyBringIntoViewRequested(UIElement sender, BringIntoViewRequestedEventArgs e) => e.Handled = true;
+
+    private void QueueTextInputSync()
+    {
+        if (_textInputSyncQueued || DispatcherQueue is not { } queue) return;
+        _textInputSyncQueued = queue.TryEnqueue(_syncTextInput);
+    }
+
+    private void SyncTextInputQueued()
+    {
+        _textInputSyncQueued = false;
+        _textInput.Sync();
+    }
 
     private void OnProxyKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        // Navigation/command keys are forwarded to Core and marked Handled so the TextBox doesn't
-        // also act on them (move its caret, add a newline, delete the sentinel). Printable characters
-        // are handled via TextChanged for correct IME/dead-key ordering — so anything that maps to
-        // KumikoKey.None is left alone.
-        _keyHandledOnKeyDown = KumikoKey.None; // a new keystroke: any earlier Tab/Enter echo is stale
-        var key = InputMapping.ToGridKey(e.Key);
-        if (key == KumikoKey.None) return; // ordinary printable key → flows to TextChanged
+        // Text keys (printable keys, plain letters, Space in an editor, every key during a composition) are left to
+        // the text box; the adapter picks the text up from TextChanging.
+        if (_textInput.OnKeyDown(InputMapping.ToGridKey(e.Key)) is not { } result) return;
 
-        // CRITICAL: a few mapped keys double as TEXT and must reach TextChanged when typed plainly,
-        // otherwise the user literally cannot type them:
-        //   • A/C/V/X/Z/Y map to KumikoKey only as Ctrl/Cmd clipboard & select-all shortcuts.
-        //   • Space is a literal space character while editing.
-        // Only intercept these when they carry their command meaning; otherwise let the TextBox type them.
-        if (key is KumikoKey.A or KumikoKey.C or KumikoKey.V or KumikoKey.X or KumikoKey.Z or KumikoKey.Y)
+        // A key is marked handled only when Core handled it, so the grid is no keyboard trap: an unhandled Tab
+        // (no current cell, or past the last/first tab stop) moves focus out of the grid, and any other unhandled
+        // key (Escape with nothing to cancel, Enter on a read-only cell) reaches the page.
+        switch (result.Outcome)
         {
-            var mods = InputMapping.GetLiveModifiers();
-            if ((mods & (InputModifiers.Control | InputModifiers.Meta)) == 0)
-                return; // plain letter → let TextChanged type it
-        }
-        else if (key == KumikoKey.Space && _editSession.IsEditing)
-        {
-            return; // a typed space inside an edit → let TextChanged type it
-        }
-
-        var evt = HandleEditKey(key);
-        // Keys Core leaves unhandled must not be swallowed here, or the grid becomes a keyboard trap: an
-        // unhandled Tab (no current cell, or past the last/first tab stop) moves focus out of the grid, and an
-        // unhandled Enter/Escape/F2 reaches the page. Caret and text keys stay handled to protect the sentinel.
-        switch (InputMapping.GetProxyKeyOutcome(key, evt.Handled))
-        {
+            case InputMapping.ProxyKeyOutcome.Handled:
+                e.Handled = true;
+                break;
             case InputMapping.ProxyKeyOutcome.MoveFocusOut:
-                MoveFocusOutOfGrid(backwards: evt.HasShift);
-                e.Handled = true;
-                break;
-            case InputMapping.ProxyKeyOutcome.PassToPage:
-                break;
-            default:
+                MoveFocusOutOfGrid(result.Backwards);
                 e.Handled = true;
                 break;
         }
-        // Even when unhandled, a head may still echo the key's text form into the TextBox: drop it once.
-        _keyHandledOnKeyDown = key is KumikoKey.Tab or KumikoKey.Enter ? key : KumikoKey.None;
     }
 
     /// <summary>
@@ -282,38 +261,41 @@ public partial class KumikoDataGrid
         return false;
     }
 
-    // ── Core dispatch helpers ─────────────────────────────────────
+    // ── Adapter plumbing ─────────────────────────────────────────
 
-    /// <summary>Dispatch a character to Core's HandleKey (text entry path).</summary>
-    private void HandleEditChar(char ch)
+    /// <summary>The proxy <c>TextBox</c> as the adapter sees it.</summary>
+    private sealed class TextBoxTextInputProxy(TextBox box) : IKumikoTextInputProxy
     {
-        var evt = new KumikoKeyEventArgs
+        public string Text => box.Text ?? string.Empty;
+
+        public int SelectionStart => box.SelectionStart;
+
+        public int SelectionLength => box.SelectionLength;
+
+        public void SetTextAndSelection(string text, int selectionStart, int selectionLength)
         {
-            Key = KumikoKey.Character, // same contract as MAUI; DrawnFilterPopup's search box requires it
-            Character = ch,
-            Modifiers = InputMapping.GetLiveModifiers(),
-            IsKeyDown = true,
-        };
-        _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
-        if (_editSession.IsAnimating)
-            StartInertialScroll();
+            if (!string.Equals(box.Text, text, StringComparison.Ordinal))
+                box.Text = text;
+            box.Select(selectionStart, selectionLength);
+        }
     }
 
-    /// <summary>
-    /// Dispatch a command key to Core's HandleKey (navigation / action path). Returns the event, whose
-    /// <see cref="KumikoKeyEventArgs.Handled"/> says whether Core used the key.
-    /// </summary>
-    private KumikoKeyEventArgs HandleEditKey(KumikoKey key)
+    /// <summary>The grid's input controller and edit session as the adapter sees them.</summary>
+    private sealed class GridTextInputTarget(KumikoDataGrid grid) : IKumikoTextInputTarget
     {
-        var evt = new KumikoKeyEventArgs
+        public ITextInputSession? ActiveTextInput => grid._inputController.ActiveTextInput;
+
+        public bool IsEditing => grid._editSession.IsEditing;
+
+        // KeyRoutedEventArgs.KeyboardModifiers is [NotImplemented] on the Skia/WASM heads: read the live state.
+        public InputModifiers Modifiers => InputMapping.GetLiveModifiers();
+
+        public bool HandleKey(KumikoKeyEventArgs e)
         {
-            Key = key,
-            Modifiers = InputMapping.GetLiveModifiers(),
-            IsKeyDown = true,
-        };
-        _inputController.HandleKey(evt, _scroll, _selection, _style, _dataSource);
-        if (_editSession.IsAnimating)
-            StartInertialScroll(); // a held arrow key repeats a spin button from the frame loop
-        return evt;
+            grid._inputController.HandleKey(e, grid._scroll, grid._selection, grid._style, grid._dataSource);
+            if (grid._editSession.IsAnimating)
+                grid.StartInertialScroll(); // a held arrow key repeats a spin button from the frame loop
+            return e.Handled;
+        }
     }
 }

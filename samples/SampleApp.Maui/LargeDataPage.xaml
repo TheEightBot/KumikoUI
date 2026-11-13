@@ -23,6 +23,12 @@
                 <CheckBox x:Name="frameStatsCheck" />
                 <Label Text="Frame stats" VerticalOptions="Center" />
             </HorizontalStackLayout>
+            <Picker x:Name="renderModePicker"
+                    Title="Render mode"
+                    SelectedIndexChanged="OnRenderModeChanged"
+                    Margin="8,0,0,4"
+                    VerticalOptions="Center" />
+            <Label x:Name="surfaceLabel" VerticalOptions="Center" Margin="8,0" />
             <Label x:Name="statusLabel" Text="No data loaded" VerticalOptions="Center" Margin="8,0" />
         </FlexLayout>
 

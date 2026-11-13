@@ -38,10 +38,9 @@ public partial class KumikoDataGrid
     private int _pendingClickCount = 1;
 
     // ── Touch-vs-mouse tracking ──
-    // Tracks whether the last pointer press was a touch event. Used in OnPointerPressed and
-    // OnEditSessionCellEndEdit to decide whether to focus the proxy (desktop/pen: always keep the
-    // proxy focused so keyboard navigation continues) or the grid itself (touch: blurs the proxy
-    // and dismisses the soft keyboard when editing ends).
+    // Tracks whether the last pointer press was a touch event. A mouse/pen press focuses the proxy;
+    // a touch press does not (it would summon the soft keyboard on every tap). When a touch edit ends
+    // the proxy keeps the focus and the soft keyboard is hidden explicitly (OnEditSessionCellEndEdit).
     private bool _lastPointerWasTouch;
 
     // ── Pointer identity (UNO-19) ──
@@ -62,18 +61,12 @@ public partial class KumikoDataGrid
     private LongPressTracker LongPress => _longPress ??= new LongPressTracker(new DispatcherLongPressTimer(), OnLongPressFired);
 
     /// <summary>
-    /// Attaches pointer + keyboard handlers and enables focusability. Called from
-    /// <c>OnLoaded</c>. Idempotent — every handler is detached first so a re-load
-    /// (Uno raises Loaded again on navigation back) never double-subscribes.
+    /// Attaches pointer + keyboard handlers. Called from <c>OnLoaded</c>. Idempotent — every
+    /// handler is detached first so a re-load (Uno raises Loaded again on navigation back) never
+    /// double-subscribes. (The control is made a tab stop once, in the constructor.)
     /// </summary>
     private void AttachInputHandlers()
     {
-        // Focusable so KeyDown / CharacterReceived are delivered. IsTabStop / TabIndex / Focus
-        // live on UIElement in WinUI, so they are available on this control. Set here (not just the ctor) so a re-attach after Unloaded restores it.
-        IsTabStop = true;
-        if (TabIndex == int.MaxValue) // WinUI default — only set once, respect any XAML override.
-            TabIndex = 0;
-
         // ── Pointer ──
         PointerPressed -= OnPointerPressed; PointerPressed += OnPointerPressed;
         PointerMoved -= OnPointerMoved; PointerMoved += OnPointerMoved;
@@ -90,15 +83,13 @@ public partial class KumikoDataGrid
 
         // ── Keyboard ──
         // KeyDown is kept on the grid as a harmless fallback for tab-focus navigation. Printable
-        // character input flows ONLY through the proxy's TextChanged — removing CharacterReceived
-        // here avoids double-firing on Windows (where CharacterReceived bubbles up from the focused
+        // character input flows ONLY through the proxy's text changes — no CharacterReceived here,
+        // which would double-fire on Windows (where CharacterReceived bubbles up from the focused
         // proxy to the grid, which would deliver every character twice).
         KeyDown -= OnKeyDown; KeyDown += OnKeyDown;
 
-        // ── Soft-keyboard proxy (see KumikoDataGrid.Editing.cs) ──
-        // Idempotent re-attach: detach first so navigation-back never double-subscribes.
-        _inputProxy.TextChanged -= OnProxyTextChanged; _inputProxy.TextChanged += OnProxyTextChanged;
-        _inputProxy.KeyDown -= OnProxyKeyDown; _inputProxy.KeyDown += OnProxyKeyDown;
+        // ── Text-input proxy and adapter (see KumikoDataGrid.Editing.cs) ──
+        AttachInputProxy();
     }
 
     /// <summary>
@@ -395,7 +386,7 @@ public partial class KumikoDataGrid
         if (ReferenceEquals(e.OriginalSource, _inputProxy)) return;
 
         var key = InputMapping.ToGridKey(e.Key);
-        if (key == KumikoKey.None) return; // printable text comes via the proxy's TextChanged
+        if (key == KumikoKey.None) return; // printable text comes through the proxy's text changes
 
         // KeyRoutedEventArgs.KeyboardModifiers is [NotImplemented] on the Uno Skia/WASM heads (the
         // source generator strips it from the public surface there), so read the live modifier
