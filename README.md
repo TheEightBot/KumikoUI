@@ -1285,15 +1285,51 @@ Each command is executed with the event arguments as its parameter (`SelectionCh
 | Command | Parameter | Executed when |
 |---|---|---|
 | `RowTappedCommand` | `RowTappedEventArgs` | A row was tapped. |
+| `CellTappedCommand` | `KumikoCellTappedEventArgs` | A data cell was tapped (primary button or a finger). |
+| `HeaderTappedCommand` | `KumikoHeaderTappedEventArgs` | A column header was tapped, after it sorted. |
+| `ContextMenuRequestedCommand` | `KumikoContextRequestedEventArgs` | The user asked for a context menu ([Context menus](#context-menus)). |
 | `CellValueChangedCommand` | `CellValueChangedEventArgs` | An edit changed a cell value. |
 | `SortChangedCommand` | `SortColumnsChangedEventArgs` | The sort changed. |
 | `SelectionChangedCommand` | `KumikoSelectionChangedEventArgs` | The selection changed. |
 
 ### Events
 
-`RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled` and `SelectionChanged`. They forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection`, which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
+`RowTapped`, `RowDoubleTapped`, `CellTapped`, `HeaderTapped`, `ContextMenuRequested`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled` and `SelectionChanged`. They forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection`, which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
 
 `DataSource.ViewChanged` reports every change of the view once, with its kind (`Redraw`, `Rebuild`, `Insert`, `Remove`); `MapRow(oldRow)` follows a row from before the change to after it, and `GetViewRow(item)` finds an item's row.
+
+### Context menus
+
+Only the primary mouse button (or a finger) selects, sorts, scrolls, drags and edits. A right click, and a long press with a finger or a pen, raise `ContextMenuRequested` instead (`InputController.ContextRequested` in Core) with what is under the point: `Region` (a cell, a header, a group row, the empty area), `RowIndex`, `ColumnIndex`, `Column`, `DataItem`, the position `X`/`Y` relative to the grid, `IsHeader` and `Trigger` (`SecondaryButton` or `LongPress`). A right click raises it when the button is released and never sorts, drags or edits; a long press raises it unless it starts a row drag (`AllowRowDragDrop` on touch, or the drag handle) or the cell edits on a long press (the `LongPress` edit trigger), and lifting the finger afterwards does not tap. A middle click does nothing.
+
+On a data row the grid updates the selection first, as file managers and spreadsheets do: a row that is not selected becomes the selection, a row that is already selected keeps the whole selection (so a menu can act on every selected row), and the current cell moves to the cell under the point. An open edit on another cell is committed first; a right click inside the open editor, inside a popup, or one that closes a popup raises nothing.
+
+```csharp
+kumiko.ContextMenuRequested += (sender, e) =>
+{
+    if (e.IsHeader)
+        Console.WriteLine($"Column menu for {e.Column?.Header}");
+    else if (e.DataItem is Employee employee)
+        Console.WriteLine($"Row menu for {employee.Name}, {kumiko.Selection.SelectedItems.Count} selected ({e.Trigger})");
+};
+```
+
+On Uno, open a `MenuFlyout` at the pointer:
+
+<!-- snippet: uno -->
+```csharp
+kumiko.ContextMenuRequested += (sender, e) =>
+{
+    var menu = new Microsoft.UI.Xaml.Controls.MenuFlyout();
+    menu.Items.Add(new Microsoft.UI.Xaml.Controls.MenuFlyoutItem { Text = e.IsHeader ? "Clear sort" : "Delete row" });
+    menu.ShowAt(kumiko, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+    {
+        Position = new Windows.Foundation.Point(e.X, e.Y),
+    });
+};
+```
+
+MAUI cannot open a menu at a point, so the sample app shows an action sheet (`DisplayActionSheetAsync`). Right clicks are reported on Windows, Mac Catalyst and iPad (with a mouse or trackpad), and Android (with a mouse); `CellTapped` and `HeaderTapped` report primary taps with the column and the position.
 
 ### Precedence: explicit properties versus style and theme
 

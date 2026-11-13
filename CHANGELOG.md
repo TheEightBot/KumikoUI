@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Context menus and tap events (#100). `KumikoInputController.ContextRequested` (`KumikoContextRequestedEventArgs`: `Trigger`, `Region`, `RowIndex`, `ColumnIndex`, `Column`, `DataItem`, `X`, `Y`, `DeviceType`, `IsHeader`) is raised by a right click, on its release, and by a long press with a finger or a pen that neither starts a row drag nor edits the cell (`KumikoContextTrigger.SecondaryButton`, `LongPress`). On a data row the row under the point is selected first unless it is already selected, so a menu can act on a multi-selection. `CellTapped` (`KumikoCellTappedEventArgs`, with the column, position and click count) and `HeaderTapped` (`KumikoHeaderTappedEventArgs`, raised after the tap sorted) report primary taps. Both hosts re-surface them as `ContextMenuRequested`, `CellTapped` and `HeaderTapped`, with `ContextMenuRequestedCommand`, `CellTappedCommand` and `HeaderTappedCommand`; the MAUI host reports the secondary click on Mac Catalyst and iPad and a mouse's right button on Android. Both sample apps show a context menu. See "Context menus" in the README.
+
+### Changed
+- **Behavior change:** only the primary mouse button (or a finger) selects, sorts, scrolls, drags and edits (#100). A right click no longer sorts a header, toggles a group, starts a column or row drag or resize, toggles a Boolean cell or opens an editor; a middle click does nothing and is left to the page. A touch or pen long press that used to only move the current cell now selects the row and raises `ContextRequested`, and lifting the finger afterwards does not tap. A mouse held down is unchanged.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added
