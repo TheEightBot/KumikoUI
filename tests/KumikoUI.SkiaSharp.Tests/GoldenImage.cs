@@ -44,7 +44,7 @@ internal static class GoldenImage
     /// <summary>Compares <paramref name="actual"/> with the golden <paramref name="name"/>.png and returns the share of differing blocks.</summary>
     public static double AssertMatches(string name, SKBitmap actual)
     {
-        string outputPath = Path.Combine(AppContext.BaseDirectory, "Goldens", name + ".png");
+        string outputPath = Path.Join(AppContext.BaseDirectory, "Goldens", name + ".png");
         if (Environment.GetEnvironmentVariable(UpdateVariable) is { Length: > 0 } flag && flag != "0")
         {
             string target = SourcePath(name) ?? outputPath;
@@ -62,15 +62,15 @@ internal static class GoldenImage
         int different = CountDifferingBlocks(golden, actual, out SKBitmap diff);
         using (diff)
         {
-            double fraction = (double)different / (diff.Width * diff.Height);
+            double fraction = (double)different / ((double)diff.Width * diff.Height);
             if (fraction <= MaxDifferingFraction) return fraction;
 
-            string failures = Path.Combine(AppContext.BaseDirectory, "GoldenFailures");
+            string failures = Path.Join(AppContext.BaseDirectory, "GoldenFailures");
             Directory.CreateDirectory(failures);
-            Save(actual, Path.Combine(failures, name + ".actual.png"));
+            Save(actual, Path.Join(failures, name + ".actual.png"));
             using (var scaled = diff.Resize(new SKImageInfo(diff.Width * BlockSize, diff.Height * BlockSize),
                        new SKSamplingOptions(SKFilterMode.Nearest)))
-                Save(scaled, Path.Combine(failures, name + ".diff.png"));
+                Save(scaled, Path.Join(failures, name + ".diff.png"));
             Assert.Fail($"{name}: {different} blocks ({fraction:P2}) differ by more than {ChannelTolerance} levels, " +
                         $"above the allowed {MaxDifferingFraction:P2}. See {failures}.");
             return fraction;
@@ -141,8 +141,8 @@ internal static class GoldenImage
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "KumikoUI.SkiaSharp.Tests.csproj")))
-                return Path.Combine(dir.FullName, "Goldens", name + ".png");
+            if (File.Exists(Path.Join(dir.FullName, "KumikoUI.SkiaSharp.Tests.csproj")))
+                return Path.Join(dir.FullName, "Goldens", name + ".png");
         }
         return null;
     }

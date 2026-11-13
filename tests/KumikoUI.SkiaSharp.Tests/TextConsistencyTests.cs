@@ -151,7 +151,7 @@ public class TextConsistencyTests : IDisposable
     {
         using var bitmap = new SKBitmap(40, 40);
         using var canvas = new SKCanvas(bitmap);
-        var ctx = new SkiaDrawingContext(canvas);
+        using var ctx = new SkiaDrawingContext(canvas);
         ctx.DrawText("x", 4, 20, Paint());
 
         ctx.Dispose();
@@ -165,7 +165,7 @@ public class TextConsistencyTests : IDisposable
     [Fact]
     public void Resource_cache_dispose_is_idempotent()
     {
-        var cache = new SkiaResourceCache();
+        using var cache = new SkiaResourceCache();
         using (var bitmap = new SKBitmap(40, 40))
         using (var canvas = new SKCanvas(bitmap))
         using (var ctx = new SkiaDrawingContext(canvas, cache))

@@ -107,7 +107,7 @@ public class GridGoldenTests : IDisposable
                 canvas.DrawRect(rect, paint);
 
             int different = GoldenImage.CountDifferingBlocks(original, changed, out var diff);
-            double fraction = (double)different / (diff.Width * diff.Height);
+            double fraction = (double)different / ((double)diff.Width * diff.Height);
             diff.Dispose();
 
             _output.WriteLine($"{rect}: {fraction:P3} of the blocks differ");
