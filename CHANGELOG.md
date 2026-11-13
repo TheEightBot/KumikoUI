@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- Summary rows (#27): each value is clipped to its own column and pane, so a scrolled column's total no longer slides over the frozen columns, and its ellipsis is computed from the visible width (the first glyph is never cut). A value no longer overlaps the row's title: it starts after the title, and is skipped when less than 16 px is left. Frozen rows now draw horizontal grid lines.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added
