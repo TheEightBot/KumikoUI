@@ -2,6 +2,8 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:kumiko="using:KumikoUI.Uno"
+      xmlns:core="using:KumikoUI.Core.Models"
+      xmlns:render="using:KumikoUI.Core.Rendering"
       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid Padding="0">
@@ -41,9 +43,10 @@
         </StackPanel>
 
         <!--
-            Columns are built in code-behind because the Actions column's ActionButtonsCellRenderer
-            wires its buttons to the ViewModel's ICommands (Details / Delete). x:Name lets the
-            code-behind populate Columns and ItemsSource after the VM is constructed.
+            Columns are declared in XAML, including the Actions column's buttons. A
+            UnoActionButtonDefinition is not in the visual tree, so the grid hands it its own DataContext
+            (the page's view model here) and a plain {Binding Command} resolves against it.
+            ItemsSource is set in code-behind after the view model has loaded its data.
         -->
         <kumiko:KumikoDataGrid x:Name="actionsGrid"
                              Grid.Row="3"
@@ -55,7 +58,57 @@
                              HeaderHeight="40"
                              GridDescription="MVVM employee grid with action buttons"
                              HorizontalAlignment="Stretch"
-                             VerticalAlignment="Stretch" />
+                             VerticalAlignment="Stretch">
+            <!-- Id: read-only. -->
+            <core:KumikoColumn Header="Id" PropertyName="Id" ColumnType="Numeric"
+                               Width="72" IsReadOnly="True" AllowTabStop="False" />
+
+            <!-- Name: single-tap, F2, or typing starts editing (most accessible). -->
+            <core:KumikoColumn Header="Name" PropertyName="Name" Width="160"
+                               EditTriggers="SingleTap,F2Key,Typing" />
+
+            <!-- Department: double-tap or F2 only (typing excluded for a ComboBox). -->
+            <core:KumikoColumn Header="Department" PropertyName="Department" ColumnType="ComboBox"
+                               Width="130"
+                               EditorItemsString="Engineering,Marketing,Finance,HR,Design,Product,Sales"
+                               EditTriggers="DoubleTap,F2Key" />
+
+            <!-- Level: double-tap only. -->
+            <core:KumikoColumn Header="Level" PropertyName="Level" ColumnType="Picker"
+                               Width="90"
+                               EditorItemsString="Junior,Mid,Senior,Lead,Principal"
+                               EditTriggers="DoubleTap" />
+
+            <!-- Salary: F2 only (protects financial data from pointer gestures). -->
+            <core:KumikoColumn Header="Salary" PropertyName="Salary" ColumnType="Numeric"
+                               Format="C0" Width="110" TextAlignment="Right"
+                               EditTriggers="F2Key" />
+
+            <!-- Active: Boolean, toggles on tap. -->
+            <core:KumikoColumn Header="Active" PropertyName="IsActive" ColumnType="Boolean" />
+
+            <!--
+                Actions: a Template column with inline action buttons. ActionButtonsCellRenderer is an
+                interactive cell, so a tap runs the button without an editor. PropertyName="" passes the
+                whole Employee as the cell value, so it is the Command parameter.
+            -->
+            <core:KumikoColumn Header="Actions" PropertyName="" ColumnType="Template"
+                               Width="200" AllowSorting="False" AllowFiltering="False"
+                               SizeMode="Star" StarWeight="1">
+                <core:KumikoColumn.CustomCellRenderer>
+                    <render:ActionButtonsCellRenderer>
+                        <render:ActionButtonsCellRenderer.Buttons>
+                            <kumiko:UnoActionButtonDefinition Label="Details"
+                                                              BackgroundColor="#FF0D6EFD"
+                                                              Command="{Binding ViewDetailsCommand}" />
+                            <kumiko:UnoActionButtonDefinition Label="Delete"
+                                                              BackgroundColor="#FFDC3545"
+                                                              Command="{Binding DeleteCommand}" />
+                        </render:ActionButtonsCellRenderer.Buttons>
+                    </render:ActionButtonsCellRenderer>
+                </core:KumikoColumn.CustomCellRenderer>
+            </core:KumikoColumn>
+        </kumiko:KumikoDataGrid>
     </Grid>
 
 </Page>

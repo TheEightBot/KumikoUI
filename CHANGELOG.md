@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- `UnoActionButtonDefinition` (`KumikoUI.Uno`): a `DependencyObject` implementation of `IActionButtonDefinition` with `Label`, `BackgroundColor`, `TextColor`, `Command` and `CommandParameter` as dependency properties, so action buttons can be declared and bound in Uno XAML like `MauiActionButtonDefinition` on MAUI (#64). `KumikoDataGrid` gives the definitions of its `ActionButtonsCellRenderer` columns its `DataContext`, so `{Binding ViewDetailsCommand}` resolves against the page's view model, and redraws when a definition changes. The Uno MVVM sample page declares its columns and buttons in XAML.
+
 ### Changed
 - The documentation snippet check also compiles the C# and XAML blocks of the NuGet READMEs (`docs/nuget/*.md`) against both hosts (#236). `eng/DocsSnippets` splits statements followed by type declarations, infers the host from the code or the package README, and pairs a `partial` page class with its XAML page, so the NuGet READMEs need no annotations.
 
