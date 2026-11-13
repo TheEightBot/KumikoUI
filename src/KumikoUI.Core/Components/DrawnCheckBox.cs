@@ -85,52 +85,27 @@ public class DrawnCheckBox : DrawnComponent
             StrokeWidth = StrokeWidth
         });
 
-        // Draw check mark or indeterminate dash
+        // Check mark or indeterminate mark
         switch (_state)
         {
             case DrawnCheckState.Checked:
-                DrawCheckMark(ctx, boxX, boxY);
+                IconProvider.DrawIcon(ctx, KumikoIcon.Check, boxRect, new KumikoPaint
+                {
+                    Color = CheckMarkColor,
+                    Style = PaintStyle.Stroke,
+                    StrokeWidth = CheckStrokeWidth,
+                    IsAntiAlias = true
+                });
                 break;
             case DrawnCheckState.Indeterminate:
-                DrawIndeterminate(ctx, boxX, boxY);
+                IconProvider.DrawIcon(ctx, KumikoIcon.Indeterminate, boxRect, new KumikoPaint
+                {
+                    Color = IndeterminateColor,
+                    Style = PaintStyle.Fill,
+                    IsAntiAlias = true
+                });
                 break;
         }
-    }
-
-    private void DrawCheckMark(IDrawingContext ctx, float boxX, float boxY)
-    {
-        var paint = new KumikoPaint
-        {
-            Color = CheckMarkColor,
-            Style = PaintStyle.Stroke,
-            StrokeWidth = CheckStrokeWidth,
-            IsAntiAlias = true
-        };
-
-        // Draw a checkmark (√) shape
-        float x1 = boxX + BoxSize * 0.2f;
-        float y1 = boxY + BoxSize * 0.5f;
-        float x2 = boxX + BoxSize * 0.4f;
-        float y2 = boxY + BoxSize * 0.75f;
-        float x3 = boxX + BoxSize * 0.8f;
-        float y3 = boxY + BoxSize * 0.25f;
-
-        GlyphDrawing.Chevron(ctx, x1, y1, x2, y2, x3, y3, paint);
-    }
-
-    private void DrawIndeterminate(IDrawingContext ctx, float boxX, float boxY)
-    {
-        var paint = new KumikoPaint
-        {
-            Color = IndeterminateColor,
-            Style = PaintStyle.Fill
-        };
-
-        float dashW = BoxSize * 0.5f;
-        float dashH = 3f;
-        float dashX = boxX + (BoxSize - dashW) / 2;
-        float dashY = boxY + (BoxSize - dashH) / 2;
-        ctx.FillRect(new KumikoRect(dashX, dashY, dashW, dashH), paint);
     }
 
     // ── Input ───────────────────────────────────────────────────

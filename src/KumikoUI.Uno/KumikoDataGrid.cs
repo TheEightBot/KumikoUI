@@ -77,6 +77,7 @@ public partial class KumikoDataGrid : UserControl
         // Auto-init the bindable collections so XAML can add items directly,
         // matching the MAUI control's ctor.
         Columns = new ObservableCollection<KumikoColumn>();
+        DataContextChanged += OnGridDataContextChanged;
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)

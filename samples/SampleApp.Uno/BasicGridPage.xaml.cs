@@ -4,6 +4,7 @@ using System.Linq;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
+using KumikoUI.Core.Rendering;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -23,9 +24,13 @@ public sealed partial class BasicGridPage : Page
     private static readonly string[] FirstNames = { "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Hank", "Iris", "Jack" };
     private static readonly string[] LastNames = { "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Wilson", "Moore" };
 
+    // Every built-in glyph drawn from the Material Icons font registered in App.OnLaunched (KumikoFonts)
+    private static readonly KumikoFontIconProvider MaterialIcons = KumikoFontIconProvider.CreateMaterialIcons("MaterialIcons");
+
     private readonly BasicGridViewModel _viewModel = new();
     private readonly Random _random = new(42);
     private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
+    private bool _materialIcons;
 
     public BasicGridPage()
     {
@@ -163,8 +168,22 @@ public sealed partial class BasicGridPage : Page
             _ => KumikoThemeMode.Light
         };
 
-        kumiko.GridStyle = KumikoTheme.Create(_themeMode);
+        // A new style instance: keep the chosen icon set
+        var style = KumikoTheme.Create(_themeMode);
+        style.IconProvider = _materialIcons ? MaterialIcons : KumikoIconProvider.Default;
+        kumiko.GridStyle = style;
         themeToggle.Content = $"Theme: {_themeMode}";
+    }
+
+    private void OnToggleIconsClicked(object sender, RoutedEventArgs e)
+    {
+        // Switch every glyph (sort arrows, filter buttons, group chevrons, check marks, editor buttons) between the
+        // built-in set and the Material Icons font
+        _materialIcons = !_materialIcons;
+        var style = kumiko.GridStyle;
+        style.IconProvider = _materialIcons ? MaterialIcons : KumikoIconProvider.Default;
+        kumiko.GridStyle = style;
+        iconsToggle.Content = _materialIcons ? "Icons: Material" : "Icons: Built-in";
     }
 
     private void OnToggleSelectionModeClicked(object sender, RoutedEventArgs e)

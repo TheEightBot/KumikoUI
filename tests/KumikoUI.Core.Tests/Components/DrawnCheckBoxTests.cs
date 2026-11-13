@@ -184,13 +184,12 @@ public class DrawnCheckBoxTests
         box.State = DrawnCheckState.Indeterminate;
         var ctx = Draw(box);
 
-        var fills = ctx.Fills.ToList();
-        Assert.Equal(2, fills.Count);
-        var dash = fills[1];
-        Assert.Equal(DrawOpKind.FillRect, dash.Kind);
+        // The box's fill, then the dash: one filled polygon (#119)
+        Assert.Single(ctx.Fills);
+        var dash = Assert.Single(ctx.Polygons);
         Assert.Equal(box.IndeterminateColor, dash.Color);
-        Assert.Equal(9, dash.Rect.Width);
-        Assert.Equal(3, dash.Rect.Height);
+        Assert.Equal(9, dash.Rect.Width, 3);
+        Assert.Equal(3.24f, dash.Rect.Height, 3);
         Assert.Equal(20, dash.Rect.X + dash.Rect.Width / 2, 3);
         Assert.Empty(ctx.Lines);
     }
