@@ -137,11 +137,11 @@ The `KumikoPaint` objects the grid draws with are built from `KumikoStyle` and r
 
 ### Platform Keyboard Convergence
 Three different platform input mechanisms converge to the same `KumikoKeyEventArgs` → `HandleKey` path:
-- **iOS/macOS** — `KeyInputResponder` (UIView with `UIKeyCommand` + `IUIKeyInput`)
+- **iOS/Mac Catalyst** — `KeyInputResponder` (UIView with `UIKeyCommand` + `UITextInput`): text and input-method composition go to the editor's `ITextInputSession` through `AppleTextInputBridge`; navigation keys go to `HandleKey`
 - **Android** — Hidden `Entry` with text content diffing and IME configuration
 - **Windows** — Hidden `Entry` with text content diffing
 
-These are being replaced by native text-input adapters that drive `ITextInputSession` (composition, grapheme-correct editing, undo/redo); see [TEXT-INPUT.md](TEXT-INPUT.md).
+Android and Windows are being moved to native text-input adapters that drive `ITextInputSession` (composition, grapheme-correct editing, undo/redo), as iOS and Mac Catalyst already do; see [TEXT-INPUT.md](TEXT-INPUT.md).
 
 ### Virtual Scrolling
 Only visible rows and columns are computed and drawn. Row range: `scrollOffset / rowHeight` to `(scrollOffset + viewportHeight) / rowHeight`. Column range computed by `KumikoLayoutEngine`.

@@ -999,10 +999,10 @@ Each host captures the keyboard through a hidden native text field, and that dec
 | Home, End, Page Up, Page Down | Yes | Yes | No |
 | Tab, Shift+Tab | Yes | Yes | No (on Windows the system moves focus) |
 | Escape, F2, Delete | Yes | Yes | No |
-| Ctrl+A, editor undo / redo | Yes; Cmd works as Ctrl on macOS, iOS and WebAssembly | No: letters arrive as text without modifiers | No |
+| Ctrl+A, editor undo / redo | Yes; Cmd works as Ctrl on macOS, iOS and WebAssembly | Yes, with Cmd | No |
 | Ctrl/Cmd+C, X, V | Yes | Yes | Yes (Android with a hardware keyboard) |
 
-The hosts pass committed characters to the editors but don't drive input-method composition (`ITextInputSession`) yet; host adapters are tracked in #40 to #43.
+On iOS and Mac Catalyst the MAUI control is a native text-input client (`UITextInput`), so Japanese, Chinese and Korean input methods compose in the cell with their candidates, and the emoji keyboard and dictation work. The other hosts pass committed characters to the editors but don't drive input-method composition (`ITextInputSession`) yet; their adapters are tracked in #41 to #43.
 
 ### Copying rows
 

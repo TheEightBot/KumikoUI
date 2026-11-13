@@ -171,10 +171,10 @@ Methods: `Invalidate()` repaints without rebuilding the view (any thread).
 
 ## `KumikoDataGrid` internals (for platform-specific work)
 
-- Extends `Grid`; contains `SKCanvasView` (render surface) + hidden `Entry` (keyboard proxy).
+- Extends `ContentView`; contains `SKCanvasView` (render surface) + hidden `Entry` (keyboard proxy, Android and Windows only).
 - `[ContentProperty(nameof(Columns))]` — columns are XAML content.
 - Double-tap: 400 ms threshold, 20 px distance.
 - Long-press: 500 ms, 15 px tolerance. A touch long press starts a row drag (`AllowRowDragDrop` or the drag handle); the release after it is sent as `Cancelled` unless a drag is in progress.
 - Android IME: zero-width-space (`\u200B`) sentinel for backspace detection.
-- iOS/macCatalyst: `KeyInputResponder` (native UIKit) + `UIPanGestureRecognizer`.
+- iOS/macCatalyst: `KeyInputResponder` (a `UITextInput` responder; no `Entry`) + `UIPanGestureRecognizer`. Its UIKit-independent logic (marked text, UTF-16 positions, typing with no editor open) is `AppleTextInputBridge`, tested in `tests/KumikoUI.Maui.Tests`.
 - Inertial scroll, edge autoscroll (`UpdateAutoScroll` while `IsAutoScrolling`) and cursor blink use `IDispatcherTimer`.

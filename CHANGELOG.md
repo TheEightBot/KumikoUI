@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- MAUI on iOS and Mac Catalyst is a native text-input client (#40). The grid's responder implements `UITextInput` and drives the open editor's `ITextInputSession`: Japanese, Chinese and Korean input methods compose marked text in the cell, with their candidate window placed at the text, and commit it; the emoji keyboard, dictation and suggestion-bar words insert whole (a surrogate pair or emoji sequence is never split), also when they open the editor. A numeric editor gets the numbers keyboard; autocorrection, smart quotes and inline predictions are off. Hardware navigation keys (arrows, Tab, Escape, Return, F2, Home, End, Page Up/Down) and Cmd+A/C/X/V/Z/Shift+Z still go to the grid, except while an input method is composing. The hidden `Entry` keyboard proxy is gone on these platforms; Android and Windows keep it until #41 and #42.
+- `DrawnTextBox.GetTextRangeBounds(KumikoTextRange)` and `GetTextIndexAt(float)`: where a range of the text is drawn and which index is at an x position, for a host's text-input adapter (#40).
+
 ## [0.2.0] - 2026-11-11
 
 ### Added
