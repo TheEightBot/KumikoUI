@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The documentation snippet check also compiles the C# and XAML blocks of the NuGet READMEs (`docs/nuget/*.md`) against both hosts (#236). `eng/DocsSnippets` splits statements followed by type declarations, infers the host from the code or the package README, and pairs a `partial` page class with its XAML page, so the NuGet READMEs need no annotations.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added
