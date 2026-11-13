@@ -126,6 +126,7 @@ jobs:
         run: dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
           && dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
           && dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
+          && dotnet restore tests/KumikoUI.SkiaSharp.Tests/KumikoUI.SkiaSharp.Tests.csproj
           && dotnet restore tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
           && dotnet restore tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj
 
@@ -152,6 +153,13 @@ jobs:
         run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
           --collect:"XPlat Code Coverage" --settings coverage.runsettings --filter "Category!=Performance"
+
+      # SkiaSharp backend: golden-image grid render, measure/draw consistency, font fallback and registrar lifecycle
+      # (tests/KumikoUI.SkiaSharp.Tests; the Windows and macOS runs are in test-core-os below). Collects coverage too.
+      - name: Test — SkiaSharp
+        run: dotnet test tests/KumikoUI.SkiaSharp.Tests/KumikoUI.SkiaSharp.Tests.csproj
+          --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+          --collect:"XPlat Code Coverage" --settings coverage.runsettings
 
       - name: Test — source generator
         run: dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
@@ -314,6 +322,20 @@ jobs:
       - name: Test
         run: dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+
+      # Skia rasterizes text differently per OS; the golden images are compared with a tolerance
+      # (tests/KumikoUI.SkiaSharp.Tests/GoldenImage.cs). A failure writes the actual and diff images to GoldenFailures/.
+      - name: Test — SkiaSharp
+        run: dotnet test tests/KumikoUI.SkiaSharp.Tests/KumikoUI.SkiaSharp.Tests.csproj
+          -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
+
+      - name: Upload golden image failures
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: golden-failures-${{ matrix.os }}
+          path: tests/KumikoUI.SkiaSharp.Tests/bin/Release/net10.0/GoldenFailures/
+          if-no-files-found: ignore
 
       - name: Upload test results
         if: always()
