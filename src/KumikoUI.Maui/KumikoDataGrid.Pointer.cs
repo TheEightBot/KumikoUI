@@ -1,4 +1,6 @@
 using KumikoUI.Core.Input;
+using SkiaSharp.Views.Maui;
+using SkiaSharp.Views.Maui.Controls;
 #if MACCATALYST || IOS
 using CoreGraphics;
 using UIKit;
@@ -7,22 +9,24 @@ using UIKit;
 namespace KumikoUI.Maui;
 
 /// <summary>
-/// Pointer plumbing that <c>SKCanvasView.Touch</c> does not provide (#60): the touch-to-DIP scale before the
-/// first paint, modifier keys on pointer events, and wheel and trackpad scrolling routed through
-/// <see cref="KumikoInputController.HandlePointer"/>.
+/// Pointer plumbing that <c>SKCanvasView.Touch</c> does not provide (#60, #100): the touch-to-DIP scale before the
+/// first paint, modifier keys and mouse buttons on pointer events, the secondary click, and wheel and trackpad
+/// scrolling routed through <see cref="KumikoInputController.HandlePointer"/>.
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
 /// <item><b>Mac Catalyst and iPad</b>: modifiers come from SkiaSharp's touch gesture recognizer, which UIKit
 /// gives the flags of the event it is handling. Trackpad and mouse-wheel scrolling arrive through a
-/// <c>UIPanGestureRecognizer</c> for indirect input and reach Core as pixel deltas.</item>
-/// <item><b>Android</b>: modifiers are the <c>MotionEvent.MetaState</c> of the canvas's touches, read by a second
-/// touch listener that runs after SkiaSharp's, so a press reports the state of the previous event and a release
-/// (where selection reads them) the state during the press. The wheel arrives as <c>ACTION_SCROLL</c> generic
-/// motion in notches.</item>
-/// <item><b>Windows</b>: modifiers are the live keyboard state; the wheel is read from WinUI's
-/// <c>PointerWheelChanged</c> on the grid's platform view (SkiaSharp's event has no horizontal flag), as 120ths
-/// of a notch, and is marked handled only when the grid scrolled, so a page around it scrolls on.</item>
+/// <c>UIPanGestureRecognizer</c> for indirect input and reach Core as pixel deltas. A secondary (right) click
+/// reaches no touch handler; a <c>UITapGestureRecognizer</c> requiring the secondary button reports it to Core as
+/// a press and release with <see cref="PointerButton.Secondary"/>.</item>
+/// <item><b>Android</b>: modifiers and mouse buttons are the <c>MotionEvent.MetaState</c> and <c>ButtonState</c>
+/// of the canvas's touches, read by a second touch listener that is moved ahead of SkiaSharp's, so each event
+/// reports its own state. The wheel arrives as <c>ACTION_SCROLL</c> generic motion in notches.</item>
+/// <item><b>Windows</b>: modifiers are the live keyboard state; SkiaSharp reports the right and middle buttons.
+/// The wheel is read from WinUI's <c>PointerWheelChanged</c> on the grid's platform view (SkiaSharp's event has
+/// no horizontal flag), as 120ths of a notch, and is marked handled only when the grid scrolled, so a page around
+/// it scrolls on.</item>
 /// </list>
 /// </remarks>
 public partial class KumikoDataGrid
@@ -81,6 +85,27 @@ public partial class KumikoDataGrid
         return e.Handled;
     }
 
+    /// <summary>
+    /// The Core button of a SkiaSharp touch event: SkiaSharp's own mapping (right and middle on Windows, a stylus
+    /// button on Android), plus a mouse's right and middle buttons on Android. Core takes the button from the press,
+    /// so a release that names none is fine.
+    /// </summary>
+    private PointerButton GetPointerButton(SKTouchEventArgs e)
+    {
+#if ANDROID
+        return GetPlatformPointerButton(e);
+#else
+        return MapMouseButton(e.MouseButton);
+#endif
+    }
+
+    private static PointerButton MapMouseButton(SKMouseButton button) => button switch
+    {
+        SKMouseButton.Right => PointerButton.Secondary,
+        SKMouseButton.Middle => PointerButton.Middle,
+        _ => PointerButton.Primary,
+    };
+
 #if MACCATALYST || IOS
     /// <summary>Modifier keys held during the touch SkiaSharp is reporting.</summary>
     private InputModifiers GetPointerModifiers()
@@ -124,9 +149,45 @@ public partial class KumikoDataGrid
         DispatchScroll((float)location.X, (float)location.Y, (float)translation.X, (float)translation.Y,
             KumikoScrollUnit.Pixels, ToInputModifiers(recognizer.ModifierFlags));
     }
+
+    /// <summary>
+    /// A secondary click (a right click, or a two-finger trackpad click) on Mac Catalyst or an iPad with a pointer.
+    /// UIKit delivers it to no touch handler, so it arrives here once the button is up and reaches Core as a press
+    /// and release with <see cref="PointerButton.Secondary"/>, which raises <see cref="ContextMenuRequested"/>.
+    /// </summary>
+    private void HandleNativeSecondaryClick(UITapGestureRecognizer recognizer)
+    {
+        if (recognizer.State != UIGestureRecognizerState.Ended || !_inputController.IsEnabled) return;
+
+        var location = recognizer.LocationInView(recognizer.View);
+        var modifiers = ToInputModifiers(recognizer.ModifierFlags);
+        long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        DispatchSecondaryClick((float)location.X, (float)location.Y, InputAction.Pressed, modifiers, nowMs);
+        DispatchSecondaryClick((float)location.X, (float)location.Y, InputAction.Released, modifiers, nowMs);
+    }
+
+    // The pointer id of a secondary click: UIKit gives it no touch, and touch ids (handles) are never negative.
+    private const long SecondaryClickPointerId = -2;
+
+    private void DispatchSecondaryClick(float x, float y, InputAction action, InputModifiers modifiers, long nowMs)
+    {
+        var e = new KumikoPointerEventArgs
+        {
+            X = x,
+            Y = y,
+            Action = action,
+            Button = PointerButton.Secondary,
+            Modifiers = modifiers,
+            PointerId = SecondaryClickPointerId,
+            DeviceType = KumikoPointerDeviceType.Mouse,
+            TimestampMs = nowMs,
+        };
+        _inputController.HandlePointer(e, _scroll, _selection, _style, _dataSource);
+    }
 #elif ANDROID
     private Android.Views.View? _nativeCanvasView;
     private Android.Views.MetaKeyStates _lastMetaState;
+    private Android.Views.MotionEventButtonState _lastButtonState;
 
     private void OnCanvasHandlerChanged_Pointer(object? sender, EventArgs e)
     {
@@ -142,6 +203,10 @@ public partial class KumikoDataGrid
         _nativeCanvasView = view;
         view.Touch += OnNativeCanvasTouch;
         view.GenericMotion += OnNativeCanvasGenericMotion;
+        // SkiaSharp subscribed its touch listener when the canvas handler connected; mapping EnableTouchEvents again
+        // re-subscribes it after this one, so each event's button and modifier state is read before SkiaSharp
+        // reports it.
+        _canvasView.Handler?.UpdateValue(nameof(SKCanvasView.EnableTouchEvents));
     }
 
     private void DetachNativePointer()
@@ -152,11 +217,27 @@ public partial class KumikoDataGrid
         _nativeCanvasView = null;
     }
 
-    // Runs after SkiaSharp's own listener for the same event; it only records the modifier state and leaves
-    // Handled as SkiaSharp set it.
+    // Runs before SkiaSharp's own listener for the same event (see AttachNativePointer); it only records the modifier
+    // and button state and leaves Handled to SkiaSharp.
     private void OnNativeCanvasTouch(object? sender, Android.Views.View.TouchEventArgs e)
     {
-        if (e.Event != null) _lastMetaState = e.Event.MetaState;
+        if (e.Event == null) return;
+        _lastMetaState = e.Event.MetaState;
+        _lastButtonState = e.Event.ButtonState;
+    }
+
+    /// <summary>
+    /// A mouse's right and middle buttons, from the <c>MotionEvent</c> being reported: SkiaSharp names the right
+    /// button only for a stylus.
+    /// </summary>
+    private PointerButton GetPlatformPointerButton(SKTouchEventArgs e)
+    {
+        if (e.DeviceType == SKTouchDeviceType.Mouse)
+        {
+            if ((_lastButtonState & Android.Views.MotionEventButtonState.Secondary) != 0) return PointerButton.Secondary;
+            if ((_lastButtonState & Android.Views.MotionEventButtonState.Tertiary) != 0) return PointerButton.Middle;
+        }
+        return MapMouseButton(e.MouseButton);
     }
 
     private InputModifiers GetPointerModifiers() => ToInputModifiers(_lastMetaState);

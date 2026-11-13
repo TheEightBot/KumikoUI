@@ -29,5 +29,8 @@ internal sealed class NoOpDrawingContext : IDrawingContext
     public void Save() { }
     public void Restore() { }
     public void Translate(float dx, float dy) { }
-    public void DrawImage(object image, KumikoRect destRect) { }
+    public void DrawImage(object image, KumikoRect destRect) => ImageDrawn?.Invoke(image);
+
+    /// <summary>Called with every image drawn, when set.</summary>
+    public Action<object>? ImageDrawn { get; set; }
 }

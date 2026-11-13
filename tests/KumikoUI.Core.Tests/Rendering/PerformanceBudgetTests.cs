@@ -19,8 +19,8 @@ public class PerformanceBudgetTests
     // or a boxed comparison on the hot path), not a few percent of drift.
     private const long MiB = 1024 * 1024;
     private const long SortBudget = 160 * MiB;          // measured ~90 MB (int, date: ~900 B per row)
-    private const long FilterBudget = 12 * MiB;         // measured ~5.6 MB numeric, under 1 KB text
-    private const long GroupBudget = 40 * MiB;          // measured ~11-19 MB
+    private const long FilterBudget = 5 * MiB;          // measured ~2.4 MB numeric (no display text for conditions, #69), under 1 KB text
+    private const long GroupBudget = 20 * MiB;          // measured ~9-10.5 MB (struct rows, single-pass summaries, #69)
     private const long IncrementalBudget = 4 * 1024;    // measured 432 B
 
     public sealed class Row

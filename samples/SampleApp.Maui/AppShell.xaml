@@ -42,6 +42,12 @@
             Icon="icon_font.png"
             ContentTemplate="{DataTemplate local:CustomFontsPage}"
             Route="CustomFontsPage" />
+
+        <ShellContent
+            Title="Images"
+            Icon="icon_image.png"
+            ContentTemplate="{DataTemplate local:ImagesPage}"
+            Route="ImagesPage" />
     </TabBar>
 
 </Shell>

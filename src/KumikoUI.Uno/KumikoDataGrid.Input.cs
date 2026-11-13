@@ -52,6 +52,15 @@ public partial class KumikoDataGrid
     private long _pressedPointerLastMs;
     private const long StalePointerMs = 1000;
 
+    // ── Long press (UNO-13) ──
+    // A 500 ms / 15 px timer started on a touch or pen press, as in the MAUI host. WinUI's Holding event is only a
+    // fallback (touch only, and not raised on every head); the tracker fires once per press from whichever comes first
+    // and swallows the release that ends it, so a long press on a Boolean cell toggles once and does not raise RowTapped.
+    private LongPressTracker? _longPress;
+    private KumikoPointerDeviceType _pressedDeviceType;
+
+    private LongPressTracker LongPress => _longPress ??= new LongPressTracker(new DispatcherLongPressTimer(), OnLongPressFired);
+
     /// <summary>
     /// Attaches pointer + keyboard handlers and enables focusability. Called from
     /// <c>OnLoaded</c>. Idempotent — every handler is detached first so a re-load
@@ -107,6 +116,7 @@ public partial class KumikoDataGrid
         PointerExited -= OnPointerExited;
 
         Holding -= OnHolding;
+        _longPress?.Reset();
 
         KeyDown -= OnKeyDown;
 
@@ -121,7 +131,11 @@ public partial class KumikoDataGrid
     private void OnIsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         _inputController.IsEnabled = IsEnabled;
-        if (!IsEnabled) _pressedPointerId = null;
+        if (!IsEnabled)
+        {
+            _pressedPointerId = null;
+            _longPress?.Reset();
+        }
         InvalidateSurface();
     }
 
@@ -156,6 +170,9 @@ public partial class KumikoDataGrid
         _pendingClickCount = clickCount;
 
         DispatchPointer(e, point, InputAction.Pressed, clickCount);
+        _pressedDeviceType = PointerMapping.ToDeviceType(e.Pointer.PointerDeviceType);
+        if (_pressedDeviceType != KumikoPointerDeviceType.Mouse) // a mouse long-presses with the right button instead
+            LongPress.Press(e.Pointer.PointerId, (float)point.Position.X, (float)point.Position.Y);
         if (_editSession.IsAnimating)
             StartInertialScroll(); // a spin button pressed and held repeats from the frame loop
 
@@ -185,7 +202,11 @@ public partial class KumikoDataGrid
         }
         var props = point.Properties;
         if (props.IsRightButtonPressed || props.IsMiddleButtonPressed) return;
-        if (_pressedPointerId == e.Pointer.PointerId) _pressedPointerLastMs = ToMillis(point.Timestamp);
+        if (_pressedPointerId == e.Pointer.PointerId)
+        {
+            _pressedPointerLastMs = ToMillis(point.Timestamp);
+            _longPress?.Move(e.Pointer.PointerId, (float)point.Position.X, (float)point.Position.Y);
+        }
         DispatchPointer(e, point, InputAction.Moved);
     }
 
@@ -205,7 +226,14 @@ public partial class KumikoDataGrid
         int clickCount = _pendingClickCount;
         _pendingClickCount = 1;
 
-        DispatchPointer(e, point, InputAction.Released, clickCount);
+        // The release that ends a long press is not a tap: Core is told the press was canceled, which ends it without
+        // acting on it. A row drag the long press started is dropped by the release as usual.
+        bool endsLongPress = _longPress?.ConsumeRelease() ?? false;
+        bool dragging = _inputController.DragRowIndex >= 0 || _inputController.DragColumnIndex >= 0;
+        if (endsLongPress && !dragging)
+            DispatchPointer(e, point, InputAction.Cancelled);
+        else
+            DispatchPointer(e, point, InputAction.Released, clickCount);
         // Releasing the capture raises PointerCaptureLost, which reaches Core as a Cancelled with no press in
         // progress: Core ignores it.
         ReleasePointerCapture(e.Pointer);
@@ -218,7 +246,11 @@ public partial class KumikoDataGrid
 
     private void OnPointerCanceled(object sender, PointerRoutedEventArgs e)
     {
-        if (_pressedPointerId == e.Pointer.PointerId) _pressedPointerId = null;
+        if (_pressedPointerId == e.Pointer.PointerId)
+        {
+            _pressedPointerId = null;
+            _longPress?.Reset();
+        }
         DispatchPointer(e, e.GetCurrentPoint(PointerOrigin), InputAction.Cancelled);
         if (_inputController.IsInertialScrolling)
             StartInertialScroll();
@@ -228,7 +260,11 @@ public partial class KumikoDataGrid
     {
         // Losing capture mid-drag is equivalent to a cancel — preserve scroll momentum (Core's
         // HandlePointerCancelled starts a fling if we were panning).
-        if (_pressedPointerId == e.Pointer.PointerId) _pressedPointerId = null;
+        if (_pressedPointerId == e.Pointer.PointerId)
+        {
+            _pressedPointerId = null;
+            _longPress?.Reset();
+        }
         DispatchPointer(e, e.GetCurrentPoint(PointerOrigin), InputAction.Cancelled);
         if (_inputController.IsInertialScrolling)
             StartInertialScroll();
@@ -313,9 +349,9 @@ public partial class KumikoDataGrid
     }
 
     /// <summary>
-    /// Touch long-press → <see cref="InputAction.LongPress"/> (starts a row drag with <c>AllowRowDragDrop</c> or on a
-    /// drag handle; the LongPress edit trigger). Only fires for touch and only on <see cref="HoldingState.Started"/>; mouse/pen use
-    /// right-click, which Core reads from <see cref="PointerButton.Secondary"/>.
+    /// The fallback for touch long-press: WinUI's <c>Holding</c> event (on <see cref="HoldingState.Started"/> only).
+    /// It fires the long press only when the timer has not, so a hold never long-presses twice; mouse and pen use
+    /// their own paths (right-click reads from <see cref="PointerButton.Secondary"/>).
     /// </summary>
     private void OnHolding(object sender, HoldingRoutedEventArgs e)
     {
@@ -324,19 +360,30 @@ public partial class KumikoDataGrid
         if (_pressedPointerId is not { } pointerId) return; // the press already ended (or was disabled)
 
         var pos = e.GetPosition(PointerOrigin);
+        e.Handled = LongPress.NotifyHolding(pointerId, (float)pos.X, (float)pos.Y);
+    }
+
+    /// <summary>
+    /// A long press fired (timer or <c>Holding</c>): Touch long-press → <see cref="InputAction.LongPress"/> (starts a row
+    /// drag with <c>AllowRowDragDrop</c> or on a drag handle; the LongPress edit trigger).
+    /// </summary>
+    private void OnLongPressFired(uint pointerId, float x, float y)
+    {
+        if (_pressedPointerId != pointerId) return; // the press already ended
         var evt = new KumikoPointerEventArgs
         {
-            X = (float)pos.X,
-            Y = (float)pos.Y,
+            X = x,
+            Y = y,
             Action = InputAction.LongPress,
             Button = PointerButton.Primary,
-            PointerId = pointerId, // Holding carries no pointer: it belongs to the press in progress
-            DeviceType = KumikoPointerDeviceType.Touch, // Holding is handled for touch only (above)
+            PointerId = pointerId,
+            DeviceType = _pressedDeviceType,
             TimestampMs = ToMillis(GetCurrentTimestampMicros()),
             ClickCount = 1,
         };
         _inputController.HandlePointer(evt, _scroll, _selection, _style, _dataSource);
-        e.Handled = evt.Handled;
+        if (_inputController.IsAutoScrolling)
+            StartInertialScroll();
     }
 
     // ── Keyboard event handlers ──────────────────────────────────

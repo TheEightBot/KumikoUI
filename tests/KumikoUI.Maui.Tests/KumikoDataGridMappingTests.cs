@@ -277,6 +277,81 @@ public class KumikoDataGridMappingTests
         Assert.Empty(grid.DataSource.Columns);
     }
 
+    // ── Column order and saved layouts ───────────────────────────
+
+    private static KumikoDataGrid GridWithColumns(out KumikoColumn name, out KumikoColumn age)
+    {
+        // No announcements: the screen reader is not implemented on the plain net10.0 test host.
+        var grid = new KumikoDataGrid { ItemsSource = People(5), AnnounceChanges = false };
+        name = new KumikoColumn { Header = "Name", PropertyName = "Name" };
+        age = new KumikoColumn { Header = "Age", PropertyName = "Age" };
+        grid.Columns.Add(name);
+        grid.Columns.Add(age);
+        return grid;
+    }
+
+    [Fact]
+    public void ColumnMovedInTheDataSource_IsMovedInColumns_AndSurvivesALaterColumnChange()
+    {
+        var grid = GridWithColumns(out var name, out var age);
+
+        grid.DataSource.ReorderColumn(0, 1); // what a header drag does
+        Assert.Equal(new[] { age, name }, grid.Columns);
+
+        grid.DataSource.SetDisplayIndex(age, 1);
+        Assert.Equal(new[] { name, age }, grid.Columns);
+
+        grid.DataSource.ReorderColumn(0, 1);
+        var extra = new KumikoColumn { Header = "Extra", PropertyName = "Name", Key = "extra" };
+        grid.Columns.Add(extra); // copies Columns into the source: the moved order must not be undone
+        Assert.Equal(new[] { age, name, extra }, grid.DataSource.Columns);
+    }
+
+    [Fact]
+    public void HeaderDrag_MovesTheColumn_ThenRaisesColumnReordered()
+    {
+        var grid = GridWithColumns(out var name, out var age); // 120 px each, in a 400 px viewport
+        var scroll = new ScrollState { ViewportWidth = 400, ViewportHeight = 300 };
+        var seen = new List<(object? Sender, int NewIndex, KumikoColumn[] Columns)>();
+        grid.ColumnReordered += (sender, e) => seen.Add((sender, e.NewIndex, grid.Columns.ToArray()));
+
+        foreach (var (action, x) in new[] { (InputAction.Pressed, 60f), (InputAction.Moved, 80f), (InputAction.Released, 200f) })
+        {
+            grid.InputController.HandlePointer(
+                new KumikoPointerEventArgs { Action = action, X = x, Y = 20 },
+                scroll, grid.Selection, grid.GridStyle, grid.DataSource);
+        }
+
+        var e = Assert.Single(seen);
+        Assert.Same(grid, e.Sender);
+        Assert.Equal(1, e.NewIndex);
+        Assert.Equal(new[] { age, name }, e.Columns); // already moved when the event is raised
+        Assert.Equal(new[] { age, name }, grid.DataSource.Columns);
+    }
+
+    [Fact]
+    public void ApplyLayoutState_RestoresTheLayout_AndMirrorsGroupDescriptions()
+    {
+        var grid = GridWithColumns(out var name, out var age);
+        grid.DataSource.ReorderColumn(0, 1);
+        age.Width = 140;
+        grid.DataSource.SetSort(name, KumikoSortDirection.Descending);
+        grid.GroupDescriptions.Add(new GroupDescription("Age"));
+        string json = grid.GetLayoutState().ToJson();
+
+        var restored = GridWithColumns(out var name2, out var age2);
+        restored.ApplyLayoutState(KumikoLayoutState.FromJson(json));
+
+        Assert.Equal(new[] { age2, name2 }, restored.Columns);
+        Assert.Equal(new[] { age2, name2 }, restored.DataSource.Columns);
+        Assert.Equal(140, age2.Width);
+        Assert.Equal(KumikoSortDirection.Descending, name2.SortDirection);
+        var group = Assert.Single(restored.GroupDescriptions);
+        Assert.Equal("Age", group.PropertyName);
+        Assert.Same(group, Assert.Single(restored.DataSource.GroupDescriptions));
+        Assert.Equal(json, restored.GetLayoutState().ToJson());
+    }
+
     [Fact]
     public void TableSummaryRows_AddAndRemove_AreMirroredInTheDataSource()
     {

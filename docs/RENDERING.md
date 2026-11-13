@@ -109,6 +109,8 @@ Each "column pane" (scrollable, left-frozen, right-frozen) is rendered identical
 
 **Z-ordering**: By drawing scrollable first, then left-frozen, then right-frozen, frozen columns naturally overlay scrollable content at boundaries.
 
+**Panes that do not fit** (#268): before the passes, `FrozenPanes.Resolve` decides which frozen columns stay pinned in this viewport. When the visible columns are wider than the column area (the viewport less the row drag handle) and the left- and right-frozen columns together take more than `KumikoStyle.MaxFrozenColumnsWidthRatio` of it (two thirds by default), columns are unpinned until they fit: right-frozen ones first, from the inner edge of their pane, then left-frozen ones from the rightmost. An unpinned column is drawn in the scrolling pass, at the start of the scrolling columns when it was left-frozen and at their end when it was right-frozen, so the on-screen order (`KumikoSource.DisplayColumns`) does not change. The layout engine's pane lists, `KumikoScroller`, `KumikoHitTester` and the input controller all read the same per-column pane (`KumikoColumn.Pane`), so the panes never overlap and what is hit is what is drawn. The decision is made again every frame, so the columns are pinned again when the viewport widens.
+
 ## DrawRows Detail
 
 `DrawRows` iterates over the flat view within the visible row range:
