@@ -61,9 +61,9 @@ public partial class KumikoDataGrid
         {
             _pressedPointerId = null;
             CancelLongPressTimer();
-            StopInertialScrollTimer();
+            StopFrameAnimation();
         }
-        _canvasView.InvalidateSurface();
+        InvalidateSurface();
     }
 
     /// <summary>Dispatches a wheel or trackpad scroll to Core and repaints; returns whether the grid scrolled.</summary>

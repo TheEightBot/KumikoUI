@@ -111,6 +111,38 @@ public class PopupManager
         }
     }
 
+    /// <summary>
+    /// Gets the smallest rectangle holding every visible popup, in grid coordinates, as placed by the last
+    /// <see cref="DrawPopups"/> (shadows not included). A host uses it to redraw only the popups' area, for example
+    /// while the caret of a popup's search box blinks. Allocation-free.
+    /// </summary>
+    /// <param name="bounds">The union of the visible popups' bounds; <see cref="KumikoRect.Empty"/> when there is none.</param>
+    /// <returns>False when no popup is visible.</returns>
+    public bool TryGetVisibleBounds(out KumikoRect bounds)
+    {
+        bool any = false;
+        float left = 0, top = 0, right = 0, bottom = 0;
+        for (int i = 0; i < _popups.Count; i++)
+        {
+            var component = _popups[i].Component;
+            if (!component.IsVisible) continue;
+            var b = component.Bounds;
+            if (!any)
+            {
+                (left, top, right, bottom) = (b.Left, b.Top, b.Right, b.Bottom);
+                any = true;
+                continue;
+            }
+            left = MathF.Min(left, b.Left);
+            top = MathF.Min(top, b.Top);
+            right = MathF.Max(right, b.Right);
+            bottom = MathF.Max(bottom, b.Bottom);
+        }
+
+        bounds = any ? new KumikoRect(left, top, right - left, bottom - top) : KumikoRect.Empty;
+        return any;
+    }
+
     /// <summary>Check if a point hits any popup. Returns the topmost hit popup or null.</summary>
     public DrawnComponent? HitTest(float x, float y)
     {
