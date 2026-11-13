@@ -46,8 +46,11 @@ Build what you are working on; the platform-agnostic projects need no workloads:
 dotnet build src/KumikoUI.Core
 dotnet build src/KumikoUI.SkiaSharp
 dotnet test tests/KumikoUI.Core.Tests
+dotnet test tests/KumikoUI.SkiaSharp.Tests
 dotnet test tests/KumikoUI.SourceGenerators.Tests
 ```
+
+`tests/KumikoUI.SkiaSharp.Tests` renders a small grid to a bitmap and compares it with the PNG in its `Goldens/` folder, with a tolerance for each platform's text anti-aliasing (see `GoldenImage.cs`). After an intended rendering change, regenerate the image with `KUMIKO_UPDATE_GOLDENS=1 dotnet test tests/KumikoUI.SkiaSharp.Tests` and commit it; a failing comparison writes the actual and diff images to `GoldenFailures/` in the test output folder.
 
 The libraries are `IsAotCompatible`: a trimming or Native AOT analyzer warning (IL2xxx/IL3xxx) fails the build (`Directory.Build.targets`). Read item properties through `KumikoAccessorRegistry` rather than reflection (see "Native AOT & Trimming" in the README). Property-access benchmarks live in `bench/` (see `bench/README.md`).
 

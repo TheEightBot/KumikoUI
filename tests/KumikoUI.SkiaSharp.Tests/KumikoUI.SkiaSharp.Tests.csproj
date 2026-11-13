@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="GitHubActionsTestLogger" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <!-- Native Skia on a Linux CI host (Windows and macOS get theirs with SkiaSharp). -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Deterministic fonts, both under the SIL Open Font License and already shipped with the samples: the Latin
+         font of the golden grid and a CJK font (Noto Sans JP) registered as its fallback, so no installed system
+         font matters. -->
+    <EmbeddedResource Include="../../samples/SampleApp.Maui/Resources/Fonts/OpenSans-Regular.ttf"
+                      LogicalName="KumikoUI.SkiaSharp.Tests.OpenSans-Regular.ttf" Link="Fonts/OpenSans-Regular.ttf" />
+    <EmbeddedResource Include="../../samples/SampleApp.Maui/Resources/Raw/NotoSansJP-Regular.ttf"
+                      LogicalName="KumikoUI.SkiaSharp.Tests.NotoSansJP-Regular.ttf" Link="Fonts/NotoSansJP-Regular.ttf" />
+    <!-- The committed golden images, copied next to the test assembly. -->
+    <None Include="Goldens/*.png" CopyToOutputDirectory="PreserveNewest" LinkBase="Goldens" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/KumikoUI.Core/KumikoUI.Core.csproj" />
+    <ProjectReference Include="../../src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" />
+  </ItemGroup>
+
+</Project>
