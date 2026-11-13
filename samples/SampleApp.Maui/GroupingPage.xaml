@@ -34,7 +34,6 @@
                          HeaderHeight="40"
                          ShowHorizontalGridLines="True"
                          ShowVerticalGridLines="False"
-                         AlternateRowBackground="#EEF4FF"
                          GridDescription="Employee data grid demonstrating grouping and filtering"
                          HorizontalOptions="Fill"
                          VerticalOptions="Fill">

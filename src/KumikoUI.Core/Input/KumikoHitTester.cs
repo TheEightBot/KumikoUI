@@ -74,16 +74,9 @@ public class KumikoHitTester
         // Adjust Y for grouping panel offset
         float adjustedY = viewportY - groupPanelOffset;
 
-        // Compute frozen column widths
-        float frozenWidth = 0;
-        float rightFrozenWidth = 0;
-        for (int i = 0; i < columns.Count; i++) // not foreach: the interface enumerator would be boxed
-        {
-            var col = columns[i];
-            if (!col.IsVisible) continue;
-            if (col.IsFrozen) frozenWidth += col.Width;
-            if (col.IsFrozenRight) rightFrozenWidth += col.Width;
-        }
+        // Compute frozen column widths, with the panes the renderer draws for this viewport (#268)
+        FrozenPanes.Resolve(columns, style, scroll.ViewportWidth);
+        var (frozenWidth, rightFrozenWidth) = FrozenPanes.GetWidths(columns);
 
         // Compute drag handle offsets
         float handleOffset = 0, rightHandleWidth = 0;
@@ -280,7 +273,7 @@ public class KumikoHitTester
             for (int i = 0; i < columns.Count; i++)
             {
                 var col = columns[i];
-                if (!col.IsVisible || !col.IsFrozen) continue;
+                if (!col.IsVisible || col.Pane != ColumnFreezeMode.Left) continue;
                 float colRight = x + col.Width;
                 var result = CheckHeaderColumn(col, i, x, colRight, viewportX, effectiveContentX, contentY, style);
                 if (result.HasValue) return result.Value;
@@ -296,7 +289,7 @@ public class KumikoHitTester
             for (int i = 0; i < columns.Count; i++)
             {
                 var col = columns[i];
-                if (!col.IsVisible || !col.IsFrozenRight) continue;
+                if (!col.IsVisible || col.Pane != ColumnFreezeMode.Right) continue;
                 float colRight = x + col.Width;
                 var result = CheckHeaderColumn(col, i, x, colRight, viewportX, effectiveContentX, contentY, style);
                 if (result.HasValue) return result.Value;
@@ -308,10 +301,13 @@ public class KumikoHitTester
         {
             float x = frozenWidth; // scrollable columns start after frozen in content space
             float scrollContentX = viewportX + scroll.OffsetX;
-            for (int i = 0; i < columns.Count; i++)
+            // In on-screen order, three passes in one loop: unpinned left-frozen columns, then the scrolling ones, then
+            // unpinned right-frozen ones (FrozenPanes.ScrollPass).
+            for (int k = 0, n = columns.Count; k < 3 * n; k++)
             {
+                int i = k % n;
                 var col = columns[i];
-                if (!col.IsVisible || col.IsFrozen || col.IsFrozenRight) continue;
+                if (!col.IsVisible || FrozenPanes.ScrollPass(col) != k / n) continue;
                 float colRight = x + col.Width;
 
                 if (IsResizable(col) &&
@@ -417,7 +413,7 @@ public class KumikoHitTester
             for (int i = 0; i < columns.Count; i++)
             {
                 var col = columns[i];
-                if (!col.IsVisible || !col.IsFrozen) continue;
+                if (!col.IsVisible || col.Pane != ColumnFreezeMode.Left) continue;
                 if (viewportX >= x && viewportX < x + col.Width)
                 {
                     return new KumikoHitInfo
@@ -439,7 +435,7 @@ public class KumikoHitTester
             for (int i = 0; i < columns.Count; i++)
             {
                 var col = columns[i];
-                if (!col.IsVisible || !col.IsFrozenRight) continue;
+                if (!col.IsVisible || col.Pane != ColumnFreezeMode.Right) continue;
                 if (viewportX >= x && viewportX < x + col.Width)
                 {
                     return new KumikoHitInfo
@@ -456,10 +452,13 @@ public class KumikoHitTester
         // Scrollable columns
         float scrollContentX = viewportX + scroll.OffsetX;
         float cx = frozenWidth;
-        for (int i = 0; i < columns.Count; i++)
+        // In on-screen order, three passes in one loop: unpinned left-frozen columns, then the scrolling ones, then
+        // unpinned right-frozen ones (FrozenPanes.ScrollPass).
+        for (int k = 0, n = columns.Count; k < 3 * n; k++)
         {
+            int i = k % n;
             var col = columns[i];
-            if (!col.IsVisible || col.IsFrozen || col.IsFrozenRight) continue;
+            if (!col.IsVisible || FrozenPanes.ScrollPass(col) != k / n) continue;
             if (scrollContentX >= cx && scrollContentX < cx + col.Width)
             {
                 return new KumikoHitInfo

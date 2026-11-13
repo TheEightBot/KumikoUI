@@ -351,7 +351,7 @@ public class PointerGestureTests
         Assert.Equal("N29", g.NameAt(0));
     }
 
-    [Fact(Skip = "Known defect (#100): the controller ignores the pointer button, so a right-click on a header sorts")]
+    [Fact]
     public void SecondaryButtonHeaderTap_DoesNotSort()
     {
         var g = new InputGrid();
@@ -362,15 +362,17 @@ public class PointerGestureTests
         Assert.Equal(KumikoSortDirection.None, g.Name.SortDirection);
     }
 
-    [Fact(Skip = "Known defect (#100): the controller ignores the pointer button, so a right-click selects the row")]
-    public void SecondaryButtonCellTap_DoesNotSelect()
+    [Fact]
+    public void SecondaryButtonCellTap_OnASelectedRow_KeepsTheMultiSelection()
     {
         var g = new InputGrid();
+        g.Tap(60, g.RowY(1));
+        g.Tap(60, g.RowY(2), InputModifiers.Control);
 
         g.Pointer(InputAction.Pressed, 60, g.RowY(2), button: PointerButton.Secondary);
         g.Pointer(InputAction.Released, 60, g.RowY(2), button: PointerButton.Secondary);
 
-        Assert.Empty(g.Selection.SelectedRows);
+        Assert.Equal(new[] { 1, 2 }, g.Selection.SelectedRows.OrderBy(r => r));
     }
 
     [Fact]

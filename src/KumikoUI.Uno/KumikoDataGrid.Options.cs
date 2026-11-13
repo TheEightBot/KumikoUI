@@ -39,6 +39,9 @@ public partial class KumikoDataGrid
 
         // These target objects the control owns, so they are wired once (they do not root the page).
         _inputController.RowTapped += OnRowTappedForCommand;
+        _inputController.CellTapped += OnCellTappedForCommand;
+        _inputController.HeaderTapped += OnHeaderTappedForCommand;
+        _inputController.ContextRequested += OnContextMenuRequestedForCommand;
         _editSession.CellValueChanged += OnCellValueChangedForCommand;
         _dataSource.SortColumnsChanged += OnSortChangedForCommand;
     }
@@ -109,6 +112,7 @@ public partial class KumikoDataGrid
 
     private void OnGroupDescriptionsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (_syncingFromSource) return; // the grid is copying the source's grouping in (ApplyLayoutState)
         _dataSource.SetGroupDescriptions(GroupDescriptions);
         Invalidate();
     }
@@ -325,8 +329,56 @@ public partial class KumikoDataGrid
         set => SetValue(SortChangedCommandProperty, value);
     }
 
+    /// <summary>Identifies the <see cref="CellTappedCommand"/> dependency property.</summary>
+    public static readonly DependencyProperty CellTappedCommandProperty =
+        DependencyProperty.Register(
+            nameof(CellTappedCommand), typeof(ICommand), typeof(KumikoDataGrid), new PropertyMetadata(null));
+
+    /// <summary>Executed when a data cell is tapped, with the <see cref="KumikoCellTappedEventArgs"/> as its parameter.</summary>
+    public ICommand? CellTappedCommand
+    {
+        get => (ICommand?)GetValue(CellTappedCommandProperty);
+        set => SetValue(CellTappedCommandProperty, value);
+    }
+
+    /// <summary>Identifies the <see cref="HeaderTappedCommand"/> dependency property.</summary>
+    public static readonly DependencyProperty HeaderTappedCommandProperty =
+        DependencyProperty.Register(
+            nameof(HeaderTappedCommand), typeof(ICommand), typeof(KumikoDataGrid), new PropertyMetadata(null));
+
+    /// <summary>Executed when a column header is tapped, with the <see cref="KumikoHeaderTappedEventArgs"/> as its parameter.</summary>
+    public ICommand? HeaderTappedCommand
+    {
+        get => (ICommand?)GetValue(HeaderTappedCommandProperty);
+        set => SetValue(HeaderTappedCommandProperty, value);
+    }
+
+    /// <summary>Identifies the <see cref="ContextMenuRequestedCommand"/> dependency property.</summary>
+    public static readonly DependencyProperty ContextMenuRequestedCommandProperty =
+        DependencyProperty.Register(
+            nameof(ContextMenuRequestedCommand), typeof(ICommand), typeof(KumikoDataGrid), new PropertyMetadata(null));
+
+    /// <summary>
+    /// Executed when the user asks for a context menu (a right click or a touch long press), with the
+    /// <see cref="KumikoContextRequestedEventArgs"/> as its parameter.
+    /// </summary>
+    public ICommand? ContextMenuRequestedCommand
+    {
+        get => (ICommand?)GetValue(ContextMenuRequestedCommandProperty);
+        set => SetValue(ContextMenuRequestedCommandProperty, value);
+    }
+
     private void OnRowTappedForCommand(object? sender, RowTappedEventArgs e)
         => KumikoCommands.TryExecute(RowTappedCommand, e);
+
+    private void OnCellTappedForCommand(object? sender, KumikoCellTappedEventArgs e)
+        => KumikoCommands.TryExecute(CellTappedCommand, e);
+
+    private void OnHeaderTappedForCommand(object? sender, KumikoHeaderTappedEventArgs e)
+        => KumikoCommands.TryExecute(HeaderTappedCommand, e);
+
+    private void OnContextMenuRequestedForCommand(object? sender, KumikoContextRequestedEventArgs e)
+        => KumikoCommands.TryExecute(ContextMenuRequestedCommand, e);
 
     private void OnCellValueChangedForCommand(object? sender, CellValueChangedEventArgs e)
         => KumikoCommands.TryExecute(CellValueChangedCommand, e);
@@ -406,12 +458,13 @@ public partial class KumikoDataGrid
         remove => _inputController.RowReorderRejected -= value;
     }
 
-    /// <summary>Raised after the user dragged a column header to a new position.</summary>
-    public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered
-    {
-        add => _inputController.ColumnReordered += value;
-        remove => _inputController.ColumnReordered -= value;
-    }
+    /// <summary>
+    /// Raised after the user dropped a dragged column header at a new position and the grid moved the column in
+    /// <see cref="DataSource"/> and <see cref="Columns"/>. <see cref="KumikoColumnReorderedEventArgs.OldIndex"/> and
+    /// <see cref="KumikoColumnReorderedEventArgs.NewIndex"/> are the column's indices in <see cref="Columns"/> before
+    /// and after the move. A column moves only within its pane (left-frozen, scrolling or right-frozen).
+    /// </summary>
+    public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered;
 
     /// <summary>Raised after the user resized a column.</summary>
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized
