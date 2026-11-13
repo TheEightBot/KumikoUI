@@ -117,7 +117,7 @@ public class KumikoFontIconProvider : IKumikoIconProvider
         }
 
         float size = Math.Min(bounds.Width, bounds.Height) * Scale;
-        if (!(size > 0)) return;
+        if (float.IsNaN(size) || size <= 0) return;
 
         _font.Size = size;
         _paint.Color = paint.Color;

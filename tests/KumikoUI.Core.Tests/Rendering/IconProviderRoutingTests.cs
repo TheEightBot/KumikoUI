@@ -112,7 +112,7 @@ public class IconProviderRoutingTests
         // The remove glyph sits in the 14 px circle behind it
         foreach (var remove in removes)
         {
-            Assert.Contains(ctx.Fills, f => f.Kind == DrawOpKind.FillRoundRect && f.Rect.Width == 14
+            Assert.Contains(ctx.Fills, f => f.Kind == DrawOpKind.FillRoundRect && Near(f.Rect.Width, 14)
                 && Near(f.Rect.X + 7, remove.Bounds.X + remove.Bounds.Width / 2));
         }
     }
@@ -164,7 +164,7 @@ public class IconProviderRoutingTests
         Assert.Equal(style.AccentColor, icons.Calls[0].Color);
         Assert.Equal(2f, icons.Calls[0].StrokeWidth);
         // The glyph's slot is the drawn box itself
-        var boxes = ctx.Ops.Where(o => o.Kind == DrawOpKind.DrawRect && o.Rect.Width == 16).Select(o => o.Rect).ToList();
+        var boxes = ctx.Ops.Where(o => o.Kind == DrawOpKind.DrawRect && Near(o.Rect.Width, 16)).Select(o => o.Rect).ToList();
         Assert.Contains(icons.Calls[0].Bounds, boxes);
         Assert.Contains(icons.Calls[1].Bounds, boxes);
     }

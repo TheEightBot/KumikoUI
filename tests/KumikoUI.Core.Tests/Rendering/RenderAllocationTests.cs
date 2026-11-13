@@ -107,7 +107,7 @@ public class RenderAllocationTests
             Assert.Equal(0, MeasureSteadyState(ctx =>
             {
                 for (int i = 0; i < icons.Length; i++)
-                    provider.DrawIcon(ctx, icons[i], new KumikoRect(i * 20, 4, 16, 16), paint);
+                    provider.DrawIcon(ctx, icons[i], new KumikoRect(i * 20f, 4, 16, 16), paint);
             }));
         }
     }

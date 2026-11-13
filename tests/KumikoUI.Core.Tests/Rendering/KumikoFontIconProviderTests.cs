@@ -23,8 +23,11 @@ public sealed class KumikoFontIconProviderTests : IDisposable
         return copy.ToArray();
     });
 
-    public KumikoFontIconProviderTests() =>
-        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, new MemoryStream(s_materialIcons.Value, writable: false));
+    public KumikoFontIconProviderTests()
+    {
+        using var font = new MemoryStream(s_materialIcons.Value, writable: false);
+        SkiaFontRegistrar.RegisterTypefaceFromStream(Family, font);
+    }
 
     public void Dispose() => SkiaFontRegistrar.Unregister(Family);
 
