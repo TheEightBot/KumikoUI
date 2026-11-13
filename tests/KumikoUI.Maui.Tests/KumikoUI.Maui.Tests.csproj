@@ -41,4 +41,10 @@
     <ProjectReference Include="../../src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- A real font for the KumikoFonts tests, shared with the samples. -->
+    <EmbeddedResource Include="../../samples/Shared/Fonts/OpenSans-Regular.ttf"
+                      LogicalName="KumikoUI.Maui.Tests.OpenSans-Regular.ttf" Link="TestFonts/OpenSans-Regular.ttf" />
+  </ItemGroup>
+
 </Project>

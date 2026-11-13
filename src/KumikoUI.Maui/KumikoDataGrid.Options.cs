@@ -36,6 +36,9 @@ public partial class KumikoDataGrid
 
         // These target objects the control owns, so they are wired once and need no Cleanup/Reconnect.
         _inputController.RowTapped += OnRowTappedForCommand;
+        _inputController.CellTapped += OnCellTappedForCommand;
+        _inputController.HeaderTapped += OnHeaderTappedForCommand;
+        _inputController.ContextRequested += OnContextMenuRequestedForCommand;
         _editSession.CellValueChanged += OnCellValueChangedForCommand;
         _dataSource.SortColumnsChanged += OnSortChangedForCommand;
     }
@@ -307,8 +310,53 @@ public partial class KumikoDataGrid
         set => SetValue(SortChangedCommandProperty, value);
     }
 
+    /// <summary>Identifies the <see cref="CellTappedCommand"/> bindable property.</summary>
+    public static readonly BindableProperty CellTappedCommandProperty = BindableProperty.Create(
+        nameof(CellTappedCommand), typeof(ICommand), typeof(KumikoDataGrid));
+
+    /// <summary>Executed when a data cell is tapped, with the <see cref="KumikoCellTappedEventArgs"/> as its parameter.</summary>
+    public ICommand? CellTappedCommand
+    {
+        get => (ICommand?)GetValue(CellTappedCommandProperty);
+        set => SetValue(CellTappedCommandProperty, value);
+    }
+
+    /// <summary>Identifies the <see cref="HeaderTappedCommand"/> bindable property.</summary>
+    public static readonly BindableProperty HeaderTappedCommandProperty = BindableProperty.Create(
+        nameof(HeaderTappedCommand), typeof(ICommand), typeof(KumikoDataGrid));
+
+    /// <summary>Executed when a column header is tapped, with the <see cref="KumikoHeaderTappedEventArgs"/> as its parameter.</summary>
+    public ICommand? HeaderTappedCommand
+    {
+        get => (ICommand?)GetValue(HeaderTappedCommandProperty);
+        set => SetValue(HeaderTappedCommandProperty, value);
+    }
+
+    /// <summary>Identifies the <see cref="ContextMenuRequestedCommand"/> bindable property.</summary>
+    public static readonly BindableProperty ContextMenuRequestedCommandProperty = BindableProperty.Create(
+        nameof(ContextMenuRequestedCommand), typeof(ICommand), typeof(KumikoDataGrid));
+
+    /// <summary>
+    /// Executed when the user asks for a context menu (a right click or a touch long press), with the
+    /// <see cref="KumikoContextRequestedEventArgs"/> as its parameter.
+    /// </summary>
+    public ICommand? ContextMenuRequestedCommand
+    {
+        get => (ICommand?)GetValue(ContextMenuRequestedCommandProperty);
+        set => SetValue(ContextMenuRequestedCommandProperty, value);
+    }
+
     private void OnRowTappedForCommand(object? sender, RowTappedEventArgs e)
         => KumikoCommands.TryExecute(RowTappedCommand, e);
+
+    private void OnCellTappedForCommand(object? sender, KumikoCellTappedEventArgs e)
+        => KumikoCommands.TryExecute(CellTappedCommand, e);
+
+    private void OnHeaderTappedForCommand(object? sender, KumikoHeaderTappedEventArgs e)
+        => KumikoCommands.TryExecute(HeaderTappedCommand, e);
+
+    private void OnContextMenuRequestedForCommand(object? sender, KumikoContextRequestedEventArgs e)
+        => KumikoCommands.TryExecute(ContextMenuRequestedCommand, e);
 
     private void OnCellValueChangedForCommand(object? sender, CellValueChangedEventArgs e)
         => KumikoCommands.TryExecute(CellValueChangedCommand, e);

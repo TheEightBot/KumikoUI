@@ -264,6 +264,28 @@ public partial class KumikoInputController
         else if (e.Action is InputAction.Released or InputAction.Cancelled) _isPointerDown = false;
         var action = e.Action == InputAction.Moved && !wasPointerDown ? InputAction.Hover : e.Action;
 
+        // Only the primary button selects, sorts, scrolls, drags and edits: the press records its button, and the
+        // rest of the press follows it (hosts may report no button, or another one, on the release).
+        if (action == InputAction.Pressed)
+        {
+            _pressButton = e.Button;
+            _pressConsumedByContext = false;
+        }
+        bool partOfPress = action == InputAction.Pressed ||
+            (wasPointerDown && action is InputAction.Moved or InputAction.Released or InputAction.LongPress);
+        if (partOfPress && !IsPrimaryButton(_pressButton))
+        {
+            HandleNonPrimaryPointer(e, action, scroll, selection, style, dataSource);
+            return;
+        }
+
+        // A long press that raised ContextRequested ends the gesture: lifting or moving the finger does nothing.
+        if (partOfPress && _pressConsumedByContext) // always false on a new press, which resets it above
+        {
+            e.Handled = true;
+            return;
+        }
+
         // ── Popup priority: popups always get first crack at input ──
         if (_popupManager.HandlePointer(e))
         {
@@ -1182,6 +1204,8 @@ public partial class KumikoInputController
                     dataSource.ToggleSort(hit.Column);
             }
 
+            HeaderTapped?.Invoke(this, new KumikoHeaderTappedEventArgs(hit.ColumnIndex, hit.Column, e.X, e.Y, e.Modifiers));
+
             Redraw();
             e.Handled = true;
             return;
@@ -1219,8 +1243,13 @@ public partial class KumikoInputController
             selection.HandleRowSelection(hit.RowIndex, shift, ctrl);
             selection.CurrentCell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
 
-            RowTapped?.Invoke(this, new RowTappedEventArgs(
-                hit.RowIndex, hit.ColumnIndex, dataSource.GetItem(hit.RowIndex)));
+            var tappedItem = dataSource.GetItem(hit.RowIndex);
+            RowTapped?.Invoke(this, new RowTappedEventArgs(hit.RowIndex, hit.ColumnIndex, tappedItem));
+            if (CellTapped != null && hit.Column != null)
+            {
+                CellTapped(this, new KumikoCellTappedEventArgs(
+                    hit.RowIndex, hit.ColumnIndex, hit.Column, tappedItem, e.X, e.Y, e.ClickCount));
+            }
 
             var tappedCell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
             bool isBooleanCell = hit.Column?.ColumnType == KumikoColumnType.Boolean;
@@ -1360,8 +1389,9 @@ public partial class KumikoInputController
     }
 
     /// <summary>
-    /// Handle a long press gesture: on touch it may start a row drag; otherwise it selects the cell and triggers
-    /// editing if the LongPress edit trigger is configured.
+    /// Handle a long press gesture: on touch it may start a row drag, and a cell with the LongPress edit trigger
+    /// edits. Otherwise a finger or a pen raises <see cref="ContextRequested"/> (and the rest of the press is
+    /// ignored), and a mouse selects the cell.
     /// </summary>
     private void HandleLongPress(
         KumikoPointerEventArgs e,
@@ -1384,6 +1414,28 @@ public partial class KumikoInputController
         if (TryBeginRowDragOnLongPress(e, hit, scroll, selection, style, dataSource))
         {
             e.Handled = true;
+            return;
+        }
+
+        // A finger or a pen asks for a context menu, unless the cell edits on a long press. A mouse held down is a
+        // slow click, not a request for a menu (the secondary button is).
+        bool editsOnLongPress = hit.Region == HitRegion.Cell && hit.RowIndex >= 0 && _editSession != null &&
+            hit.Column != null && (GetEffectiveEditTriggers(hit.Column) & EditTrigger.LongPress) != 0;
+        if (e.DeviceType != KumikoPointerDeviceType.Mouse && !editsOnLongPress)
+        {
+            // Inside the open editor the press stays the editor's: no menu over it, and nothing is committed
+            if (_editSession is { IsEditing: true, ActiveEditor: { } editor } && editor.HitTest(e.X, e.Y))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (RequestContext(KumikoContextTrigger.LongPress, e, hit, selection, dataSource))
+            {
+                _pressConsumedByContext = true;
+                Redraw();
+                e.Handled = true;
+            }
             return;
         }
 

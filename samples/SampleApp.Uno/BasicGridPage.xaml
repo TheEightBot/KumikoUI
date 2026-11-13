@@ -33,6 +33,7 @@
                 <Button Content="Update Random Salary" Click="OnUpdateRandomSalaryClicked" />
                 <Button Content="Randomize Ratings" Click="OnRandomizeRatingsClicked" />
                 <Button x:Name="themeToggle" Content="Theme: Light" Click="OnToggleThemeClicked" />
+                <Button x:Name="iconsToggle" Content="Icons: Built-in" Click="OnToggleIconsClicked" />
                 <Button x:Name="selectionModeToggle" Content="Select: All" Click="OnToggleSelectionModeClicked" />
                 <Button Content="Save Layout" Click="OnSaveLayoutClicked" />
                 <Button x:Name="restoreLayoutButton" Content="Restore Layout" Click="OnRestoreLayoutClicked" />
