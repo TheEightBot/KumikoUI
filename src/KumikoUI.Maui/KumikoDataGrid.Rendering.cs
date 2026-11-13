@@ -215,7 +215,7 @@ public partial class KumikoDataGrid
 
             // The first blink after a change draws everything and keeps a copy for the next blinks.
             DrawFrame(canvas, scale, width, height);
-            _caretFrame.Capture(surface);
+            _caretFrame.Capture(surface, info);
             return;
         }
 

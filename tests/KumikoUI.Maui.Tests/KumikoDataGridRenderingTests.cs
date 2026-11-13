@@ -250,8 +250,10 @@ public class KumikoDataGridRenderingTests
         using var surface = NewSurface();
         surface.Canvas.Clear(new SKColor(10, 20, 30));
         using var frame = new KumikoCaretFrame();
-        frame.Capture(surface);
+        frame.Capture(surface, new SKImageInfo(SurfaceWidth, SurfaceHeight, SKColorType.Rgba8888, SKAlphaType.Premul));
         Assert.True(frame.HasFrame);
+        // A snapshot of the unchanged surface is its cached image; disposing it must not free the kept frame.
+        using (surface.Snapshot()) { }
 
         surface.Canvas.Clear(SKColors.White);
         Assert.False(frame.TryRestore(surface.Canvas, new SKImageInfo(SurfaceWidth + 1, SurfaceHeight)));

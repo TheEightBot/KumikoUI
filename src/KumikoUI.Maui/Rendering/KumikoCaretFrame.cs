@@ -11,7 +11,8 @@ namespace KumikoUI.Maui.Rendering;
 /// <remarks>
 /// Only CPU-rasterized frames are kept: there the rasterization of the whole surface is what a blink costs, and a
 /// snapshot is a plain pixel copy. A GPU frame rasterizes on the GPU and its back buffer may not be readable, so
-/// the GPU surfaces redraw the whole frame on a blink. The copy is taken on the first blink after a change (not on
+/// the GPU surfaces redraw the whole frame on a blink. The kept pixels are a copy this type owns (see
+/// <see cref="Capture"/>). The copy is taken on the first blink after a change (not on
 /// every frame), and any other redraw drops it, so it never shows stale content.
 /// </remarks>
 internal sealed class KumikoCaretFrame : IDisposable
@@ -19,20 +20,34 @@ internal sealed class KumikoCaretFrame : IDisposable
     /// <summary>Device pixels added around the caret area, for antialiased edges and focus outlines.</summary>
     public const int MarginPixels = 4;
 
-    private SKImage? _image;
+    private SKBitmap? _pixels;
+    private bool _hasFrame;
     private SKPaint? _copyPaint;
 
     /// <summary>Whether a frame is kept.</summary>
-    public bool HasFrame => _image is not null;
+    public bool HasFrame => _hasFrame;
 
     /// <summary>
     /// Keeps a copy of what <paramref name="surface"/> shows now. Does nothing for a GPU surface (see remarks).
     /// </summary>
-    public void Capture(SKSurface surface)
+    /// <remarks>
+    /// The pixels are read into a bitmap this frame owns. A <c>Snapshot()</c> of an unchanged surface is the
+    /// surface's cached image, and SkiaSharp hands out one wrapper per native image, so anyone else who took a
+    /// snapshot and disposed it would free the kept frame under the grid.
+    /// </remarks>
+    /// <param name="surface">The surface the frame was drawn on.</param>
+    /// <param name="info">The surface's size and pixel format.</param>
+    public void Capture(SKSurface surface, SKImageInfo info)
     {
-        Clear();
-        if (surface.Context is not null) return;
-        _image = surface.Snapshot();
+        _hasFrame = false;
+        if (surface.Context is not null || info.Width <= 0 || info.Height <= 0 || info.ColorType == SKColorType.Unknown)
+            return;
+        if (_pixels is null || _pixels.Info != info)
+        {
+            _pixels?.Dispose();
+            _pixels = new SKBitmap(info);
+        }
+        _hasFrame = surface.ReadPixels(_pixels.Info, _pixels.GetPixels(), _pixels.RowBytes, 0, 0);
     }
 
     /// <summary>
@@ -41,17 +56,18 @@ internal sealed class KumikoCaretFrame : IDisposable
     /// </summary>
     public bool TryRestore(SKCanvas canvas, SKImageInfo info)
     {
-        if (_image is null || _image.Width != info.Width || _image.Height != info.Height) return false;
+        if (!_hasFrame || _pixels is null || _pixels.Width != info.Width || _pixels.Height != info.Height) return false;
         _copyPaint ??= new SKPaint { BlendMode = SKBlendMode.Src };
-        canvas.DrawImage(_image, 0, 0, SKSamplingOptions.Default, _copyPaint);
+        canvas.DrawBitmap(_pixels, 0, 0, _copyPaint);
         return true;
     }
 
-    /// <summary>Drops the kept frame.</summary>
+    /// <summary>Drops the kept frame and its pixels.</summary>
     public void Clear()
     {
-        _image?.Dispose();
-        _image = null;
+        _hasFrame = false;
+        _pixels?.Dispose();
+        _pixels = null;
     }
 
     /// <inheritdoc />
