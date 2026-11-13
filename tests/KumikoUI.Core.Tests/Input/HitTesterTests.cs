@@ -109,6 +109,7 @@ public class HitTesterTests
         {
             x.Name.IsFrozen = true;
             x.Score.IsFrozenRight = true;
+            x.Style.MaxFrozenColumnsWidthRatio = 1f; // both panes pinned: 220 of the 300 px exceeds the default share
         });
         g.Scroll.OffsetX = 50;
 
@@ -251,6 +252,7 @@ public class HitTesterTests
         {
             x.Name.IsFrozen = true;
             x.Score.IsFrozenRight = true;
+            x.Style.MaxFrozenColumnsWidthRatio = 1f; // both panes pinned: 220 of the 300 px exceeds the default share
         });
         g.Scroll.OffsetX = 80;
 

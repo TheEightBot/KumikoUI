@@ -52,8 +52,15 @@
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
 
-		<!-- Custom Fonts -->
-		<MauiFont Include="Resources\Fonts\*" />
+		<!-- Custom Fonts: shared with SampleApp.Uno from samples/Shared/Fonts (license texts live there too). -->
+		<MauiFont Include="..\Shared\Fonts\OpenSans-*.ttf" Link="Resources\Fonts\%(Filename)%(Extension)" />
+
+		<!--
+			Fonts the grid draws with. They are registered through KumikoFonts.RegisterFromAppPackageAsync, which
+			reads them from the app package, so they ship as raw assets under their file name.
+		-->
+		<MauiAsset Include="..\Shared\Fonts\NotoSansJP-Regular.ttf;..\Shared\Fonts\MaterialIcons-Regular.ttf"
+				   Link="Resources\Raw\%(Filename)%(Extension)" LogicalName="%(Filename)%(Extension)" />
 
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
@@ -81,6 +88,11 @@
 		<ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
 		                  OutputItemType="Analyzer"
 		                  ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<!-- Code shared with SampleApp.Uno, so both samples draw the same grid (the Grouping page's style). -->
+	<ItemGroup>
+		<Compile Include="../Shared/GroupingTheme.cs" Link="Shared/GroupingTheme.cs" />
 	</ItemGroup>
 
 </Project>

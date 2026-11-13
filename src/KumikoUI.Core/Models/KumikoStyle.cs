@@ -97,6 +97,19 @@ public class KumikoStyle
     public float FrozenColumnDividerWidth { get; set => Set(ref field, value); } = 2f;
     /// <summary>Background color for left-frozen column cells.</summary>
     public KumikoColor FrozenColumnBackgroundColor { get; set => Set(ref field, value); } = new(250, 250, 250);
+    /// <summary>
+    /// The largest share of the column area (the viewport less the row drag handle) the left-frozen and
+    /// right-frozen columns may take together, from 0 to 1. Default: two thirds, so at least a third of the width
+    /// is left to the scrolling columns. When the columns are wider than the viewport and the frozen ones take
+    /// more than this, columns are unpinned until they fit: the right-frozen columns first, from the one nearest
+    /// the scrolling columns outward, then the left-frozen ones from the rightmost. An unpinned column scrolls
+    /// with the others at the same place in the on-screen order (at the start of the scrolling columns when it
+    /// was left-frozen, at their end when it was right-frozen), and is pinned again as soon as the viewport is
+    /// wide enough. Columns keep their <see cref="KumikoColumn.FreezeMode"/>. When every column fits in the
+    /// viewport nothing is unpinned, whatever the ratio. 1 unpins only what would otherwise overlap; 0 unpins
+    /// every frozen column whenever the grid scrolls horizontally. Values outside 0 to 1 are clamped.
+    /// </summary>
+    public float MaxFrozenColumnsWidthRatio { get; set => Set(ref field, value); } = 2f / 3f;
 
     // ── Right-frozen columns ─────────────────────────────────────
     /// <summary>Divider line color between scrollable and right-frozen columns.</summary>
@@ -254,6 +267,20 @@ public class KumikoStyle
 
     /// <summary>Background color of the drag handle header area.</summary>
     public KumikoColor RowDragHandleHeaderBackgroundColor { get; set => Set(ref field, value); } = new(235, 235, 235);
+
+    // ── Icons ────────────────────────────────────────────────────
+    /// <summary>
+    /// Draws every built-in glyph of the grid (group chevrons, sort arrows, filter buttons, grouping chip buttons,
+    /// drag grips, check marks) and of the editors and filter popup it opens. Glyph colors still come from the
+    /// style's color properties. Default: <see cref="KumikoIconProvider.Default"/>, the built-in vector set; use a
+    /// <see cref="KumikoFontIconProvider"/> for an icon font, or your own <see cref="IKumikoIconProvider"/>.
+    /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when set to <c>null</c>.</exception>
+    public IKumikoIconProvider IconProvider
+    {
+        get;
+        set => Set(ref field, value ?? throw new ArgumentNullException(nameof(value)));
+    } = KumikoIconProvider.Default;
 
     // ── Conditional style resolvers ──────────────────────────────
     /// <summary>

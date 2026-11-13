@@ -23,11 +23,14 @@
 
   <ItemGroup>
     <!-- A real font for the SkiaFontRegistrar / SkiaResourceCache tests (#62). -->
-    <EmbeddedResource Include="../../samples/SampleApp.Maui/Resources/Fonts/OpenSans-Regular.ttf"
+    <EmbeddedResource Include="../../samples/Shared/Fonts/OpenSans-Regular.ttf"
                       LogicalName="KumikoUI.Core.Tests.OpenSans-Regular.ttf" Link="TestFonts/OpenSans-Regular.ttf" />
     <!-- Its semibold face, registered as a family's bold variant (#74). -->
-    <EmbeddedResource Include="../../samples/SampleApp.Maui/Resources/Fonts/OpenSans-Semibold.ttf"
+    <EmbeddedResource Include="../../samples/Shared/Fonts/OpenSans-Semibold.ttf"
                       LogicalName="KumikoUI.Core.Tests.OpenSans-Semibold.ttf" Link="TestFonts/OpenSans-Semibold.ttf" />
+    <!-- An icon font for the font icon provider tests (#119). -->
+    <EmbeddedResource Include="../../samples/Shared/Fonts/MaterialIcons-Regular.ttf"
+                      LogicalName="KumikoUI.Core.Tests.MaterialIcons-Regular.ttf" Link="TestFonts/MaterialIcons-Regular.ttf" />
   </ItemGroup>
 
   <ItemGroup>

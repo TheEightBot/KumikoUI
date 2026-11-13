@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using KumikoUI.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using SampleApp.Shared;
 
 namespace SampleApp.Uno;
 
@@ -28,7 +29,22 @@ public sealed partial class GroupingPage : Page
     {
         this.InitializeComponent();
         DataContext = _viewModel;
+        ApplyGridTheme();
+        Loaded += (_, _) => ApplyGridTheme();
+        ActualThemeChanged += (_, _) => ApplyGridTheme();
         LoadSampleData();
+    }
+
+    // ── Theme ──
+
+    // The page's own style (shared with SampleApp.Maui), in its light or dark variant. Assigning GridStyle stops
+    // the grid from following the element theme by itself, so the page follows it instead.
+    private void ApplyGridTheme()
+    {
+        var theme = ActualTheme;
+        if (theme == ElementTheme.Default)
+            theme = Application.Current?.RequestedTheme == ApplicationTheme.Dark ? ElementTheme.Dark : ElementTheme.Light;
+        kumiko.GridStyle = GroupingTheme.Create(theme == ElementTheme.Dark);
     }
 
     private void LoadSampleData()
