@@ -102,7 +102,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Package | Contains | Install it when |
 |---|---|---|
 | [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `KumikoDataGrid` for .NET MAUI, `UseKumikoUI()`, `MauiActionButtonDefinition` | you build a .NET MAUI app |
-| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `KumikoFonts` | you build an Uno Platform app |
+| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `UnoActionButtonDefinition`, `KumikoFonts` | you build an Uno Platform app |
 | [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | `SkiaDrawingContext`, `SkiaResourceCache`, `SkiaFontRegistrar` | you host the engine on your own SkiaSharp surface (the host packages reference it) |
 | [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Data, layout, rendering, input and editing engine; models and themes; the `[KumikoGridItem]` source generator | always (the other packages reference it); it has no UI framework or SkiaSharp dependency |
 
@@ -311,7 +311,7 @@ Each column is a `KumikoColumn`. Its `ColumnType` picks the cell renderer and th
                    IsReadOnly="True" AllowTabStop="False" />
 ```
 
-Other per-column switches: `IsVisible`, `AllowSorting`, `AllowFiltering`, `AllowResize`, `AllowReorder`, `CustomComparer`, `CellStyle` and `HeaderCellStyle` (a `KumikoCellStyle`).
+Column settings can be changed from code at any time: `KumikoColumn` raises `PropertyChanged` and the grid repaints and lays out again without `Refresh()`. Sort and filter state (`SortDirection`, `SortOrder`, `ActiveFilter`) belongs to the data source and is read-only on the column. Other per-column switches: `IsVisible`, `AllowSorting`, `AllowFiltering`, `AllowResize`, `AllowReorder`, `CustomComparer`, `CellStyle` and `HeaderCellStyle` (a `KumikoCellStyle`).
 
 ### Text wrapping
 
@@ -496,9 +496,36 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
 </kumiko:KumikoDataGrid>
 ```
 
+### XAML with bound commands (Uno)
+
+`UnoActionButtonDefinition` is a `DependencyObject`, so every property, including `Command`, can be bound. It is not in the visual tree, so it cannot inherit `DataContext`; the grid gives it its own `DataContext` (the page's view model unless the grid sets one), so a plain `{Binding}` works. Its colors are `Color` values, like the grid's other color properties:
+
+<!-- snippet: uno -->
+```xml
+<kumiko:KumikoDataGrid x:Name="actionsGrid" ItemsSource="{Binding Employees}">
+    <core:KumikoColumn Header="Actions" PropertyName="" ColumnType="Template" Width="200"
+                       AllowSorting="False" AllowFiltering="False">
+        <core:KumikoColumn.CustomCellRenderer>
+            <render:ActionButtonsCellRenderer>
+                <render:ActionButtonsCellRenderer.Buttons>
+                    <kumiko:UnoActionButtonDefinition
+                        Label="Details"
+                        BackgroundColor="#FF0D6EFD"
+                        Command="{Binding ViewDetailsCommand}" />
+                    <kumiko:UnoActionButtonDefinition
+                        Label="Delete"
+                        BackgroundColor="#FFDC3545"
+                        Command="{Binding DeleteCommand}" />
+                </render:ActionButtonsCellRenderer.Buttons>
+            </render:ActionButtonsCellRenderer>
+        </core:KumikoColumn.CustomCellRenderer>
+    </core:KumikoColumn>
+</kumiko:KumikoDataGrid>
+```
+
 ### Code (both hosts)
 
-The Uno package has no bindable button definition yet, so on Uno build the buttons in code with `ActionButtonDefinition` from `KumikoUI.Core` (this works on MAUI too):
+To build the buttons in code, use `ActionButtonDefinition` from `KumikoUI.Core` (it works on both hosts):
 
 ```csharp
 var actionsColumn = new KumikoColumn
@@ -1321,34 +1348,24 @@ The library ships no fonts; your app supplies them.
 
 ### .NET MAUI
 
-Put the font files in `Resources/Raw/` and register them in `MauiProgram.CreateMauiApp`, before the first grid draws:
+Put the font files in `Resources/Raw/` (the project template's `MauiAsset` item exposes them under their file name) and register them with `KumikoFonts` when the app starts, before the first grid draws:
 
-<!-- snippet: maui -->
+<!-- snippet: maui members=Microsoft.Maui.Controls.Application -->
 ```csharp
-using KumikoUI.Maui;
-using KumikoUI.SkiaSharp;
-
-public static class MauiProgram
+private static void RegisterFonts()
 {
-    public static MauiApp CreateMauiApp()
+    // Not awaited: it completes quickly and never throws for a font problem.
+    _ = KumikoFonts.RegisterFromAppPackageAsync(new[]
     {
-        var builder = MauiApp.CreateBuilder();
-        builder.UseMauiApp<App>().UseKumikoUI();
-
-        RegisterFont("NotoSansJP", "NotoSansJP-Regular.ttf");
-        RegisterFont("MaterialIcons", "MaterialIcons-Regular.ttf");
-
-        return builder.Build();
-    }
-
-    private static void RegisterFont(string family, string fileName)
-    {
-        // CreateMauiApp runs before the UI loop starts, so waiting on the file here is safe
-        using var stream = FileSystem.OpenAppPackageFileAsync(fileName).GetAwaiter().GetResult();
-        SkiaFontRegistrar.RegisterTypefaceFromStream(family, stream);
-    }
+        ("NotoSansJP", "NotoSansJP-Regular.ttf"),
+        ("MaterialIcons", "MaterialIcons-Regular.ttf"),
+    });
 }
 ```
+
+Call `RegisterFonts()` from the `App` constructor.
+
+Fonts you add with `ConfigureFonts` are bridged into the grid renderer by `UseKumikoUI()`, so they need no extra call.
 
 ### Uno Platform
 
@@ -1368,7 +1385,7 @@ protected override async void OnLaunched(LaunchActivatedEventArgs args)
 }
 ```
 
-`RegisterFromAppPackageAsync` never throws: a missing or unreadable font is logged with `Debug.WriteLine` and the grid uses the default font. `KumikoFonts.RegisterFromStream(family, stream)` registers a stream you opened yourself and does throw on an unreadable font.
+`RegisterFromAppPackageAsync` (the same on both hosts) is asynchronous and never throws for a font problem: a missing or unreadable font is logged with `Debug.WriteLine` and the grid uses the default font. `KumikoFonts.RegisterFromStream(family, stream)` registers a stream you opened yourself and does throw on an unreadable font.
 
 Fonts added with `ConfigureFonts` also reach the grid once `UseKumikoUI()` is called, so a font alias from `fonts.AddFont("MyFont.ttf", "MyAlias")` can be used as a `KumikoFont` family directly; registering with `SkiaFontRegistrar` is needed only for fonts that `ConfigureFonts` doesn't cover.
 
@@ -1747,7 +1764,7 @@ This is the current state, not the goal. The 1.0 target and the plan are in [doc
 ## FAQ
 
 **How do I put a button in each row that runs a view model command?**
-Use an action button column ([Action Button Columns](#action-button-columns)). On MAUI, `MauiActionButtonDefinition` binds `Command` in XAML; on Uno, create `ActionButtonDefinition`s in code. A tap runs the command without opening an editor, whatever the grid's `EditTriggers` (#2, #6).
+Use an action button column ([Action Button Columns](#action-button-columns)). On MAUI, `MauiActionButtonDefinition` binds `Command` in XAML; on Uno, `UnoActionButtonDefinition` does the same (the grid supplies its `DataContext`). A tap runs the command without opening an editor, whatever the grid's `EditTriggers` (#2, #6).
 
 **Japanese text or icon glyphs show up as boxes or the wrong characters on Android.**
 The grid draws text with SkiaSharp, which doesn't see fonts registered with MAUI or WinUI, and Android's font manager doesn't give it CJK or icon typefaces. Register the font with `SkiaFontRegistrar` (MAUI) or `KumikoFonts` (Uno) and use its family name in `KumikoFont` ([Custom Fonts](#custom-fonts), #5).

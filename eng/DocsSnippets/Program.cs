@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 //   dotnet run --project eng/DocsSnippets -c Release [-- options]
 //
 //   --file <path-or-glob>   Markdown file to read, relative to the repository root. Repeatable. Replaces the
-//                           default list (README.md; docs/nuget/*.md is opt-in for now). A missing file or a glob with no
+//                           default list (README.md and docs/nuget/*.md). A missing file or a glob with no
 //                           match is skipped with a note.
 //   --root <dir>            Repository root. Default: the nearest parent directory that has a global.json.
 //   --maui-out <dir>        Output directory for the MAUI project. Default: tests/KumikoUI.Docs.Snippets.Maui/Generated
@@ -22,8 +22,12 @@ using System.Text.RegularExpressions;
 //   <!-- snippet: usings -->                  the standard `using` block the file's other C# snippets share
 //   <!-- snippet: skip because a csproj -->   not compiled; everything after `skip` is the reason
 //
-// Kinds for C# (default: detected): `statements` (wrapped in a method), `file` (types in their own namespace),
-// `members` (members of a class: `members=Base.Class.Name` gives it a base type). Blocks in other languages
+// Kinds for C# (default: detected): `statements` (wrapped in a method; type declarations after the statements, as in
+// a top-level-statements program, go in the same namespace), `file` (types in their own namespace), `members` (members
+// of a class: `members=Base.Class.Name` gives it a base type). Without an annotation a C# block is compiled for the host
+// its code names (MauiApp, ContentPage, Microsoft.UI.Xaml, ...), else for the host of the package README it is in
+// (README.KumikoUI.Maui.md, README.KumikoUI.Uno.md), else for both. A `partial` page class is paired with the XAML
+// page of the same file whose x:Class names it. Blocks in other languages
 // (shell, plain text) are ignored. Anything the tool cannot classify is an error, so nothing is skipped silently.
 // See "Documentation snippets" in CONTRIBUTING.md.
 
@@ -48,7 +52,7 @@ static int Run(string[] args)
 
     root = Path.GetFullPath(root ?? FindRoot());
     Emitter.Root = root;
-    if (files.Count == 0) files.Add("README.md"); // docs/nuget/*.md: opt in with --file until the tool handles their shape (#236)
+    if (files.Count == 0) { files.Add("README.md"); files.Add("docs/nuget/*.md"); }
     mauiOut = Path.GetFullPath(mauiOut ?? Path.Combine(root, "tests", "KumikoUI.Docs.Snippets.Maui", "Generated"));
     unoOut = Path.GetFullPath(unoOut ?? Path.Combine(root, "tests", "KumikoUI.Docs.Snippets.Uno", "Generated"));
 
@@ -72,6 +76,7 @@ static int Run(string[] args)
         var lines = File.ReadAllLines(Path.Combine(root, rel));
         var blocks = Parser.Parse(rel, lines, errors);
         var usingsLines = blocks.Where(b => b.Kind == "usings").SelectMany(b => b.Code).ToList();
+        Emitter.PairPages(blocks);
 
         foreach (var block in blocks)
         {
@@ -158,6 +163,8 @@ internal sealed class Block
     public string? Kind { get; init; }                    // statements | file | members | usings | null (detect)
     public string? Base { get; init; }                    // members=<Base>
     public bool Shared { get; init; }                     // file-level types visible to every snippet
+    public string? PairedClass { get; set; }              // C#: the page class a XAML block of the file names in x:Class
+    public string? PairedNamespace { get; set; }          // XAML: the namespace of the C# block that declares its x:Class
     public bool IsXml => Lang is "xml" or "xaml";
     public string Id => Regex.Replace(Source[..^3], "[^A-Za-z0-9]+", "_").Trim('_') + "_L" + FenceLine;
 }
@@ -285,7 +292,58 @@ internal static class Emitter
 
     private static string HostNs(Host h) => h == Host.Maui ? "KumikoUI.Maui" : "KumikoUI.Uno";
 
-    private static bool Applies(Block b, Host h) => b.Hosts is null || b.Hosts == (h == Host.Maui ? "maui" : "uno");
+    private static readonly Regex MauiCode = new(@"\b(MauiApp|MauiProgram|ContentPage|ContentView)\b|Microsoft\.Maui", RegexOptions.Compiled);
+    private static readonly Regex UnoCode = new(@"Microsoft\.UI\.Xaml|Windows\.UI\.Xaml|\bUno\b|\bPage\b\s*$|:\s*Page\b", RegexOptions.Compiled | RegexOptions.Multiline);
+
+    /// <summary>The host a block is for: its annotation, else what its C# names, else the package README it is in.</summary>
+    private static string? EffectiveHost(Block b)
+    {
+        if (b.Hosts is not null || b.IsXml) return b.Hosts;
+        var text = string.Join('\n', b.Code);
+        var maui = MauiCode.IsMatch(text);
+        var uno = UnoCode.IsMatch(text);
+        if (maui != uno) return maui ? "maui" : "uno";
+        var file = Path.GetFileName(b.Source);
+        if (file.Contains("KumikoUI.Maui", StringComparison.Ordinal)) return "maui";
+        if (file.Contains("KumikoUI.Uno", StringComparison.Ordinal)) return "uno";
+        return null; // Core and SkiaSharp READMEs: host-neutral, so both heads must compile it
+    }
+
+    private static bool Applies(Block b, Host h)
+    {
+        var hosts = EffectiveHost(b);
+        return hosts is null || hosts == (h == Host.Maui ? "maui" : "uno");
+    }
+
+    private static readonly Regex PartialClass = new(@"\bpartial\s+class\s+(?<name>\w+)", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Pairs each XAML page of a file with the C# block that declares its code-behind (<c>partial class MainPage</c>
+    /// for <c>x:Class="MyApp.MainPage"</c>), so <c>InitializeComponent</c> resolves.
+    /// </summary>
+    public static void PairPages(List<Block> blocks)
+    {
+        foreach (var xaml in blocks.Where(b => b.IsXml && b.Skip is null))
+        {
+            var m = Regex.Match(string.Join('\n', xaml.Code), "\\bx:Class\\s*=\\s*\"(?<cls>[^\"]*)\"");
+            if (!m.Success) continue;
+            var simple = m.Groups["cls"].Value.Split('.')[^1];
+            var xamlHost = EffectiveXamlHost(xaml);
+            var cs = blocks.FirstOrDefault(c => !c.IsXml && c.Skip is null && c.PairedClass is null
+                && PartialClass.Matches(string.Join('\n', c.Code)).Any(p => p.Groups["name"].Value == simple)
+                && (xamlHost is null || EffectiveHost(c) is null || EffectiveHost(c) == xamlHost));
+            if (cs is null) continue;
+            cs.PairedClass = simple;
+            xaml.PairedNamespace = $"DocsSnippets.Generated.{cs.Id}";
+        }
+    }
+
+    private static string? EffectiveXamlHost(Block b)
+    {
+        var text = string.Join('\n', b.Code);
+        return text.Contains("schemas.microsoft.com/dotnet/2021/maui", StringComparison.Ordinal) ? "maui"
+            : text.Contains("schemas.microsoft.com/winfx/2006/xaml/presentation", StringComparison.Ordinal) ? "uno" : null;
+    }
 
     // ───── C# ─────
 
@@ -328,7 +386,8 @@ internal static class Emitter
         {
             case "file":
                 if (!body.Any(l => l.TrimStart().StartsWith("namespace ", StringComparison.Ordinal)))
-                    sb.AppendLine(b.Shared ? "namespace DocsSnippets;" : $"namespace DocsSnippets.Generated.{b.Id};");
+                    sb.AppendLine(b.Shared ? "namespace DocsSnippets;"
+                        : $"namespace DocsSnippets.Generated.{b.Id};");
                 sb.AppendLine();
                 Line(sb, codeLine, b.Source);
                 sb.AppendLine(text);
@@ -344,23 +403,50 @@ internal static class Emitter
                 sb.AppendLine("#line default");
                 sb.AppendLine("}");
                 break;
-            default: // statements
+            default: // statements, optionally followed by type declarations (a top-level-statements program)
+                var split = b.Kind == "statements" ? -1 : TypesStart(body);
+                var statements = split < 0 ? text : string.Join('\n', body.Take(split));
                 sb.AppendLine($"namespace DocsSnippets.Generated.{b.Id};");
                 sb.AppendLine();
                 sb.AppendLine("internal static class Snippet");
                 sb.AppendLine("{");
-                sb.AppendLine(Regex.IsMatch(text, @"\bawait\b")
+                sb.AppendLine(Regex.IsMatch(statements, @"\bawait\b")
                     ? "    internal static async System.Threading.Tasks.Task Run()"
                     : "    internal static void Run()");
                 sb.AppendLine("    {");
                 Line(sb, codeLine, b.Source);
-                sb.AppendLine(text);
+                sb.AppendLine(statements);
                 sb.AppendLine("#line default");
                 sb.AppendLine("    }");
                 sb.AppendLine("}");
+                if (split >= 0)
+                {
+                    sb.AppendLine();
+                    Line(sb, codeLine + split, b.Source);
+                    sb.AppendLine(string.Join('\n', body.Skip(split)));
+                    sb.AppendLine("#line default");
+                }
                 break;
         }
         return new Output($"{b.Id}.cs", sb.ToString(), IsXaml: false, IsUsings: false);
+    }
+
+    /// <summary>
+    /// For statements followed by type declarations at the left margin (the shape of a top-level-statements
+    /// program), the index of the line where the types start (an attribute line above the type included); else -1.
+    /// </summary>
+    private static int TypesStart(List<string> body)
+    {
+        for (var i = 0; i < body.Count; i++)
+        {
+            var l = body[i];
+            if (l.Length == 0 || char.IsWhiteSpace(l[0]) || !TypeDecl.IsMatch(l)) continue;
+            if (l.StartsWith('[') && !Regex.IsMatch(l, @"\b(class|struct|record|interface|enum|delegate)\b")) continue; // attribute line: the type is below
+            var start = i;
+            while (start > 0 && body[start - 1].StartsWith('[')) start--;
+            return start;
+        }
+        return -1;
     }
 
     /// <summary>Repository root; <c>#line</c> uses the Markdown file's full path so the compiler can open (and embed) it.</summary>
@@ -398,6 +484,7 @@ internal static class Emitter
             if (t.Length == 0 || t.StartsWith("//", StringComparison.Ordinal)) continue;
             if (t.StartsWith("namespace ", StringComparison.Ordinal) || TypeDecl.IsMatch(l)) return "file";
             if (t.StartsWith('[')) continue; // attribute on the next line's type
+            if (Regex.IsMatch(t, @"^(public|private|internal|protected)\b")) return "members"; // a member, not a statement
             return "statements";
         }
         return "statements";
@@ -427,6 +514,8 @@ internal static class Emitter
             // A page written as an app would write it carries its own x:Class; replace it so every generated page
             // has a unique class.
             var existing = Regex.Match(text, "\\bx:Class\\s*=\\s*\"[^\"]*\"");
+            if (b.PairedNamespace is not null && existing.Success)
+                cls = $"{b.PairedNamespace}.{existing.Value.Split('"')[1].Split('.')[^1]}";
             if (existing.Success)
             {
                 text = text.Remove(existing.Index, existing.Length).Insert(existing.Index, $"x:Class=\"{cls}\"");
