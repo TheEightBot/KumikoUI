@@ -450,9 +450,9 @@ public sealed class KumikoImageCache : IKumikoImageResolver, IDisposable
         if (stream is MemoryStream memory && memory.Position == 0 && memory.TryGetBuffer(out var segment))
             return segment;
 
-        var copy = new MemoryStream();
+        using var copy = new MemoryStream();
         await stream.CopyToAsync(copy, cancellationToken).ConfigureAwait(false);
-        return new ArraySegment<byte>(copy.GetBuffer(), 0, (int)copy.Length);
+        return new ArraySegment<byte>(copy.ToArray());
     }
 
     /// <summary>Decodes an encoded image into a raster image no larger than <paramref name="maxSize"/> on its longer side.</summary>

@@ -282,11 +282,11 @@ public class KumikoImageCacheTests
     {
         var cache = new KumikoImageCache();
         var png = TestImages.Png(6, 6);
-        string path = Path.Combine(Path.GetTempPath(), $"kumiko-{Guid.NewGuid():N}.png");
+        string path = Path.Join(Path.GetTempPath(), $"kumiko-{Guid.NewGuid():N}.png");
         await File.WriteAllBytesAsync(path, png);
         try
         {
-            var stream = new MemoryStream(png);
+            using var stream = new MemoryStream(png);
             stream.Position = 3; // read from the start anyway
             object[] sources =
             {
