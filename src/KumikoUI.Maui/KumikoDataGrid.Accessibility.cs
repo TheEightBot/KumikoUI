@@ -7,7 +7,7 @@ namespace KumikoUI.Maui;
 /// Accessibility quick wins (#77). The canvas is one opaque element to a screen reader, so the grid
 /// exposes grid-level semantics (<see cref="GridDescription"/>, <see cref="GridHint"/>) and announces
 /// meaningful state changes through <see cref="SemanticScreenReader.Announce"/>: the current cell, a sort
-/// change, the start and end of an edit and a validation failure. The hidden keyboard-proxy entry is kept out
+/// change, the start and end of an edit and a validation failure. The hidden keyboard proxy is kept out
 /// of the accessibility tree. A per-cell virtual accessibility tree is a separate piece of work.
 /// </summary>
 /// <remarks>
@@ -57,9 +57,12 @@ public partial class KumikoDataGrid
 
     private void InitializeAccessibility()
     {
+#if !ANDROID
         // The keyboard proxy is plumbing for the software keyboard; a screen reader must not land on it.
+        // (Android's input view is marked unimportant for accessibility itself.)
         AutomationProperties.SetIsInAccessibleTree(_keyboardProxy, false);
         SemanticProperties.SetDescription(_keyboardProxy, string.Empty);
+#endif
 
         AutomationProperties.SetIsInAccessibleTree(this, true);
         UpdateAccessibilityHint();

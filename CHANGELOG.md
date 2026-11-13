@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- MAUI on Android: a native text-input adapter (#41) replaces the hidden `Entry`.
+  - The grid's own input view gives the input method an `InputConnection` onto `ITextInputSession`. Composition (Japanese, Chinese, Korean, Gboard suggestions), voice input and swipe input reach the editor whole instead of being reset mid-word.
+  - Surrounding-text deletion works by grapheme cluster, so an emoji is never split.
+  - The soft keyboard type follows the editor: number keys for numeric columns (with a decimal key unless the cell holds an integer), and no suggestions in the filter search box.
+  - A hardware keyboard now navigates the grid: arrows, Tab and Shift+Tab, Enter, Escape, F2, Home and End, Page Up and Page Down, Delete, Ctrl/Meta+A/C/V/X/Z/Y, and dead keys.
+  - The edited cell is kept above the soft keyboard. See "Android" in [docs/TEXT-INPUT.md](docs/TEXT-INPUT.md#android) for the `WindowSoftInputMode` guidance.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

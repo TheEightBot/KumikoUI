@@ -18,20 +18,18 @@ using Foundation;
 using CoreGraphics;
 using ObjCRuntime;
 #endif
-#if ANDROID
-using AndroidInputTypes = Android.Text.InputTypes;
-using AndroidImeAction = Android.Views.InputMethods.ImeAction;
-#endif
 
 namespace KumikoUI.Maui;
 
 /// <summary>
 /// .NET MAUI KumikoUI DataGrid control backed by SkiaSharp rendering.
 /// Drop this into any MAUI page. All rendering is done on the SKCanvas.
-/// Uses a hidden Entry overlay for keyboard input capture.
+/// Keyboard input goes through a native input view on Apple platforms and Android, and a hidden Entry on Windows
+/// (and as the fallback on Apple platforms).
 /// </summary>
 /// <remarks>
-/// The control is a <see cref="ContentView"/> whose content (the canvas and the keyboard proxy) is
+/// The control is a <see cref="ContentView"/> whose content (the canvas, plus a hidden keyboard-proxy Entry except
+/// on Android) is
 /// private: it has no layout API, and its XAML content is <see cref="Columns"/>.
 /// </remarks>
 [ContentProperty(nameof(Columns))]
@@ -39,7 +37,10 @@ public partial class KumikoDataGrid : ContentView
 {
     private readonly Grid _root = new();
     private readonly SKCanvasView _canvasView = new();
+#if !ANDROID
+    // Android has its own input view instead (KumikoDataGrid.TextInput.cs, #41)
     private readonly Entry _keyboardProxy;
+#endif
     private readonly KumikoRenderer _renderer = new();
     private readonly KumikoSource _dataSource = new();
     private readonly ScrollState _scroll = new();
@@ -80,8 +81,10 @@ public partial class KumikoDataGrid : ContentView
     // The device of the press in progress, for the long press synthesized from it
     private KumikoPointerDeviceType _pressedDeviceType;
 
+#if !ANDROID
     // Track if we are suppressing TextChanged because we set the text programmatically
     private bool _suppressTextChanged;
+#endif
 
     // Track whether Cleanup has been called so Reconnect knows to re-wire
     private bool _wasCleanedUp;
@@ -92,10 +95,11 @@ public partial class KumikoDataGrid : ContentView
 
     private SkiaResourceCache ResourceCache => _resourceCache ??= new SkiaResourceCache();
 
+#if !ANDROID
     // Sentinel character used to detect backspace on Entry.
-    // Zero-width space avoids collision with user-typed spaces and reduces
-    // interference from Android IME composing/replacement behavior.
+    // Zero-width space avoids collision with user-typed spaces.
     private const string KeyboardSentinel = "\u200B";
+#endif
 
 #if MACCATALYST || IOS
     private KeyInputResponder? _nativeKeyInput;
@@ -110,7 +114,8 @@ public partial class KumikoDataGrid : ContentView
         _selection = new KumikoSelectionModel(_dataSource);
         InitializeSelectionBinding();
 
-        // Set up the hidden keyboard proxy entry (fallback for Android/Windows)
+#if !ANDROID
+        // Set up the hidden keyboard proxy entry (Windows, and the fallback on Apple platforms)
         _keyboardProxy = new Entry
         {
             Opacity = 0,
@@ -119,10 +124,11 @@ public partial class KumikoDataGrid : ContentView
             InputTransparent = false,
             IsVisible = true,
             Text = KeyboardSentinel,
-            ReturnType = ReturnType.Done,   // Ensures Completed fires on Android
+            ReturnType = ReturnType.Done,
             IsTextPredictionEnabled = false, // Reduce IME composing interference
             IsSpellCheckEnabled = false,
         };
+#endif
 
         // Layout: canvas fills the grid, keyboard proxy sits hidden at top-left
         _canvasView.HorizontalOptions = LayoutOptions.Fill;
@@ -133,7 +139,9 @@ public partial class KumikoDataGrid : ContentView
         _canvasView.FlowDirection = FlowDirection.LeftToRight;
 
         _root.Children.Add(_canvasView);
+#if !ANDROID
         _root.Children.Add(_keyboardProxy);
+#endif
         InitializeAccessibility();
         Content = _root;
         _contentSealed = true;
@@ -179,9 +187,11 @@ public partial class KumikoDataGrid : ContentView
         _canvasView.HandlerChanged += OnCanvasHandlerChanged_Pointer;
 #endif
 
-        // Wire keyboard proxy events (used on Android/Windows, or as fallback)
+#if !ANDROID
+        // Wire keyboard proxy events (used on Windows, or as fallback)
         _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed += OnKeyboardProxyCompleted;
+#endif
 
 #if MACCATALYST || IOS
         // Set up native keyboard input and scroll gesture after the view is loaded
@@ -190,8 +200,8 @@ public partial class KumikoDataGrid : ContentView
 #endif
 
 #if ANDROID
-        // Configure Android-specific keyboard proxy once its handler is connected
-        _keyboardProxy.HandlerChanged += OnKeyboardProxyHandlerChanged_Android;
+        // The native input view joins the grid's platform view once the handler is connected (#41)
+        this.HandlerChanged += OnHandlerChanged_SetupAndroidTextInput;
 #endif
     }
 
@@ -779,8 +789,14 @@ public partial class KumikoDataGrid : ContentView
         {
 #if WINDOWS || MACCATALYST
             FocusKeyboardInput();
+#elif ANDROID
+            FocusAndroidTextInputForKeys(x, y); // focus for a hardware keyboard; no soft keyboard
 #endif
         }
+#if ANDROID
+        else if (e.ActionType == SKTouchAction.Released)
+            ReshowAndroidSoftInput(); // a tap during an edit brings back a dismissed soft keyboard
+#endif
 
         // Detect double-tap — store on Pressed so Released also gets ClickCount=2
         int clickCount = 1;
@@ -1059,6 +1075,9 @@ public partial class KumikoDataGrid : ContentView
     {
         _filterPopupActive = false;
         StopCursorBlinkTimer();
+#if ANDROID
+        ScheduleAndroidImeUpdate(); // the search box is gone: hide the soft keyboard unless an edit is open
+#endif
     }
 
     private void OnEditSessionCellEndEdit(object? sender, CellEndEditEventArgs e)
@@ -1122,9 +1141,11 @@ public partial class KumikoDataGrid : ContentView
         _resourceCache?.Dispose();
         _resourceCache = null;
 
+#if !ANDROID
         // Unsubscribe keyboard proxy events
         _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed -= OnKeyboardProxyCompleted;
+#endif
 
         // Unsubscribe the bound items and the Columns/summary/grouping collections (Reconnect restores them)
         UnsubscribeObservedCollections();
@@ -1162,7 +1183,8 @@ public partial class KumikoDataGrid : ContentView
 #endif
 
 #if ANDROID
-        _keyboardProxy.HandlerChanged -= OnKeyboardProxyHandlerChanged_Android;
+        this.HandlerChanged -= OnHandlerChanged_SetupAndroidTextInput;
+        DetachAndroidTextInput();
 #endif
     }
 
@@ -1198,8 +1220,10 @@ public partial class KumikoDataGrid : ContentView
         AttachNativePointer();
 #endif
 
+#if !ANDROID
         _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed += OnKeyboardProxyCompleted;
+#endif
 
 #if MACCATALYST || IOS
         this.HandlerChanged += OnHandlerChanged_SetupNativeKeyboard;
@@ -1207,7 +1231,8 @@ public partial class KumikoDataGrid : ContentView
 #endif
 
 #if ANDROID
-        _keyboardProxy.HandlerChanged += OnKeyboardProxyHandlerChanged_Android;
+        this.HandlerChanged += OnHandlerChanged_SetupAndroidTextInput;
+        AttachAndroidTextInput(); // the handler is already connected: HandlerChanged has fired
 #endif
     }
 
@@ -1248,8 +1273,9 @@ public partial class KumikoDataGrid : ContentView
         remove => _editSession.CellValueChanged -= value;
     }
 
-    // ── Keyboard Proxy Handlers (Entry-based, Android/Windows fallback) ──
+    // ── Keyboard Proxy Handlers (Entry-based, Windows and Apple fallback) ──
 
+#if !ANDROID
     private void OnKeyboardProxyTextChanged(object? sender, TextChangedEventArgs e)
     {
         if (_suppressTextChanged) return;
@@ -1278,7 +1304,7 @@ public partial class KumikoDataGrid : ContentView
 
         // Extract new characters using content-based diffing.
         // This handles both standard append behavior (e.g., sentinel + "a" on desktop)
-        // and Android IME replacement behavior (sentinel replaced entirely with "a").
+        // and IME replacement behavior (sentinel replaced entirely with "a").
         string newInput;
 
         if (newText.Length > oldText.Length && newText.StartsWith(oldText))
@@ -1325,10 +1351,14 @@ public partial class KumikoDataGrid : ContentView
         _keyboardProxy.Text = KeyboardSentinel;
         _suppressTextChanged = false;
     }
+#endif
 
     /// <summary>Focus the appropriate keyboard input mechanism for the current platform.</summary>
     private void FocusKeyboardInput()
     {
+#if ANDROID
+        ScheduleAndroidImeUpdate(); // the input view takes focus and shows the soft keyboard once the editor exists
+#else
 #if MACCATALYST || IOS
         if (_useNativeKeyInput && _nativeKeyInput != null)
         {
@@ -1341,11 +1371,15 @@ public partial class KumikoDataGrid : ContentView
             ResetKeyboardProxy();
             _keyboardProxy.Focus();
         }
+#endif
     }
 
     /// <summary>Dismiss the software keyboard by removing focus from the keyboard input mechanism.</summary>
     private void UnfocusKeyboardInput()
     {
+#if ANDROID
+        ScheduleAndroidImeUpdate(); // hides the soft keyboard unless another edit began meanwhile
+#else
 #if MACCATALYST || IOS
         if (_useNativeKeyInput && _nativeKeyInput != null)
         {
@@ -1357,6 +1391,7 @@ public partial class KumikoDataGrid : ContentView
         {
             _keyboardProxy.Unfocus();
         }
+#endif
     }
 
     // ── Cursor Blink Timer ───────────────────────────────────────
@@ -1402,21 +1437,6 @@ public partial class KumikoDataGrid : ContentView
         if (_editSession.IsAnimating)
             StartInertialScrollTimer(); // a held arrow key repeats a spin button from the frame loop
     }
-
-#if ANDROID
-    // ── Android Keyboard Configuration ───────────────────────────
-
-    private void OnKeyboardProxyHandlerChanged_Android(object? sender, EventArgs e)
-    {
-        if (_keyboardProxy.Handler?.PlatformView is Android.Widget.EditText editText)
-        {
-            // Disable IME predictions and composing behavior to ensure reliable
-            // character-by-character input through the hidden Entry proxy.
-            editText.InputType = AndroidInputTypes.ClassText | AndroidInputTypes.TextFlagNoSuggestions;
-            editText.ImeOptions = AndroidImeAction.Done;
-        }
-    }
-#endif
 
 #if MACCATALYST || IOS
     // ── Native Keyboard Input (Apple platforms) ──────────────────
