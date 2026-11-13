@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The documentation snippet check also compiles the C# and XAML blocks of the NuGet READMEs (`docs/nuget/*.md`) against both hosts (#236). `eng/DocsSnippets` splits statements followed by type declarations, infers the host from the code or the package README, and pairs a `partial` page class with its XAML page, so the NuGet READMEs need no annotations.
 
 ### Fixed
+- Setting a two-way bound `SelectedItem` (or `SelectedIndex`) from the view model no longer hangs the UI thread (#267). `KumikoSelectionBinder.SetSelectedItem` moved the current cell before selecting, so the grid reported the previous item while the binding was still applying the new one, the binding wrote that stale value back to the view model, and the two traded the item and `null` forever. The binder now selects the item first, then moves the current cell, and raises `SelectionChanged` and `Changed` once both are done. Both hosts share the binder, so MAUI and Uno are fixed alike.
 - Uno: a touch or pen long-press is now detected by a 500 ms / 15 px timer started on press, as in the MAUI grid, instead of relying on WinUI's `Holding` event alone (which is touch-only and not raised on every head). The release that ends a long press no longer taps, so a long-press on a Boolean cell toggles it once and does not raise `RowTapped`. `Holding` stays as a fallback and never fires a second long-press (#61).
 
 ## [0.2.0] - 2026-11-11
