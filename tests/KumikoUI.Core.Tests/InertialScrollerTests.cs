@@ -319,16 +319,79 @@ public class InertialScrollerTests
         var (_, d16) = Flinging().Update(16f);
         var (_, d32) = Flinging().Update(32f);
         Assert.Equal(16f, d16, 2);
-        Assert.Equal(32f, d32, 2);
+        // One 32 ms step travels as far as two 16 ms frames: 16 px, then 16 px at 0.92 of the speed.
+        Assert.Equal(16f + 16f * 0.92f, d32, 2);
     }
 
     [Fact]
-    public void Update_TwoShortFramesTravelAboutAsFarAsOneLongFrame()
+    public void Update_TwoShortFramesTravelAsFarAsOneLongFrame()
     {
         var split = Flinging();
         float splitTotal = split.Update(8f).dy + split.Update(8f).dy;
         float wholeTotal = Flinging().Update(16f).dy;
-        Assert.Equal(wholeTotal, splitTotal, 0);
+        Assert.Equal(wholeTotal, splitTotal, 3);
+    }
+
+    /// <summary>Flings 2000 px/s and steps it at <paramref name="hz"/> until it stops; returns the distance and time.</summary>
+    private static (float Distance, float ElapsedMs) FlingAt(float hz)
+    {
+        var scroller = new InertialScroller();
+        scroller.Settings.VelocitySmoothing = 0f;
+        scroller.TrackVelocity(0f, 20f, 1000L);
+        scroller.TrackVelocity(0f, 20f, 1010L); // 2000 px/s
+        scroller.StartFling(1010L);
+        Assert.True(scroller.IsActive);
+
+        float frameMs = 1000f / hz, distance = 0f, elapsed = 0f;
+        for (int frame = 0; scroller.IsActive && frame < 10_000; frame++)
+        {
+            distance += scroller.Update(frameMs).dy;
+            elapsed += frameMs;
+        }
+        Assert.False(scroller.IsActive);
+        return (distance, elapsed);
+    }
+
+    [Theory]
+    [InlineData(120f)]
+    [InlineData(90f)]
+    [InlineData(144f)]
+    [InlineData(30f)]
+    public void Fling_TravelsTheSameDistanceAtAnyFrameRate(float hz)
+    {
+        var (at60, _) = FlingAt(60f);
+        var (other, _) = FlingAt(hz);
+
+        // The velocity decays the same way over time whatever the frame rate; only where the last frame falls
+        // (when the speed drops below MinVelocity) differs, which is a fraction of a pixel.
+        Assert.InRange(other, at60 - 0.5f, at60 + 0.5f);
+        Assert.True(at60 > 300f, $"The fling should cover some distance, covered {at60}.");
+    }
+
+    [Fact]
+    public void Fling_LastsAboutAsLongAtAnyFrameRate()
+    {
+        var (_, ms60) = FlingAt(60f);
+        var (_, ms120) = FlingAt(120f);
+        Assert.InRange(ms120, ms60 - 1000f / 60f, ms60 + 1000f / 60f);
+    }
+
+    [Fact]
+    public void Fling_UnevenFrames_TravelTheSameDistanceAsEvenOnes()
+    {
+        var (even, _) = FlingAt(60f);
+
+        var scroller = new InertialScroller();
+        scroller.Settings.VelocitySmoothing = 0f;
+        scroller.TrackVelocity(0f, 20f, 1000L);
+        scroller.TrackVelocity(0f, 20f, 1010L);
+        scroller.StartFling(1010L);
+        float[] pattern = [8.3f, 16.7f, 33.4f, 11.1f, 6.9f];
+        float distance = 0f;
+        for (int frame = 0; scroller.IsActive && frame < 10_000; frame++)
+            distance += scroller.Update(pattern[frame % pattern.Length]).dy;
+
+        Assert.InRange(distance, even - 0.5f, even + 0.5f);
     }
 
     [Theory]
@@ -347,7 +410,8 @@ public class InertialScrollerTests
     public void Update_HugeFrameInterval_IsClamped()
     {
         var (_, dy) = Flinging().Update(60_000f);
-        Assert.Equal(100f, dy, 2); // 1000 px/s for the 100 ms cap
+        // 1000 px/s decaying over the 100 ms cap: 16 ms · (1 − 0.92^(100/16)) / (1 − 0.92) of travel at that speed
+        Assert.Equal(16f * (1f - MathF.Pow(0.92f, 100f / 16f)) / 0.08f, dy, 2);
     }
 
     // ── Boundary stop ─────────────────────────────────────────────
@@ -435,6 +499,30 @@ public class InertialScrollerTests
         var g = new Input.InputGrid(rows: 40);
         FlickUp(g, 1200);
         Assert.False(g.Input.IsInertialScrolling);
+    }
+
+    [Fact]
+    public void UpdateInertialScroll_SameFlingAt60And120Hz_ScrollsTheSameDistance()
+    {
+        float Scrolled(float frameMs)
+        {
+            var g = new Input.InputGrid(rows: 2000);
+            g.Pointer(InputAction.Pressed, 100, 60, timestampMs: 100);
+            for (int i = 1; i <= 4; i++)
+                g.Pointer(InputAction.Moved, 100, 60f + 40f * i, timestampMs: 100 + i * 16);
+            g.Pointer(InputAction.Released, 100, 220, timestampMs: 180);
+            g.Scroll.OffsetY = g.Scroll.MaxOffsetY / 2; // room to coast both ways
+            float start = g.Scroll.OffsetY;
+            int frames = 0;
+            while (g.Input.UpdateInertialScroll(g.Scroll, frameMs) && frames++ < 10_000) { }
+            return start - g.Scroll.OffsetY;
+        }
+
+        float at60 = Scrolled(1000f / 60f);
+        float at120 = Scrolled(1000f / 120f);
+
+        Assert.True(at60 > 100f, $"The fling should scroll, scrolled {at60}.");
+        Assert.InRange(at120, at60 - 0.5f, at60 + 0.5f);
     }
 
     [Fact]

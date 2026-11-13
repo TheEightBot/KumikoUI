@@ -1272,7 +1272,7 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `VerticalOffset`, `HorizontalOffset` | `double` | 0 | The scroll offsets; two-way ([Scrolling](#scrolling)). |
 | `Clipboard` | `IKumikoClipboard?` | the platform clipboard | Used for copy, cut and paste; null turns them off ([Copying rows](#copying-rows)). |
 | `ClipboardCopyIncludesHeaders` | `bool` | false | Ctrl/Cmd+C starts the copied text with the column headers. |
-| `RenderMode` | `KumikoRenderMode` | `Auto` | Uno only. `Auto` draws through Uno's GPU-backed `SKCanvasElement` on the Skia-rendered heads and through `SKXamlCanvas` elsewhere; `Hardware` and `Software` ask for one. `ActiveRenderMode` reports the surface in use. |
+| `RenderMode` | `KumikoRenderMode` | `Auto` | The drawing surface; `ActiveRenderMode` reports the one in use. MAUI: `Auto` rasterizes on the GPU (`SKGLView`) on Android and Mac Catalyst and on the CPU (`SKCanvasView`) on iOS and Windows; `Gpu` and `Software` ask for one. Uno: `Auto` draws through Uno's GPU-backed `SKCanvasElement` on the Skia-rendered heads and through `SKXamlCanvas` elsewhere; `Hardware` and `Software` ask for one. |
 | `IsReadOnly` | `bool` | false | True refuses every edit, Boolean toggle and Tab stop; combines with `KumikoColumn.IsReadOnly`. |
 | `AllowSorting`, `AllowFiltering` | `bool` | true | False stops header-tap sorting, or hides and disables the header filter icons; a grid-level false wins over the column's setting. |
 
@@ -1714,11 +1714,11 @@ KumikoUI.Core (net10.0): data, layout, rendering, input, editing; no UI framewor
 KumikoUI.SkiaSharp (net10.0): IDrawingContext on an SKCanvas, resource cache, font registry
        ↑                                   ↑
 KumikoUI.Maui (.NET MAUI)            KumikoUI.Uno (Uno Platform / WinUI)
-KumikoDataGrid on an SKCanvasView    KumikoDataGrid on an SKCanvasElement
-                                     (or an SKXamlCanvas, see RenderMode)
+KumikoDataGrid on an SKGLView        KumikoDataGrid on an SKCanvasElement
+(or an SKCanvasView, see RenderMode) (or an SKXamlCanvas, see RenderMode)
 ```
 
-All drawing goes through the `IDrawingContext` abstraction, so Core has no dependency on MAUI, WinUI or SkiaSharp. The two host controls are thin: they forward pointer, wheel and keyboard input to `KumikoInputController`, run the inertia and caret timers, and paint by calling `KumikoRenderer.Render`.
+All drawing goes through the `IDrawingContext` abstraction, so Core has no dependency on MAUI, WinUI or SkiaSharp. The two host controls are thin: they forward pointer, wheel and keyboard input to `KumikoInputController`, step inertial scrolling from the platform's frame callback, redraw at caret blink transitions, and paint by calling `KumikoRenderer.Render`.
 
 | Class | Responsibility |
 |---|---|

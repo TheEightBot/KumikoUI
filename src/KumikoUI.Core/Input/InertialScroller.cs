@@ -171,19 +171,33 @@ public class InertialScroller
     /// Returns (dx, dy) to apply to scroll offset.
     /// </summary>
     /// <param name="frameIntervalMs">Real time since the previous step, in milliseconds. Travel and friction both
-    /// scale with it, so slow frames cover the same distance. Non-finite or non-positive values produce no motion;
-    /// values above 100 ms are clamped.</param>
+    /// scale with it, so a fling covers the same distance whatever the frame rate (60 Hz, 120 Hz, or uneven
+    /// frames). Non-finite or non-positive values produce no motion; values above 100 ms are clamped.</param>
+    /// <remarks>
+    /// The velocity decays continuously by <see cref="ScrollSettings.Friction"/> per 16 ms. A step travels the
+    /// distance covered while it decays over the interval, <c>v · 16 ms · (1 − f^(t/16)) / (1 − f)</c>: a 16 ms step
+    /// travels <c>v · 16 ms</c> as before, and the steps of any split of the same time add up to the same distance.
+    /// </remarks>
     public (float dx, float dy) Update(float frameIntervalMs = 16f)
     {
         if (!_isActive) return (0, 0);
         if (float.IsNaN(frameIntervalMs) || frameIntervalMs <= 0f || !float.IsFinite(frameIntervalMs)) return (0, 0);
         if (frameIntervalMs > MaxFrameIntervalMs) frameIntervalMs = MaxFrameIntervalMs;
 
+        float friction = Settings.Friction;
         float factor = frameIntervalMs / 16f; // Normalize to 60fps baseline
-        float dx = _velocityX * (frameIntervalMs / 1000f);
-        float dy = _velocityY * (frameIntervalMs / 1000f);
+        float decay = MathF.Pow(friction, factor);
 
-        float decay = MathF.Pow(Settings.Friction, factor);
+        // Time-weighted travel of the decaying velocity over this step (see remarks). Without friction (1) the
+        // velocity is constant and the step travels its own length.
+        float travelMs = MathF.Abs(1f - friction) < 1e-6f
+            ? frameIntervalMs
+            : 16f * (1f - decay) / (1f - friction);
+        if (!float.IsFinite(travelMs)) travelMs = frameIntervalMs;
+
+        float dx = _velocityX * (travelMs / 1000f);
+        float dy = _velocityY * (travelMs / 1000f);
+
         _velocityX *= decay;
         _velocityY *= decay;
 

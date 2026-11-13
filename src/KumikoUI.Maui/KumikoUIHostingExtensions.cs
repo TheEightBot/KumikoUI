@@ -16,7 +16,8 @@ public static class KumikoUIHostingExtensions
     /// <c>MauiProgram.CreateMauiApp()</c>: <c>builder.UseKumikoUI();</c>.
     /// </summary>
     /// <remarks>
-    /// <para>This initializes SkiaSharp for MAUI, registers the canvas handler the grid draws on, and
+    /// <para>This initializes SkiaSharp for MAUI, registers the handlers of the views the grid draws on
+    /// (<c>SKCanvasView</c>, and <c>SKGLView</c> through SkiaSharp's own registration), and
     /// bridges the fonts registered with <c>ConfigureFonts</c> into the grid renderer, so a font alias
     /// such as <c>fonts.AddFont("MyFont.ttf", "MyAlias")</c> can be used as
     /// <c>KumikoFont.Family = "MyAlias"</c>. Fonts added with <c>ConfigureFonts</c> before or after this

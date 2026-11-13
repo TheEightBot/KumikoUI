@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- MAUI: `KumikoDataGrid.RenderMode` (`KumikoRenderMode`: `Auto`, `Software`, `Gpu`) and `ActiveRenderMode` (#71). `Gpu` draws on SkiaSharp's `SKGLView` (OpenGL ES on Android and iOS, Metal on Mac Catalyst, ANGLE on Windows), `Software` on `SKCanvasView`; changing it at run time replaces the surface. The MAUI sample's Large Data page has a picker for it.
+- Core: `PopupManager.TryGetVisibleBounds(out KumikoRect)` returns the union of the visible popups' bounds without allocating (#71).
+
+### Changed
+- MAUI: **Behavior change** — `RenderMode` defaults to `Auto`, which rasterizes on the GPU on Android and Mac Catalyst; iOS (OpenGL ES, deprecated by Apple) and Windows stay on `SKCanvasView` unless `Gpu` is set. Set `RenderMode="Software"` to keep the previous surface everywhere. On Android the GPU view paints on its own GL thread, so the grid records each frame into an `SKPicture` on the UI thread and the GL thread plays it back. (#71)
+- MAUI: the 16 ms dispatcher timer is replaced by the platform's frame callback (`CADisplayLink` on iOS and Mac Catalyst, up to 120 Hz; `Choreographer` on Android; `CompositionTarget.Rendering` on Windows), which runs only while a fling, edge autoscroll or editor animation is in progress and stops on the first idle frame. Redraw requests are coalesced to one paint per frame where an invalidation paints synchronously (Windows, the Android GPU surface). (#71)
+- MAUI: the caret blink redraws only at blink transitions, in phase with the caret, and on the software surface it copies the last full frame back and rasterizes only the editor and popup area. Neither SkiaSharp view can invalidate a sub-rectangle, so the GPU surfaces still redraw the whole frame on a blink. (#71)
+- Core: `InertialScroller.Update` integrates the decaying velocity over the frame interval, so a fling travels the same distance at 60, 120 Hz or with uneven frames. A 16 ms step is unchanged; a longer step travels slightly less than before (it no longer moves at the starting speed for the whole step). (#71)
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

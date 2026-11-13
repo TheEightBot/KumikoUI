@@ -7,9 +7,9 @@ This document describes how the Kumiko renders each frame, from the initial inva
 ```
 MAUI Trigger
   ↓
-SKCanvasView.InvalidateSurface()
+RequestRedraw() (coalesced to one paint per frame, see "Surfaces and Frame Loop (MAUI)")
   ↓
-OnPaintSurface(SKPaintSurfaceEventArgs)
+SKGLView / SKCanvasView PaintSurface
   ↓
 KumikoRenderer.Render(IDrawingContext, width, height)
   ↓
@@ -42,6 +42,25 @@ KumikoRenderer.Render(IDrawingContext, width, height)
 │18. Draw popups (filter, combobox, datepicker)        │
 └──────────────────────────────────────────────────────┘
 ```
+
+## Surfaces and Frame Loop (MAUI)
+
+`KumikoDataGrid.RenderMode` picks the SkiaSharp view the MAUI grid draws on (#71):
+
+| Platform | `Auto` | `Gpu` | Paints on |
+|----------|--------|-------|-----------|
+| Android | `SKGLView` (OpenGL ES `TextureView`) | same | GL thread: the UI thread records an `SKPicture`, the GL thread plays it back |
+| Mac Catalyst | `SKGLView` (Metal) | same | UI thread |
+| iOS | `SKCanvasView` | `SKGLView` (OpenGL ES, deprecated by Apple) | UI thread |
+| Windows | `SKCanvasView` | `SKGLView` (ANGLE swap chain) | UI thread, synchronously per invalidation |
+
+`ActiveRenderMode` reports the surface in use; `Software` always uses `SKCanvasView`. Changing `RenderMode` at run time removes the old view, disconnects its handler (releasing its GPU context) and redraws on the new one. If a device's GPU driver misdraws, set `RenderMode="Software"`.
+
+Every redraw signal goes through `RequestRedraw`. On iOS, Mac Catalyst and Android's software surface the platform folds invalidations into its next frame, so the surface is invalidated directly. Where an invalidation paints synchronously (Windows) or records a frame (the Android GPU surface), requests wait for the next platform frame callback and paint once.
+
+The frame callback is `CADisplayLink` on iOS and Mac Catalyst (up to 120 Hz on ProMotion displays), `Choreographer` on Android and `CompositionTarget.Rendering` on Windows. It runs only while there is work — a fling, a row drag's edge autoscroll, an editor animation, or a deferred redraw — and stops on the first idle frame. Each frame passes the measured time since the previous one (clamped to 1–50 ms) to `UpdateInertialScroll`, `UpdateAutoScroll` and `EditSession.UpdateAnimation`. `InertialScroller` integrates the decaying velocity over that interval, so a fling travels the same distance at 60 and 120 Hz.
+
+**Caret blink.** While an editor or a filter popup's search box has focus, a one-shot timer redraws just after each blink transition (every 530 ms, in phase with `DrawnTextBox`). Neither `SKCanvasView` nor `SKGLView` can invalidate a sub-rectangle: every paint covers the whole surface. On the software surface the first blink after a change keeps a copy of the frame; later blinks copy it back and redraw the grid clipped to the editor and popup area, so only that area is rasterized (the layout walk still runs). The GPU surfaces redraw the whole frame on a blink, rasterized by the GPU. With `ShowFrameStats` on, blinks redraw the whole frame so the overlay stays current.
 
 ## Invalidation Triggers
 
