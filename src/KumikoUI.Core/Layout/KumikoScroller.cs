@@ -18,7 +18,8 @@ namespace KumikoUI.Core.Layout;
 /// </para>
 /// <para>
 /// Horizontally, <see cref="ScrollState.OffsetX"/> is measured over the scrolling columns only, between the
-/// left-frozen and the right-frozen columns, net of the row drag handle.
+/// left-frozen and the right-frozen columns, net of the row drag handle. A frozen column the viewport is too narrow
+/// to pin (<see cref="KumikoStyle.MaxFrozenColumnsWidthRatio"/>) counts as a scrolling column.
 /// </para>
 /// <para>
 /// Targets are clamped to the scrollable range. The content size is refreshed from the data first, so scrolling
@@ -53,7 +54,9 @@ public static class KumikoScroller
     /// <summary>
     /// The left edge of the column at <paramref name="columnIndex"/> in viewport coordinates at the current scroll
     /// offset: frozen columns at a fixed X, right-frozen columns against the right edge, scrolling columns moving
-    /// with <see cref="ScrollState.OffsetX"/>. Returns <see cref="float.NaN"/> for a hidden or out-of-range column.
+    /// with <see cref="ScrollState.OffsetX"/>. A frozen column the viewport is too narrow to pin
+    /// (<see cref="KumikoStyle.MaxFrozenColumnsWidthRatio"/>) moves with the scrolling columns. Returns
+    /// <see cref="float.NaN"/> for a hidden or out-of-range column.
     /// </summary>
     /// <param name="columns">The columns, in order.</param>
     /// <param name="style">Supplies the row drag handle width.</param>
@@ -67,28 +70,17 @@ public static class KumikoScroller
         ArgumentNullException.ThrowIfNull(scroll);
         if (columnIndex < 0 || columnIndex >= columns.Count || !columns[columnIndex].IsVisible) return float.NaN;
 
-        var column = columns[columnIndex];
+        FrozenPanes.Resolve(columns, style, scroll.ViewportWidth);
         var (leftHandle, rightHandle) = GetHandleWidths(style);
-        var (frozenWidth, rightFrozenWidth) = GetFrozenWidths(columns);
+        var (frozenWidth, rightFrozenWidth) = FrozenPanes.GetWidths(columns);
+        float x = FrozenPanes.GetOffsetInPane(columns, columnIndex);
 
-        float x = 0;
-        if (column.IsFrozen)
+        return columns[columnIndex].Pane switch
         {
-            for (int i = 0; i < columnIndex; i++)
-                if (columns[i].IsVisible && columns[i].IsFrozen) x += columns[i].Width;
-            return leftHandle + x;
-        }
-        if (column.IsFrozenRight)
-        {
-            for (int i = 0; i < columnIndex; i++)
-                if (columns[i].IsVisible && columns[i].IsFrozenRight) x += columns[i].Width;
-            return scroll.ViewportWidth - rightHandle - rightFrozenWidth + x;
-        }
-
-        x = frozenWidth;
-        for (int i = 0; i < columnIndex; i++)
-            if (columns[i].IsVisible && !columns[i].IsFrozen && !columns[i].IsFrozenRight) x += columns[i].Width;
-        return leftHandle + x - scroll.OffsetX;
+            ColumnFreezeMode.Left => leftHandle + x,
+            ColumnFreezeMode.Right => scroll.ViewportWidth - rightHandle - rightFrozenWidth + x,
+            _ => leftHandle + frozenWidth + x - scroll.OffsetX,
+        };
     }
 
     /// <summary>
@@ -135,8 +127,9 @@ public static class KumikoScroller
 
     /// <summary>
     /// The horizontal scroll offset that puts the column at <paramref name="columnIndex"/> at
-    /// <paramref name="position"/> between the frozen columns, before clamping to the scrollable range. A frozen
-    /// or hidden column never scrolls, so the current offset comes back.
+    /// <paramref name="position"/> between the frozen columns, before clamping to the scrollable range. A pinned
+    /// frozen column or a hidden column never scrolls, so the current offset comes back; a frozen column the viewport
+    /// is too narrow to pin (<see cref="KumikoStyle.MaxFrozenColumnsWidthRatio"/>) scrolls like the others.
     /// </summary>
     /// <param name="columns">The columns, in order.</param>
     /// <param name="style">Supplies the row drag handle width.</param>
@@ -152,13 +145,13 @@ public static class KumikoScroller
         ArgumentNullException.ThrowIfNull(scroll);
         if (columnIndex < 0 || columnIndex >= columns.Count) return scroll.OffsetX;
         var column = columns[columnIndex];
-        if (!column.IsVisible || column.IsFrozen || column.IsFrozenRight) return scroll.OffsetX;
+        if (!column.IsVisible) return scroll.OffsetX;
+        FrozenPanes.Resolve(columns, style, scroll.ViewportWidth);
+        if (column.Pane != ColumnFreezeMode.None) return scroll.OffsetX;
 
-        var (frozenWidth, rightFrozenWidth) = GetFrozenWidths(columns);
+        var (frozenWidth, rightFrozenWidth) = FrozenPanes.GetWidths(columns);
 
-        float colLeft = frozenWidth;
-        for (int i = 0; i < columnIndex; i++)
-            if (columns[i].IsVisible && !columns[i].IsFrozen && !columns[i].IsFrozenRight) colLeft += columns[i].Width;
+        float colLeft = frozenWidth + FrozenPanes.GetOffsetInPane(columns, columnIndex);
         float colRight = colLeft + column.Width;
 
         // The row drag handle takes viewport width from the columns as well; the scrolling area is
@@ -297,20 +290,6 @@ public static class KumikoScroller
     {
         float groupPanel = source.IsGroupingActive ? style.GroupPanelHeight : 0;
         return groupPanel + style.HeaderHeight + source.TopSummaryCount * style.SummaryRowHeight;
-    }
-
-    /// <summary>The total width of the visible left-frozen and right-frozen columns.</summary>
-    private static (float Left, float Right) GetFrozenWidths(IReadOnlyList<KumikoColumn> columns)
-    {
-        // Indexed loop over the visible columns: no enumerator or LINQ on the keyboard-navigation path.
-        float left = 0, right = 0;
-        for (int i = 0; i < columns.Count; i++)
-        {
-            var c = columns[i];
-            if (c.IsVisible && c.IsFrozen) left += c.Width;
-            if (c.IsVisible && c.IsFrozenRight) right += c.Width;
-        }
-        return (left, right);
     }
 
     private static (float Left, float Right) GetHandleWidths(KumikoStyle style)

@@ -12,8 +12,8 @@ namespace SampleApp.Uno;
 
 /// <summary>
 /// MVVM + per-column EditTriggers + action-button column demo (← SampleApp.Maui MvvmActionsPage).
-/// The Actions column hosts <see cref="ActionButtonsCellRenderer"/> buttons whose Core
-/// <see cref="ActionButtonDefinition.Command"/> is bound to the ViewModel's ICommands. The
+/// The columns and the Actions column's <see cref="UnoActionButtonDefinition"/> buttons are declared in
+/// the XAML; their <c>Command</c>s are bound to the ViewModel's ICommands. The
 /// renderer is an interactive cell: a tap executes the command with the row item, without an editor.
 /// Confirmation / details use a WinUI <see cref="ContentDialog"/> (the Uno analogue of MAUI's
 /// DisplayAlert / modal page).
@@ -33,107 +33,7 @@ public sealed partial class MvvmActionsPage : Page
         DataContext = _viewModel;
         _viewModel.LoadData();
 
-        BuildColumns();
         actionsGrid.ItemsSource = _viewModel.Employees;
-    }
-
-    private void BuildColumns()
-    {
-        // Id — read-only.
-        actionsGrid.Columns.Add(new KumikoColumn
-        {
-            Header = "Id",
-            PropertyName = "Id",
-            ColumnType = KumikoColumnType.Numeric,
-            Width = 72,
-            IsReadOnly = true,
-            AllowTabStop = false,
-        });
-
-        // Name — single-tap, F2, OR typing starts editing (most accessible).
-        actionsGrid.Columns.Add(new KumikoColumn
-        {
-            Header = "Name",
-            PropertyName = "Name",
-            Width = 160,
-            EditTriggers = EditTrigger.SingleTap | EditTrigger.F2Key | EditTrigger.Typing,
-        });
-
-        // Department — double-tap or F2 only (typing excluded for a ComboBox).
-        actionsGrid.Columns.Add(new KumikoColumn
-        {
-            Header = "Department",
-            PropertyName = "Department",
-            ColumnType = KumikoColumnType.ComboBox,
-            Width = 130,
-            EditorItemsString = "Engineering,Marketing,Finance,HR,Design,Product,Sales",
-            EditTriggers = EditTrigger.DoubleTap | EditTrigger.F2Key,
-        });
-
-        // Level — double-tap ONLY.
-        actionsGrid.Columns.Add(new KumikoColumn
-        {
-            Header = "Level",
-            PropertyName = "Level",
-            ColumnType = KumikoColumnType.Picker,
-            Width = 90,
-            EditorItemsString = "Junior,Mid,Senior,Lead,Principal",
-            EditTriggers = EditTrigger.DoubleTap,
-        });
-
-        // Salary — F2 key ONLY (protects financial data from pointer gestures).
-        actionsGrid.Columns.Add(new KumikoColumn
-        {
-            Header = "Salary",
-            PropertyName = "Salary",
-            ColumnType = KumikoColumnType.Numeric,
-            Format = "C0",
-            Width = 110,
-            TextAlignment = KumikoTextAlignment.Right,
-            EditTriggers = EditTrigger.F2Key,
-        });
-
-        // Active — Boolean; toggles on tap.
-        actionsGrid.Columns.Add(new KumikoColumn
-        {
-            Header = "Active",
-            PropertyName = "IsActive",
-            ColumnType = KumikoColumnType.Boolean,
-        });
-
-        // Actions column — Template with inline action buttons.
-        // ActionButtonsCellRenderer is an interactive cell: a tap runs the button without opening an editor,
-        // so no EditTriggers / IsReadOnly setting is needed. PropertyName="" passes the full Employee as
-        // the cell value, so the Command parameter is the row's Employee.
-        actionsGrid.Columns.Add(new KumikoColumn
-        {
-            Header = "Actions",
-            PropertyName = "",
-            ColumnType = KumikoColumnType.Template,
-            Width = 200,
-            AllowSorting = false,
-            AllowFiltering = false,
-            SizeMode = ColumnSizeMode.Star,
-            StarWeight = 1,
-            CustomCellRenderer = new ActionButtonsCellRenderer
-            {
-                Buttons =
-                {
-                    new ActionButtonDefinition
-                    {
-                        Label = "Details",
-                        BackgroundColor = new KumikoColor(13, 110, 253),
-                        Command = _viewModel.ViewDetailsCommand,
-                    },
-                    new ActionButtonDefinition
-                    {
-                        Label = "Delete",
-                        BackgroundColor = new KumikoColor(220, 53, 69),
-                        Command = _viewModel.DeleteCommand,
-                    },
-                },
-            },
-        });
     }
 
     private void OnSelectFirstClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) =>

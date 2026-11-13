@@ -381,7 +381,7 @@ public class IncrementalUpdateTests
     }
 
     [Fact]
-    public void NestedPath_ParentChange_RebuildsAGroupAndSummary()
+    public void NestedPath_ParentChange_RebuildsAGroup_AndUpdatesATableSummaryInPlace()
     {
         var rows = new ObservableCollection<Row> { R("A", 1, "Rome"), R("B", 2, "Oslo") };
         var f = new Fixture(rows);
@@ -395,7 +395,9 @@ public class IncrementalUpdateTests
         g.Source.AddTableSummaryRow(new TableSummaryRow("T") { Columns = { new SummaryColumnDescription("Address.City", SummaryType.Count) } });
         g.Events.Clear();
         g.Rows[0].Address = new Address { City = "X" };
-        Assert.Equal(new[] { KumikoViewChangeKind.Rebuild }, g.Kinds);
+        // A table summary is kept current without rebuilding the rows (#69): the change is a redraw.
+        Assert.Equal(new[] { KumikoViewChangeKind.Redraw }, g.Kinds);
+        Assert.Equal(g.Rows.Count, g.Source.ComputedBottomSummaries[0].GetRawValue("Address.City", SummaryType.Count));
     }
 
     [Fact]

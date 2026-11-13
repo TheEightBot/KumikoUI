@@ -79,17 +79,21 @@ public partial class KumikoDataGrid : UserControl
         // Auto-init the bindable collections so XAML can add items directly,
         // matching the MAUI control's ctor.
         Columns = new ObservableCollection<KumikoColumn>();
+        DataContextChanged += OnGridDataContextChanged;
         TableSummaryRows = new ObservableCollection<TableSummaryRow>();
 
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
         InitializeScrolling(); // KumikoDataGrid.Scrolling.cs
+        InitializeImages(); // KumikoDataGrid.Images.cs
 
         // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
         InitializeAccessibility();
 
         // Core "invalidate" signals → request a single canvas repaint.
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        // The source is the grid's own, so this never needs removing (KumikoDataGrid.Layout.cs)
+        _dataSource.ColumnOrderChanged += OnDataSourceColumnOrderChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
@@ -146,7 +150,10 @@ public partial class KumikoDataGrid : UserControl
     // ── Core structural event handlers (forwarded into the data source) ──
 
     private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
-        => _dataSource.ReorderColumn(e.OldIndex, e.NewIndex);
+    {
+        _dataSource.ReorderColumn(e.OldIndex, e.NewIndex); // Columns follows (KumikoDataGrid.Layout.cs)
+        ColumnReordered?.Invoke(this, e);
+    }
 
     private void OnAutoFitColumnRequested(object? sender, AutoFitColumnEventArgs e)
     {
@@ -240,6 +247,42 @@ public partial class KumikoDataGrid : UserControl
         remove => _inputController.RowDoubleTapped -= value;
     }
 
+    /// <summary>
+    /// Fires when a data cell is tapped with the primary button or a finger, with the column, the position and the
+    /// click count (see <see cref="KumikoInputController.CellTapped"/>).
+    /// </summary>
+    public event EventHandler<KumikoCellTappedEventArgs>? CellTapped
+    {
+        add => _inputController.CellTapped += value;
+        remove => _inputController.CellTapped -= value;
+    }
+
+    /// <summary>
+    /// Fires when a column header is tapped with the primary button or a finger, after the tap sorted the column
+    /// (see <see cref="KumikoInputController.HeaderTapped"/>).
+    /// </summary>
+    public event EventHandler<KumikoHeaderTappedEventArgs>? HeaderTapped
+    {
+        add => _inputController.HeaderTapped += value;
+        remove => _inputController.HeaderTapped -= value;
+    }
+
+    /// <summary>
+    /// Fires when the user asks for a context menu: a right click (on its release) or a touch or pen long press that
+    /// neither starts a row drag nor edits the cell. A right click never sorts, scrolls, drags or edits; on a data
+    /// row the row is selected first unless it already is (see <see cref="KumikoContextRequestedEventArgs"/>).
+    /// <see cref="KumikoContextRequestedEventArgs.X"/> and <see cref="KumikoContextRequestedEventArgs.Y"/> are relative
+    /// to the grid's drawing surface, which fills this control, so a menu opens at the pointer with
+    /// <c>flyout.ShowAt(grid, new FlyoutShowOptions { Position = new Point(e.X, e.Y) })</c>. It re-surfaces
+    /// <see cref="KumikoInputController.ContextRequested"/> (named so as not to hide WinUI's
+    /// <c>UIElement.ContextRequested</c>, which knows nothing of rows and columns).
+    /// </summary>
+    public event EventHandler<KumikoContextRequestedEventArgs>? ContextMenuRequested
+    {
+        add => _inputController.ContextRequested += value;
+        remove => _inputController.ContextRequested -= value;
+    }
+
     /// <summary>Fires before a cell enters edit mode. Set <c>Cancel=true</c> to prevent.</summary>
     public event EventHandler<CellBeginEditEventArgs>? CellBeginEdit
     {
@@ -270,6 +313,7 @@ public partial class KumikoDataGrid : UserControl
         AttachSurface();
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
+        ConnectImages();
 
         _isUnloaded = false;
 
@@ -310,6 +354,9 @@ public partial class KumikoDataGrid : UserControl
         // Release the cached native Skia objects; the first frame after OnLoaded creates a new cache.
         _resourceCache?.Dispose();
         _resourceCache = null;
+
+        // Cancel image loads and dispose the cached images; the first frame after OnLoaded loads them again.
+        DisconnectImages();
 
         // Detach pointer + keyboard handlers — see DetachInputHandlers in KumikoDataGrid.Input.cs.
         DetachInputHandlers();

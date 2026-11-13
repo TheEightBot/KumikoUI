@@ -93,7 +93,7 @@ font-agnostic exactly like `KumikoUI.Maui`; only the *helper* moved into the lib
   and mark them as content so they ship with the package:
   ```xml
   <ItemGroup>
-    <Content Include="Assets/Fonts/*.ttf" />
+    <Content Include="../Shared/Fonts/NotoSansJP-Regular.ttf" Link="Assets/Fonts/%(Filename)%(Extension)" />
   </ItemGroup>
   ```
   Reference with `ms-appx:///Assets/Fonts/<file>.ttf`. This keeps `KumikoUI.Uno` font-agnostic, exactly
