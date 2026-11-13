@@ -140,7 +140,7 @@ public class KumikoColumnTests
     {
         var a = new KumikoColumn { PropertyName = "A" };
         var b = new KumikoColumn { PropertyName = "B" };
-        var source = new KumikoSource();
+        using var source = new KumikoSource();
         int raised = 0;
         source.SetColumns(new[] { a });
         source.ViewChanged += (_, _) => raised++;
