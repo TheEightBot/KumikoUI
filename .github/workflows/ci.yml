@@ -65,7 +65,7 @@ jobs:
     steps:
       - run: echo "Only documentation changed; the build jobs were skipped and count as passed."
 
-  # ─── Documentation snippets: every C# and XAML block of README.md compiles against both hosts (#87) ───
+  # ─── Documentation snippets: every C# and XAML block of README.md and docs/nuget/*.md compiles against both hosts (#87) ───
   # eng/DocsSnippets extracts the blocks; the MAUI project builds on Mac Catalyst in Release (XamlC validates the
   # XAML) and the Uno project on the desktop head (Uno's XAML generator validates it). Runs for documentation-only
   # changes too (the `snippets` filter above). Runner and Xcode are pinned as in build-apple-maui.
