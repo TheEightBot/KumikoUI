@@ -309,7 +309,7 @@ Each column is a `KumikoColumn`. Its `ColumnType` picks the cell renderer and th
                    IsReadOnly="True" AllowTabStop="False" />
 ```
 
-Other per-column switches: `IsVisible`, `AllowSorting`, `AllowFiltering`, `AllowResize`, `AllowReorder`, `CustomComparer`, `CellStyle` and `HeaderCellStyle` (a `KumikoCellStyle`).
+Column settings can be changed from code at any time: `KumikoColumn` raises `PropertyChanged` and the grid repaints and lays out again without `Refresh()`. Sort and filter state (`SortDirection`, `SortOrder`, `ActiveFilter`) belongs to the data source and is read-only on the column. Other per-column switches: `IsVisible`, `AllowSorting`, `AllowFiltering`, `AllowResize`, `AllowReorder`, `CustomComparer`, `CellStyle` and `HeaderCellStyle` (a `KumikoCellStyle`).
 
 ### Text wrapping
 
