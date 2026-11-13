@@ -57,8 +57,8 @@ public class KumikoRendererOverlayTests
     }
 
     [Theory]
-    [InlineData(KumikoSortDirection.Ascending, 16f)]  // arrow head at the top of the 26 px chip (centre 20)
-    [InlineData(KumikoSortDirection.Descending, 24f)] // arrow head at the bottom
+    [InlineData(KumikoSortDirection.Ascending, 17f)]  // arrow head at the top of the 26 px chip (centre 20)
+    [InlineData(KumikoSortDirection.Descending, 23f)] // arrow head at the bottom
     public void GroupingPanel_ChipArrow_ShowsTheGroupSortDirection(KumikoSortDirection direction, float headY)
     {
         var h = Create();
@@ -66,10 +66,11 @@ public class KumikoRendererOverlayTests
 
         var arrow = Assert.Single(h.Render().Polygons, o => o.Color == h.Style.GroupPanelChipAccentColor);
 
-        // One filled triangle: apex at the arrow head (top when ascending), base on the other side.
+        // One filled triangle, the same shape as the header's sort arrow (#119): apex at the arrow head (top when
+        // ascending), base on the other side.
         var apex = Assert.Single(arrow.Points!, p => Near(p.Y, headY));
         Assert.Equal(3, arrow.Points!.Length);
-        Assert.Equal(2, arrow.Points.Count(p => Near(p.Y, Near(headY, 16f) ? 24f : 16f)));
+        Assert.Equal(2, arrow.Points.Count(p => Near(p.Y, Near(headY, 17f) ? 23f : 17f)));
         Assert.True(apex.X > arrow.Points.Min(p => p.X) && apex.X < arrow.Points.Max(p => p.X));
     }
 

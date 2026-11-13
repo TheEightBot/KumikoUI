@@ -58,6 +58,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 - [Theming and Styling](#theming-and-styling)
 - [Host Properties, Commands & Events](#host-properties-commands--events)
 - [Custom Fonts](#custom-fonts)
+- [Icons](#icons)
 - [Scrolling](#scrolling)
 - [Performance](#performance)
 - [Live Data](#live-data)
@@ -89,6 +90,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Scrolling | Touch, wheel, trackpad and keyboard; `ScrollToRow`, `ScrollToItem` and `ScrollToColumn`; bindable `VerticalOffset` and `HorizontalOffset`; a `Scrolled` event |
 | Clipboard | Ctrl/Cmd+C copies the selected rows as tab-separated text; copy, cut and paste work in editors |
 | Theming | Light, Dark and HighContrast presets, bindable, following the system light/dark setting by default; every color, font and size on `KumikoStyle`; per-cell and per-row style resolvers |
+| Icons | Every built-in glyph (sort arrows, filter buttons, chevrons, check marks, editor buttons) drawn by a replaceable icon provider: the built-in vector set, an icon font such as Material Icons, or your own drawing ([Icons](#icons)) |
 | Localization | `KumikoStrings` for every built-in text, `Culture` for formatting, parsing and ordering |
 | Data | `ObservableCollection` and `INotifyPropertyChanged`, nested property paths, heterogeneous item types |
 | AOT | Packages are `IsAotCompatible`; source-generated accessors (`[KumikoGridItem]`) or per-column delegates |
@@ -1254,6 +1256,10 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | `RowDropIndicatorColor` | `KumikoColor` | 0, 120, 215 | Line marking the drop position |
 | `RowDropIndicatorWidth` | `float` | 2 | Width of that line |
 
+| Icons | Type | Light | Meaning |
+|---|---|---|---|
+| `IconProvider` | `IKumikoIconProvider` | `KumikoIconProvider.Default` | Draws every built-in glyph of the grid and of its editors and filter popup (see [Icons](#icons)); never null |
+
 | Conditional styles | Type | Light | Meaning |
 |---|---|---|---|
 | `CellStyleResolver` | `Func<object, KumikoColumn, KumikoCellStyle?>?` | null | Per-cell overrides from the row item and column |
@@ -1457,6 +1463,87 @@ public static class FontSetup
 | `Version` | Incremented by every change. |
 
 All members are thread-safe, and changes are safe while grids are alive: every grid drops the affected family before anything is disposed. A family name the platform can't resolve falls back to the default font in the same weight and slant, and is logged once through `Trace.TraceWarning`.
+
+---
+
+## Icons
+
+Every glyph the grid draws comes from one replaceable icon provider, `KumikoStyle.IconProvider` (`KumikoUI.Core.Rendering`): the group header chevrons, the sort arrows (headers, grouping chips and the filter popup), the filter button and its active state, the grouping chips' remove button and separator, the row drag grip, the check marks of boolean cells, check boxes and the filter popup, the combo box's dropdown arrow, the numeric editor's plus and minus, and the date picker's calendar button, month arrows and time arrows. Each slot is a `KumikoIcon` value. Glyph colors still come from the style (`SortIndicatorColor`, `FilterActiveIconColor`, `GroupChevronColor`, ...), so icons follow the theme; the provider decides the shape. Taps hit the same slots whatever is drawn in them.
+
+**Built-in set.** `KumikoIconProvider.Default` draws each icon as filled polygons and joined strokes scaled to its slot. It is the default.
+
+**Icon fonts.** `KumikoFontIconProvider` draws each icon as a glyph of an icon font, in the icon's color, centered in its slot. Register the font first (see [Custom Fonts](#custom-fonts)), then map icons to code points. `CreateMaterialIcons` returns a provider with every icon mapped for [Material Icons](https://fonts.google.com/icons) (`MaterialIcons-Regular.ttf`, Apache License 2.0, shipped by your app):
+
+```csharp
+var style = kumiko.GridStyle;
+style.IconProvider = KumikoFontIconProvider.CreateMaterialIcons("MaterialIcons");
+kumiko.GridStyle = style;
+```
+
+For another font, map the icons you want; icons without a code point are drawn by `Fallback`, the built-in set unless you change it. `Scale` sets the glyph size relative to its slot, for fonts that leave a margin around each glyph:
+
+```csharp
+var icons = new KumikoFontIconProvider("MyIcons") { Scale = 1.2f }
+    .SetGlyph(KumikoIcon.SortAscending, 0xE900)
+    .SetGlyph(KumikoIcon.SortDescending, 0xE901)
+    .SetGlyph(KumikoIcon.Filter, 0xE902)
+    .SetGlyph(KumikoIcon.FilterActive, 0xE903);
+
+var style = kumiko.GridStyle;
+style.IconProvider = icons;
+kumiko.GridStyle = style;
+```
+
+**Your own drawing.** Implement `IKumikoIconProvider` (one method, `DrawIcon(ctx, icon, bounds, paint)`), or derive from `KumikoIconProvider` and override `DrawIcon` to replace a few icons and keep the rest:
+
+<!-- snippet: shared -->
+```csharp
+public sealed class RoundCheckIcons : KumikoIconProvider
+{
+    // Reused every frame: DrawIcon runs for each visible glyph and should not allocate
+    private readonly KumikoPaint _dot = new() { Style = PaintStyle.Fill, IsAntiAlias = true };
+
+    public override void DrawIcon(IDrawingContext ctx, KumikoIcon icon, KumikoRect bounds, KumikoPaint paint)
+    {
+        if (icon != KumikoIcon.Check)
+        {
+            base.DrawIcon(ctx, icon, bounds, paint);
+            return;
+        }
+
+        // A filled dot instead of a tick, in the check mark's color
+        float size = Math.Min(bounds.Width, bounds.Height) * 0.5f;
+        _dot.Color = paint.Color;
+        ctx.FillRoundRect(new KumikoRect(bounds.X + (bounds.Width - size) / 2, bounds.Y + (bounds.Height - size) / 2, size, size),
+            size / 2, _dot);
+    }
+}
+```
+
+```csharp
+var style = kumiko.GridStyle;
+style.IconProvider = new RoundCheckIcons();
+kumiko.GridStyle = style;
+```
+
+`bounds` is the slot: draw the glyph centered in it and scaled to it. `paint` carries the glyph's color and, for line glyphs, the line weight the slot asks for; read it, don't change or keep it. A drawn component used outside a grid (a `DrawnCheckBox`, `DrawnComboBox`, ...) has its own `IconProvider` property; the grid sets it from the style on the editors and popups it opens.
+
+| `KumikoIcon` | Where | Built-in glyph |
+|---|---|---|
+| `GroupExpanded`, `GroupCollapsed` | Group header rows | Triangle down, triangle right |
+| `SortAscending`, `SortDescending` | Column header, grouping chip, filter popup sort rows | Triangle up, triangle down |
+| `Filter`, `FilterActive` | Column header filter button, without and with a filter | Funnel outline, solid funnel |
+| `Remove` | Grouping chip remove button | × |
+| `GroupSeparator` | Between grouping chips | Chevron right |
+| `DragHandle` | Row drag handle | Six dots |
+| `Check`, `Indeterminate` | Boolean cells, `DrawnCheckBox`, filter popup values | Tick, dash |
+| `DropDown`, `DropDownOpen` | `DrawnComboBox` | Triangle down, triangle up |
+| `Increment`, `Decrement` | `DrawnNumericUpDown` | Plus, minus |
+| `Calendar` | `DrawnDatePicker` field | Calendar page |
+| `CalendarPrevious`, `CalendarNext` | `DrawnDatePicker` month navigation | Chevron left, chevron right |
+| `SpinUp`, `SpinDown` | `DrawnDatePicker` time picker | Chevron up, chevron down |
+
+The **All Components** page of both samples switches between the built-in set and Material Icons.
 
 ---
 
@@ -1763,7 +1850,7 @@ Both samples have the same six pages:
 
 | Page | What it shows |
 |---|---|
-| **All Components** | Every column type, frozen columns and rows, edit triggers, selection modes, summaries, adding and removing rows, theme switching |
+| **All Components** | Every column type, frozen columns and rows, edit triggers, selection modes, summaries, adding and removing rows, theme switching, built-in or Material Icons glyphs |
 | **Grouping** | Nested groups, the grouping panel, filter popups, group summaries |
 | **Large Data** | 100,000 rows, load timings and the frame-time overlay switch |
 | **Theming** | Light, Dark and HighContrast, and custom colors |

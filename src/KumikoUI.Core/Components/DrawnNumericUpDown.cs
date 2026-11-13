@@ -153,6 +153,7 @@ public class DrawnNumericUpDown : DrawnComponent, IValueEditor
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        IconProvider = style.IconProvider;
         ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
@@ -549,13 +550,11 @@ public class DrawnNumericUpDown : DrawnComponent, IValueEditor
         _strokePaint.StrokeWidth = 0.5f;
         ctx.DrawRect(r, _strokePaint);
 
+        // The glyph's square: half the button's shorter side, centered
         _symbolPaint.Color = ButtonSymbolColor;
-        float cx = r.X + r.Width / 2;
-        float cy = r.Y + r.Height / 2;
-        float armLen = Math.Min(r.Width, r.Height) * 0.22f;
-        ctx.DrawLine(cx - armLen, cy, cx + armLen, cy, _symbolPaint);
-        if (plus)
-            ctx.DrawLine(cx, cy - armLen, cx, cy + armLen, _symbolPaint);
+        float size = Math.Min(r.Width, r.Height) / 2;
+        IconProvider.DrawIcon(ctx, plus ? KumikoIcon.Increment : KumikoIcon.Decrement,
+            new KumikoRect(r.X + (r.Width - size) / 2, r.Y + (r.Height - size) / 2, size, size), _symbolPaint);
     }
 
     // ── Pointer input ───────────────────────────────────────────

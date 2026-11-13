@@ -84,6 +84,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        IconProvider = style.IconProvider;
         ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
@@ -335,16 +336,10 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     private void DrawArrow(IDrawingContext ctx, float x, float y, float w, float h)
     {
         var paint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Fill, IsAntiAlias = true };
-        float cx = x + w / 2;
-        float cy = y + h / 2;
-        float aw = 5;  // triangle half-width
-        float ah = 3;  // triangle half-height
-
-        // Filled disclosure triangle: points up while the dropdown is open, down while closed.
-        if (_isDropdownOpen)
-            GlyphDrawing.FillTriangleUp(ctx, cx, cy, aw, ah, paint);
-        else
-            GlyphDrawing.FillTriangleDown(ctx, cx, cy, aw, ah, paint);
+        // A 12 px square centered in the arrow area; the glyph shows whether the dropdown is open
+        const float size = 12f;
+        IconProvider.DrawIcon(ctx, _isDropdownOpen ? KumikoIcon.DropDownOpen : KumikoIcon.DropDown,
+            new KumikoRect(x + (w - size) / 2, y + (h - size) / 2, size, size), paint);
     }
 
     private void DrawDropdown(IDrawingContext ctx)

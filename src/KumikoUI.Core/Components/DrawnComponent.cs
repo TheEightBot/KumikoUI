@@ -51,6 +51,25 @@ public abstract class DrawnComponent
         }
     }
 
+    /// <summary>
+    /// Draws the component's built-in glyphs (a check mark, a dropdown arrow, the plus and minus buttons, the
+    /// calendar's arrows). The grid sets it to its <see cref="Models.KumikoStyle.IconProvider"/> when it opens an
+    /// editor or popup; set it yourself for a component used on its own. Default:
+    /// <see cref="KumikoIconProvider.Default"/>.
+    /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when set to <c>null</c>.</exception>
+    public IKumikoIconProvider IconProvider
+    {
+        get;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            if (ReferenceEquals(field, value)) return;
+            field = value;
+            InvalidateVisual();
+        }
+    } = KumikoIconProvider.Default;
+
     /// <summary>Gets or sets whether this component has keyboard focus.</summary>
     public bool IsFocused
     {

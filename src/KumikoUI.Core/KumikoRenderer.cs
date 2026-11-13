@@ -1001,27 +1001,11 @@ public class KumikoRenderer : IDisposable
             chevronX - 4f, chevronCenterY - pillH / 2, pillW, pillH);
         ctx.FillRoundRect(pillRect, 4f, _paintCache.GroupChevronBackground);
 
-        // One filled, anti-aliased triangle: down (expanded) or right (collapsed).
-        var chevronPaint = _paintCache.GroupChevron;
-
-        if (groupInfo.IsExpanded)
-        {
-            float triW = chevronSize * 0.7f;
-            float triH = chevronSize * 0.45f;
-            float cx = chevronX + chevronSize / 2;
-            GlyphDrawing.FillTriangleDown(ctx, cx, chevronCenterY, triW / 2, triH / 2, chevronPaint);
-        }
-        else
-        {
-            float triW = chevronSize * 0.45f;
-            float triH = chevronSize * 0.7f;
-            float leftX = chevronX + chevronSize * 0.3f;
-            float rightX = leftX + triW;
-            GlyphDrawing.FillTriangle(ctx,
-                leftX, chevronCenterY - triH / 2,
-                rightX, chevronCenterY,
-                leftX, chevronCenterY + triH / 2, chevronPaint);
-        }
+        // The disclosure glyph, in the chevron's square: expanded or collapsed
+        style.IconProvider.DrawIcon(ctx,
+            groupInfo.IsExpanded ? KumikoIcon.GroupExpanded : KumikoIcon.GroupCollapsed,
+            new KumikoRect(chevronX, chevronCenterY - chevronSize / 2, chevronSize, chevronSize),
+            _paintCache.GroupChevron);
 
         // Draw group text in up to three runs: "Header: DisplayText", " (count)" and the caption summary, each
         // with its own paint (group header text, count, caption summary).
@@ -1208,12 +1192,11 @@ public class KumikoRenderer : IDisposable
             float arrowX = screenX + col.Width - style.CellPadding - 8;
             float arrowCenterY = style.HeaderHeight / 2;
 
-            var paint = _paintCache.SortIndicator;
-
-            if (col.SortDirection == KumikoSortDirection.Ascending)
-                GlyphDrawing.FillTriangleUp(ctx, arrowX + 4, arrowCenterY, 4, 3, paint);
-            else
-                GlyphDrawing.FillTriangleDown(ctx, arrowX + 4, arrowCenterY, 4, 3, paint);
+            // The arrow's 12 px square, centered on the 8 px wide arrow slot
+            style.IconProvider.DrawIcon(ctx,
+                col.SortDirection == KumikoSortDirection.Ascending ? KumikoIcon.SortAscending : KumikoIcon.SortDescending,
+                new KumikoRect(arrowX - 2, arrowCenterY - 6, 12, 12),
+                _paintCache.SortIndicator);
 
             // Draw sort order number badge for multi-sort
             if (isMultiSort && col.SortOrder > 0)
@@ -1245,7 +1228,6 @@ public class KumikoRenderer : IDisposable
         ColumnFreezeMode freezeMode,
         float frozenWidth)
     {
-        Span<KumikoPoint> outline = stackalloc KumikoPoint[7];
         foreach (var (col, colX, _) in visibleCols)
         {
             if (!AllowFiltering || !col.AllowFiltering) continue;
@@ -1259,34 +1241,10 @@ public class KumikoRenderer : IDisposable
             float iconX = screenX + col.Width - style.CellPadding - sortSpace - iconSize;
             float iconCenterY = style.HeaderHeight / 2;
 
-            var paint = hasActiveFilter ? _paintCache.FilterActiveIcon : _paintCache.FilterIcon;
-
-            // Draw funnel icon: wider at top, narrow at bottom, with a stem
-            float top = iconCenterY - iconSize / 2;
-            float bottom = iconCenterY + iconSize / 2;
-            float mid = top + iconSize * 0.45f;
-
-            // One closed outline (top edge, right slope, right stem, bottom, left stem, left slope), joined at
-            // every corner: the last point repeats the first.
-            outline[0] = new KumikoPoint(iconX, top);
-            outline[1] = new KumikoPoint(iconX + iconSize, top);
-            outline[2] = new KumikoPoint(iconX + iconSize * 0.65f, mid);
-            outline[3] = new KumikoPoint(iconX + iconSize * 0.65f, bottom);
-            outline[4] = new KumikoPoint(iconX + iconSize * 0.35f, bottom);
-            outline[5] = new KumikoPoint(iconX + iconSize * 0.35f, mid);
-            outline[6] = outline[0];
-            ctx.DrawPolyline(outline, paint);
-
-            // Fill the funnel if filter is active
-            if (hasActiveFilter)
-            {
-                var fillPaint = _paintCache.FilterActiveIcon;
-                // Simple fill indication: draw a filled circle dot
-                float dotR = 2.5f;
-                float dotX = iconX + iconSize / 2;
-                float dotY = mid + (bottom - mid) / 2;
-                ctx.FillRect(new KumikoRect(dotX - dotR, dotY - dotR, dotR * 2, dotR * 2), fillPaint);
-            }
+            style.IconProvider.DrawIcon(ctx,
+                hasActiveFilter ? KumikoIcon.FilterActive : KumikoIcon.Filter,
+                new KumikoRect(iconX, iconCenterY - iconSize / 2, iconSize, iconSize),
+                hasActiveFilter ? _paintCache.FilterActiveIcon : _paintCache.FilterIcon);
         }
     }
 
@@ -1374,28 +1332,24 @@ public class KumikoRenderer : IDisposable
             // Draw sort direction arrow
             float arrowX = textStartX + textSize.Width + 4;
             float arrowCY = chipY + chipHeight / 2;
-            var arrowPaint = _paintCache.GroupChipArrow;
             float ax = arrowX + 6;
-            if (group.GroupSortDirection == KumikoSortDirection.Ascending)
-                GlyphDrawing.FillTriangleUp(ctx, ax, arrowCY, 4, 4, arrowPaint);
-            else
-                GlyphDrawing.FillTriangleDown(ctx, ax, arrowCY, 4, 4, arrowPaint);
+            style.IconProvider.DrawIcon(ctx,
+                group.GroupSortDirection == KumikoSortDirection.Ascending ? KumikoIcon.SortAscending : KumikoIcon.SortDescending,
+                new KumikoRect(ax - 6, arrowCY - 6, 12, 12),
+                _paintCache.GroupChipArrow);
 
-            // Draw "×" remove button (circle + x)
+            // Remove button: a circle with the remove glyph
             float removeX = chipX + chipWidth - removeButtonSize - chipPadding / 2 + removeButtonSize / 2;
             float removeCenterY = chipY + chipHeight / 2;
-            float removeHalf = 3.5f;
 
             // Small circle background for remove
             ctx.FillRoundRect(
                 new KumikoRect(removeX - 7, removeCenterY - 7, 14, 14), 7,
                 _paintCache.GroupChipRemoveBackground);
 
-            var removePaint = _paintCache.GroupChipRemove;
-            ctx.DrawLine(removeX - removeHalf, removeCenterY - removeHalf,
-                         removeX + removeHalf, removeCenterY + removeHalf, removePaint);
-            ctx.DrawLine(removeX - removeHalf, removeCenterY + removeHalf,
-                         removeX + removeHalf, removeCenterY - removeHalf, removePaint);
+            style.IconProvider.DrawIcon(ctx, KumikoIcon.Remove,
+                new KumikoRect(removeX - 5, removeCenterY - 5, 10, 10),
+                _paintCache.GroupChipRemove);
 
             // Advance to next chip
             chipX += chipWidth + chipGap;
@@ -1405,9 +1359,9 @@ public class KumikoRenderer : IDisposable
             {
                 float sepX = chipX + 2;
                 float sepCY = chipY + chipHeight / 2;
-                var sepPaint = _paintCache.GroupChipSeparator;
-                // Right-pointing chevron >
-                GlyphDrawing.Chevron(ctx, sepX, sepCY - 4, sepX + 5, sepCY, sepX, sepCY + 4, sepPaint);
+                style.IconProvider.DrawIcon(ctx, KumikoIcon.GroupSeparator,
+                    new KumikoRect(sepX - 2.5f, sepCY - 5, 10, 10),
+                    _paintCache.GroupChipSeparator);
                 chipX += 14 + chipGap;
             }
         }
@@ -1681,7 +1635,7 @@ public class KumikoRenderer : IDisposable
         {
             if (dataSource.IsNonDataRow(row)) continue;
             float rowY = dataAreaTop + row * style.RowHeight;
-            DrawGripIcon(ctx, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
+            DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
         }
 
         // Draw grip icons for scrollable visible rows (clipped below frozen rows)
@@ -1693,7 +1647,7 @@ public class KumikoRenderer : IDisposable
             if (rowY + style.RowHeight <= scrollableAreaTop || rowY > adjustedViewportHeight) continue;
             // No grip for a row whose middle is under the sticky group headers (#174)
             if (rowY + style.RowHeight / 2 < pinnedBandBottom) continue;
-            DrawGripIcon(ctx, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
+            DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
         }
 
         // Draw a subtle vertical divider between handle and columns
@@ -1702,29 +1656,15 @@ public class KumikoRenderer : IDisposable
     }
 
     /// <summary>
-    /// Draws a grip/drag icon (2-column × 3-row dot pattern) centered in the given cell area.
+    /// Draws the drag handle glyph in a 16 px square centered in the given cell area.
     /// </summary>
-    private static void DrawGripIcon(
-        IDrawingContext ctx, float cellX, float cellY, float cellWidth, float cellHeight, KumikoPaint paint)
+    private static void DrawGripIcon(IDrawingContext ctx, IKumikoIconProvider icons,
+        float cellX, float cellY, float cellWidth, float cellHeight, KumikoPaint paint)
     {
+        const float size = 16f;
         float centerX = cellX + cellWidth / 2;
         float centerY = cellY + cellHeight / 2;
-        float dotRadius = 1.5f;
-        float colSpacing = 5f;  // horizontal distance between dot centers
-        float rowSpacing = 5f;  // vertical distance between dot centers
-
-        // Draw 2-column × 3-row dot grid (modern grab handle)
-        for (int row = -1; row <= 1; row++)
-        {
-            for (int col = 0; col <= 1; col++)
-            {
-                float dx = centerX + (col - 0.5f) * colSpacing;
-                float dy = centerY + row * rowSpacing;
-                ctx.FillRoundRect(
-                    new KumikoRect(dx - dotRadius, dy - dotRadius, dotRadius * 2, dotRadius * 2),
-                    dotRadius, paint);
-            }
-        }
+        icons.DrawIcon(ctx, KumikoIcon.DragHandle, new KumikoRect(centerX - size / 2, centerY - size / 2, size, size), paint);
     }
 
     /// <summary>

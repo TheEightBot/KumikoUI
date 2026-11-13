@@ -227,6 +227,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        IconProvider = style.IconProvider;
         ApplyFont(style.CellFont);
         var bg = style.BackgroundColor;
         var txt = style.CellTextColor;
@@ -588,18 +589,10 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         bool error = _typing && _invalidText;
         ctx.DrawRect(b, Stroke(error ? ErrorBorderColor : IsFocused ? FocusedBorderColor : BorderColor, error ? 2 : 1));
 
-        // Calendar icon (simple grid/lines)
-        DrawCalendarIcon(ctx, iconX, b.Y + (b.Height - iconSize) / 2, iconSize);
-    }
-
-    private void DrawCalendarIcon(IDrawingContext ctx, float x, float y, float size)
-    {
-        var paint = Stroke(new KumikoColor(100, 100, 100), 1);
-        ctx.DrawRect(new KumikoRect(x, y + 3, size, size - 3), paint);
-        ctx.DrawLine(x, y + 7, x + size, y + 7, paint);
-        // Top "tabs"
-        ctx.DrawLine(x + 4, y, x + 4, y + 4, paint);
-        ctx.DrawLine(x + size - 4, y, x + size - 4, y + 4, paint);
+        // Calendar button
+        IconProvider.DrawIcon(ctx, KumikoIcon.Calendar,
+            new KumikoRect(iconX, b.Y + (b.Height - iconSize) / 2, iconSize, iconSize),
+            Stroke(new KumikoColor(100, 100, 100), 1));
     }
 
     private void DrawCalendar(IDrawingContext ctx)
@@ -646,15 +639,12 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
 
     private void DrawNavRow(IDrawingContext ctx, float x, float y, float width)
     {
-        // Left arrow
+        // Previous and next month: 10 px squares at both ends of the row
         _arrowPaint.Color = ArrowColor;
         _arrowPaint.StrokeWidth = 1.5f;
         float arrowY = y + NavRowHeight / 2;
-        GlyphDrawing.Chevron(ctx, x + 8, arrowY - 4, x + 5, arrowY, x + 8, arrowY + 4, _arrowPaint);
-
-        // Right arrow
-        float rx = x + width - 10;
-        GlyphDrawing.Chevron(ctx, rx - 3, arrowY - 4, rx, arrowY, rx - 3, arrowY + 4, _arrowPaint);
+        IconProvider.DrawIcon(ctx, KumikoIcon.CalendarPrevious, new KumikoRect(x + 1.5f, arrowY - 5, 10, 10), _arrowPaint);
+        IconProvider.DrawIcon(ctx, KumikoIcon.CalendarNext, new KumikoRect(x + width - 16.5f, arrowY - 5, 10, 10), _arrowPaint);
 
         // Month and year (each clickable for its dropdown), in the order of the culture
         string monthText = EffectiveCulture.DateTimeFormat.GetMonthName(_displayMonth.Month);
@@ -1422,17 +1412,12 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
         _arrowPaint.Color = ArrowColor;
         _arrowPaint.StrokeWidth = 1.2f;
 
-        // Hour up
-        GlyphDrawing.Chevron(ctx, hourX + 8, y + 2, hourX + 4, y + 6, hourX, y + 2, _arrowPaint);
-        // Hour down
-        GlyphDrawing.Chevron(ctx, hourX, y + NavRowHeight - 2, hourX + 4, y + NavRowHeight - 6, hourX + 8, y + NavRowHeight - 2, _arrowPaint);
-
-        // Minute arrows
+        // Up arrows above the hour and the minute (the upper half increments), down arrows below them: 8 px squares
         float minX = centerX + 4;
-        // Minute up
-        GlyphDrawing.Chevron(ctx, minX + 8, y + 2, minX + 4, y + 6, minX, y + 2, _arrowPaint);
-        // Minute down
-        GlyphDrawing.Chevron(ctx, minX, y + NavRowHeight - 2, minX + 4, y + NavRowHeight - 6, minX + 8, y + NavRowHeight - 2, _arrowPaint);
+        IconProvider.DrawIcon(ctx, KumikoIcon.SpinUp, new KumikoRect(hourX, y, 8, 8), _arrowPaint);
+        IconProvider.DrawIcon(ctx, KumikoIcon.SpinDown, new KumikoRect(hourX, y + NavRowHeight - 8, 8, 8), _arrowPaint);
+        IconProvider.DrawIcon(ctx, KumikoIcon.SpinUp, new KumikoRect(minX, y, 8, 8), _arrowPaint);
+        IconProvider.DrawIcon(ctx, KumikoIcon.SpinDown, new KumikoRect(minX, y + NavRowHeight - 8, 8, 8), _arrowPaint);
     }
 
     private void HandleTimePickerClick(float clickX, float clickY, float x, float y, float width)
