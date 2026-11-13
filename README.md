@@ -990,19 +990,19 @@ Tab stops at every visible column that isn't read-only, whatever its type, unles
 
 ### Keys per platform
 
-Each host captures the keyboard through a hidden native text field, and that decides which keys arrive. This table is derived from the host code (`KumikoUI.Uno/Input/InputMapping.cs`, `KumikoUI.Maui/KeyInputResponder.cs` and the MAUI control's hidden `Entry`); device-by-device verification is tracked in #67.
+Each host captures the keyboard its own way, and that decides which keys arrive: a hidden native text field on Uno and on MAUI for Android, a native responder on MAUI for iOS and Mac Catalyst, and the grid's own platform view on MAUI for Windows. This table is derived from the host code (`KumikoUI.Uno/Input/InputMapping.cs`, `KumikoUI.Maui/KeyInputResponder.cs`, `KumikoUI.Maui/Input/WindowsKeyInput.cs` and the MAUI control's hidden `Entry`); device-by-device verification is tracked in #67.
 
-| Key | Uno, every head (hardware keyboard) | MAUI on iOS and Mac Catalyst | MAUI on Android and Windows |
-|---|---|---|---|
-| Characters, Space, Backspace, Enter | Yes | Yes | Yes |
-| Arrow keys (with Shift) | Yes | Yes | No |
-| Home, End, Page Up, Page Down | Yes | Yes | No |
-| Tab, Shift+Tab | Yes | Yes | No (on Windows the system moves focus) |
-| Escape, F2, Delete | Yes | Yes | No |
-| Ctrl+A, editor undo / redo | Yes; Cmd works as Ctrl on macOS, iOS and WebAssembly | No: letters arrive as text without modifiers | No |
-| Ctrl/Cmd+C, X, V | Yes | Yes | Yes (Android with a hardware keyboard) |
+| Key | Uno, every head (hardware keyboard) | MAUI on iOS and Mac Catalyst | MAUI on Windows | MAUI on Android |
+|---|---|---|---|---|
+| Characters, Space, Backspace, Enter | Yes | Yes | Yes | Yes |
+| Arrow keys (with Shift) | Yes | Yes | Yes | No |
+| Home, End, Page Up, Page Down | Yes | Yes | Yes | No |
+| Tab, Shift+Tab | Yes | Yes | Yes | No |
+| Escape, F2, Delete | Yes | Yes | Yes | No |
+| Ctrl+A, editor undo / redo | Yes; Cmd works as Ctrl on macOS, iOS and WebAssembly | No: letters arrive as text without modifiers | Yes | No |
+| Ctrl/Cmd+C, X, V | Yes | Yes | Yes | Yes (with a hardware keyboard) |
 
-The hosts pass committed characters to the editors but don't drive input-method composition (`ITextInputSession`) yet; host adapters are tracked in #40 to #43.
+On Windows the MAUI control attaches the Windows text services (`CoreTextEditContext`) to the open text editor, so input methods compose in place, where the system offers them to desktop apps; elsewhere, characters and text committed by an input method's own window arrive through WinUI's `CharacterReceived`. Ctrl+Alt (AltGr) types characters, not shortcuts. The other hosts pass committed characters to the editors but don't drive input-method composition (`ITextInputSession`) yet; their adapters are tracked in #40, #41 and #43.
 
 ### Copying rows
 
@@ -1650,8 +1650,8 @@ This is the current state, not the goal. The 1.0 target and the plan are in [doc
   - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default: the localizable `KumikoStrings.AccessibleGridName`, "Data grid") as its semantic description and `GridHint` (default: a hint with the row and column counts and the current cell) as its hint.
   - **Uno:** the grid has a UI Automation peer with the DataGrid control type. Its name comes from `GridDescription` or `KumikoStrings.AccessibleGridName`, and its help text from `GridHint` or a computed description of the rows and columns.
   - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, and validation errors to a running screen reader. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
-- **Keyboard.** The grid can be used without a pointer on Uno and on MAUI for iOS and Mac Catalyst, and never traps Tab. On MAUI for Android and Windows only typed characters, Space, Backspace and Enter reach it. See [Keys per platform](#keys-per-platform).
-- **Hidden input fields.** Each host keeps a zero-size native text field (MAUI `Entry`, Uno `TextBox`) to receive keyboard input; it is kept out of the accessibility tree and takes no pointer input.
+- **Keyboard.** The grid can be used without a pointer on Uno and on MAUI for iOS, Mac Catalyst and Windows, and never traps Tab. On MAUI for Android only typed characters, Space, Backspace and Enter reach it. See [Keys per platform](#keys-per-platform).
+- **Hidden input fields.** Each host except MAUI on Windows keeps a zero-size native text field (MAUI `Entry`, Uno `TextBox`) to receive keyboard input; it is kept out of the accessibility tree and takes no pointer input. On Windows the MAUI grid itself takes the keyboard focus.
 - **Right-to-left layout is not supported in 1.0.** Under a right-to-left ancestor (`FlowDirection`) the grid still draws left to right instead of mirroring; mirrored layout is tracked in #80.
 - **Contrast and text size.** `KumikoThemeMode.HighContrast` is a high-contrast preset; the grid doesn't switch to it when the operating system's high-contrast mode is on. Font sizes come from `KumikoStyle` and don't follow the operating system's text-size setting.
 
@@ -1674,8 +1674,8 @@ The popup applies its checklist on **OK**. **Cancel** and a tap outside the popu
 **How do I make the whole grid read-only, or turn off sorting or filtering?**
 Set `IsReadOnly`, `AllowSorting` or `AllowFiltering` to `False` on the grid. They combine with the `KumikoColumn` properties of the same names, and a grid-level `False` wins.
 
-**Arrow keys, Tab and Escape don't work in my MAUI app on Android or Windows.**
-On those platforms the MAUI control receives keyboard input through a hidden `Entry`, which delivers only text, Space, Backspace and Enter. The Uno control, and the MAUI control on iOS and Mac Catalyst, receive every navigation key ([Keys per platform](#keys-per-platform)).
+**Arrow keys, Tab and Escape don't work in my MAUI app on Android.**
+On Android the MAUI control receives keyboard input through a hidden `Entry`, which delivers only text, Space, Backspace and Enter. The Uno control, and the MAUI control on iOS, Mac Catalyst and Windows, receive every navigation key ([Keys per platform](#keys-per-platform)).
 
 **My Uno app fails to load SkiaSharp, or draws nothing.**
 Set `<SkiaSharpVersion>4.153.1</SkiaSharpVersion>` in the app project and enable the `SkiaRenderer` Uno feature: Uno.Sdk defaults to SkiaSharp 3.x, and the app must resolve the same major as KumikoUI. On the Windows App SDK head, also reference `SkiaSharp.Views.WinUI` ([Uno Platform](#uno-platform)).

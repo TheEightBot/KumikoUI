@@ -28,18 +28,21 @@ namespace KumikoUI.Maui;
 /// <summary>
 /// .NET MAUI KumikoUI DataGrid control backed by SkiaSharp rendering.
 /// Drop this into any MAUI page. All rendering is done on the SKCanvas.
-/// Uses a hidden Entry overlay for keyboard input capture.
+/// Keyboard input arrives through a native responder on iOS and Mac Catalyst, the grid's own platform view
+/// (WinUI key events and the Windows text services) on Windows, and a hidden <c>Entry</c> on Android.
 /// </summary>
 /// <remarks>
-/// The control is a <see cref="ContentView"/> whose content (the canvas and the keyboard proxy) is
-/// private: it has no layout API, and its XAML content is <see cref="Columns"/>.
+/// The control is a <see cref="ContentView"/> whose content (the canvas, and the keyboard proxy where there
+/// is one) is private: it has no layout API, and its XAML content is <see cref="Columns"/>.
 /// </remarks>
 [ContentProperty(nameof(Columns))]
 public partial class KumikoDataGrid : ContentView
 {
     private readonly Grid _root = new();
     private readonly SKCanvasView _canvasView = new();
+#if !WINDOWS
     private readonly Entry _keyboardProxy;
+#endif
     private readonly KumikoRenderer _renderer = new();
     private readonly KumikoSource _dataSource = new();
     private readonly ScrollState _scroll = new();
@@ -80,8 +83,10 @@ public partial class KumikoDataGrid : ContentView
     // The device of the press in progress, for the long press synthesized from it
     private KumikoPointerDeviceType _pressedDeviceType;
 
+#if !WINDOWS
     // Track if we are suppressing TextChanged because we set the text programmatically
     private bool _suppressTextChanged;
+#endif
 
     // Track whether Cleanup has been called so Reconnect knows to re-wire
     private bool _wasCleanedUp;
@@ -92,10 +97,12 @@ public partial class KumikoDataGrid : ContentView
 
     private SkiaResourceCache ResourceCache => _resourceCache ??= new SkiaResourceCache();
 
+#if !WINDOWS
     // Sentinel character used to detect backspace on Entry.
     // Zero-width space avoids collision with user-typed spaces and reduces
     // interference from Android IME composing/replacement behavior.
     private const string KeyboardSentinel = "\u200B";
+#endif
 
 #if MACCATALYST || IOS
     private KeyInputResponder? _nativeKeyInput;
@@ -110,7 +117,9 @@ public partial class KumikoDataGrid : ContentView
         _selection = new KumikoSelectionModel(_dataSource);
         InitializeSelectionBinding();
 
-        // Set up the hidden keyboard proxy entry (fallback for Android/Windows)
+#if !WINDOWS
+        // Set up the hidden keyboard proxy entry (Android, and the Apple fallback). Windows has none: keys and
+        // text arrive on the grid's platform view (KumikoDataGrid.TextInput.cs).
         _keyboardProxy = new Entry
         {
             Opacity = 0,
@@ -123,6 +132,7 @@ public partial class KumikoDataGrid : ContentView
             IsTextPredictionEnabled = false, // Reduce IME composing interference
             IsSpellCheckEnabled = false,
         };
+#endif
 
         // Layout: canvas fills the grid, keyboard proxy sits hidden at top-left
         _canvasView.HorizontalOptions = LayoutOptions.Fill;
@@ -133,7 +143,9 @@ public partial class KumikoDataGrid : ContentView
         _canvasView.FlowDirection = FlowDirection.LeftToRight;
 
         _root.Children.Add(_canvasView);
+#if !WINDOWS
         _root.Children.Add(_keyboardProxy);
+#endif
         InitializeAccessibility();
         Content = _root;
         _contentSealed = true;
@@ -179,9 +191,11 @@ public partial class KumikoDataGrid : ContentView
         _canvasView.HandlerChanged += OnCanvasHandlerChanged_Pointer;
 #endif
 
-        // Wire keyboard proxy events (used on Android/Windows, or as fallback)
+#if !WINDOWS
+        // Wire keyboard proxy events (used on Android, or as fallback)
         _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed += OnKeyboardProxyCompleted;
+#endif
 
 #if MACCATALYST || IOS
         // Set up native keyboard input and scroll gesture after the view is loaded
@@ -246,7 +260,11 @@ public partial class KumikoDataGrid : ContentView
             Reconnect();
         }
 #if WINDOWS
-        if (Handler != null) AttachNativeWheel();
+        if (Handler != null)
+        {
+            AttachNativeWheel();
+            AttachNativeKeyboard();
+        }
 #endif
     }
 
@@ -1025,7 +1043,14 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnInputControllerNeedsRedraw() => _canvasView.InvalidateSurface();
 
-    private void OnEditSessionNeedsRedraw() => _canvasView.InvalidateSurface();
+    private void OnEditSessionNeedsRedraw()
+    {
+        _canvasView.InvalidateSurface();
+#if WINDOWS
+        // An editor opened or closed: attach the Windows text services to it (KumikoDataGrid.TextInput.cs)
+        SyncTextServices();
+#endif
+    }
 
     // An action button's command raised CanExecuteChanged: that can happen on any thread.
     private void OnRendererRedrawRequested()
@@ -1114,6 +1139,7 @@ public partial class KumikoDataGrid : ContentView
         DetachNativePointer();
 #elif WINDOWS
         DetachNativeWheel();
+        DetachNativeKeyboard();
 #endif
         CancelLongPressTimer();
         _pressedPointerId = null;
@@ -1122,9 +1148,11 @@ public partial class KumikoDataGrid : ContentView
         _resourceCache?.Dispose();
         _resourceCache = null;
 
+#if !WINDOWS
         // Unsubscribe keyboard proxy events
         _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed -= OnKeyboardProxyCompleted;
+#endif
 
         // Unsubscribe the bound items and the Columns/summary/grouping collections (Reconnect restores them)
         UnsubscribeObservedCollections();
@@ -1198,8 +1226,10 @@ public partial class KumikoDataGrid : ContentView
         AttachNativePointer();
 #endif
 
+#if !WINDOWS
         _keyboardProxy.TextChanged += OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed += OnKeyboardProxyCompleted;
+#endif
 
 #if MACCATALYST || IOS
         this.HandlerChanged += OnHandlerChanged_SetupNativeKeyboard;
@@ -1248,7 +1278,8 @@ public partial class KumikoDataGrid : ContentView
         remove => _editSession.CellValueChanged -= value;
     }
 
-    // ── Keyboard Proxy Handlers (Entry-based, Android/Windows fallback) ──
+#if !WINDOWS
+    // ── Keyboard Proxy Handlers (Entry-based, Android and the Apple fallback) ──
 
     private void OnKeyboardProxyTextChanged(object? sender, TextChangedEventArgs e)
     {
@@ -1358,6 +1389,7 @@ public partial class KumikoDataGrid : ContentView
             _keyboardProxy.Unfocus();
         }
     }
+#endif
 
     // ── Cursor Blink Timer ───────────────────────────────────────
 

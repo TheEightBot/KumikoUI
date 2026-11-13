@@ -1,6 +1,8 @@
 # Text input: the adapter contract
 
-**Status:** the Core contract shipped with #39. The host adapters that implement it are #40 (iOS and Mac Catalyst), #41 (Android), #42 (Windows on MAUI) and #43 (Uno). Until each one lands, that host keeps feeding text through its hidden native text box, one character at a time, as `KumikoKeyEventArgs` with `Character` set.
+**Status:** the Core contract shipped with #39. The host adapters that implement it are #40 (iOS and Mac Catalyst), #41 (Android), #42 (Windows on MAUI, done) and #43 (Uno). Until each one lands, that host keeps feeding text through its hidden native text box, one character at a time, as `KumikoKeyEventArgs` with `Character` set.
+
+**Windows on MAUI** (#42) has no hidden text box. The grid's platform view is a tab stop; its `PreviewKeyDown` sends keys to `KumikoInputController.HandleKey` and `CharacterReceived` sends characters (a surrogate pair joined into `Text`). While a text editor is open, a `CoreTextEditContext` is attached to its session: `TextUpdating` within `CompositionStarted`/`CompositionCompleted` is marked text, other `TextUpdating` is committed text, `SelectionUpdating` sets the selection, `LayoutRequested` gets the edited cell's screen rectangle, and `TextInputStateChanged` becomes `NotifyTextChanged`/`NotifySelectionChanged`. The bookkeeping (what the text services last saw, and the change that brings them back in step) is `TextEditContextState`, which has no Windows dependency and is unit-tested. Windows documents `CoreTextServicesManager` for desktop apps as available only in Insider builds; where it can't be created, or delivers no text, the adapter falls back to `CharacterReceived`, so typing and text committed by an input method's own window still work, without in-place composition.
 
 ## Why
 

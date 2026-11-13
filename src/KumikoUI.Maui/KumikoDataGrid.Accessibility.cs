@@ -57,9 +57,11 @@ public partial class KumikoDataGrid
 
     private void InitializeAccessibility()
     {
+#if !WINDOWS
         // The keyboard proxy is plumbing for the software keyboard; a screen reader must not land on it.
         AutomationProperties.SetIsInAccessibleTree(_keyboardProxy, false);
         SemanticProperties.SetDescription(_keyboardProxy, string.Empty);
+#endif
 
         AutomationProperties.SetIsInAccessibleTree(this, true);
         UpdateAccessibilityHint();

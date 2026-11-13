@@ -171,7 +171,8 @@ Methods: `Invalidate()` repaints without rebuilding the view (any thread).
 
 ## `KumikoDataGrid` internals (for platform-specific work)
 
-- Extends `Grid`; contains `SKCanvasView` (render surface) + hidden `Entry` (keyboard proxy).
+- Extends `Grid`; contains `SKCanvasView` (render surface) + hidden `Entry` (keyboard proxy, not on Windows).
+- Windows: the grid's platform view is the keyboard sink (`KumikoDataGrid.TextInput.cs`): `PreviewKeyDown` → `WindowsKeyInput`, `CharacterReceived` → `WindowsCharacterInput`, and a `CoreTextEditContext` bridged to the editor's `ITextInputSession` through `TextEditContextState` (falls back to `CharacterReceived` where the text services are unavailable).
 - `[ContentProperty(nameof(Columns))]` — columns are XAML content.
 - Double-tap: 400 ms threshold, 20 px distance.
 - Long-press: 500 ms, 15 px tolerance. A touch long press starts a row drag (`AllowRowDragDrop` or the drag handle); the release after it is sent as `Cancelled` unless a drag is in progress.

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- **KumikoUI.Maui** on Windows: full keyboard support and a text-input adapter (#42). The grid's platform view takes the keyboard focus and sends every key in the README's keyboard table to the grid (arrows, Home/End, Page Up/Down, Tab/Shift+Tab, Enter, Escape, F2, Delete, Backspace, Space, Ctrl+A/C/X/V/Z/Y) with its modifiers; navigation keys no longer move focus or scroll the page, and Tab past the last tab stop still moves focus on. While a text editor is open, the Windows text services (`CoreTextEditContext`) are attached to it, so input methods compose in place with the candidate window at the edited cell, where Windows offers them to desktop apps; otherwise characters, surrogate pairs and text committed by an input method's own window arrive through `CharacterReceived`. Ctrl+Alt (AltGr) types characters instead of triggering shortcuts.
+
+### Removed
+- **KumikoUI.Maui** on Windows: the hidden keyboard-proxy `Entry` (#42). Keyboard focus is now on the grid itself, which is a tab stop; an edit ending no longer takes the keyboard focus away from the grid.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

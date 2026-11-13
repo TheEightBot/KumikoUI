@@ -14,8 +14,8 @@ namespace KumikoUI.Maui;
 /// <item><b>iOS and Mac Catalyst</b>: Command+A/C/X/V/Z (and Shift+Command+Z) are <c>UIKeyCommand</c>s on the
 /// keyboard responder, and the responder answers the standard edit actions, so the Edit menu on Mac Catalyst
 /// works too.</item>
-/// <item><b>Windows</b>: the hidden <c>Entry</c> is a WinUI <c>TextBox</c>; its <c>PreviewKeyDown</c> sends
-/// Ctrl+A/C/X/V/Z/Y to Core and handles them, so the box never acts on its sentinel text.</item>
+/// <item><b>Windows</b>: Ctrl+A/C/X/V/Z/Y reach Core from the grid's platform view with the other keys
+/// (<c>KumikoDataGrid.TextInput.cs</c>); Ctrl+Alt is AltGr and types characters instead.</item>
 /// <item><b>Android</b>: with a hardware keyboard the hidden <c>EditText</c>'s key listener does the same.
 /// The on-screen keyboard has no Ctrl key, so there is no copy of the selection from it; text a keyboard
 /// pastes (a clipboard suggestion, long-press paste) arrives as typed characters and enters the editor as
@@ -47,7 +47,7 @@ public partial class KumikoDataGrid
     private void InitializeClipboard()
     {
         _inputController.Clipboard = new MauiKumikoClipboard();
-#if ANDROID || WINDOWS
+#if ANDROID
         _keyboardProxy.HandlerChanged += OnKeyboardProxyHandlerChanged_Clipboard;
 #endif
     }
@@ -112,42 +112,6 @@ public partial class KumikoDataGrid
 
         var modifiers = InputModifiers.Control;
         if (press.IsShiftPressed) modifiers |= InputModifiers.Shift;
-        SendKeyEvent(key.Value, null, modifiers);
-        e.Handled = true;
-    }
-#elif WINDOWS
-    private Microsoft.UI.Xaml.Controls.TextBox? _clipboardTextBox;
-
-    private void OnKeyboardProxyHandlerChanged_Clipboard(object? sender, EventArgs e)
-    {
-        if (_clipboardTextBox != null) _clipboardTextBox.PreviewKeyDown -= OnWindowsProxyPreviewKeyDown;
-        _clipboardTextBox = _keyboardProxy.Handler?.PlatformView as Microsoft.UI.Xaml.Controls.TextBox;
-        if (_clipboardTextBox != null) _clipboardTextBox.PreviewKeyDown += OnWindowsProxyPreviewKeyDown;
-    }
-
-    // Ctrl+A/C/X/V/Z/Y go to Core, not to the TextBox (which would act on its sentinel, or paste text as typing).
-    private void OnWindowsProxyPreviewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
-    {
-        KumikoKey? key = e.Key switch
-        {
-            Windows.System.VirtualKey.A => KumikoKey.A,
-            Windows.System.VirtualKey.C => KumikoKey.C,
-            Windows.System.VirtualKey.X => KumikoKey.X,
-            Windows.System.VirtualKey.V => KumikoKey.V,
-            Windows.System.VirtualKey.Z => KumikoKey.Z,
-            Windows.System.VirtualKey.Y => KumikoKey.Y,
-            _ => null
-        };
-        if (key == null) return;
-
-        static bool IsDown(Windows.System.VirtualKey k) =>
-            (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(k) & Windows.UI.Core.CoreVirtualKeyStates.Down)
-                == Windows.UI.Core.CoreVirtualKeyStates.Down;
-
-        if (!IsDown(Windows.System.VirtualKey.Control)) return;
-
-        var modifiers = InputModifiers.Control;
-        if (IsDown(Windows.System.VirtualKey.Shift)) modifiers |= InputModifiers.Shift;
         SendKeyEvent(key.Value, null, modifiers);
         e.Handled = true;
     }
