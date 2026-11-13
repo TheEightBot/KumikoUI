@@ -199,8 +199,7 @@ public class TextEditContextStateTests
         Assert.True(state.ApplyTextUpdate(2, 2, "5x", 4, 4));
 
         Assert.Equal("125", box.Text);
-        var change = state.TakeChange();
-        Assert.NotNull(change);
+        TextEditChange change = Assert.NotNull(state.TakeChange());
         // The text services saw "125x"; the "x" at 3..4 is gone
         Assert.Equal(new TextEditChange(3, 4, 0, new KumikoTextRange(3, 0)), change);
         Assert.Equal("125", state.KnownText);
@@ -382,9 +381,9 @@ public class TextEditContextStateTests
 
         Assert.Equal(2, raised);
         Assert.Equal("ello", box.Text);
-        var change = state.TakeChange();
+        TextEditChange change = Assert.NotNull(state.TakeChange());
         Assert.Equal(new TextEditChange(0, 1, 0, new KumikoTextRange(0, 0)), change);
-        Assert.True(change!.Value.TextChanged);
+        Assert.True(change.TextChanged);
         Assert.Null(state.TakeChange());
     }
 
@@ -396,10 +395,9 @@ public class TextEditContextStateTests
 
         box.SelectAll();
 
-        var change = state.TakeChange();
-        Assert.NotNull(change);
-        Assert.False(change!.Value.TextChanged);
-        Assert.Equal(new KumikoTextRange(0, 5), change.Value.Selection);
+        TextEditChange change = Assert.NotNull(state.TakeChange());
+        Assert.False(change.TextChanged);
+        Assert.Equal(new KumikoTextRange(0, 5), change.Selection);
     }
 
     [Fact]
