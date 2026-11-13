@@ -1342,34 +1342,24 @@ The library ships no fonts; your app supplies them.
 
 ### .NET MAUI
 
-Put the font files in `Resources/Raw/` and register them in `MauiProgram.CreateMauiApp`, before the first grid draws:
+Put the font files in `Resources/Raw/` (the project template's `MauiAsset` item exposes them under their file name) and register them with `KumikoFonts` when the app starts, before the first grid draws:
 
-<!-- snippet: maui -->
+<!-- snippet: maui members=Microsoft.Maui.Controls.Application -->
 ```csharp
-using KumikoUI.Maui;
-using KumikoUI.SkiaSharp;
-
-public static class MauiProgram
+private static void RegisterFonts()
 {
-    public static MauiApp CreateMauiApp()
+    // Not awaited: it completes quickly and never throws for a font problem.
+    _ = KumikoFonts.RegisterFromAppPackageAsync(new[]
     {
-        var builder = MauiApp.CreateBuilder();
-        builder.UseMauiApp<App>().UseKumikoUI();
-
-        RegisterFont("NotoSansJP", "NotoSansJP-Regular.ttf");
-        RegisterFont("MaterialIcons", "MaterialIcons-Regular.ttf");
-
-        return builder.Build();
-    }
-
-    private static void RegisterFont(string family, string fileName)
-    {
-        // CreateMauiApp runs before the UI loop starts, so waiting on the file here is safe
-        using var stream = FileSystem.OpenAppPackageFileAsync(fileName).GetAwaiter().GetResult();
-        SkiaFontRegistrar.RegisterTypefaceFromStream(family, stream);
-    }
+        ("NotoSansJP", "NotoSansJP-Regular.ttf"),
+        ("MaterialIcons", "MaterialIcons-Regular.ttf"),
+    });
 }
 ```
+
+Call `RegisterFonts()` from the `App` constructor.
+
+Fonts you add with `ConfigureFonts` are bridged into the grid renderer by `UseKumikoUI()`, so they need no extra call.
 
 ### Uno Platform
 
@@ -1389,7 +1379,7 @@ protected override async void OnLaunched(LaunchActivatedEventArgs args)
 }
 ```
 
-`RegisterFromAppPackageAsync` never throws: a missing or unreadable font is logged with `Debug.WriteLine` and the grid uses the default font. `KumikoFonts.RegisterFromStream(family, stream)` registers a stream you opened yourself and does throw on an unreadable font.
+`RegisterFromAppPackageAsync` (the same on both hosts) is asynchronous and never throws for a font problem: a missing or unreadable font is logged with `Debug.WriteLine` and the grid uses the default font. `KumikoFonts.RegisterFromStream(family, stream)` registers a stream you opened yourself and does throw on an unreadable font.
 
 Fonts added with `ConfigureFonts` also reach the grid once `UseKumikoUI()` is called, so a font alias from `fonts.AddFont("MyFont.ttf", "MyAlias")` can be used as a `KumikoFont` family directly; registering with `SkiaFontRegistrar` is needed only for fonts that `ConfigureFonts` doesn't cover.
 
