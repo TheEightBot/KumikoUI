@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- `KumikoSource.BeginUpdate()` returns a `KumikoUpdateScope` whose `Dispose` calls `EndUpdate()`, so `using (source.BeginUpdate()) { ... }` ends a batch even when a change throws (#69).
+
+### Changed
+- **Breaking:** `KumikoSource` is UI-thread-only (#69). It belongs to the thread that last called `SetItems` or `Attach` (the thread that assigned `ItemsSource`, in a grid). A collection change, an item `PropertyChanged` or a `KumikoSource` call from any other thread now throws `InvalidOperationException` before the view is touched (it used to rebuild the view on that thread while the UI thread drew from it); the source then re-reads the collection on its own thread through the `SynchronizationContext` captured at `SetItems`/`Attach`, or on the next `Refresh()`. Code running under that context counts as the UI thread. Post background changes to the UI thread (`MainThread.BeginInvokeOnMainThread`, `DispatcherQueue.TryEnqueue`, `SynchronizationContext.Post`); see "Threading" in the README.
+- **Breaking:** `KumikoSource.BeginUpdate()` returns `KumikoUpdateScope` instead of `void` (source compatible; recompile). Inside a batch, a collection change that needs a rebuild (an active sort, grouping or summary, a reset or replace) no longer rebuilds the view per change: the view is rebuilt once, at `EndUpdate` or at the first row read before it, so a loop of `Add`s under a sort costs one sort (#69).
+- **Breaking:** a `PropertyChanged` of a property that only table summaries use no longer rebuilds the view and now raises `ViewChanged` as `Redraw` instead of `Rebuild` (#69). Sum, Average and Count follow the change from the item's old and new value in constant time; Min, Max and Custom are recomputed over the visible rows without re-filtering, re-sorting or regrouping (once per batch). 100 such changes on 100,000 rows with a Sum summary take about 3–5 ms in total on the calling thread (24 µs once warm), where each one used to rebuild the whole view. A group key, group summary or caption summary property still rebuilds while grouping is active. A `double` total updated in place may differ from a fresh sum in the last bits; `Refresh()` recomputes it.
+- Summaries are computed in a single pass per property with streaming aggregates instead of a list of boxed values per summary column; group summary rows of one group share the pass (#69).
+- A condition filter no longer formats every row's display text; only a value-list (`SelectedValues`) filter does. A numeric filter over 100K rows allocates 2.4 MB instead of 5.3 MB (#69).
+- Grouped views store their rows as structs in a reused list instead of one object per row: grouping 100K rows with summaries allocates 9–10.5 MB instead of 17.5–18.8 MB and is faster (#69).
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

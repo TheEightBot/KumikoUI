@@ -70,8 +70,9 @@ public partial class KumikoDataGrid
     private void OnBoundItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         // KumikoSource already rebuilds the view; we just ensure the canvas
-        // repaints. DispatcherQueue marshals to the UI thread if a background
-        // thread raised the change.
+        // repaints. A change raised on a background thread never gets here:
+        // KumikoSource subscribed first and throws (#69), then resyncs on the
+        // UI thread and raises ViewChanged. The dispatch is a safety net.
         if (DispatcherQueue is { } queue && !queue.HasThreadAccess)
             queue.TryEnqueue(Invalidate);
         else

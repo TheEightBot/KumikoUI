@@ -319,7 +319,9 @@ public partial class KumikoDataGrid : ContentView
     private void OnBoundItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         // KumikoSource already handles the rebuild; we just ensure canvas invalidation
-        // happens on the UI thread
+        // happens on the UI thread. A change raised on a background thread never gets here:
+        // KumikoSource subscribed first and throws (#69), then resyncs on the UI thread and
+        // raises ViewChanged. The dispatch is a safety net.
         if (Dispatcher.IsDispatchRequired)
             Dispatcher.Dispatch(InvalidateSurface);
         else

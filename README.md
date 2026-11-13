@@ -565,14 +565,15 @@ kumiko.DataSource.SetSort(departmentColumn, KumikoSortDirection.None);
 kumiko.DataSource.ClearSort();
 ```
 
-Batch changes so the view is rebuilt and repainted once:
+Batch changes so the view is rebuilt and repainted once. `BeginUpdate()` returns a scope that calls `EndUpdate()` when disposed; collection changes inside the batch are coalesced too:
 
 ```csharp
-kumiko.DataSource.BeginUpdate();
-kumiko.DataSource.SetSort(lastNameColumn, KumikoSortDirection.Ascending);
-kumiko.DataSource.SetFilter(item => ((Employee)item).IsActive);
-kumiko.DataSource.AddGroupDescription(new GroupDescription("Department"));
-kumiko.DataSource.EndUpdate();
+using (kumiko.DataSource.BeginUpdate())
+{
+    kumiko.DataSource.SetSort(lastNameColumn, KumikoSortDirection.Ascending);
+    kumiko.DataSource.SetFilter(item => ((Employee)item).IsActive);
+    kumiko.DataSource.AddGroupDescription(new GroupDescription("Department"));
+}
 ```
 
 Sorting, grouping, filtering and Min/Max summaries share one comparer (`KumikoSource.Comparer`) that never throws: nulls come first, numbers compare by value across numeric types, dates and times chronologically, other values of one type through `IComparable`, and anything else by its text. Sorting is stable. Text compares in the source's culture, ignoring case by default:
@@ -1498,19 +1499,20 @@ kumiko.Scrolled += (_, e) =>
 - **Allocation-free frames.** Once the visible data has been drawn, redrawing it allocates nothing in the managed render loop: paints are rebuilt only when the style changes (`KumikoStyle.Version`), each drawn cell's value and text are cached per row and column, and the built-in renderers reuse their paints. CI enforces this with `RenderAllocationTests`.
 - **Native object reuse.** Each grid keeps one `SkiaResourceCache` of `SKPaint`, `SKFont` and `SKTypeface` objects for its lifetime, so steady-state frames create no native Skia objects.
 - **Incremental collection changes.** Adding or removing one item of an `ObservableCollection` while no sort, filter or grouping is active updates the view without rebuilding it.
+- **Live summaries.** When an item changes a property that only table summaries use, Sum, Average and Count follow the change without reading the other rows, and Min, Max and Custom are recomputed without re-sorting, re-filtering or regrouping. 100 such changes on 100,000 rows take a few milliseconds in total.
 
 ### What to do in your app
 
 - **Keep custom renderers and style resolvers allocation-free.** They run for every visible cell on every frame; create paints, fonts and styles once and reuse them.
-- **Batch changes.** Wrap several sort, filter or grouping changes in `DataSource.BeginUpdate()` / `EndUpdate()` to rebuild once.
-- **Expect a full rebuild for sort, filter and grouping changes.** These rebuild the whole view on the calling thread, which is the UI thread when the user taps a header; with hundreds of thousands of rows, measure on your target devices.
-- **Make collection and property changes on the UI thread.** The grid rebuilds its view on the thread that raises `CollectionChanged` or `PropertyChanged`; only the repaint is marshaled to the UI thread.
+- **Batch changes.** Wrap several sort, filter or grouping changes, or a loop of collection changes under an active sort or grouping, in `using (DataSource.BeginUpdate()) { ... }` to rebuild once.
+- **Expect a full rebuild for sort, filter and grouping changes.** These rebuild the whole view on the UI thread; with hundreds of thousands of rows, measure on your target devices.
+- **Make collection and property changes on the UI thread.** The grid throws for a change raised on any other thread ([Threading](#threading)).
 - **Implement `INotifyPropertyChanged`** so the grid re-reads only the changed cells, or call `DataSource.Refresh()` after changing items that don't.
 - **Use generated accessors** (`[KumikoGridItem]`) or column delegates for large data; see [Native AOT and Trimming](#native-aot-and-trimming).
 
 ### Measured numbers
 
-Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14, Release build, 2026-11-10. Frame figures are the managed render loop into a no-op drawing context, so they leave out SkiaSharp's own drawing time; the 100,000-row figures are one view rebuild.
+Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14, Release build, 2026-11-10 (filter, grouping and live-update rows 2026-11-13). Frame figures are the managed render loop into a no-op drawing context, so they leave out SkiaSharp's own drawing time; the 100,000-row figures are one view rebuild, except the live-update row.
 
 | Operation | Time | Allocated |
 |---|---:|---:|
@@ -1518,9 +1520,10 @@ Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, 
 | Same, with sort, filter, grouping, summaries, a frozen column and the drag handle | 6.3 µs | 0 B |
 | Render while scrolling (one new row per frame) | 3.7 µs | 501 B |
 | Sort 100K rows (int / string / date column) | 54 / 72 / 211 ms | 86 MB / 1.1 KB / 94 MB |
-| Filter 100K rows (text contains / numeric) | 2.4 / 2.2 ms | 0.5 KB / 5.3 MB |
-| Group 100K rows by 1 / 2 levels, with summaries | 28 / 46 ms | 17.5 / 18.8 MB |
+| Filter 100K rows (text contains / numeric) | 2.4 / 1.5 ms | 0.5 KB / 2.4 MB |
+| Group 100K rows by 1 / 2 levels, with summaries | 19 / 42 ms | 9.1 / 10.5 MB |
 | Add or remove one item of an `ObservableCollection` of 100K rows | 128 µs | 432 B |
+| 100 `PropertyChanged` of a summed property, 100K rows with a Sum summary | 24 µs | 100 KB |
 
 These figures don't include drawing on a device, so this README makes no frame-rate claim. To see what a device does, turn on `ShowFrameStats` (off by default; the Large Data page of both samples has a switch): the grid draws its render time, frames per second and bytes allocated per frame in its top-right corner. The budgets each operation is held to and how to rerun the benchmarks are in [bench/README.md](bench/README.md).
 
@@ -1583,7 +1586,7 @@ public class Employee : INotifyPropertyChanged
 }
 ```
 
-A change to a property that a sort, column filter, grouping or summary uses re-sorts, re-filters, regroups or recomputes; any other change only repaints that cell. With a `SetFilter` predicate set, every change re-filters, since the predicate may read any property. A `null` or empty property name means every property changed. Items that don't implement `INotifyPropertyChanged` show changes made outside the grid after `DataSource.Refresh()`; values written through the grid always show.
+A change to a property that a sort, column filter or grouping uses re-sorts, re-filters or regroups; a change to a property that only table summaries use updates the summaries in place (Sum, Average and Count in constant time); any other change only repaints that cell. With a `SetFilter` predicate set, every change re-filters, since the predicate may read any property. A `null` or empty property name means every property changed. Items that don't implement `INotifyPropertyChanged` show changes made outside the grid after `DataSource.Refresh()`; values written through the grid always show.
 
 `PropertyName` accepts dotted paths:
 
@@ -1592,6 +1595,24 @@ A change to a property that a sort, column filter, grouping or summary uses re-s
 ```
 
 Only the row item is observed: for a sorted, filtered, grouped or summarized `Address.City` to update when the address changes, the item must raise `PropertyChanged` for `Address` (or with an empty name). A `null` value part-way along the path reads as an empty cell, and an edit to it is ignored.
+
+### Threading
+
+The grid's data source belongs to the UI thread: the thread that assigned `ItemsSource` (more precisely, that last called `DataSource.SetItems` or `Attach`). Add, remove and replace items, raise `PropertyChanged` and call `DataSource` methods on that thread. A change raised on any other thread, such as `employees.Add(...)` inside `Task.Run`, throws an `InvalidOperationException` to the code that made it, before the grid reads anything; the grid then re-reads the collection on the UI thread so it shows what the collection holds. Code that runs under the UI thread's `SynchronizationContext` (an `await` continuation that resumes there) counts as the UI thread.
+
+Do the slow work in the background and post only the change to the UI thread, with `MainThread.BeginInvokeOnMainThread` (MAUI), `DispatcherQueue.TryEnqueue` (Uno), or the UI thread's `SynchronizationContext`:
+
+```csharp
+var ui = SynchronizationContext.Current!; // captured on the UI thread
+
+_ = Task.Run(() =>
+{
+    var hire = new Employee { Name = "Dana" }; // background work
+    ui.Post(_ => employees.Add(hire), null);   // the change itself, on the UI thread
+});
+```
+
+For many changes at once, post one callback that makes them inside `using (kumiko.DataSource.BeginUpdate()) { ... }`, or build a new collection in the background and assign it to `ItemsSource` on the UI thread.
 
 ---
 
@@ -1702,7 +1723,7 @@ A user's reorder changes `DataSource.Columns`, not the grid's `Columns` collecti
 The grid doesn't draw scrollbars yet. It scrolls by touch, mouse wheel, trackpad and keyboard, and from code with the `ScrollTo` methods and `VerticalOffset`.
 
 **Can I update the collection from a background thread?**
-Make collection and item changes on the UI thread. The grid rebuilds its view on the thread that raises the change.
+No. Make collection and item changes on the UI thread: a change raised on another thread throws `InvalidOperationException`. Do the work in the background and post the change to the UI thread ([Threading](#threading)).
 
 ---
 
