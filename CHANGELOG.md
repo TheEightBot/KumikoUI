@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Image columns load their values (#63). `Image` cells accept URLs (`http`, `https`, `file`, `data`), file and app package names, `byte[]`, streams and stream factories, MAUI `ImageSource`s (`FileImageSource`, `UriImageSource`, `StreamImageSource`) and, on Uno, `ms-appx:///`/`ms-appdata:///` URIs and `BitmapImage`s, as well as `SKImage`/`SKBitmap` as before. Each grid's new `ImageCache` (`KumikoImageCache`, KumikoUI.SkiaSharp) downloads and decodes images off the UI thread through one shared `HttpClient`, redraws when they are ready, keeps them in a bounded LRU cache (`MaxCount`, `MaxBytes`, `MaxDecodedSize`) that disposes evicted images and cancels their downloads, and is cleared when the grid is unloaded or disconnected. Cache hits allocate nothing in the render loop. New Core hook `IKumikoImageResolver` (`KumikoImageStatus`), set with `KumikoRenderer.ImageResolver` and passed to renderers as `CellRenderContext.ImageResolver`; `IKumikoImageLoader` and `KumikoImageLoader` load other kinds of values. Values nothing can load, and the first failed load of each kind, are reported once through `Trace` instead of drawing an empty cell silently. See "Images" in the README; both samples have an Images page.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

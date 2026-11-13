@@ -150,6 +150,9 @@ public partial class KumikoDataGrid : ContentView
         // Scroll offsets and the Scrolled event (KumikoDataGrid.Scrolling.cs)
         InitializeScrolling();
 
+        // Image cells load through the grid's image cache (KumikoDataGrid.Images.cs)
+        InitializeImages();
+
         _dataSource.ViewChanged += OnDataSourceViewChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
@@ -1122,6 +1125,9 @@ public partial class KumikoDataGrid : ContentView
         _resourceCache?.Dispose();
         _resourceCache = null;
 
+        // Cancel image loads and dispose the cached images; the next frame after Reconnect loads them again.
+        DisconnectImages();
+
         // Unsubscribe keyboard proxy events
         _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;
         _keyboardProxy.Completed -= OnKeyboardProxyCompleted;
@@ -1190,6 +1196,7 @@ public partial class KumikoDataGrid : ContentView
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
         SubscribeAccessibility();
+        ConnectImages();
 
         _canvasView.PaintSurface += OnPaintSurface;
         _canvasView.Touch += OnCanvasTouch;

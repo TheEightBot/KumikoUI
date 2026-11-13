@@ -82,6 +82,14 @@ public class KumikoRenderer : IDisposable
     /// </summary>
     public bool AllowFiltering { get; set; } = true;
 
+    /// <summary>
+    /// Turns cell values into drawable images for <see cref="ImageCellRenderer"/> and other renderers that draw
+    /// images (passed to them as <see cref="CellRenderContext.ImageResolver"/>). Both hosts set it to their grid's
+    /// image cache; null (the default for a renderer you create) passes cell values to
+    /// <see cref="IDrawingContext.DrawImage"/> unchanged.
+    /// </summary>
+    public IKumikoImageResolver? ImageResolver { get; set; }
+
     /// <summary>The overlay's counters, readable for logging; they update only while <see cref="ShowFrameStats"/> is true.</summary>
     public KumikoFrameStats FrameStats => _frameStats ??= new KumikoFrameStats();
 
@@ -848,7 +856,7 @@ public class KumikoRenderer : IDisposable
 
             var cell = new CellRenderContext(cellRect, row, value, displayText, col, style, colCellStyle, isSelected,
                 _paintCache, _paintCache.CellTextPaint(colCellStyle, style, isSelected),
-                colCellStyle?.TextAlignment ?? col.TextAlignment);
+                colCellStyle?.TextAlignment ?? col.TextAlignment, ImageResolver);
             renderer.Render(ctx, in cell);
         }
     }

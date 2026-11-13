@@ -95,6 +95,14 @@
   </ItemGroup>
 
   <!--
+    Avatars for the Images page, shared with SampleApp.Maui from samples/Shared/Images. Packaged as
+    ms-appx:///Assets/Avatars/avatar-N.png.
+  -->
+  <ItemGroup>
+    <Content Include="../Shared/Images/avatar-*.png" Link="Assets/Avatars/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!--
     The KumikoUI.Core package delivers the [KumikoGridItem] source generator as an analyzer; a project reference
     does not, so the sample references it directly. The sample's row types then read through generated accessors,
     which is what Native AOT and full trimming need (#76).

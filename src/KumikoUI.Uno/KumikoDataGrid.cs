@@ -82,6 +82,7 @@ public partial class KumikoDataGrid : UserControl
         // Grouping collections, option storage and command wiring (KumikoDataGrid.Options.cs)
         InitializeOptions();
         InitializeScrolling(); // KumikoDataGrid.Scrolling.cs
+        InitializeImages(); // KumikoDataGrid.Images.cs
 
         // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
         InitializeAccessibility();
@@ -266,6 +267,7 @@ public partial class KumikoDataGrid : UserControl
         AttachSurface();
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
+        ConnectImages();
 
         _isUnloaded = false;
 
@@ -306,6 +308,9 @@ public partial class KumikoDataGrid : UserControl
         // Release the cached native Skia objects; the first frame after OnLoaded creates a new cache.
         _resourceCache?.Dispose();
         _resourceCache = null;
+
+        // Cancel image loads and dispose the cached images; the first frame after OnLoaded loads them again.
+        DisconnectImages();
 
         // Detach pointer + keyboard handlers — see DetachInputHandlers in KumikoDataGrid.Input.cs.
         DetachInputHandlers();
