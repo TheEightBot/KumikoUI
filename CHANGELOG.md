@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 - The documentation snippet check also compiles the C# and XAML blocks of the NuGet READMEs (`docs/nuget/*.md`) against both hosts (#236). `eng/DocsSnippets` splits statements followed by type declarations, infers the host from the code or the package README, and pairs a `partial` page class with its XAML page, so the NuGet READMEs need no annotations.
 
+### Fixed
+- Uno: a touch or pen long-press is now detected by a 500 ms / 15 px timer started on press, as in the MAUI grid, instead of relying on WinUI's `Holding` event alone (which is touch-only and not raised on every head). The release that ends a long press no longer taps, so a long-press on a Boolean cell toggles it once and does not raise `RowTapped`. `Holding` stays as a fallback and never fires a second long-press (#61).
+
 ## [0.2.0] - 2026-11-11
 
 ### Added
