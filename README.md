@@ -58,6 +58,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 - [Theming and Styling](#theming-and-styling)
 - [Host Properties, Commands & Events](#host-properties-commands--events)
 - [Custom Fonts](#custom-fonts)
+- [Icons](#icons)
 - [Scrolling](#scrolling)
 - [Performance](#performance)
 - [Live Data](#live-data)
@@ -89,6 +90,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Scrolling | Touch, wheel, trackpad and keyboard; `ScrollToRow`, `ScrollToItem` and `ScrollToColumn`; bindable `VerticalOffset` and `HorizontalOffset`; a `Scrolled` event |
 | Clipboard | Ctrl/Cmd+C copies the selected rows as tab-separated text; copy, cut and paste work in editors |
 | Theming | Light, Dark and HighContrast presets, bindable, following the system light/dark setting by default; every color, font and size on `KumikoStyle`; per-cell and per-row style resolvers |
+| Icons | Every built-in glyph (sort arrows, filter buttons, chevrons, check marks, editor buttons) drawn by a replaceable icon provider: the built-in vector set, an icon font such as Material Icons, or your own drawing ([Icons](#icons)) |
 | Localization | `KumikoStrings` for every built-in text, `Culture` for formatting, parsing and ordering |
 | Data | `ObservableCollection` and `INotifyPropertyChanged`, nested property paths, heterogeneous item types |
 | AOT | Packages are `IsAotCompatible`; source-generated accessors (`[KumikoGridItem]`) or per-column delegates |
@@ -100,7 +102,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Package | Contains | Install it when |
 |---|---|---|
 | [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `KumikoDataGrid` for .NET MAUI, `UseKumikoUI()`, `MauiActionButtonDefinition` | you build a .NET MAUI app |
-| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `KumikoFonts` | you build an Uno Platform app |
+| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `UnoActionButtonDefinition`, `KumikoFonts` | you build an Uno Platform app |
 | [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | `SkiaDrawingContext`, `SkiaResourceCache`, `SkiaFontRegistrar` | you host the engine on your own SkiaSharp surface (the host packages reference it) |
 | [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Data, layout, rendering, input and editing engine; models and themes; the `[KumikoGridItem]` source generator | always (the other packages reference it); it has no UI framework or SkiaSharp dependency |
 
@@ -309,7 +311,7 @@ Each column is a `KumikoColumn`. Its `ColumnType` picks the cell renderer and th
                    IsReadOnly="True" AllowTabStop="False" />
 ```
 
-Other per-column switches: `IsVisible`, `AllowSorting`, `AllowFiltering`, `AllowResize`, `AllowReorder`, `CustomComparer`, `CellStyle` and `HeaderCellStyle` (a `KumikoCellStyle`).
+Column settings can be changed from code at any time: `KumikoColumn` raises `PropertyChanged` and the grid repaints and lays out again without `Refresh()`. Sort and filter state (`SortDirection`, `SortOrder`, `ActiveFilter`) belongs to the data source and is read-only on the column. Other per-column switches: `IsVisible`, `AllowSorting`, `AllowFiltering`, `AllowResize`, `AllowReorder`, `CustomComparer`, `CellStyle` and `HeaderCellStyle` (a `KumikoCellStyle`).
 
 ### Text wrapping
 
@@ -494,9 +496,36 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
 </kumiko:KumikoDataGrid>
 ```
 
+### XAML with bound commands (Uno)
+
+`UnoActionButtonDefinition` is a `DependencyObject`, so every property, including `Command`, can be bound. It is not in the visual tree, so it cannot inherit `DataContext`; the grid gives it its own `DataContext` (the page's view model unless the grid sets one), so a plain `{Binding}` works. Its colors are `Color` values, like the grid's other color properties:
+
+<!-- snippet: uno -->
+```xml
+<kumiko:KumikoDataGrid x:Name="actionsGrid" ItemsSource="{Binding Employees}">
+    <core:KumikoColumn Header="Actions" PropertyName="" ColumnType="Template" Width="200"
+                       AllowSorting="False" AllowFiltering="False">
+        <core:KumikoColumn.CustomCellRenderer>
+            <render:ActionButtonsCellRenderer>
+                <render:ActionButtonsCellRenderer.Buttons>
+                    <kumiko:UnoActionButtonDefinition
+                        Label="Details"
+                        BackgroundColor="#FF0D6EFD"
+                        Command="{Binding ViewDetailsCommand}" />
+                    <kumiko:UnoActionButtonDefinition
+                        Label="Delete"
+                        BackgroundColor="#FFDC3545"
+                        Command="{Binding DeleteCommand}" />
+                </render:ActionButtonsCellRenderer.Buttons>
+            </render:ActionButtonsCellRenderer>
+        </core:KumikoColumn.CustomCellRenderer>
+    </core:KumikoColumn>
+</kumiko:KumikoDataGrid>
+```
+
 ### Code (both hosts)
 
-The Uno package has no bindable button definition yet, so on Uno build the buttons in code with `ActionButtonDefinition` from `KumikoUI.Core` (this works on MAUI too):
+To build the buttons in code, use `ActionButtonDefinition` from `KumikoUI.Core` (it works on both hosts):
 
 ```csharp
 var actionsColumn = new KumikoColumn
@@ -1228,6 +1257,10 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | `RowDropIndicatorColor` | `KumikoColor` | 0, 120, 215 | Line marking the drop position |
 | `RowDropIndicatorWidth` | `float` | 2 | Width of that line |
 
+| Icons | Type | Light | Meaning |
+|---|---|---|---|
+| `IconProvider` | `IKumikoIconProvider` | `KumikoIconProvider.Default` | Draws every built-in glyph of the grid and of its editors and filter popup (see [Icons](#icons)); never null |
+
 | Conditional styles | Type | Light | Meaning |
 |---|---|---|---|
 | `CellStyleResolver` | `Func<object, KumikoColumn, KumikoCellStyle?>?` | null | Per-cell overrides from the row item and column |
@@ -1286,15 +1319,51 @@ Each command is executed with the event arguments as its parameter (`SelectionCh
 | Command | Parameter | Executed when |
 |---|---|---|
 | `RowTappedCommand` | `RowTappedEventArgs` | A row was tapped. |
+| `CellTappedCommand` | `KumikoCellTappedEventArgs` | A data cell was tapped (primary button or a finger). |
+| `HeaderTappedCommand` | `KumikoHeaderTappedEventArgs` | A column header was tapped, after it sorted. |
+| `ContextMenuRequestedCommand` | `KumikoContextRequestedEventArgs` | The user asked for a context menu ([Context menus](#context-menus)). |
 | `CellValueChangedCommand` | `CellValueChangedEventArgs` | An edit changed a cell value. |
 | `SortChangedCommand` | `SortColumnsChangedEventArgs` | The sort changed. |
 | `SelectionChangedCommand` | `KumikoSelectionChangedEventArgs` | The selection changed. |
 
 ### Events
 
-`RowTapped`, `RowDoubleTapped`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled` and `SelectionChanged`. They forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection`, which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
+`RowTapped`, `RowDoubleTapped`, `CellTapped`, `HeaderTapped`, `ContextMenuRequested`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled` and `SelectionChanged`. They forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection`, which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
 
 `DataSource.ViewChanged` reports every change of the view once, with its kind (`Redraw`, `Rebuild`, `Insert`, `Remove`); `MapRow(oldRow)` follows a row from before the change to after it, and `GetViewRow(item)` finds an item's row.
+
+### Context menus
+
+Only the primary mouse button (or a finger) selects, sorts, scrolls, drags and edits. A right click, and a long press with a finger or a pen, raise `ContextMenuRequested` instead (`InputController.ContextRequested` in Core) with what is under the point: `Region` (a cell, a header, a group row, the empty area), `RowIndex`, `ColumnIndex`, `Column`, `DataItem`, the position `X`/`Y` relative to the grid, `IsHeader` and `Trigger` (`SecondaryButton` or `LongPress`). A right click raises it when the button is released and never sorts, drags or edits; a long press raises it unless it starts a row drag (`AllowRowDragDrop` on touch, or the drag handle) or the cell edits on a long press (the `LongPress` edit trigger), and lifting the finger afterwards does not tap. A middle click does nothing.
+
+On a data row the grid updates the selection first, as file managers and spreadsheets do: a row that is not selected becomes the selection, a row that is already selected keeps the whole selection (so a menu can act on every selected row), and the current cell moves to the cell under the point. An open edit on another cell is committed first; a right click inside the open editor, inside a popup, or one that closes a popup raises nothing.
+
+```csharp
+kumiko.ContextMenuRequested += (sender, e) =>
+{
+    if (e.IsHeader)
+        Console.WriteLine($"Column menu for {e.Column?.Header}");
+    else if (e.DataItem is Employee employee)
+        Console.WriteLine($"Row menu for {employee.Name}, {kumiko.Selection.SelectedItems.Count} selected ({e.Trigger})");
+};
+```
+
+On Uno, open a `MenuFlyout` at the pointer:
+
+<!-- snippet: uno -->
+```csharp
+kumiko.ContextMenuRequested += (sender, e) =>
+{
+    var menu = new Microsoft.UI.Xaml.Controls.MenuFlyout();
+    menu.Items.Add(new Microsoft.UI.Xaml.Controls.MenuFlyoutItem { Text = e.IsHeader ? "Clear sort" : "Delete row" });
+    menu.ShowAt(kumiko, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+    {
+        Position = new Windows.Foundation.Point(e.X, e.Y),
+    });
+};
+```
+
+MAUI cannot open a menu at a point, so the sample app shows an action sheet (`DisplayActionSheetAsync`). Right clicks are reported on Windows, Mac Catalyst and iPad (with a mouse or trackpad), and Android (with a mouse); `CellTapped` and `HeaderTapped` report primary taps with the column and the position.
 
 ### Precedence: explicit properties versus style and theme
 
@@ -1316,34 +1385,24 @@ The library ships no fonts; your app supplies them.
 
 ### .NET MAUI
 
-Put the font files in `Resources/Raw/` and register them in `MauiProgram.CreateMauiApp`, before the first grid draws:
+Put the font files in `Resources/Raw/` (the project template's `MauiAsset` item exposes them under their file name) and register them with `KumikoFonts` when the app starts, before the first grid draws:
 
-<!-- snippet: maui -->
+<!-- snippet: maui members=Microsoft.Maui.Controls.Application -->
 ```csharp
-using KumikoUI.Maui;
-using KumikoUI.SkiaSharp;
-
-public static class MauiProgram
+private static void RegisterFonts()
 {
-    public static MauiApp CreateMauiApp()
+    // Not awaited: it completes quickly and never throws for a font problem.
+    _ = KumikoFonts.RegisterFromAppPackageAsync(new[]
     {
-        var builder = MauiApp.CreateBuilder();
-        builder.UseMauiApp<App>().UseKumikoUI();
-
-        RegisterFont("NotoSansJP", "NotoSansJP-Regular.ttf");
-        RegisterFont("MaterialIcons", "MaterialIcons-Regular.ttf");
-
-        return builder.Build();
-    }
-
-    private static void RegisterFont(string family, string fileName)
-    {
-        // CreateMauiApp runs before the UI loop starts, so waiting on the file here is safe
-        using var stream = FileSystem.OpenAppPackageFileAsync(fileName).GetAwaiter().GetResult();
-        SkiaFontRegistrar.RegisterTypefaceFromStream(family, stream);
-    }
+        ("NotoSansJP", "NotoSansJP-Regular.ttf"),
+        ("MaterialIcons", "MaterialIcons-Regular.ttf"),
+    });
 }
 ```
+
+Call `RegisterFonts()` from the `App` constructor.
+
+Fonts you add with `ConfigureFonts` are bridged into the grid renderer by `UseKumikoUI()`, so they need no extra call.
 
 ### Uno Platform
 
@@ -1363,7 +1422,7 @@ protected override async void OnLaunched(LaunchActivatedEventArgs args)
 }
 ```
 
-`RegisterFromAppPackageAsync` never throws: a missing or unreadable font is logged with `Debug.WriteLine` and the grid uses the default font. `KumikoFonts.RegisterFromStream(family, stream)` registers a stream you opened yourself and does throw on an unreadable font.
+`RegisterFromAppPackageAsync` (the same on both hosts) is asynchronous and never throws for a font problem: a missing or unreadable font is logged with `Debug.WriteLine` and the grid uses the default font. `KumikoFonts.RegisterFromStream(family, stream)` registers a stream you opened yourself and does throw on an unreadable font.
 
 Fonts added with `ConfigureFonts` also reach the grid once `UseKumikoUI()` is called, so a font alias from `fonts.AddFont("MyFont.ttf", "MyAlias")` can be used as a `KumikoFont` family directly; registering with `SkiaFontRegistrar` is needed only for fonts that `ConfigureFonts` doesn't cover.
 
@@ -1441,6 +1500,87 @@ public static class FontSetup
 | `Version` | Incremented by every change. |
 
 All members are thread-safe, and changes are safe while grids are alive: every grid drops the affected family before anything is disposed. A family name the platform can't resolve falls back to the default font in the same weight and slant, and is logged once through `Trace.TraceWarning`.
+
+---
+
+## Icons
+
+Every glyph the grid draws comes from one replaceable icon provider, `KumikoStyle.IconProvider` (`KumikoUI.Core.Rendering`): the group header chevrons, the sort arrows (headers, grouping chips and the filter popup), the filter button and its active state, the grouping chips' remove button and separator, the row drag grip, the check marks of boolean cells, check boxes and the filter popup, the combo box's dropdown arrow, the numeric editor's plus and minus, and the date picker's calendar button, month arrows and time arrows. Each slot is a `KumikoIcon` value. Glyph colors still come from the style (`SortIndicatorColor`, `FilterActiveIconColor`, `GroupChevronColor`, ...), so icons follow the theme; the provider decides the shape. Taps hit the same slots whatever is drawn in them.
+
+**Built-in set.** `KumikoIconProvider.Default` draws each icon as filled polygons and joined strokes scaled to its slot. It is the default.
+
+**Icon fonts.** `KumikoFontIconProvider` draws each icon as a glyph of an icon font, in the icon's color, centered in its slot. Register the font first (see [Custom Fonts](#custom-fonts)), then map icons to code points. `CreateMaterialIcons` returns a provider with every icon mapped for [Material Icons](https://fonts.google.com/icons) (`MaterialIcons-Regular.ttf`, Apache License 2.0, shipped by your app):
+
+```csharp
+var style = kumiko.GridStyle;
+style.IconProvider = KumikoFontIconProvider.CreateMaterialIcons("MaterialIcons");
+kumiko.GridStyle = style;
+```
+
+For another font, map the icons you want; icons without a code point are drawn by `Fallback`, the built-in set unless you change it. `Scale` sets the glyph size relative to its slot, for fonts that leave a margin around each glyph:
+
+```csharp
+var icons = new KumikoFontIconProvider("MyIcons") { Scale = 1.2f }
+    .SetGlyph(KumikoIcon.SortAscending, 0xE900)
+    .SetGlyph(KumikoIcon.SortDescending, 0xE901)
+    .SetGlyph(KumikoIcon.Filter, 0xE902)
+    .SetGlyph(KumikoIcon.FilterActive, 0xE903);
+
+var style = kumiko.GridStyle;
+style.IconProvider = icons;
+kumiko.GridStyle = style;
+```
+
+**Your own drawing.** Implement `IKumikoIconProvider` (one method, `DrawIcon(ctx, icon, bounds, paint)`), or derive from `KumikoIconProvider` and override `DrawIcon` to replace a few icons and keep the rest:
+
+<!-- snippet: shared -->
+```csharp
+public sealed class RoundCheckIcons : KumikoIconProvider
+{
+    // Reused every frame: DrawIcon runs for each visible glyph and should not allocate
+    private readonly KumikoPaint _dot = new() { Style = PaintStyle.Fill, IsAntiAlias = true };
+
+    public override void DrawIcon(IDrawingContext ctx, KumikoIcon icon, KumikoRect bounds, KumikoPaint paint)
+    {
+        if (icon != KumikoIcon.Check)
+        {
+            base.DrawIcon(ctx, icon, bounds, paint);
+            return;
+        }
+
+        // A filled dot instead of a tick, in the check mark's color
+        float size = Math.Min(bounds.Width, bounds.Height) * 0.5f;
+        _dot.Color = paint.Color;
+        ctx.FillRoundRect(new KumikoRect(bounds.X + (bounds.Width - size) / 2, bounds.Y + (bounds.Height - size) / 2, size, size),
+            size / 2, _dot);
+    }
+}
+```
+
+```csharp
+var style = kumiko.GridStyle;
+style.IconProvider = new RoundCheckIcons();
+kumiko.GridStyle = style;
+```
+
+`bounds` is the slot: draw the glyph centered in it and scaled to it. `paint` carries the glyph's color and, for line glyphs, the line weight the slot asks for; read it, don't change or keep it. A drawn component used outside a grid (a `DrawnCheckBox`, `DrawnComboBox`, ...) has its own `IconProvider` property; the grid sets it from the style on the editors and popups it opens.
+
+| `KumikoIcon` | Where | Built-in glyph |
+|---|---|---|
+| `GroupExpanded`, `GroupCollapsed` | Group header rows | Triangle down, triangle right |
+| `SortAscending`, `SortDescending` | Column header, grouping chip, filter popup sort rows | Triangle up, triangle down |
+| `Filter`, `FilterActive` | Column header filter button, without and with a filter | Funnel outline, solid funnel |
+| `Remove` | Grouping chip remove button | × |
+| `GroupSeparator` | Between grouping chips | Chevron right |
+| `DragHandle` | Row drag handle | Six dots |
+| `Check`, `Indeterminate` | Boolean cells, `DrawnCheckBox`, filter popup values | Tick, dash |
+| `DropDown`, `DropDownOpen` | `DrawnComboBox` | Triangle down, triangle up |
+| `Increment`, `Decrement` | `DrawnNumericUpDown` | Plus, minus |
+| `Calendar` | `DrawnDatePicker` field | Calendar page |
+| `CalendarPrevious`, `CalendarNext` | `DrawnDatePicker` month navigation | Chevron left, chevron right |
+| `SpinUp`, `SpinDown` | `DrawnDatePicker` time picker | Chevron up, chevron down |
+
+The **All Components** page of both samples switches between the built-in set and Material Icons.
 
 ---
 
@@ -1681,7 +1821,7 @@ This is the current state, not the goal. The 1.0 target and the plan are in [doc
 ## FAQ
 
 **How do I put a button in each row that runs a view model command?**
-Use an action button column ([Action Button Columns](#action-button-columns)). On MAUI, `MauiActionButtonDefinition` binds `Command` in XAML; on Uno, create `ActionButtonDefinition`s in code. A tap runs the command without opening an editor, whatever the grid's `EditTriggers` (#2, #6).
+Use an action button column ([Action Button Columns](#action-button-columns)). On MAUI, `MauiActionButtonDefinition` binds `Command` in XAML; on Uno, `UnoActionButtonDefinition` does the same (the grid supplies its `DataContext`). A tap runs the command without opening an editor, whatever the grid's `EditTriggers` (#2, #6).
 
 **Japanese text or icon glyphs show up as boxes or the wrong characters on Android.**
 The grid draws text with SkiaSharp, which doesn't see fonts registered with MAUI or WinUI, and Android's font manager doesn't give it CJK or icon typefaces. Register the font with `SkiaFontRegistrar` (MAUI) or `KumikoFonts` (Uno) and use its family name in `KumikoFont` ([Custom Fonts](#custom-fonts), #5).
@@ -1767,7 +1907,7 @@ Both samples have the same six pages:
 
 | Page | What it shows |
 |---|---|
-| **All Components** | Every column type, frozen columns and rows, edit triggers, selection modes, summaries, adding and removing rows, theme switching |
+| **All Components** | Every column type, frozen columns and rows, edit triggers, selection modes, summaries, adding and removing rows, theme switching, built-in or Material Icons glyphs |
 | **Grouping** | Nested groups, the grouping panel, filter popups, group summaries |
 | **Large Data** | 100,000 rows, load timings and the frame-time overlay switch |
 | **Theming** | Light, Dark and HighContrast, and custom colors |

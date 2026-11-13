@@ -116,6 +116,7 @@ public partial class KumikoDataGrid
             if (view.IsObservingCollections)
                 newCollection.CollectionChanged += view.OnColumnsCollectionChanged;
             view._dataSource.SetColumns(newCollection);
+            view.SyncActionButtonDefinitions();
         }
         else
         {
@@ -128,6 +129,7 @@ public partial class KumikoDataGrid
     private void OnColumnsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         _dataSource.SetColumns(Columns);
+        SyncActionButtonDefinitions();
         Invalidate();
     }
 

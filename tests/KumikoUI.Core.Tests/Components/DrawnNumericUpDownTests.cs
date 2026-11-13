@@ -716,14 +716,18 @@ public class DrawnNumericUpDownTests
     {
         var n = Spin();
 
-        var lines = Draw(n).Lines.ToList();
+        var ctx = Draw(n);
+        var symbols = ctx.Polygons.ToList();
 
-        Assert.Equal(3, lines.Count);
-        Assert.All(lines, l => Assert.Equal(n.ButtonSymbolColor, l.Color));
-        Assert.Equal(20, lines[0].Rect.X + lines[0].Rect.Width / 2, 2); // minus centered in the left button
-        Assert.Equal(180, lines[1].Rect.X + lines[1].Rect.Width / 2, 2); // plus centered in the right button
-        Assert.Equal(0, lines[0].Rect.Height);
-        Assert.Equal(0, lines[2].Rect.Width); // the plus's vertical stroke
+        // Each symbol is one filled polygon (#119): a 2 px bar, and a cross as tall as it is wide
+        Assert.Equal(2, symbols.Count);
+        Assert.Empty(ctx.Lines);
+        Assert.All(symbols, s => Assert.Equal(n.ButtonSymbolColor, s.Color));
+        Assert.Equal(20, symbols[0].Rect.X + symbols[0].Rect.Width / 2, 2); // minus centered in the left button
+        Assert.Equal(180, symbols[1].Rect.X + symbols[1].Rect.Width / 2, 2); // plus centered in the right button
+        Assert.Equal(2, symbols[0].Rect.Height, 3);
+        Assert.Equal(symbols[1].Rect.Width, symbols[1].Rect.Height, 3);
+        Assert.Equal(12, symbols[1].Points!.Length);
     }
 
     [Fact]

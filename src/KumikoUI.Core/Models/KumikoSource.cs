@@ -619,6 +619,7 @@ public class KumikoSource : IDisposable
     {
         if (_disposed || _detached) return;
         _detached = true;
+        UnsubscribeFromColumns();
         UnsubscribeFromCollection();
         UnsubscribeFromItemPropertyChanged();
     }
@@ -635,6 +636,7 @@ public class KumikoSource : IDisposable
         CaptureOwner();
         _needsResync = false;
         _sourceIndexByItem = null;
+        SubscribeToColumns();
         if (_sourceItems is INotifyCollectionChanged incc)
         {
             _observableCollection = incc;
@@ -654,6 +656,7 @@ public class KumikoSource : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        UnsubscribeFromColumns();
         UnsubscribeFromCollection();
         UnsubscribeFromItemPropertyChanged();
         _viewChanged = null;
@@ -944,9 +947,44 @@ public class KumikoSource : IDisposable
     public void SetColumns(IEnumerable<KumikoColumn> columns)
     {
         VerifyAccess();
+        UnsubscribeFromColumns();
         _columns = columns.ToList();
+        if (!_disposed && !_detached) SubscribeToColumns();
         UpdateSortCache();
         RequestRebuild(); // the columns carry sort and filter state and feed summaries
+    }
+
+    private void SubscribeToColumns()
+    {
+        foreach (var column in _columns)
+            column.PropertyChanged += OnColumnPropertyChanged;
+    }
+
+    private void UnsubscribeFromColumns()
+    {
+        foreach (var column in _columns)
+            column.PropertyChanged -= OnColumnPropertyChanged;
+    }
+
+    /// <summary>
+    /// Handles a configuration change of a column (<see cref="KumikoColumn.PropertyChanged"/>): the view is rebuilt
+    /// when the change alters what an active sort or filter reads, and otherwise redrawn. Layout and display order
+    /// are recomputed from the columns on every frame, so a redraw is enough for a width, visibility or freeze change.
+    /// </summary>
+    private void OnColumnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_disposed || _detached) return;
+        VerifyAccess(); // column settings follow the source's UI-thread contract
+        if (sender is KumikoColumn column &&
+            e.PropertyName is nameof(KumikoColumn.PropertyName) or nameof(KumikoColumn.ValueAccessor)
+                or nameof(KumikoColumn.CustomComparer) or nameof(KumikoColumn.ColumnType) &&
+            (column.SortDirection != KumikoSortDirection.None || column.ActiveFilter != null ||
+             _groupDescriptions.Count > 0 || _tableSummaryRows.Count > 0))
+        {
+            RequestRebuild();
+            return;
+        }
+        NotifyRedraw();
     }
 
     /// <summary>

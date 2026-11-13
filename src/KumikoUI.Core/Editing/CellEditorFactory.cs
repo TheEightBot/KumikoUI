@@ -60,10 +60,12 @@ public static class CellEditorFactory
 
     /// <summary>
     /// Applies theme colors from a <see cref="KumikoStyle"/> to the given editor component.
-    /// Dispatches to the component-specific <c>ApplyTheme</c> method.
+    /// Dispatches to the component-specific <c>ApplyTheme</c> method; every editor also takes the style's
+    /// <see cref="KumikoStyle.IconProvider"/>.
     /// </summary>
     public static void ApplyThemeToEditor(DrawnComponent editor, KumikoStyle style)
     {
+        editor.IconProvider = style.IconProvider;
         switch (editor)
         {
             case DrawnTextBox textBox: textBox.ApplyTheme(style); break;

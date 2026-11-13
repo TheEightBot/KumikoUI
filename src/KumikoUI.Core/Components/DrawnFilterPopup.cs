@@ -182,6 +182,7 @@ public class DrawnFilterPopup : DrawnComponent
     /// </summary>
     public void ApplyTheme(KumikoStyle style)
     {
+        IconProvider = style.IconProvider;
         // Derive popup colors from the grid theme
         BackgroundColor = style.BackgroundColor;
         TextColor = style.CellTextColor;
@@ -385,13 +386,12 @@ public class DrawnFilterPopup : DrawnComponent
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
     }
 
-    private static void DrawSortArrow(IDrawingContext ctx, float x, float centerY, KumikoSortDirection direction, KumikoPaint paint)
+    private void DrawSortArrow(IDrawingContext ctx, float x, float centerY, KumikoSortDirection direction, KumikoPaint paint)
     {
-        // A filled triangle (#118): pointing down for descending, up otherwise
-        if (direction == KumikoSortDirection.Descending)
-            GlyphDrawing.FillTriangleDown(ctx, x + 4, centerY, 4, 4, paint);
-        else
-            GlyphDrawing.FillTriangleUp(ctx, x + 4, centerY, 4, 4, paint);
+        // A 12 px square centered on the 8 px arrow slot at x
+        IconProvider.DrawIcon(ctx,
+            direction == KumikoSortDirection.Descending ? KumikoIcon.SortDescending : KumikoIcon.SortAscending,
+            new KumikoRect(x - 2, centerY - 6, 12, 12), paint);
     }
 
     private void DrawSearchBox(IDrawingContext ctx, KumikoRect searchRect)
@@ -429,7 +429,7 @@ public class DrawnFilterPopup : DrawnComponent
         float cbIY = selectAllRect.Y + (ButtonRowHeight - 12) / 2;
         ctx.DrawRect(new KumikoRect(cbIX, cbIY, 12, 12), new KumikoPaint { Color = AccentColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true });
         ctx.FillRect(new KumikoRect(cbIX + 2, cbIY + 2, 8, 8), new KumikoPaint { Color = AccentColor, Style = PaintStyle.Fill });
-        GlyphDrawing.Chevron(ctx, cbIX + 2.5f, cbIY + 6, cbIX + 5, cbIY + 9, cbIX + 9.5f, cbIY + 3,
+        IconProvider.DrawIcon(ctx, KumikoIcon.Check, new KumikoRect(cbIX, cbIY, 12, 12),
             new KumikoPaint { Color = ButtonTextColor, Style = PaintStyle.Stroke, StrokeWidth = 1.5f, IsAntiAlias = true });
         ctx.DrawTextInRect(_dataSource.Strings.FilterSelectAll, new KumikoRect(selectAllRect.X + 24, selectAllRect.Y, selectAllRect.Width - 24, ButtonRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
@@ -484,10 +484,7 @@ public class DrawnFilterPopup : DrawnComponent
             {
                 fillPaint.Color = CheckmarkColor;
                 ctx.FillRect(new KumikoRect(cbX + 2, cbY + 2, CheckboxSize - 4, CheckboxSize - 4), fillPaint);
-                GlyphDrawing.Chevron(ctx,
-                    cbX + 3, cbY + CheckboxSize / 2f,
-                    cbX + CheckboxSize * 0.4f, cbY + CheckboxSize - 4,
-                    cbX + CheckboxSize - 3, cbY + 3, checkPaint);
+                IconProvider.DrawIcon(ctx, KumikoIcon.Check, new KumikoRect(cbX, cbY, CheckboxSize, CheckboxSize), checkPaint);
             }
 
             // Text

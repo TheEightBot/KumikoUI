@@ -1,9 +1,14 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using KumikoUI.Core.Editing;
+using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
+using KumikoUI.Core.Rendering;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Windows.Foundation;
 
 namespace SampleApp.Uno;
 
@@ -19,15 +24,69 @@ public sealed partial class BasicGridPage : Page
     private static readonly string[] FirstNames = { "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Hank", "Iris", "Jack" };
     private static readonly string[] LastNames = { "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Wilson", "Moore" };
 
+    // Every built-in glyph drawn from the Material Icons font registered in App.OnLaunched (KumikoFonts)
+    private static readonly KumikoFontIconProvider MaterialIcons = KumikoFontIconProvider.CreateMaterialIcons("MaterialIcons");
+
     private readonly BasicGridViewModel _viewModel = new();
     private readonly Random _random = new(42);
     private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
+    private bool _materialIcons;
 
     public BasicGridPage()
     {
         this.InitializeComponent();
         DataContext = _viewModel;
         LoadSampleData();
+
+        // Right click (or a long press on touch) opens a context menu at the pointer
+        kumiko.ContextMenuRequested += OnGridContextMenuRequested;
+    }
+
+    // ── Context menu ──
+
+    private void OnGridContextMenuRequested(object? sender, KumikoContextRequestedEventArgs e)
+    {
+        var menu = new MenuFlyout();
+        if (e.IsHeader && e.Column is { } column)
+        {
+            AddItem(menu, "Sort ascending", () => kumiko.DataSource.SetSort(column, KumikoSortDirection.Ascending));
+            AddItem(menu, "Sort descending", () => kumiko.DataSource.SetSort(column, KumikoSortDirection.Descending));
+            AddItem(menu, "Clear sort", () => kumiko.DataSource.ClearSort());
+        }
+        else if (e.DataItem is Employee employee)
+        {
+            // The grid selected the row first (unless it was already part of the selection)
+            var selected = kumiko.Selection.SelectedItems.OfType<Employee>().ToList();
+            if (selected.Count == 0) selected.Add(employee);
+            AddItem(menu, "Give a 5% raise", () => employee.Salary = Math.Round(employee.Salary * 1.05m, 0));
+            AddItem(menu, "Duplicate", () =>
+            {
+                OnAddRowClicked(this, new RoutedEventArgs());
+                var copy = _viewModel.Employees[^1];
+                copy.Name = $"{employee.Name} (copy)";
+                copy.Department = employee.Department;
+                copy.Salary = employee.Salary;
+            });
+            menu.Items.Add(new MenuFlyoutSeparator());
+            AddItem(menu, selected.Count > 1 ? $"Delete {selected.Count} rows" : "Delete row", () =>
+            {
+                foreach (var item in selected) _viewModel.Employees.Remove(item);
+            });
+        }
+        else if (e.Region == HitRegion.EmptyArea)
+        {
+            AddItem(menu, "Add row", () => OnAddRowClicked(this, new RoutedEventArgs()));
+        }
+
+        if (menu.Items.Count > 0)
+            menu.ShowAt(kumiko, new FlyoutShowOptions { Position = new Point(e.X, e.Y) });
+    }
+
+    private static void AddItem(MenuFlyout menu, string text, Action action)
+    {
+        var item = new MenuFlyoutItem { Text = text };
+        item.Click += (_, _) => action();
+        menu.Items.Add(item);
     }
 
     private void LoadSampleData()
@@ -109,8 +168,22 @@ public sealed partial class BasicGridPage : Page
             _ => KumikoThemeMode.Light
         };
 
-        kumiko.GridStyle = KumikoTheme.Create(_themeMode);
+        // A new style instance: keep the chosen icon set
+        var style = KumikoTheme.Create(_themeMode);
+        style.IconProvider = _materialIcons ? MaterialIcons : KumikoIconProvider.Default;
+        kumiko.GridStyle = style;
         themeToggle.Content = $"Theme: {_themeMode}";
+    }
+
+    private void OnToggleIconsClicked(object sender, RoutedEventArgs e)
+    {
+        // Switch every glyph (sort arrows, filter buttons, group chevrons, check marks, editor buttons) between the
+        // built-in set and the Material Icons font
+        _materialIcons = !_materialIcons;
+        var style = kumiko.GridStyle;
+        style.IconProvider = _materialIcons ? MaterialIcons : KumikoIconProvider.Default;
+        kumiko.GridStyle = style;
+        iconsToggle.Content = _materialIcons ? "Icons: Material" : "Icons: Built-in";
     }
 
     private void OnToggleSelectionModeClicked(object sender, RoutedEventArgs e)
