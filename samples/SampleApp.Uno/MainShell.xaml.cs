@@ -32,6 +32,7 @@ public sealed partial class MainShell : Page
             "Theming" => typeof(ThemingPage),
             "MvvmActions" => typeof(MvvmActionsPage),
             "CustomFonts" => typeof(CustomFontsPage),
+            "Images" => typeof(ImagesPage),
             _ => null,
         };
 

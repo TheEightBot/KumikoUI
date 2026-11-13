@@ -295,7 +295,7 @@ Each column is a `KumikoColumn`. Its `ColumnType` picks the cell renderer and th
 | `Date` | Formatted date | `DrawnDatePicker` (opens its calendar) | `DateTime`, `DateTimeOffset` and `DateOnly` values |
 | `ComboBox` | Text | `DrawnComboBox` (opens its list) | Items from `EditorItems` or `EditorItemsString`; `EditorDisplayMemberPath` / `EditorValueMemberPath` or the selector delegates for objects; `EditorIsFilterable` makes the list searchable |
 | `Picker` | Text | `DrawnScrollPicker` (scroll wheel) | Items from `EditorItems` or `EditorItemsString` |
-| `Image` | Image, centered in a square | none | The value must be an `SKImage` or `SKBitmap`; use `ImageCellRenderer.ImageResolver` to map other values |
+| `Image` | Image, centered in a square | none | A URL, file or asset name, bytes, a stream or a host image source, loaded off the UI thread; see [Images](#images) |
 | `ProgressBar` | Progress bar | none (read-only) | A number between `ProgressMinimum` (default 0) and `ProgressMaximum` (default 100); see [Progress bars](#progress-bars) |
 | `Template` | `CustomCellRenderer` (text if none) | `EditorFactory`, `CustomEditorFactory`, `EditorDescriptor`, an `ICellEditorProvider` renderer, or a text box | For action buttons and your own renderers |
 
@@ -345,6 +345,58 @@ For a per-value fill color or a different track, use a `Template` column with a 
 
 `FillColor` sets one fill color and `ColorSelector` picks it per value.
 
+### Images
+
+An `Image` column draws its value as a picture, fitted into a square centered in the cell. The grid loads and decodes the image off the UI thread, draws nothing while it loads, and redraws when it is ready. A value can be:
+
+| Value | Loaded from |
+|---|---|
+| A URL (`string` or `Uri`) with `http`, `https`, `file` or `data` | The web (through one shared `HttpClient`), the file system, or the data URI itself |
+| A file name or path | An absolute path; otherwise an app package file: on .NET MAUI a `MauiAsset` (for example under `Resources/Raw`) or a `MauiImage`; on Uno an `ms-appx:///` path (`Assets/Photos/a.png`) |
+| `ImageSource` (.NET MAUI) | `FileImageSource`, `UriImageSource` and `StreamImageSource` |
+| `Uri` with `ms-appx` or `ms-appdata`, or a `BitmapImage` with a `UriSource` (Uno) | The app package or app data, or the bitmap's URI |
+| `byte[]`, `Stream`, `Func<Stream>` or `Func<CancellationToken, Task<Stream>>` | The encoded bytes (PNG, JPEG, WebP, GIF, BMP, ICO) |
+| `SKImage` or `SKBitmap` | Drawn as it is; you own and dispose it |
+
+```xml
+<core:KumikoColumn Header="Photo" PropertyName="PhotoUrl" Width="60" ColumnType="Image" />
+```
+
+Each grid keeps the decoded images in its `ImageCache` (a `KumikoImageCache` from KumikoUI.SkiaSharp), keyed by the URL, file name or object, so rows showing the same picture share one image and scrolling back draws it without loading it again. The cache is bounded: it keeps at most `MaxCount` images (default 256) and `MaxBytes` of decoded pixels (default 64 MiB), disposes the least recently drawn image when it needs room, cancels the download of an image evicted before it arrives, and disposes everything when the grid is unloaded or disconnected from its handler. Images are decoded at most `MaxDecodedSize` pixels (default 256) on their longer side. Keep `MaxCount` above the number of image cells on screen:
+
+```csharp
+kumiko.ImageCache.MaxCount = 500;
+kumiko.ImageCache.MaxBytes = 128L * 1024 * 1024;
+kumiko.ImageCache.MaxDecodedSize = 128;
+```
+
+A value nothing can load, such as a `FontImageSource`, draws nothing and is reported once per type through `System.Diagnostics.Trace`, as is the first failed load of each kind. To load another kind of value, implement `IKumikoImageLoader`: `TryGetCacheKey` runs for every visible image cell on every frame, so it returns an object the value already holds without allocating, and `OpenAsync` runs on a worker thread:
+
+<!-- snippet: shared -->
+```csharp
+public sealed record Photo(int Id);
+
+public sealed class PhotoLoader : KumikoUI.SkiaSharp.IKumikoImageLoader
+{
+    public bool TryGetCacheKey(object source,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out object? key)
+    {
+        key = source as Photo; // a record: equal ids share one cached image
+        return key is not null;
+    }
+
+    public Task<Stream?> OpenAsync(object key, CancellationToken cancellationToken) =>
+        Task.FromResult<Stream?>(File.OpenRead(
+            Path.Combine(AppContext.BaseDirectory, "photos", $"{((Photo)key).Id}.jpg")));
+}
+```
+
+```csharp
+kumiko.ImageCache.Loaders.Insert(0, new PhotoLoader());
+```
+
+`ImageCellRenderer.ImageResolver` maps a cell value to the value to load (for example an id to a URL). A custom cell renderer draws images the same way through `cell.ImageResolver`.
+
 ### Custom cell renderers
 
 Implement `ICellRenderer` and set it as the column's `CustomCellRenderer`. The grid calls `Render` for every visible cell of the column on every frame, passing a `CellRenderContext` by reference:
@@ -359,6 +411,7 @@ Implement `ICellRenderer` and set it as the column's `CustomCellRenderer`. The g
 | `IsSelected` | Whether the row is selected |
 | `Paints` | The grid's shared `PaintCache` (cell text, checkbox, grid line, selection paints and more) |
 | `TextPaint`, `TextAlignment` | The paint and alignment for the cell's text, with the cell style's overrides applied |
+| `ImageResolver` | The grid's image cache: `Resolve(value, out image)` returns `Ready` with an image for `ctx.DrawImage`, or `Pending` while it loads (see [Images](#images)) |
 
 ```csharp
 public sealed class StatusDotRenderer : ICellRenderer

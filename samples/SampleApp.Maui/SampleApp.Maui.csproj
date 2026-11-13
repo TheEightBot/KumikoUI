@@ -64,6 +64,9 @@
 
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+
+		<!-- Avatars for the Images page, shared with SampleApp.Uno: packaged as Avatars/avatar-N.png -->
+		<MauiAsset Include="..\Shared\Images\avatar-*.png" LogicalName="Avatars/%(Filename)%(Extension)" Link="Resources\Raw\Avatars\%(Filename)%(Extension)" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -181,6 +181,36 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public async Task SteadyState_ImageColumnsWithCachedImages_AllocateNothing()
+    {
+        // Image cells resolve their values through the grid's image cache (#63): once the images are decoded, a
+        // cache hit (a URL string, a Uri, a byte array) allocates nothing.
+        var grid = CreateGrid(featured: false);
+        string[] urls = Enumerable.Range(0, 5).Select(i => TestImages.DataUri(8, 8, (byte)(i * 40))).ToArray();
+        Uri[] uris = Enumerable.Range(0, 5).Select(i => new Uri(TestImages.DataUri(8, 8, (byte)(i * 40 + 1)))).ToArray();
+        byte[][] bytes = Enumerable.Range(0, 5).Select(i => TestImages.Png(8, 8, (byte)(i * 40 + 2))).ToArray();
+        var columns = grid.Source.Columns;
+        columns[7].ColumnType = KumikoColumnType.Image;
+        columns[7].ValueAccessor = item => urls[((Row)item).Quantity % 5];
+        columns[8].ColumnType = KumikoColumnType.Image;
+        columns[8].ValueAccessor = item => uris[((Row)item).Quantity % 5];
+        columns[9].ColumnType = KumikoColumnType.Image;
+        columns[9].ValueAccessor = item => bytes[((Row)item).Quantity % 5];
+        grid.Source.Refresh();
+        using var cache = new KumikoUI.SkiaSharp.KumikoImageCache();
+        grid.Renderer.ImageResolver = cache;
+
+        grid.Render(new NoOpDrawingContext());
+        await cache.WhenIdleAsync();
+        int drawn = 0;
+        grid.Render(new NoOpDrawingContext { ImageDrawn = _ => drawn++ });
+
+        Assert.Equal(15, cache.Count);
+        Assert.True(drawn >= 3 * VisibleRows, $"every visible image cell draws its image ({drawn})");
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
     public void AnOpenTextEditor_WithAVisibleCaretAndSelection_AllocatesNothing()
     {
         var box = new KumikoUI.Core.Components.DrawnTextBox
