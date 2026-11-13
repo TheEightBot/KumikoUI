@@ -20,14 +20,14 @@ public class SummaryClipTests
             h.Column("Age").Width = 100;
             h.Column("City").Width = 150;
             h.Column("Salary").Width = 90;
-            var row = new TableSummaryRow("Totals", SummaryPosition.Bottom) 
+            var row = new TableSummaryRow("Totals", SummaryPosition.Bottom)
             {
                 Title = "Totals",
                 Columns =
                 {
                     new SummaryColumnDescription("Name", SummaryType.Count) { Label = "Rows: " },
                     new SummaryColumnDescription("Age", SummaryType.Sum) { Label = "Sum: " },
-                    new SummaryColumnDescription("Salary", SummaryType.Sum, "C0") { Label = "Sum: " },
+                    new SummaryColumnDescription("Salary", SummaryType.Sum, "C0") { Label = "Pay: " },
                 },
             };
             h.Source.AddTableSummaryRow(row);
@@ -75,7 +75,7 @@ public class SummaryClipTests
             Assert.True(op.Rect.Left >= clip.Left - 0.01f && op.Rect.Right <= clip.Right + 0.01f, $"outside its clip: {op}");
 
             string property = op.Text!.StartsWith("Rows", StringComparison.Ordinal) ? "Name"
-                : op.Text.Contains('$') ? "Salary" : "Age";
+                : op.Text.StartsWith("Pay", StringComparison.Ordinal) ? "Salary" : "Age";
             var (left, right) = ColumnSpan(h, property);
             Assert.True(op.Rect.Left >= left - 0.01f && op.Rect.Right <= right + 0.01f, $"outside column {property}: {op}");
 
@@ -92,7 +92,7 @@ public class SummaryClipTests
         var h = Create(offsetX: 120f); // Age (x 60..160) is scrolled mostly under the frozen Name column
         var ctx = RenderFrame(h);
 
-        foreach (var op in SummaryValueTexts(h, ctx).Where(o => o.Text!.StartsWith("Sum: ", StringComparison.Ordinal)))
+        foreach (var op in SummaryValueTexts(h, ctx).Where(o => !o.Text!.StartsWith("Rows", StringComparison.Ordinal)))
             Assert.True(op.Visible is null || op.Visible.Value.Left >= h.Column("Name").Width - 0.01f, op.ToString());
     }
 
@@ -102,9 +102,9 @@ public class SummaryClipTests
         var h = Create(offsetX: 0f);
         var ctx = RenderFrame(h);
 
-        var salary = SummaryValueTexts(h, ctx).Single(o => o.Text!.Contains('$'));
+        var salary = SummaryValueTexts(h, ctx).Single(o => o.Text!.StartsWith("Pay", StringComparison.Ordinal));
         string shown = RecordingDrawingContext.ShownText(salary);
-        Assert.StartsWith("S", shown);
+        Assert.StartsWith("P", shown);
         Assert.EndsWith("…", shown);
         Assert.True(shown.Length * RecordingDrawingContext.CharWidth <= salary.Rect.Width + 0.01f);
         var (left, right) = ColumnSpan(h, "Salary");
@@ -118,7 +118,7 @@ public class SummaryClipTests
         var h = RenderHarness.Create(rows: 20, width: ViewportWidth, height: 400, configure: x =>
         {
             x.Column("Name").Width = 200;
-            x.Source.AddTableSummaryRow(new TableSummaryRow("Totals", SummaryPosition.Bottom) 
+            x.Source.AddTableSummaryRow(new TableSummaryRow("Totals", SummaryPosition.Bottom)
             {
                 Title = "Totals",
                 Columns = { new SummaryColumnDescription("Name", SummaryType.Count) { Label = "Rows: " } },
@@ -141,9 +141,8 @@ public class SummaryClipTests
         });
         var ctx = RenderFrame(h);
 
-        foreach (int row in new[] { 0, 1 })
+        foreach (float y in new[] { 0, 1 }.Select(row => h.Style.HeaderHeight + (row + 1) * h.Style.RowHeight))
         {
-            float y = h.Style.HeaderHeight + (row + 1) * h.Style.RowHeight;
             var fill = ctx.Ops.Where(o => o.Kind == DrawOpKind.FillRect && RenderHarness.Near(o.Rect.Y, y - h.Style.RowHeight)
                 && o.Rect.Width >= ViewportWidth).Min(o => o.Index);
             Assert.Contains(ctx.Lines, l => l.Color == h.Style.GridLineColor && l.Index > fill
