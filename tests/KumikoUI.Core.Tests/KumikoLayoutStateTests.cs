@@ -23,7 +23,7 @@ public class KumikoLayoutStateTests
         Name = $"N{i:D2}",
         Age = 20 + i % 7,
         City = (i % 3) switch { 0 => "Oslo", 1 => "Rome", _ => "Lima" },
-        Joined = new DateTime(2024, 1, 1).AddDays(i * 10),
+        Joined = new DateTime(2024, 1, 1).AddDays(i * 10.0),
         Active = i % 2 == 0,
     }).ToList();
 

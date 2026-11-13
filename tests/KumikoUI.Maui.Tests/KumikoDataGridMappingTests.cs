@@ -294,7 +294,6 @@ public class KumikoDataGridMappingTests
     public void ColumnMovedInTheDataSource_IsMovedInColumns_AndSurvivesALaterColumnChange()
     {
         var grid = GridWithColumns(out var name, out var age);
-        var sourceColumns = new List<KumikoColumn>();
 
         grid.DataSource.ReorderColumn(0, 1); // what a header drag does
         Assert.Equal(new[] { age, name }, grid.Columns);

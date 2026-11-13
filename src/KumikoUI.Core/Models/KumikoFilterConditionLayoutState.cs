@@ -52,13 +52,18 @@ public sealed class KumikoFilterConditionLayoutState
                 state.ValueKind = KumikoFilterValueKind.Date;
                 state.Value = d.ToDateTime(TimeOnly.MinValue).ToString("O", invariant);
                 break;
-            case var number when KumikoComparer.TryGetNumber(number, out _):
-                state.ValueKind = KumikoFilterValueKind.Number;
-                state.Value = ((IFormattable)number).ToString(null, invariant);
-                break;
-            case var other:
-                state.ValueKind = KumikoFilterValueKind.Text;
-                state.Value = Convert.ToString(other, invariant);
+            default:
+                object value = condition.Value;
+                if (KumikoComparer.TryGetNumber(value, out _))
+                {
+                    state.ValueKind = KumikoFilterValueKind.Number;
+                    state.Value = ((IFormattable)value).ToString(null, invariant);
+                }
+                else
+                {
+                    state.ValueKind = KumikoFilterValueKind.Text;
+                    state.Value = Convert.ToString(value, invariant);
+                }
                 break;
         }
         return state;

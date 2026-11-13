@@ -128,9 +128,8 @@ public sealed class KumikoLayoutState
         // The saved columns the source still has, in saved order (the first entry for a name wins).
         var matched = new List<(KumikoColumnLayoutState State, KumikoColumn Column)>();
         var matchedColumns = new HashSet<KumikoColumn>();
-        foreach (var state in saved)
+        foreach (var state in saved.Where(s => s is not null && !string.IsNullOrEmpty(s.Key)))
         {
-            if (state is null || string.IsNullOrEmpty(state.Key)) continue;
             if (byKey.TryGetValue(state.Key, out var column) && matchedColumns.Add(column))
                 matched.Add((state, column));
         }
@@ -188,9 +187,8 @@ public sealed class KumikoLayoutState
     {
         var groups = new List<GroupDescription>(saved.Count);
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var state in saved)
+        foreach (var state in saved.Where(s => s is not null && !string.IsNullOrEmpty(s.PropertyName) && seen.Add(s.PropertyName)))
         {
-            if (state is null || string.IsNullOrEmpty(state.PropertyName) || !seen.Add(state.PropertyName)) continue;
 
             GroupDescription? group = null;
             foreach (var existing in source.GroupDescriptions)
