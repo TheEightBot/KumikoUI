@@ -7,10 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Changed
-- `KumikoColumn` separates configuration from runtime state (#50). It implements `INotifyPropertyChanged`: setting `Header`, `IsVisible`, `Width`, `MinWidth`, `MaxWidth`, `SizeMode`, `StarWeight`, `Format`, `IsReadOnly`, `FreezeMode`, `AllowSorting`, alignment, styles and the other display settings from code repaints the grid and lays it out again, with no `Refresh()`. `KumikoSource` observes its columns (and stops on `Detach`, `Dispose` or `SetColumns`); changing `PropertyName`, `ValueAccessor`, `CustomComparer` or `ColumnType` of a sorted, filtered or grouped column rebuilds the view. Runtime state (`SortDirection`, `SortOrder`, `ActiveFilter`, `HeaderFitWidth`, `ContentFitWidth`) has no public setter; change it with `KumikoSource.SetSort` and `SetColumnFilter`. `Width` is documented as an output of layout for Star and Auto columns.
+- The documentation snippet check also compiles the C# and XAML blocks of the NuGet READMEs (`docs/nuget/*.md`) against both hosts (#236). `eng/DocsSnippets` splits statements followed by type declarations, infers the host from the code or the package README, and pairs a `partial` page class with its XAML page, so the NuGet READMEs need no annotations.
 
 ### Removed
 - **Breaking:** `KumikoColumn.Id`, a random value nothing used. Identify a column by reference or `PropertyName`; a stable user key comes with the layout persistence work (#98).
+
+### Fixed
+- Uno: a touch or pen long-press is now detected by a 500 ms / 15 px timer started on press, as in the MAUI grid, instead of relying on WinUI's `Holding` event alone (which is touch-only and not raised on every head). The release that ends a long press no longer taps, so a long-press on a Boolean cell toggles it once and does not raise `RowTapped`. `Holding` stays as a fallback and never fires a second long-press (#61).
+- `KumikoColumn` separates configuration from runtime state (#50). It implements `INotifyPropertyChanged`: setting `Header`, `IsVisible`, `Width`, `MinWidth`, `MaxWidth`, `SizeMode`, `StarWeight`, `Format`, `IsReadOnly`, `FreezeMode`, `AllowSorting`, alignment, styles and the other display settings from code repaints the grid and lays it out again, with no `Refresh()`. `KumikoSource` observes its columns (and stops on `Detach`, `Dispose` or `SetColumns`); changing `PropertyName`, `ValueAccessor`, `CustomComparer` or `ColumnType` of a sorted, filtered or grouped column rebuilds the view. Runtime state (`SortDirection`, `SortOrder`, `ActiveFilter`, `HeaderFitWidth`, `ContentFitWidth`) has no public setter; change it with `KumikoSource.SetSort` and `SetColumnFilter`. `Width` is documented as an output of layout for Star and Auto columns.
 
 ## [0.2.0] - 2026-11-11
 
