@@ -135,7 +135,13 @@ public partial class KumikoInputController
     /// <see cref="KumikoColumn.SizeMode"/>).
     /// </summary>
     public event EventHandler<ColumnResizedEventArgs>? ColumnResized;
-    /// <summary>Raised when the user drops a dragged column header at a new position.</summary>
+    /// <summary>
+    /// Raised when the user drops a dragged column header at a new position, before anything moved: the host
+    /// applies the move with <see cref="KumikoSource.ReorderColumn"/> (the MAUI and Uno grids do, and keep their
+    /// <c>Columns</c> collection in step). A column moves only within its own pane (left-frozen, scrolling or
+    /// right-frozen), and only when <see cref="KumikoColumn.AllowReorder"/> is true. See
+    /// <see cref="KumikoColumnReorderedEventArgs"/> for what the indices mean.
+    /// </summary>
     public event EventHandler<KumikoColumnReorderedEventArgs>? ColumnReordered;
     /// <summary>
     /// Raised once when the user drops a dragged row at a new position and the row moved: the controller has already
@@ -257,6 +263,28 @@ public partial class KumikoInputController
         if (e.Action == InputAction.Pressed) _isPointerDown = true;
         else if (e.Action is InputAction.Released or InputAction.Cancelled) _isPointerDown = false;
         var action = e.Action == InputAction.Moved && !wasPointerDown ? InputAction.Hover : e.Action;
+
+        // Only the primary button selects, sorts, scrolls, drags and edits: the press records its button, and the
+        // rest of the press follows it (hosts may report no button, or another one, on the release).
+        if (action == InputAction.Pressed)
+        {
+            _pressButton = e.Button;
+            _pressConsumedByContext = false;
+        }
+        bool partOfPress = action == InputAction.Pressed ||
+            (wasPointerDown && action is InputAction.Moved or InputAction.Released or InputAction.LongPress);
+        if (partOfPress && !IsPrimaryButton(_pressButton))
+        {
+            HandleNonPrimaryPointer(e, action, scroll, selection, style, dataSource);
+            return;
+        }
+
+        // A long press that raised ContextRequested ends the gesture: lifting or moving the finger does nothing.
+        if (partOfPress && _pressConsumedByContext) // always false on a new press, which resets it above
+        {
+            e.Handled = true;
+            return;
+        }
 
         // ── Popup priority: popups always get first crack at input ──
         if (_popupManager.HandlePointer(e))
@@ -950,7 +978,9 @@ public partial class KumikoInputController
                 {
                     _isDraggingColumn = true;
                     _dragColumnIndex = startHit.ColumnIndex;
-                    _dragColumnOffset = _lastPanX - (startHit.ContentX - scroll.OffsetX);
+                    // The ghost keeps the point where the header was grabbed, whatever pane it is in.
+                    float columnLeft = ColumnDragGeometry.ScreenLeft(columns, startHit.ColumnIndex, scroll, style);
+                    _dragColumnOffset = float.IsNaN(columnLeft) ? 0 : _lastPanX - columnLeft;
                     DragColumnScreenX = e.X - _dragColumnOffset;
                     e.Handled = true;
                     return;
@@ -1174,6 +1204,8 @@ public partial class KumikoInputController
                     dataSource.ToggleSort(hit.Column);
             }
 
+            HeaderTapped?.Invoke(this, new KumikoHeaderTappedEventArgs(hit.ColumnIndex, hit.Column, e.X, e.Y, e.Modifiers));
+
             Redraw();
             e.Handled = true;
             return;
@@ -1211,8 +1243,13 @@ public partial class KumikoInputController
             selection.HandleRowSelection(hit.RowIndex, shift, ctrl);
             selection.CurrentCell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
 
-            RowTapped?.Invoke(this, new RowTappedEventArgs(
-                hit.RowIndex, hit.ColumnIndex, dataSource.GetItem(hit.RowIndex)));
+            var tappedItem = dataSource.GetItem(hit.RowIndex);
+            RowTapped?.Invoke(this, new RowTappedEventArgs(hit.RowIndex, hit.ColumnIndex, tappedItem));
+            if (CellTapped != null && hit.Column != null)
+            {
+                CellTapped(this, new KumikoCellTappedEventArgs(
+                    hit.RowIndex, hit.ColumnIndex, hit.Column, tappedItem, e.X, e.Y, e.ClickCount));
+            }
 
             var tappedCell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
             bool isBooleanCell = hit.Column?.ColumnType == KumikoColumnType.Boolean;
@@ -1352,8 +1389,9 @@ public partial class KumikoInputController
     }
 
     /// <summary>
-    /// Handle a long press gesture: on touch it may start a row drag; otherwise it selects the cell and triggers
-    /// editing if the LongPress edit trigger is configured.
+    /// Handle a long press gesture: on touch it may start a row drag, and a cell with the LongPress edit trigger
+    /// edits. Otherwise a finger or a pen raises <see cref="ContextRequested"/> (and the rest of the press is
+    /// ignored), and a mouse selects the cell.
     /// </summary>
     private void HandleLongPress(
         KumikoPointerEventArgs e,
@@ -1376,6 +1414,28 @@ public partial class KumikoInputController
         if (TryBeginRowDragOnLongPress(e, hit, scroll, selection, style, dataSource))
         {
             e.Handled = true;
+            return;
+        }
+
+        // A finger or a pen asks for a context menu, unless the cell edits on a long press. A mouse held down is a
+        // slow click, not a request for a menu (the secondary button is).
+        bool editsOnLongPress = hit.Region == HitRegion.Cell && hit.RowIndex >= 0 && _editSession != null &&
+            hit.Column != null && (GetEffectiveEditTriggers(hit.Column) & EditTrigger.LongPress) != 0;
+        if (e.DeviceType != KumikoPointerDeviceType.Mouse && !editsOnLongPress)
+        {
+            // Inside the open editor the press stays the editor's: no menu over it, and nothing is committed
+            if (_editSession is { IsEditing: true, ActiveEditor: { } editor } && editor.HitTest(e.X, e.Y))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (RequestContext(KumikoContextTrigger.LongPress, e, hit, selection, dataSource))
+            {
+                _pressConsumedByContext = true;
+                Redraw();
+                e.Handled = true;
+            }
             return;
         }
 
@@ -1430,28 +1490,13 @@ public partial class KumikoInputController
         float dropX, ScrollState scroll,
         IReadOnlyList<KumikoColumn> columns, KumikoStyle style)
     {
-        if (_dragColumnIndex < 0) return;
+        if (_dragColumnIndex < 0 || _dragColumnIndex >= columns.Count) return;
 
-        // Find drop target column
-        float contentDropX = dropX + scroll.OffsetX;
-        float x = 0;
-        int dropIndex = columns.Count - 1;
-        for (int i = 0; i < columns.Count; i++)
+        // Pane-aware: the slot among the other columns of the dragged column's own pane (ColumnDragGeometry).
+        int dropIndex = ColumnDragGeometry.DropIndex(columns, _dragColumnIndex, dropX, scroll, style);
+        if (dropIndex >= 0 && dropIndex != _dragColumnIndex)
         {
-            if (!columns[i].IsVisible) continue;
-            float midX = x + columns[i].Width / 2;
-            if (contentDropX < midX)
-            {
-                dropIndex = i;
-                break;
-            }
-            x += columns[i].Width;
-        }
-
-        if (dropIndex != _dragColumnIndex)
-        {
-            // The columns list is from KumikoSource which uses List<KumikoColumn>
-            // We need to reorder via the source
+            // The host applies the move (KumikoSource.ReorderColumn), so it can keep its own column list in step.
             ColumnReordered?.Invoke(this, new KumikoColumnReorderedEventArgs(
                 _dragColumnIndex, dropIndex, columns[_dragColumnIndex]));
         }

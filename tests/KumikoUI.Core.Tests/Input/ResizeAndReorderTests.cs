@@ -186,13 +186,13 @@ public class ResizeAndReorderTests
         g.Move(70, InputGrid.HeaderY);
         Assert.Equal(0, g.Input.DragColumnIndex);
         g.Move(190, InputGrid.HeaderY);
-        Assert.Equal(190, g.Input.DragColumnScreenX);
+        Assert.Equal(130, g.Input.DragColumnScreenX); // grabbed 60 px into the column
         Assert.Empty(reordered);
-        g.Release(190, InputGrid.HeaderY); // before the middle of City (250)
+        g.Release(190, InputGrid.HeaderY); // past the middle of Age (160), before the middle of City (250)
 
         var e = Assert.Single(reordered);
         Assert.Equal(0, e.OldIndex);
-        Assert.Equal(2, e.NewIndex);
+        Assert.Equal(1, e.NewIndex); // between Age and City: Columns[1] after the move
         Assert.Same(g.Name, e.Column);
         Assert.Equal(-1, g.Input.DragColumnIndex);
         Assert.Same(g.Name, g.Source.Columns[0]); // the host applies the move
@@ -206,7 +206,7 @@ public class ResizeAndReorderTests
 
         g.Move(80, InputGrid.HeaderY);
 
-        Assert.Equal(80, g.Input.DragColumnScreenX); // grabbed at the column's x 60, shown at pointer - 0
+        Assert.Equal(20, g.Input.DragColumnScreenX); // grabbed 60 px into Name (x 0), so its left edge is at 80 - 60
     }
 
     [Fact]
@@ -260,11 +260,11 @@ public class ResizeAndReorderTests
 
         g.Press(60, InputGrid.HeaderY); // Age at content 160
         g.Move(80, InputGrid.HeaderY);
-        g.Release(190, InputGrid.HeaderY); // content 290: before the middle of Dept (350)
+        g.Release(190, InputGrid.HeaderY); // content 290: past the middle of City (250), before Dept's (350)
 
         var e = Assert.Single(reordered);
         Assert.Equal(1, e.OldIndex);
-        Assert.Equal(3, e.NewIndex);
+        Assert.Equal(2, e.NewIndex); // Name, City, Age, Dept, Score
     }
 
     [Fact]
@@ -330,7 +330,7 @@ public class ResizeAndReorderTests
         Assert.Equal(0, e.NewIndex);
     }
 
-    [Fact(Skip = "Known defect (#98): the drop index adds the horizontal scroll offset even over frozen panes")]
+    [Fact]
     public void HeaderDrag_OfAFrozenColumn_WithHorizontalScroll_DropsOverTheFrozenSlot()
     {
         var g = new InputGrid(configure: x =>
@@ -349,6 +349,195 @@ public class ResizeAndReorderTests
         var e = Assert.Single(reordered);
         Assert.Equal(1, e.OldIndex);
         Assert.Equal(0, e.NewIndex);
+    }
+
+    /// <summary>Records every reorder and applies it the way the hosts do.</summary>
+    private static List<KumikoColumnReorderedEventArgs> ApplyReorders(InputGrid g)
+    {
+        var reordered = new List<KumikoColumnReorderedEventArgs>();
+        g.Input.ColumnReordered += (_, e) =>
+        {
+            reordered.Add(e);
+            g.Source.ReorderColumn(e.OldIndex, e.NewIndex);
+        };
+        return reordered;
+    }
+
+    private static void Drag(InputGrid g, float fromX, float toX)
+    {
+        g.Press(fromX, InputGrid.HeaderY);
+        g.Move(fromX + (toX > fromX ? 15 : -15), InputGrid.HeaderY);
+        g.Release(toX, InputGrid.HeaderY);
+    }
+
+    [Fact]
+    public void HeaderDrag_OfAFrozenColumn_OverTheScrollingPane_StaysAtTheEndOfItsPane()
+    {
+        var g = new InputGrid(configure: x =>
+        {
+            x.Name.IsFrozen = true;
+            x.Age.IsFrozen = true;
+        });
+        var reordered = ApplyReorders(g);
+
+        Drag(g, 60, 280); // Name over Dept: the pointer is kept at the frozen pane's right edge (200)
+
+        var e = Assert.Single(reordered);
+        Assert.Equal(0, e.OldIndex);
+        Assert.Equal(1, e.NewIndex);
+        Assert.Equal(new[] { g.Age, g.Name, g.City, g.Dept, g.Score }, g.Source.DisplayColumns);
+    }
+
+    [Fact]
+    public void HeaderDrag_OfAScrollingColumn_WithLeftFrozenPaneAndScroll_NeverTargetsAColumnUnderThePane()
+    {
+        // Frozen Name + Age (0..200); with 100 px of scroll City is drawn at 100..200, under the frozen pane, Dept at
+        // 200..300 and Score at 300..400.
+        var g = new InputGrid(viewportWidth: 400, configure: x =>
+        {
+            x.Name.IsFrozen = true;
+            x.Age.IsFrozen = true;
+        });
+        g.Scroll.OffsetX = 100;
+        var reordered = ApplyReorders(g);
+
+        g.Press(330, InputGrid.HeaderY); // Score, grabbed 30 px into it
+        g.Move(310, InputGrid.HeaderY);
+        Assert.Equal(4, g.Input.DragColumnIndex);
+        Assert.Equal(280, g.Input.DragColumnScreenX);
+        g.Release(20, InputGrid.HeaderY); // over the frozen pane: kept at the scrolling pane's left edge (200)
+
+        var e = Assert.Single(reordered);
+        Assert.Equal(4, e.OldIndex);
+        Assert.Equal(3, e.NewIndex); // before Dept, the first column on screen, not before the hidden City
+        Assert.Equal(new[] { g.Name, g.Age, g.City, g.Score, g.Dept }, g.Source.DisplayColumns);
+    }
+
+    [Fact]
+    public void HeaderDrag_OfARightFrozenColumn_ReordersWithinThePane_WhateverTheScroll()
+    {
+        // Right-frozen Dept + Score at 100..300 (Dept 100..200, Score 200..300); scrolling Name, Age, City at 0..100.
+        var g = new InputGrid(configure: x =>
+        {
+            x.Dept.IsFrozenRight = true;
+            x.Score.IsFrozenRight = true;
+        });
+        g.Scroll.OffsetX = 50;
+        var reordered = ApplyReorders(g);
+
+        g.Press(230, InputGrid.HeaderY); // Score, grabbed 30 px into it
+        g.Move(215, InputGrid.HeaderY);
+        Assert.Equal(185, g.Input.DragColumnScreenX);
+        g.Release(120, InputGrid.HeaderY); // before the middle of Dept (150)
+
+        var e = Assert.Single(reordered);
+        Assert.Equal(4, e.OldIndex);
+        Assert.Equal(3, e.NewIndex);
+        Assert.Equal(new[] { g.Name, g.Age, g.City, g.Score, g.Dept }, g.Source.DisplayColumns);
+    }
+
+    [Fact]
+    public void HeaderDrag_OfARightFrozenColumn_OverTheScrollingPane_StaysAtTheStartOfItsPane()
+    {
+        var g = new InputGrid(configure: x =>
+        {
+            x.Dept.IsFrozenRight = true;
+            x.Score.IsFrozenRight = true;
+        });
+        var reordered = ApplyReorders(g);
+
+        Drag(g, 230, 10); // Score over Name: kept at the right-frozen pane's left edge (100)
+
+        Assert.Equal(3, Assert.Single(reordered).NewIndex);
+        Assert.Equal(new[] { g.Name, g.Age, g.City, g.Score, g.Dept }, g.Source.DisplayColumns);
+    }
+
+    [Fact]
+    public void HeaderDrag_OfAScrollingColumn_OverARightFrozenPane_NeverTargetsAColumnUnderThePane()
+    {
+        // Right-frozen Dept 200..300 and Score 300..400; scrolling Name 0..120, Age 120..200 and City 200..300, which
+        // is drawn under the right-frozen pane.
+        var g = new InputGrid(viewportWidth: 400, configure: x =>
+        {
+            x.Dept.IsFrozenRight = true;
+            x.Score.IsFrozenRight = true;
+        });
+        var reordered = ApplyReorders(g);
+
+        Drag(g, 40, 350); // Name over Score: kept at the scrolling pane's right edge (200)
+
+        var e = Assert.Single(reordered);
+        Assert.Equal(0, e.OldIndex);
+        Assert.Equal(1, e.NewIndex); // after Age, not after the hidden City
+        Assert.Equal(new[] { g.Age, g.Name, g.City, g.Dept, g.Score }, g.Source.DisplayColumns);
+    }
+
+    [Fact]
+    public void HeaderDrag_WithALeftDragHandle_UsesTheShiftedColumns_AndClampsDropsOnTheHandle()
+    {
+        // The 32 px handle shifts the columns: Name 32..152, Age 152..232, City 232..332.
+        var g = new InputGrid(configure: x => x.Style.ShowRowDragHandle = true);
+        var reordered = ApplyReorders(g);
+
+        g.Press(92, InputGrid.HeaderY); // Name, grabbed 60 px into it
+        g.Move(110, InputGrid.HeaderY);
+        Assert.Equal(50, g.Input.DragColumnScreenX);
+        g.Release(222, InputGrid.HeaderY); // past Age's middle (192), before City's (282)
+        Assert.Equal(1, reordered[^1].NewIndex);
+        Assert.Equal(new[] { g.Age, g.Name, g.City, g.Dept, g.Score }, g.Source.Columns);
+
+        Drag(g, 260, 5); // City onto the handle: kept at the columns' left edge, before Age
+        Assert.Equal(2, reordered[^1].OldIndex);
+        Assert.Equal(0, reordered[^1].NewIndex);
+        Assert.Equal(new[] { g.City, g.Age, g.Name, g.Dept, g.Score }, g.Source.Columns);
+    }
+
+    [Fact]
+    public void HeaderDrag_WithARightDragHandle_KeepsRightFrozenDropsOffTheHandle()
+    {
+        // 32 px handle on the right; right-frozen Dept 68..168 and Score 168..268.
+        var g = new InputGrid(configure: x =>
+        {
+            x.Style.ShowRowDragHandle = true;
+            x.Style.RowDragHandlePosition = DragHandlePosition.Right;
+            x.Dept.IsFrozenRight = true;
+            x.Score.IsFrozenRight = true;
+        });
+        var reordered = ApplyReorders(g);
+
+        Drag(g, 100, 295); // Dept onto the handle: kept at the pane's right edge (268), after Score
+
+        var e = Assert.Single(reordered);
+        Assert.Equal(3, e.OldIndex);
+        Assert.Equal(4, e.NewIndex);
+        Assert.Equal(new[] { g.Name, g.Age, g.City, g.Score, g.Dept }, g.Source.DisplayColumns);
+    }
+
+    [Fact]
+    public void HeaderDrag_SkipsHiddenColumns_AndTheyKeepTheirPlace()
+    {
+        // Age hidden: Name 0..120, City 120..220, Dept 220..320.
+        var g = new InputGrid(configure: x => x.Age.IsVisible = false);
+        var reordered = ApplyReorders(g);
+
+        Drag(g, 60, 230); // past City's middle (170), before Dept's (270)
+
+        var e = Assert.Single(reordered);
+        Assert.Equal(0, e.OldIndex);
+        Assert.Equal(2, e.NewIndex);
+        Assert.Equal(new[] { g.Age, g.City, g.Name, g.Dept, g.Score }, g.Source.Columns);
+        Assert.Equal(new[] { g.City, g.Name, g.Dept, g.Score }, g.Source.DisplayColumns);
+    }
+
+    [Fact]
+    public void HeaderDrag_OverItsOwnColumn_RaisesNothing()
+    {
+        var g = new InputGrid();
+        var reordered = ApplyReorders(g);
+
+        Drag(g, 150, 125); // Age, still over Age
+
+        Assert.Empty(reordered);
     }
 
     // ── Row drag ──

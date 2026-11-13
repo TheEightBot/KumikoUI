@@ -268,6 +268,20 @@ public class KumikoStyle
     /// <summary>Background color of the drag handle header area.</summary>
     public KumikoColor RowDragHandleHeaderBackgroundColor { get; set => Set(ref field, value); } = new(235, 235, 235);
 
+    // ── Icons ────────────────────────────────────────────────────
+    /// <summary>
+    /// Draws every built-in glyph of the grid (group chevrons, sort arrows, filter buttons, grouping chip buttons,
+    /// drag grips, check marks) and of the editors and filter popup it opens. Glyph colors still come from the
+    /// style's color properties. Default: <see cref="KumikoIconProvider.Default"/>, the built-in vector set; use a
+    /// <see cref="KumikoFontIconProvider"/> for an icon font, or your own <see cref="IKumikoIconProvider"/>.
+    /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when set to <c>null</c>.</exception>
+    public IKumikoIconProvider IconProvider
+    {
+        get;
+        set => Set(ref field, value ?? throw new ArgumentNullException(nameof(value)));
+    } = KumikoIconProvider.Default;
+
     // ── Conditional style resolvers ──────────────────────────────
     /// <summary>
     /// Callback invoked for each visible cell to dynamically resolve a KumikoCellStyle
