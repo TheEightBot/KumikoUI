@@ -35,12 +35,6 @@ public class ProxyKeyOutcomeTests
     [InlineData(KumikoKey.Enter)]
     [InlineData(KumikoKey.Escape)]
     [InlineData(KumikoKey.F2)]
-    public void AnUnhandledKeyTheTextBoxIgnores_ReachesThePage(KumikoKey key)
-    {
-        Assert.Equal(ProxyKeyOutcome.PassToPage, GetProxyKeyOutcome(key, handledByCore: false));
-    }
-
-    [Theory]
     [InlineData(KumikoKey.Up)]
     [InlineData(KumikoKey.Left)]
     [InlineData(KumikoKey.Home)]
@@ -49,8 +43,8 @@ public class ProxyKeyOutcomeTests
     [InlineData(KumikoKey.Delete)]
     [InlineData(KumikoKey.Space)]
     [InlineData(KumikoKey.V)]
-    public void AnUnhandledCaretOrTextKey_StaysHandled_SoTheProxyTextIsUntouched(KumikoKey key)
+    public void AnyOtherKeyCoreLeftUnhandled_IsNotMarkedHandled(KumikoKey key)
     {
-        Assert.Equal(ProxyKeyOutcome.Handled, GetProxyKeyOutcome(key, handledByCore: false));
+        Assert.Equal(ProxyKeyOutcome.PassToPage, GetProxyKeyOutcome(key, handledByCore: false));
     }
 }

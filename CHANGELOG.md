@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **KumikoUI.Uno** text input goes through the text-input adapter (#43):
+  - The hidden text box now holds a copy of the open editor's text and selection instead of a placeholder it reset after every keystroke. Input-method composition (Japanese, Chinese, Korean, dead keys) is passed to the editor as marked text through the text box's composition events and committed when it ends, so composing works on the desktop and in the browser. Suggestions and autocorrect that replace a word replace it in the editor instead of adding characters, and fast typing is no longer delivered twice.
+  - A key is marked handled only when the grid used it: Tab and Shift+Tab past the last (first) editable cell, or with no current cell, move focus out of the grid, and Escape with nothing to cancel, or Enter on a cell that does nothing with it, reaches the page.
+  - The hidden text box is no longer hit-testable, announced by screen readers or 64×32 at the grid's center, focusing it no longer scrolls a page that hosts the grid, and it no longer makes iOS Safari zoom the page (WebAssembly).
+  - The grid no longer sets `IsTabStop` on every load or `TabIndex` to 0, so it takes its place in the page's tab order and an app's `IsTabStop="False"` is kept. **Behavior change** for pages that relied on the grid being first in tab order.
+  - After a touch edit the keyboard focus stays in the grid and the soft keyboard is hidden, so a hardware keyboard on a tablet keeps navigating the grid.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

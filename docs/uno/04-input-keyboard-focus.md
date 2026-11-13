@@ -153,6 +153,12 @@ space the renderer was fed in [03 §4](03-kumikodatagrid-host.md#4-dpi--scaling)
 
 ## 3. Keyboard & focus — proxy-as-keyboard-sink design
 
+> **Superseded in part (#43):** the proxy is still the keyboard sink, but the sentinel-diff algorithm,
+> `ResetProxy()` and the `TextChanged` handler described below were replaced by the text-input adapter
+> (`Input/KumikoTextInputAdapter.cs`): the proxy mirrors the open editor's text, `TextChanging` and the
+> `TextComposition*` events drive Core's `ITextInputSession`, keys are marked handled only when Core
+> handled them, and focus stays on the proxy after a touch edit. See [docs/TEXT-INPUT.md](../TEXT-INPUT.md).
+
 ### Why `CharacterReceived` and `Grid` focus don't work on WASM/Skia
 
 Two independent issues make a plain `Grid`-based keyboard approach fail on WASM (and Skia targets):

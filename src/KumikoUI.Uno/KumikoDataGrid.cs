@@ -65,11 +65,13 @@ public partial class KumikoDataGrid : UserControl
         InitializeSurface();
         Content = _root;
         UseSystemFocusVisuals = false; // the grid draws its own focus (the current cell)
+        // Focusable, so it takes part in tab navigation and receives KeyDown. Set once: a consumer's
+        // IsTabStop="False" or TabIndex is respected.
+        IsTabStop = true;
 
-        // Add the hidden TextBox proxy for soft-keyboard input (iOS/Android/WASM).
-        // Must be added after the canvas so it sits on top in the z-order, though its
-        // Opacity=0 / 1×1px size means it is not visible regardless.
-        SetupInputProxy();
+        // The hidden TextBox proxy and the text-input adapter (KumikoDataGrid.Editing.cs).
+        _textInput = SetupInputProxy();
+        _syncTextInput = SyncTextInputQueued;
 
         // The content is the grid's own: replacing it would detach the canvas
         RegisterPropertyChangedCallback(ContentProperty, OnContentReplaced);
@@ -163,9 +165,9 @@ public partial class KumikoDataGrid : UserControl
 
     /// <summary>
     /// Core asks for keyboard focus (e.g. editing began, or a filter popup opened on mobile where
-    /// the input pane must be shown). Delegates to <see cref="FocusKeyboardInput"/> which focuses the
-    /// hidden TextBox proxy — on iOS/Android that summons the soft keyboard; on desktop it routes
-    /// subsequent <c>KeyDown</c>/<c>CharacterReceived</c> to the proxy (which forwards to Core).
+    /// the input pane must be shown). Delegates to <see cref="FocusKeyboardInput"/> which mirrors the
+    /// active text input into the hidden TextBox proxy and focuses it — on iOS/Android that summons the
+    /// soft keyboard; on every head it routes subsequent keys and text to the proxy (which forwards to Core).
     /// </summary>
     private void OnKeyboardFocusRequested() => FocusKeyboardInput();
 
@@ -174,6 +176,7 @@ public partial class KumikoDataGrid : UserControl
     {
         _filterPopupActive = true;
         StartCursorBlinkTimer();
+        _textInput.Sync(); // the popup's search box is now the active text input
     }
 
     /// <summary>The filter popup closed: stop the cursor-blink timer (unless a cell edit is still active).</summary>
@@ -182,6 +185,7 @@ public partial class KumikoDataGrid : UserControl
         _filterPopupActive = false;
         if (!_editSession.IsEditing)
             StopCursorBlinkTimer();
+        _textInput.Sync();
     }
 
     /// <summary>
@@ -192,32 +196,32 @@ public partial class KumikoDataGrid : UserControl
     {
         if (e.Cancel) return;
         StartCursorBlinkTimer();
-        // FocusKeyboardInput resets the proxy sentinel and focuses the TextBox.
-        // On iOS/Android this summons the on-screen keyboard; on desktop it routes
-        // subsequent key events to the proxy → OnProxyKeyDown / OnProxyTextChanged.
+        // FocusKeyboardInput mirrors the new editor into the proxy and focuses the TextBox.
+        // On iOS/Android this summons the on-screen keyboard; on every head it routes
+        // subsequent keys and text to the proxy → OnProxyKeyDown / OnProxyTextChanging.
         FocusKeyboardInput();
     }
 
     /// <summary>
-    /// End-edit: reset the proxy, stop the cursor-blink timer (unless a filter popup is still
-    /// open), and return focus appropriately based on input device:
-    /// touch → focus the grid (blurs the proxy and dismisses the soft keyboard on mobile);
-    /// mouse/pen → re-focus the proxy so arrow-key navigation and type-to-edit keep working
-    /// immediately without requiring another click.
+    /// End-edit: empty the proxy, stop the cursor-blink timer (unless a filter popup is still
+    /// open), and keep the keyboard on the proxy so arrow-key navigation and type-to-edit keep
+    /// working without another click — also for a hardware keyboard on a touch device. After a
+    /// touch edit the soft keyboard is hidden explicitly instead of by moving focus away.
     /// </summary>
     private void OnEditSessionCellEndEdit(object? sender, CellEndEditEventArgs e)
     {
         _selection.IsEditing = false;
-        // Reset proxy text so no stale characters linger if the same proxy is re-focused.
-        ResetProxy();
         if (!_filterPopupActive)
             StopCursorBlinkTimer();
-        // Device-aware focus: on touch, blur the proxy to dismiss the soft keyboard;
-        // on mouse/pen, keep the proxy focused so keyboard navigation continues seamlessly.
         if (_lastPointerWasTouch)
-            Focus(FocusState.Programmatic);   // touch: blur proxy → soft keyboard dismisses
+        {
+            _textInput.Sync();
+            HideSoftKeyboard();
+        }
         else
-            FocusKeyboardInput();             // mouse/pen: proxy stays focused → arrows/typing keep working
+        {
+            FocusKeyboardInput();
+        }
     }
 
     // ── Public events (parity with MAUI) ──────────────────────────
