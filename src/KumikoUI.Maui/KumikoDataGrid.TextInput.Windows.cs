@@ -138,7 +138,8 @@ public partial class KumikoDataGrid
         var keyEvent = new KumikoKeyEventArgs { Key = key, Modifiers = modifiers };
         _inputController.HandleKey(keyEvent, _scroll, _selection, _style, _dataSource);
         if (_editSession.IsAnimating)
-            StartInertialScrollTimer(); // a held arrow key repeats a spin button from the frame loop
+            StartFrameAnimation(); // a held arrow key repeats a spin button from the frame loop
+        RestartCursorBlinkTimer(); // a key restarts the caret's blink
 
         _characterInput.KeyDown(key, keyEvent.Handled);
         if (WindowsKeyInput.ShouldMarkHandled(key, modifiers, keyEvent.Handled))
@@ -173,6 +174,7 @@ public partial class KumikoDataGrid
         };
         _inputController.HandleKey(keyEvent, _scroll, _selection, _style, _dataSource);
         e.Handled = true;
+        RestartCursorBlinkTimer(); // typing restarts the caret's blink
         SyncTextServices(); // the character may have opened an editor (Typing trigger)
     }
 

@@ -8,20 +8,43 @@ namespace KumikoUI.Uno.Tests;
 /// </summary>
 public class ProxyTextInputTests
 {
-    private const string Sentinel = "​";
-
     private static ProxyTextInput.Dispatch Char(char c) => new(KumikoKey.Character, c);
 
-    // ── ExtractInserted ──────────────────────────────────────────
+    // ── Diff ─────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(Sentinel, Sentinel + "a", "a")]          // plain append
-    [InlineData(Sentinel, Sentinel + "ab", "ab")]        // fast typing / paste
-    [InlineData(Sentinel, "a" + Sentinel, "a")]          // insertion before the sentinel
-    [InlineData(Sentinel, "日本", "日本")]               // IME full replacement
-    public void ExtractInserted_ReturnsTextWithoutSentinel(string oldText, string newText, string expected)
+    [InlineData("ab", "abc", 2, 0, 2, 0, "c")]          // append
+    [InlineData("ac", "abc", 1, 0, 1, 0, "b")]          // insert in the middle
+    [InlineData("aa", "aaa", 1, 0, 1, 0, "a")]          // next to the same letter: the caret decides
+    [InlineData("aa", "aaa", 0, 0, 0, 0, "a")]
+    [InlineData("hello", "hi", 1, 4, 1, 4, "i")]        // typing over a selection
+    [InlineData("hello", "に", 0, 5, 0, 5, "に")]        // a selection replaced
+    [InlineData("abc", "ab", 3, 0, 2, 1, "")]           // Backspace at the end
+    [InlineData("abc", "ac", 2, 0, 1, 1, "")]           // Backspace in the middle
+    [InlineData("aab", "ab", 2, 0, 1, 1, "")]           // Backspace after a repeated letter
+    [InlineData("aab", "ab", 0, 0, 0, 1, "")]           // Delete before a repeated letter
+    [InlineData("abc", "a", 1, 2, 1, 2, "")]            // deleting a selection
+    [InlineData("teh", "the ", 3, 0, 1, 2, "he ")]      // a suggestion replaces a word: common prefix and suffix
+    [InlineData("abc", "abc", 3, 0, 3, 0, "")]          // no change
+    public void Diff_FindsTheSingleEdit(string oldText, string newText, int selectionStart, int selectionLength,
+        int start, int removed, string inserted)
     {
-        Assert.Equal(expected, ProxyTextInput.ExtractInserted(oldText, newText, Sentinel));
+        Assert.Equal(new ProxyTextInput.TextChange(start, removed, inserted),
+            ProxyTextInput.Diff(oldText, newText, selectionStart, selectionLength));
+    }
+
+    [Fact]
+    public void Diff_NeverSplitsASurrogatePair()
+    {
+        // 😀 (D83D DE00) replaced by 😃 (D83D DE03): both share the high surrogate.
+        Assert.Equal(new ProxyTextInput.TextChange(1, 2, "😃"), ProxyTextInput.Diff("a😀b", "a😃b", 0, 0));
+    }
+
+    [Fact]
+    public void Diff_AtTheCaret_DoesNotSplitAPairEither()
+    {
+        // The caret is reported inside 😀 (between its halves): the edit falls back to whole code points.
+        Assert.Equal(new ProxyTextInput.TextChange(1, 2, "😃"), ProxyTextInput.Diff("x😀", "x😃", 2, 0));
     }
 
     // ── Plan: typed characters ───────────────────────────────────

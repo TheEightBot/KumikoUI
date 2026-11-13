@@ -5,7 +5,6 @@ using Android.Views.InputMethods;
 using AndroidX.Core.View;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Rendering;
-using SkiaSharp.Views.Maui;
 using AView = Android.Views.View;
 
 namespace KumikoUI.Maui;
@@ -93,11 +92,7 @@ public partial class KumikoDataGrid
     {
         BindAndroidSession(null);
         StopObservingAndroidIme();
-        if (_androidImeCheckQueued)
-        {
-            _androidImeCheckQueued = false;
-            _canvasView.PaintSurface -= OnPaintSurface_AndroidImeCheck;
-        }
+        _androidImeCheckQueued = false;
         _androidImeRequested = false;
         _androidConnection = null;
         if (_androidInputView is { } view)
@@ -392,7 +387,8 @@ public partial class KumikoDataGrid
     {
         _inputController.HandleKey(keyEvent, _scroll, _selection, _style, _dataSource);
         if (_editSession.IsAnimating)
-            StartInertialScrollTimer(); // a held arrow key repeats a spin button from the frame loop
+            StartFrameAnimation(); // a held arrow key repeats a spin button from the frame loop
+        RestartCursorBlinkTimer(); // a key restarts the caret's blink
         return keyEvent.Handled;
     }
 
@@ -436,18 +432,14 @@ public partial class KumikoDataGrid
     /// </summary>
     private void QueueAndroidImeCheck()
     {
-        if (!_androidImeCheckQueued)
-        {
-            _androidImeCheckQueued = true;
-            _canvasView.PaintSurface += OnPaintSurface_AndroidImeCheck;
-        }
+        _androidImeCheckQueued = true;
         InvalidateSurface();
     }
 
-    // Runs after OnPaintSurface; the check itself is posted, out of the draw pass.
-    private void OnPaintSurface_AndroidImeCheck(object? sender, SKPaintSurfaceEventArgs e)
+    // After the next frame (on the UI thread, whatever the surface); the check itself is posted, out of the draw pass.
+    partial void OnFrameRendered()
     {
-        _canvasView.PaintSurface -= OnPaintSurface_AndroidImeCheck;
+        if (!_androidImeCheckQueued) return;
         _androidImeCheckQueued = false;
         _androidInputHost?.Post(CheckAndroidImeOverlapNow);
     }

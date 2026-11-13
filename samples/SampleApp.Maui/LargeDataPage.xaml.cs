@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using KumikoUI.Maui;
 
 namespace SampleApp.Maui;
 
@@ -19,7 +20,21 @@ public partial class LargeDataPage : ContentPage
     {
         InitializeComponent();
         BindingContext = _viewModel;
+
+        // RenderMode: Auto picks the GPU surface where it is the default; ActiveRenderMode is the surface in use.
+        renderModePicker.ItemsSource = Enum.GetValues<KumikoRenderMode>();
+        renderModePicker.SelectedItem = kumiko.RenderMode;
+        ShowSurface();
     }
+
+    private void OnRenderModeChanged(object? sender, EventArgs e)
+    {
+        if (renderModePicker.SelectedItem is KumikoRenderMode mode)
+            kumiko.RenderMode = mode;
+        ShowSurface();
+    }
+
+    private void ShowSurface() => surfaceLabel.Text = $"Surface: {kumiko.ActiveRenderMode}";
 
     private async void LoadData(int count)
     {
