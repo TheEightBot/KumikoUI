@@ -1239,6 +1239,7 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | `HeaderTextColor` | `KumikoColor` | Black | Header text |
 | `CellTextColor` | `KumikoColor` | 30, 30, 30 | Data cell text |
 | `GridLineColor` | `KumikoColor` | 220, 220, 220 | Horizontal and vertical grid lines |
+| `CheckBoxBorderColor` | `KumikoColor?` | `null` (`GridLineColor`) | Outline of a Boolean cell's check box |
 | `SelectionColor` | `KumikoColor` | 0, 120, 215, 60 | Fill of selected rows |
 | `SelectionTextColor` | `KumikoColor` | 255, 255, 255 | Text of selected cells, for custom renderers. Not used by the built-in drawing |
 | `FocusedRowColor` | `KumikoColor` | 0, 120, 215, 30 | Highlight of the current row |

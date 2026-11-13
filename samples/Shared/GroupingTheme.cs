@@ -5,14 +5,15 @@ namespace SampleApp.Shared;
 
 /// <summary>
 /// The light and dark styles of the Grouping sample page, shared by the MAUI and Uno samples so both hosts
-/// draw the same grid. A cool slate palette with one indigo accent: group headers sit on a faint indigo tint,
-/// the accent marks only what is active (selection, current cell, sort and active filter, group chips,
-/// chevrons and caption summaries), and grid lines stay soft. Every text color meets WCAG AA (4.5:1) on the
-/// background it is drawn on.
+/// draw the same grid. Built for reading: neutral gray surfaces with no tint, near-black (or near-white) text at
+/// 14 pt, group headers set apart by a solid band and bold text rather than by color, and one blue accent kept
+/// for what is active (selection, current cell, sort, active filter, group chips). Body text is at least 12:1
+/// against its background and secondary text at least 7:1 (WCAG AAA).
 /// </summary>
 /// <remarks>
 /// Each style starts from the built-in preset of the same mode, so anything not listed here (frozen panes,
-/// drag and drop, popups) keeps a value that matches the mode.
+/// drag and drop, popups) keeps a value that matches the mode. The dark variant uses the same neutral grays as
+/// the sample pages around the grid, so the grid does not sit on the page as a tinted block.
 /// </remarks>
 public static class GroupingTheme
 {
@@ -25,60 +26,60 @@ public static class GroupingTheme
     /// <returns>A new style instance.</returns>
     public static KumikoStyle CreateLight()
     {
-        var accent = Rgb(0x4F, 0x46, 0xE5);       // indigo 600
-        var accentText = Rgb(0x43, 0x38, 0xCA);   // indigo 700, for accent-colored text
-        var ink = Rgb(0x1E, 0x29, 0x3B);          // slate 800
-        var inkMuted = Rgb(0x47, 0x55, 0x69);     // slate 600
-        var line = Rgb(0xDA, 0xE1, 0xEA);         // between slate 200 and 300: soft, but still outlines checkboxes
-        var surfaceAlt = Rgb(0xF8, 0xFA, 0xFC);   // slate 50
+        var accent = Rgb(0x25, 0x63, 0xEB);      // blue 600
+        var ink = Rgb(0x11, 0x18, 0x27);         // gray 900: body text
+        var inkSecondary = Rgb(0x37, 0x41, 0x51); // gray 700: counts, labels, summaries
+        var line = Rgb(0xE5, 0xE7, 0xEB);        // gray 200
+        var lineStrong = Rgb(0xD1, 0xD5, 0xDB);  // gray 300
+        var surfaceAlt = Rgb(0xF3, 0xF4, 0xF6);  // gray 100
 
         var style = KumikoTheme.CreateLight();
+        ApplyFonts(style);
 
         style.BackgroundColor = KumikoColor.White;
         style.CellTextColor = ink;
         style.GridLineColor = line;
+        style.CheckBoxBorderColor = Rgb(0x6B, 0x72, 0x80); // gray 500: an unchecked box stays visible
         style.AlternateRowBackground = true;
-        style.AlternateRowColor = Rgb(0xFA, 0xFB, 0xFD);
+        style.AlternateRowColor = Rgb(0xF9, 0xFA, 0xFB); // gray 50
         style.AccentColor = accent;
 
         style.HeaderBackgroundColor = surfaceAlt;
-        style.HeaderTextColor = Rgb(0x33, 0x41, 0x55); // slate 700
-        style.HeaderBorderColor = Rgb(0xCB, 0xD5, 0xE1); // slate 300
-        style.HeaderFont = new KumikoFont("Default", 13, bold: true);
+        style.HeaderTextColor = ink;
+        style.HeaderBorderColor = lineStrong;
         style.SortIndicatorColor = accent;
-        style.FilterIconColor = Rgb(0x94, 0xA3, 0xB8); // slate 400: quiet until active
+        style.FilterIconColor = Rgb(0x6B, 0x72, 0x80); // gray 500
         style.FilterActiveIconColor = accent;
 
-        style.SelectionColor = accent.WithAlpha(30);
-        style.SelectionTextColor = Rgb(0x1E, 0x1B, 0x4B); // indigo 950
-        style.FocusedRowColor = accent.WithAlpha(14);
+        style.SelectionColor = Rgb(0xDB, 0xEA, 0xFE);   // blue 100, opaque so text keeps its contrast
+        style.SelectionTextColor = ink;
+        style.FocusedRowColor = Rgb(0xEF, 0xF6, 0xFF);  // blue 50
         style.CurrentCellBorderColor = accent;
-        style.CurrentCellBorderWidth = 1.5f;
+        style.CurrentCellBorderWidth = 2f;
 
-        style.GroupHeaderBackgroundColor = Rgb(0xEE, 0xF1, 0xFB);
-        style.GroupHeaderTextColor = Rgb(0x0F, 0x17, 0x2A); // slate 900
-        style.GroupHeaderCountColor = inkMuted;
-        style.GroupChevronColor = accentText;
-        style.GroupChevronBackgroundColor = Rgb(0xDC, 0xE1, 0xF7);
-        style.CaptionSummaryTextColor = accentText;
-        style.CaptionSummaryFont = new KumikoFont("Default", 12);
+        style.GroupHeaderBackgroundColor = Rgb(0xE5, 0xE7, 0xEB); // gray 200: a solid band
+        style.GroupHeaderTextColor = ink;
+        style.GroupHeaderCountColor = inkSecondary;
+        style.GroupChevronColor = ink;
+        style.GroupChevronBackgroundColor = Rgb(0xD1, 0xD5, 0xDB);
+        style.CaptionSummaryTextColor = inkSecondary;
 
         style.GroupPanelBackgroundColor = surfaceAlt;
-        style.GroupPanelLabelColor = inkMuted;
-        style.GroupPanelTextColor = inkMuted;
+        style.GroupPanelLabelColor = inkSecondary;
+        style.GroupPanelTextColor = inkSecondary;
         style.GroupPanelChipBackgroundColor = KumikoColor.White;
-        style.GroupPanelChipBorderColor = Rgb(0xCB, 0xD5, 0xE1);
+        style.GroupPanelChipBorderColor = lineStrong;
         style.GroupPanelChipAccentColor = accent;
         style.GroupPanelChipTextColor = ink;
-        style.GroupPanelChipRemoveColor = Rgb(0x94, 0xA3, 0xB8);
+        style.GroupPanelChipRemoveColor = Rgb(0x4B, 0x55, 0x63); // gray 600
 
-        style.GroupSummaryRowBackgroundColor = surfaceAlt;
-        style.GroupSummaryRowTextColor = Rgb(0x33, 0x41, 0x55);
+        style.GroupSummaryRowBackgroundColor = Rgb(0xF9, 0xFA, 0xFB);
+        style.GroupSummaryRowTextColor = inkSecondary;
 
-        style.SummaryRowBackgroundColor = Rgb(0xF1, 0xF5, 0xF9); // slate 100
-        style.SummaryRowTextColor = Rgb(0x0F, 0x17, 0x2A);
-        style.SummaryRowLabelColor = inkMuted;
-        style.SummaryRowBorderColor = Rgb(0xCB, 0xD5, 0xE1);
+        style.SummaryRowBackgroundColor = surfaceAlt;
+        style.SummaryRowTextColor = ink;
+        style.SummaryRowLabelColor = inkSecondary;
+        style.SummaryRowBorderColor = lineStrong;
 
         style.RowDragBorderColor = accent;
         style.RowDropIndicatorColor = accent;
@@ -89,65 +90,80 @@ public static class GroupingTheme
     /// <returns>A new style instance.</returns>
     public static KumikoStyle CreateDark()
     {
-        var accent = Rgb(0x81, 0x8C, 0xF8);       // indigo 400
-        var accentText = Rgb(0xA5, 0xB4, 0xFC);   // indigo 300, for accent-colored text
-        var ink = Rgb(0xE2, 0xE8, 0xF0);          // slate 200
-        var inkMuted = Rgb(0x94, 0xA3, 0xB8);     // slate 400
-        var surface = Rgb(0x14, 0x17, 0x1F);
-        var surfaceRaised = Rgb(0x1A, 0x1E, 0x28);
-        var line = Rgb(0x33, 0x3B, 0x50);
+        var accent = Rgb(0x60, 0xA5, 0xFA);      // blue 400
+        var ink = Rgb(0xF3, 0xF4, 0xF6);         // gray 100: body text
+        var inkSecondary = Rgb(0xC4, 0xC9, 0xD1); // counts, labels, summaries
+        var surface = Rgb(0x1C, 0x1C, 0x1E);
+        var surfaceRaised = Rgb(0x2A, 0x2A, 0x2D);
+        var line = Rgb(0x33, 0x33, 0x37);
+        var lineStrong = Rgb(0x45, 0x45, 0x4A);
 
         var style = KumikoTheme.CreateDark();
+        ApplyFonts(style);
 
         style.BackgroundColor = surface;
         style.CellTextColor = ink;
         style.GridLineColor = line;
+        style.CheckBoxBorderColor = Rgb(0x9C, 0xA3, 0xAF); // gray 400: an unchecked box stays visible
         style.AlternateRowBackground = true;
-        style.AlternateRowColor = Rgb(0x17, 0x1B, 0x24);
+        style.AlternateRowColor = Rgb(0x22, 0x22, 0x25);
         style.AccentColor = accent;
 
         style.HeaderBackgroundColor = surfaceRaised;
-        style.HeaderTextColor = Rgb(0xCB, 0xD5, 0xE1); // slate 300
-        style.HeaderBorderColor = Rgb(0x33, 0x3B, 0x4F);
-        style.HeaderFont = new KumikoFont("Default", 13, bold: true);
+        style.HeaderTextColor = ink;
+        style.HeaderBorderColor = lineStrong;
         style.SortIndicatorColor = accent;
-        style.FilterIconColor = Rgb(0x64, 0x74, 0x8B); // slate 500: quiet until active
+        style.FilterIconColor = Rgb(0x9C, 0xA3, 0xAF); // gray 400
         style.FilterActiveIconColor = accent;
 
-        style.SelectionColor = accent.WithAlpha(46);
-        style.SelectionTextColor = Rgb(0xF8, 0xFA, 0xFC);
-        style.FocusedRowColor = accent.WithAlpha(20);
+        style.SelectionColor = Rgb(0x1E, 0x3A, 0x5F);   // a deep blue, opaque so text keeps its contrast
+        style.SelectionTextColor = KumikoColor.White;
+        style.FocusedRowColor = Rgb(0x26, 0x2B, 0x33);
         style.CurrentCellBorderColor = accent;
-        style.CurrentCellBorderWidth = 1.5f;
+        style.CurrentCellBorderWidth = 2f;
 
-        style.GroupHeaderBackgroundColor = Rgb(0x1D, 0x22, 0x36);
-        style.GroupHeaderTextColor = Rgb(0xF1, 0xF5, 0xF9); // slate 100
-        style.GroupHeaderCountColor = inkMuted;
-        style.GroupChevronColor = accentText;
-        style.GroupChevronBackgroundColor = Rgb(0x2B, 0x32, 0x54);
-        style.CaptionSummaryTextColor = accentText;
-        style.CaptionSummaryFont = new KumikoFont("Default", 12);
+        style.GroupHeaderBackgroundColor = Rgb(0x34, 0x34, 0x38); // a solid band
+        style.GroupHeaderTextColor = KumikoColor.White;
+        style.GroupHeaderCountColor = inkSecondary;
+        style.GroupChevronColor = ink;
+        style.GroupChevronBackgroundColor = Rgb(0x4A, 0x4A, 0x50);
+        style.CaptionSummaryTextColor = inkSecondary;
 
         style.GroupPanelBackgroundColor = surfaceRaised;
-        style.GroupPanelLabelColor = inkMuted;
-        style.GroupPanelTextColor = inkMuted;
-        style.GroupPanelChipBackgroundColor = Rgb(0x22, 0x27, 0x36);
-        style.GroupPanelChipBorderColor = Rgb(0x3A, 0x42, 0x5A);
+        style.GroupPanelLabelColor = inkSecondary;
+        style.GroupPanelTextColor = inkSecondary;
+        style.GroupPanelChipBackgroundColor = Rgb(0x3A, 0x3A, 0x3F);
+        style.GroupPanelChipBorderColor = Rgb(0x55, 0x55, 0x5B);
         style.GroupPanelChipAccentColor = accent;
         style.GroupPanelChipTextColor = ink;
-        style.GroupPanelChipRemoveColor = inkMuted;
+        style.GroupPanelChipRemoveColor = inkSecondary;
 
-        style.GroupSummaryRowBackgroundColor = Rgb(0x18, 0x1C, 0x27);
-        style.GroupSummaryRowTextColor = Rgb(0xCB, 0xD5, 0xE1);
+        style.GroupSummaryRowBackgroundColor = Rgb(0x24, 0x24, 0x27);
+        style.GroupSummaryRowTextColor = inkSecondary;
 
         style.SummaryRowBackgroundColor = surfaceRaised;
-        style.SummaryRowTextColor = Rgb(0xF1, 0xF5, 0xF9);
-        style.SummaryRowLabelColor = inkMuted;
-        style.SummaryRowBorderColor = Rgb(0x33, 0x3B, 0x4F);
+        style.SummaryRowTextColor = ink;
+        style.SummaryRowLabelColor = inkSecondary;
+        style.SummaryRowBorderColor = lineStrong;
 
         style.RowDragBorderColor = accent;
         style.RowDropIndicatorColor = accent;
         return style;
+    }
+
+    // One step larger than the defaults everywhere, so nothing on the page is drawn below 12 pt.
+    private static void ApplyFonts(KumikoStyle style)
+    {
+        style.CellFont = new KumikoFont("Default", 14);
+        style.HeaderFont = new KumikoFont("Default", 14, bold: true);
+        style.GroupHeaderFont = new KumikoFont("Default", 14, bold: true);
+        style.GroupCountFont = new KumikoFont("Default", 13);
+        style.CaptionSummaryFont = new KumikoFont("Default", 13);
+        style.GroupSummaryRowFont = new KumikoFont("Default", 13, bold: true);
+        style.SummaryRowFont = new KumikoFont("Default", 13, bold: true);
+        style.SummaryRowLabelFont = new KumikoFont("Default", 13);
+        style.GroupPanelLabelFont = new KumikoFont("Default", 12);
+        style.GroupPanelFont = new KumikoFont("Default", 13, bold: true);
     }
 
     private static KumikoColor Rgb(byte r, byte g, byte b) => new(r, g, b);

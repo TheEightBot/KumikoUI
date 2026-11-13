@@ -41,6 +41,11 @@ public class KumikoStyle
     public KumikoColor CellTextColor { get; set => Set(ref field, value); } = new(30, 30, 30);
     /// <summary>Color of horizontal and vertical grid lines.</summary>
     public KumikoColor GridLineColor { get; set => Set(ref field, value); } = new(220, 220, 220);
+    /// <summary>
+    /// Color of the outline of a Boolean cell's check box. <c>null</c> (the default) draws it in
+    /// <see cref="GridLineColor"/>; set it when the grid lines are too faint to outline an unchecked box.
+    /// </summary>
+    public KumikoColor? CheckBoxBorderColor { get; set => Set(ref field, value); }
     /// <summary>Fill color of selected row/cell highlights.</summary>
     public KumikoColor SelectionColor { get; set => Set(ref field, value); } = new(0, 120, 215, 60);
     /// <summary>

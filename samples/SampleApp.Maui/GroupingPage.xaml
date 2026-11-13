@@ -57,7 +57,7 @@
 
                 <core:KumikoColumn Header="Salary"
                                      PropertyName="Salary"
-                                     Width="120"
+                                     Width="150"
                                      Format="C0"
                                      ColumnType="Numeric"
                                      TextAlignment="Right" />
