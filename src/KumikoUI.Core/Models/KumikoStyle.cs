@@ -97,6 +97,19 @@ public class KumikoStyle
     public float FrozenColumnDividerWidth { get; set => Set(ref field, value); } = 2f;
     /// <summary>Background color for left-frozen column cells.</summary>
     public KumikoColor FrozenColumnBackgroundColor { get; set => Set(ref field, value); } = new(250, 250, 250);
+    /// <summary>
+    /// The largest share of the column area (the viewport less the row drag handle) the left-frozen and
+    /// right-frozen columns may take together, from 0 to 1. Default: two thirds, so at least a third of the width
+    /// is left to the scrolling columns. When the columns are wider than the viewport and the frozen ones take
+    /// more than this, columns are unpinned until they fit: the right-frozen columns first, from the one nearest
+    /// the scrolling columns outward, then the left-frozen ones from the rightmost. An unpinned column scrolls
+    /// with the others at the same place in the on-screen order (at the start of the scrolling columns when it
+    /// was left-frozen, at their end when it was right-frozen), and is pinned again as soon as the viewport is
+    /// wide enough. Columns keep their <see cref="KumikoColumn.FreezeMode"/>. When every column fits in the
+    /// viewport nothing is unpinned, whatever the ratio. 1 unpins only what would otherwise overlap; 0 unpins
+    /// every frozen column whenever the grid scrolls horizontally. Values outside 0 to 1 are clamped.
+    /// </summary>
+    public float MaxFrozenColumnsWidthRatio { get; set => Set(ref field, value); } = 2f / 3f;
 
     // ── Right-frozen columns ─────────────────────────────────────
     /// <summary>Divider line color between scrollable and right-frozen columns.</summary>

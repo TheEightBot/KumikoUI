@@ -250,6 +250,21 @@ public class KumikoColumn
     public ColumnFreezeMode FreezeMode { get; set; } = ColumnFreezeMode.None;
 
     /// <summary>
+    /// The <see cref="FreezeMode"/> the layout last suspended because the frozen panes did not fit the viewport
+    /// (#268, see <see cref="Layout.FrozenPanes"/>), or <see cref="ColumnFreezeMode.None"/>. It only suspends the
+    /// value it was set for: change <see cref="FreezeMode"/> and the column is pinned again until the next layout
+    /// pass decides otherwise.
+    /// </summary>
+    internal ColumnFreezeMode SuspendedFreezeMode;
+
+    /// <summary>
+    /// The pane the column is drawn in: its <see cref="FreezeMode"/>, or <see cref="ColumnFreezeMode.None"/> (the
+    /// scrolling pane) while the layout has suspended that freeze mode because the frozen panes did not fit.
+    /// </summary>
+    internal ColumnFreezeMode Pane =>
+        FreezeMode != ColumnFreezeMode.None && FreezeMode == SuspendedFreezeMode ? ColumnFreezeMode.None : FreezeMode;
+
+    /// <summary>
     /// The direction of the first header tap, or null (the default) for the column type's default: a
     /// <see cref="KumikoColumnType.Boolean"/> column sorts checked rows first
     /// (<see cref="KumikoSortDirection.Descending"/>), a <see cref="KumikoColumnType.Date"/> column newest first

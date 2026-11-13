@@ -6,10 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- `KumikoStyle.MaxFrozenColumnsWidthRatio` (default two thirds): the largest share of the grid's width the frozen columns keep while the grid scrolls horizontally; beyond it frozen columns are unpinned until they fit (#268, see Fixed).
+
 ### Changed
 - The documentation snippet check also compiles the C# and XAML blocks of the NuGet READMEs (`docs/nuget/*.md`) against both hosts (#236). `eng/DocsSnippets` splits statements followed by type declarations, infers the host from the code or the package README, and pairs a `partial` page class with its XAML page, so the NuGet READMEs need no annotations.
 
 ### Fixed
+- Frozen columns that do not fit no longer overlap or hide the scrolling columns (#268). On a phone, left- and right-frozen columns wider together than the grid drew the right pane over the left one, and the scrolling columns could never be seen, tapped or scrolled to. Now, when the columns do not all fit and the frozen ones take more than the new `KumikoStyle.MaxFrozenColumnsWidthRatio` of the width (two thirds by default, less the row drag handle), columns are unpinned until they fit: right-frozen ones first, then the rightmost left-frozen ones. An unpinned column scrolls with the others in the same on-screen order and is pinned again when the grid widens; its `FreezeMode` is unchanged. Drawing, hit-testing, `ScrollToColumn`, keyboard navigation and cell bounds all use the same panes. A grid whose frozen columns take more than two thirds of a grid that scrolls horizontally now scrolls some of them; set the ratio to 1 to unpin only what would overlap.
 - Uno: a touch or pen long-press is now detected by a 500 ms / 15 px timer started on press, as in the MAUI grid, instead of relying on WinUI's `Holding` event alone (which is touch-only and not raised on every head). The release that ends a long press no longer taps, so a long-press on a Boolean cell toggles it once and does not raise `RowTapped`. `Holding` stays as a fallback and never fires a second long-press (#61).
 
 ## [0.2.0] - 2026-11-11
