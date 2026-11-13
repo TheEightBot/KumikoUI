@@ -20,7 +20,7 @@ public static class InputMapping
     /// <summary>
     /// Maps a WinUI <see cref="VirtualKey"/> to KumikoUI.Core's <see cref="KumikoKey"/>.
     /// Returns <see cref="KumikoKey.None"/> for keys the grid does not handle as commands
-    /// (printable text arrives separately via the proxy's <c>TextChanged</c> event).
+    /// (printable text arrives separately through the proxy's text changes).
     /// </summary>
     public static KumikoKey ToGridKey(VirtualKey key) => key switch
     {
@@ -129,9 +129,12 @@ public static class InputMapping
     /// </summary>
     internal enum ProxyKeyOutcome
     {
-        /// <summary>Mark the key handled: Core used it, or the TextBox would act on it (caret, text, clipboard).</summary>
+        /// <summary>Mark the key handled: Core used it.</summary>
         Handled,
-        /// <summary>Leave the key unhandled so it reaches the page (default and cancel buttons, accelerators).</summary>
+        /// <summary>
+        /// Leave the key unhandled: it reaches the text box (whose text mirrors the editor's, so anything it does
+        /// arrives as an ordinary edit) and then the page (default and cancel buttons, accelerators, scrolling).
+        /// </summary>
         PassToPage,
         /// <summary>Move keyboard focus out of the grid (Tab or Shift+Tab that Core left unhandled).</summary>
         MoveFocusOut,
@@ -139,20 +142,14 @@ public static class InputMapping
 
     /// <summary>
     /// Decides <see cref="ProxyKeyOutcome"/> for <paramref name="key"/> given whether Core handled it, so the
-    /// grid is never a keyboard trap: an unhandled Tab moves focus out of the grid (the grid and its proxy are
-    /// both tab stops, so the host steps past both), and an unhandled Enter, Escape or F2 — keys the TextBox
-    /// itself ignores — reaches the page. Every other key stays handled so the TextBox never moves its caret
-    /// or changes the sentinel text.
+    /// grid is never a keyboard trap: a key is marked handled only when Core handled it. An unhandled Tab moves
+    /// focus out of the grid (the grid and its proxy are both tab stops, so the host steps past both); any other
+    /// unhandled key, Escape with nothing to cancel among them, is left to the page.
     /// </summary>
     internal static ProxyKeyOutcome GetProxyKeyOutcome(KumikoKey key, bool handledByCore)
     {
         if (handledByCore) return ProxyKeyOutcome.Handled;
-        return key switch
-        {
-            KumikoKey.Tab => ProxyKeyOutcome.MoveFocusOut,
-            KumikoKey.Enter or KumikoKey.Escape or KumikoKey.F2 => ProxyKeyOutcome.PassToPage,
-            _ => ProxyKeyOutcome.Handled,
-        };
+        return key == KumikoKey.Tab ? ProxyKeyOutcome.MoveFocusOut : ProxyKeyOutcome.PassToPage;
     }
 
     private static bool IsDown(VirtualKey key) =>
