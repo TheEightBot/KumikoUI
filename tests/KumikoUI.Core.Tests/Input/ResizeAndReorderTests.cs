@@ -500,6 +500,9 @@ public class ResizeAndReorderTests
         {
             x.Style.ShowRowDragHandle = true;
             x.Style.RowDragHandlePosition = DragHandlePosition.Right;
+            // The two right-frozen columns take 200 of the 268 px column area, more than the default frozen share;
+            // this test is about the handle, not the overflow policy (#268), so keep them pinned.
+            x.Style.MaxFrozenColumnsWidthRatio = 1f;
             x.Dept.IsFrozenRight = true;
             x.Score.IsFrozenRight = true;
         });

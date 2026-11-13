@@ -6,7 +6,8 @@ namespace KumikoUI.Maui.Tests;
 /// <summary>
 /// Installs a synchronous <see cref="IDispatcher"/> so MAUI views can be used without a running application:
 /// <c>BindableObject.Dispatcher</c> throws when no dispatcher is available, and the grid reads it on every
-/// invalidation. Work dispatched through it runs inline; nothing is ever marshaled to another thread.
+/// invalidation. Work dispatched through it runs inline; nothing is ever marshaled to another thread. Its timers
+/// (<see cref="ManualTimer"/>) only tick when a test fires them.
 /// </summary>
 internal static class TestDispatcher
 {
@@ -36,6 +37,32 @@ internal static class TestDispatcher
             return true;
         }
 
-        public IDispatcherTimer CreateTimer() => throw new NotSupportedException("Timers are not needed by the host tests.");
+        public IDispatcherTimer CreateTimer() => new ManualTimer();
+    }
+
+    /// <summary>
+    /// A timer that never fires by itself: a test raises <see cref="Fire"/> to run its tick, so timer-driven behavior
+    /// (the caret blink) is deterministic.
+    /// </summary>
+    internal sealed class ManualTimer : IDispatcherTimer
+    {
+        public TimeSpan Interval { get; set; }
+
+        public bool IsRepeating { get; set; } = true;
+
+        public bool IsRunning { get; private set; }
+
+        public event EventHandler? Tick;
+
+        public void Start() => IsRunning = true;
+
+        public void Stop() => IsRunning = false;
+
+        /// <summary>Runs one tick as the platform would: a one-shot timer stops first.</summary>
+        public void Fire()
+        {
+            if (!IsRepeating) IsRunning = false;
+            Tick?.Invoke(this, EventArgs.Empty);
+        }
     }
 }

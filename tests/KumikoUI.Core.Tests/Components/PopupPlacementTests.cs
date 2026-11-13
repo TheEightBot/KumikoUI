@@ -99,4 +99,40 @@ public class PopupPlacementTests
         Assert.False(popup.IsVisible);
         Assert.False(popups.HasActivePopups);
     }
+
+    // ── Visible bounds ────────────────────────────────────────────
+
+    [Fact]
+    public void TryGetVisibleBounds_NoPopup_IsFalseAndEmpty()
+    {
+        Assert.False(new PopupManager().TryGetVisibleBounds(out var bounds));
+        Assert.Equal(KumikoRect.Empty, bounds);
+    }
+
+    [Fact]
+    public void TryGetVisibleBounds_IsTheUnionOfTheVisiblePopups()
+    {
+        var popups = new PopupManager();
+        var below = Popup();
+        var right = Popup(40, 20);
+        var hidden = Popup(500, 500);
+        popups.Show(below, Anchor, PopupPlacement.Below);  // 200,130 100x50
+        popups.Show(right, Anchor, PopupPlacement.Right);  // 280,100 40x20
+        popups.Show(hidden, Anchor, PopupPlacement.Above);
+        hidden.IsVisible = false;
+
+        Assert.True(popups.TryGetVisibleBounds(out var bounds));
+        Assert.Equal(new KumikoRect(200, 100, 120, 80), bounds);
+    }
+
+    [Fact]
+    public void TryGetVisibleBounds_AfterClose_IsFalse()
+    {
+        var popups = new PopupManager();
+        var popup = Popup();
+        popups.Show(popup, Anchor);
+        popups.Close(popup);
+
+        Assert.False(popups.TryGetVisibleBounds(out _));
+    }
 }
