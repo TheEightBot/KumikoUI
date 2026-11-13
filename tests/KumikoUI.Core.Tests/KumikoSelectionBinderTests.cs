@@ -259,4 +259,111 @@ public class KumikoSelectionBinderTests
         Assert.Equal(new object[] { f.P("Eve") }, change.AddedItems);
         Assert.Equal(new object[] { f.P("Alice") }, change.RemovedItems);
     }
+
+    // ── Two-way bindings (#267) ──
+
+    [Fact]
+    public void SetSelectedItem_NeverReportsTheStaleItem_WhileApplyingTheNewOne()
+    {
+        var f = new Fixture();
+        f.Binder.SetSelectedItem(f.P("Alice"));
+        var seen = new List<(object? Item, int Index, int Row)>();
+        f.Binder.Changed += (_, _) => seen.Add((f.Binder.SelectedItem, f.Binder.SelectedIndex, f.Binder.CurrentCell.Row));
+        f.Binder.SelectionChanged += (_, _) => seen.Add((f.Binder.SelectedItem, f.Binder.SelectedIndex, f.Binder.CurrentCell.Row));
+
+        f.Binder.SetSelectedItem(f.P("Diana"));
+
+        Assert.NotEmpty(seen);
+        Assert.All(seen, s =>
+        {
+            Assert.Same(f.P("Diana"), s.Item);
+            Assert.Equal(3, s.Index);
+            Assert.Equal(3, s.Row);
+        });
+    }
+
+    [Fact]
+    public void SetSelectedItem_FromNothingSelected_ReportsOnlyTheNewItem()
+    {
+        var f = new Fixture();
+        var seen = new List<object?>();
+        f.Binder.Changed += (_, _) => seen.Add(f.Binder.SelectedItem);
+        f.Binder.SelectionChanged += (_, _) => seen.Add(f.Binder.SelectedItem);
+
+        f.Binder.SetSelectedItem(f.P("Alice"));
+
+        Assert.Equal(new object?[] { f.P("Alice"), f.P("Alice") }, seen); // one SelectionChanged, one Changed
+        Assert.Single(f.Events);
+    }
+
+    [Fact]
+    public void SetSelectedItem_FromATwoWayHost_SettlesWithoutEchoingTheOldItem()
+    {
+        // A host that mirrors the binder into a "view model" on every notification and applies view model
+        // changes back to the binder, as a two-way binding does. A stale value reported mid-update would make
+        // the view model flip back and forth; the bound on the writes turns such a loop into a failure.
+        var f = new Fixture();
+        object? vm = null;
+        var vmWrites = new List<object?>();
+        bool applying = false;
+
+        void SetFromViewModel(object? value)
+        {
+            applying = true;
+            try { f.Binder.SetSelectedItem(value); }
+            finally { applying = false; }
+            FromBinder();
+        }
+
+        void FromBinder()
+        {
+            if (applying || Equals(vm, f.Binder.SelectedItem)) return;
+            vm = f.Binder.SelectedItem;
+            vmWrites.Add(vm);
+            Assert.True(vmWrites.Count < 20, "The selection binding did not settle (feedback loop).");
+            SetFromViewModel(vm); // the view model's PropertyChanged reaches the grid again
+        }
+
+        f.Binder.Changed += (_, _) => FromBinder();
+        f.Binder.SelectionChanged += (_, _) => FromBinder();
+
+        vm = f.P("Charlie");
+        SetFromViewModel(vm);
+
+        Assert.Same(f.P("Charlie"), vm);
+        Assert.Same(f.P("Charlie"), f.Binder.SelectedItem);
+        Assert.Empty(vmWrites); // the grid agreed with the view model at every step
+
+        f.Selection.HandleRowSelection(4, false, false); // the user taps Eve
+
+        Assert.Same(f.P("Eve"), vm);
+        Assert.Equal(new object?[] { f.P("Eve") }, vmWrites);
+    }
+
+    [Fact]
+    public void SetSelectedItem_SelectionChangedHandler_SeesTheMovedCurrentCell()
+    {
+        var f = new Fixture();
+        int rowInHandler = -1;
+        f.Binder.SelectionChanged += (_, _) => rowInHandler = f.Binder.CurrentCell.Row;
+
+        f.Binder.SetSelectedItem(f.P("Eve"));
+
+        Assert.Equal(4, rowInHandler);
+    }
+
+    [Fact]
+    public void SetSelectedItem_InNoneMode_StillMovesTheCurrentCell_AndReportsNoItem()
+    {
+        var f = new Fixture();
+        f.Selection.Mode = KumikoSelectionMode.None;
+        var seen = new List<object?>();
+        f.Binder.Changed += (_, _) => seen.Add(f.Binder.SelectedItem);
+
+        f.Binder.SetSelectedItem(f.P("Charlie"));
+
+        Assert.Equal(2, f.Binder.CurrentCell.Row);
+        Assert.Single(seen);
+        Assert.Null(seen[0]);
+    }
 }

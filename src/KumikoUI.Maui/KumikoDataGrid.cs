@@ -108,6 +108,7 @@ public partial class KumikoDataGrid : ContentView
 #if MACCATALYST || IOS
     private KeyInputResponder? _nativeKeyInput;
     private UIPanGestureRecognizer? _nativeScrollGesture;
+    private UITapGestureRecognizer? _nativeSecondaryClickGesture;
     private bool _useNativeKeyInput;
 #endif
 
@@ -162,7 +163,12 @@ public partial class KumikoDataGrid : ContentView
         // Scroll offsets and the Scrolled event (KumikoDataGrid.Scrolling.cs)
         InitializeScrolling();
 
+        // Image cells load through the grid's image cache (KumikoDataGrid.Images.cs)
+        InitializeImages();
+
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        // The source is the grid's own, so this never needs removing (KumikoDataGrid.Layout.cs)
+        _dataSource.ColumnOrderChanged += OnDataSourceColumnOrderChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
@@ -333,7 +339,9 @@ public partial class KumikoDataGrid : ContentView
     private void OnBoundItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         // KumikoSource already handles the rebuild; we just ensure canvas invalidation
-        // happens on the UI thread
+        // happens on the UI thread. A change raised on a background thread never gets here:
+        // KumikoSource subscribed first and throws (#69), then resyncs on the UI thread and
+        // raises ViewChanged. The dispatch is a safety net.
         if (Dispatcher.IsDispatchRequired)
             Dispatcher.Dispatch(InvalidateSurface);
         else
@@ -644,6 +652,7 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnColumnsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (_syncingFromSource) return; // the grid is copying the source's column order in (KumikoDataGrid.Layout.cs)
         _dataSource.SetColumns(Columns);
         InvalidateSurface();
     }
@@ -757,6 +766,7 @@ public partial class KumikoDataGrid : ContentView
 
         var action = MapAction(e.ActionType, e.InContact);
         var deviceType = MapDeviceType(e.DeviceType);
+        var button = action is InputAction.Hover or InputAction.Exited ? PointerButton.None : GetPointerButton(e);
         float x = e.Location.X / scale;
         float y = e.Location.Y / scale;
 
@@ -818,11 +828,15 @@ public partial class KumikoDataGrid : ContentView
             _lastTapY = y;
             _pendingClickCount = clickCount;
 
-            // Start long press detection
+            // Start long press detection (a right or middle button held down is not a long press: its release
+            // must still reach Core, which raises the context menu on it)
             _longPressFired = false;
             _longPressX = x;
             _longPressY = y;
-            StartLongPressTimer(x, y);
+            if (button == PointerButton.Primary)
+                StartLongPressTimer(x, y);
+            else
+                CancelLongPressTimer();
         }
         else if (e.ActionType == SKTouchAction.Released)
         {
@@ -867,12 +881,7 @@ public partial class KumikoDataGrid : ContentView
             X = x,
             Y = y,
             Action = action,
-            Button = action is InputAction.Hover or InputAction.Exited ? PointerButton.None : e.MouseButton switch
-            {
-                SKMouseButton.Right => PointerButton.Secondary,
-                SKMouseButton.Middle => PointerButton.Middle,
-                _ => PointerButton.Primary
-            },
+            Button = button,
             Modifiers = GetPointerModifiers(),
             PointerId = e.Id,
             DeviceType = deviceType,
@@ -1010,7 +1019,8 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnColumnReordered(object? sender, KumikoColumnReorderedEventArgs e)
     {
-        _dataSource.ReorderColumn(e.OldIndex, e.NewIndex);
+        _dataSource.ReorderColumn(e.OldIndex, e.NewIndex); // Columns follows (KumikoDataGrid.Layout.cs)
+        ColumnReordered?.Invoke(this, e);
     }
 
     // ── Auto-fit column event ──
@@ -1144,6 +1154,9 @@ public partial class KumikoDataGrid : ContentView
         _resourceCache?.Dispose();
         _resourceCache = null;
 
+        // Cancel image loads and dispose the cached images; the next frame after Reconnect loads them again.
+        DisconnectImages();
+
 #if !(IOS || MACCATALYST)
         // Unsubscribe keyboard proxy events
         _keyboardProxy.TextChanged -= OnKeyboardProxyTextChanged;
@@ -1170,6 +1183,12 @@ public partial class KumikoDataGrid : ContentView
             if (Handler?.PlatformView is UIView platformView)
                 platformView.RemoveGestureRecognizer(_nativeScrollGesture);
             _nativeScrollGesture = null;
+        }
+        if (_nativeSecondaryClickGesture != null)
+        {
+            if (Handler?.PlatformView is UIView platformView)
+                platformView.RemoveGestureRecognizer(_nativeSecondaryClickGesture);
+            _nativeSecondaryClickGesture = null;
         }
 #if MACCATALYST
         TeardownNativeHover(Handler?.PlatformView as UIView);
@@ -1209,6 +1228,7 @@ public partial class KumikoDataGrid : ContentView
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
         SubscribeAccessibility();
+        ConnectImages();
 
         _canvasView.PaintSurface += OnPaintSurface;
         _canvasView.Touch += OnCanvasTouch;
@@ -1246,6 +1266,40 @@ public partial class KumikoDataGrid : ContentView
     {
         add => _inputController.RowDoubleTapped += value;
         remove => _inputController.RowDoubleTapped -= value;
+    }
+
+    /// <summary>
+    /// Fires when a data cell is tapped with the primary button or a finger, with the column, the position and the
+    /// click count (see <see cref="KumikoInputController.CellTapped"/>).
+    /// </summary>
+    public event EventHandler<KumikoCellTappedEventArgs>? CellTapped
+    {
+        add => _inputController.CellTapped += value;
+        remove => _inputController.CellTapped -= value;
+    }
+
+    /// <summary>
+    /// Fires when a column header is tapped with the primary button or a finger, after the tap sorted the column
+    /// (see <see cref="KumikoInputController.HeaderTapped"/>).
+    /// </summary>
+    public event EventHandler<KumikoHeaderTappedEventArgs>? HeaderTapped
+    {
+        add => _inputController.HeaderTapped += value;
+        remove => _inputController.HeaderTapped -= value;
+    }
+
+    /// <summary>
+    /// Fires when the user asks for a context menu: a right click (on its release; on Mac Catalyst and iPad a
+    /// secondary click) or a touch or pen long press that neither starts a row drag nor edits the cell. A right
+    /// click never sorts, scrolls, drags or edits; on a data row the row is selected first unless it already is (see
+    /// <see cref="KumikoContextRequestedEventArgs"/>). <see cref="KumikoContextRequestedEventArgs.X"/> and
+    /// <see cref="KumikoContextRequestedEventArgs.Y"/> are in device-independent units relative to this control. It
+    /// re-surfaces <see cref="KumikoInputController.ContextRequested"/>, under the same name as on the Uno control.
+    /// </summary>
+    public event EventHandler<KumikoContextRequestedEventArgs>? ContextMenuRequested
+    {
+        add => _inputController.ContextRequested += value;
+        remove => _inputController.ContextRequested -= value;
     }
 
     /// <summary>Fires before a cell enters edit mode. Set Cancel=true to prevent.</summary>
@@ -1472,6 +1526,13 @@ public partial class KumikoDataGrid : ContentView
             _nativeScrollGesture.AllowedScrollTypesMask = UIScrollTypeMask.Continuous | UIScrollTypeMask.Discrete;
             _nativeScrollGesture.MaximumNumberOfTouches = 0; // Only indirect (trackpad/mouse wheel)
             platformView.AddGestureRecognizer(_nativeScrollGesture);
+
+            // A secondary (right) click reaches no touch handler, SkiaSharp's included: it needs its own recognizer
+            _nativeSecondaryClickGesture = new UITapGestureRecognizer(HandleNativeSecondaryClick)
+            {
+                ButtonMaskRequired = UIEventButtonMask.Secondary,
+            };
+            platformView.AddGestureRecognizer(_nativeSecondaryClickGesture);
         }
     }
 #endif

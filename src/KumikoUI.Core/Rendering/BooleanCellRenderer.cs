@@ -37,31 +37,15 @@ public class BooleanCellRenderer : ICellRenderer
         bool isChecked = cell.Value is true
             || string.Equals(cell.DisplayText, "True", StringComparison.OrdinalIgnoreCase);
 
-        var cellRect = cell.Bounds;
-        var boxRect = GetCheckBoxBounds(cellRect);
-        float boxSize = boxRect.Width;
+        var boxRect = GetCheckBoxBounds(cell.Bounds);
 
         // Checkbox border
         ctx.DrawRect(boxRect, cell.Paints.CheckBoxBorder);
 
-        // Indeterminate: a three-state column's null is a filled dash, the other columns' null is unchecked
+        // Indeterminate: a three-state column's null is the indeterminate mark, the other columns' null is unchecked
         if (cell.Value is null && cell.Column.IsThreeState)
-        {
-            float dashW = boxSize * 0.5f;
-            float dashH = Math.Max(2f, boxSize * 0.18f);
-            GlyphDrawing.FillDash(ctx, boxRect.X + (boxSize - dashW) / 2, boxRect.Y + (boxSize - dashH) / 2,
-                dashW, dashH, cell.Paints.CheckIndeterminate);
-        }
-        // Checkmark
+            cell.Style.IconProvider.DrawIcon(ctx, KumikoIcon.Indeterminate, boxRect, cell.Paints.CheckIndeterminate);
         else if (isChecked)
-        {
-            var checkPaint = cell.Paints.CheckMark;
-            float pad = boxSize * 0.2f;
-            GlyphDrawing.Chevron(ctx,
-                boxRect.X + pad, boxRect.Y + boxSize * 0.5f,
-                boxRect.X + boxSize * 0.4f, boxRect.Bottom - pad,
-                boxRect.Right - pad, boxRect.Y + pad,
-                checkPaint);
-        }
+            cell.Style.IconProvider.DrawIcon(ctx, KumikoIcon.Check, boxRect, cell.Paints.CheckMark);
     }
 }

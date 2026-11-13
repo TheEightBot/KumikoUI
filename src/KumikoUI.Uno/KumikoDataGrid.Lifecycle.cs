@@ -61,6 +61,7 @@ public partial class KumikoDataGrid
         // Only what differs is copied, so returning to the page keeps group expansion and the like
         if (!Columns.SequenceEqual(_dataSource.Columns))
             _dataSource.SetColumns(Columns);
+        SyncActionButtonDefinitions();
         if (!TableSummaryRows.SequenceEqual(_dataSource.TableSummaryRows))
             SyncTableSummaryRows(TableSummaryRows);
         if (!GroupDescriptions.SequenceEqual(_dataSource.GroupDescriptions))

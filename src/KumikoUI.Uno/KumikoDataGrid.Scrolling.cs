@@ -135,7 +135,9 @@ public partial class KumikoDataGrid
 
     /// <summary>
     /// Scrolls so the column at <paramref name="columnIndex"/> (an index into the column list, hidden columns
-    /// included) lands at <paramref name="position"/> between the frozen columns. A frozen column needs no scroll.
+    /// included) lands at <paramref name="position"/> between the frozen columns. A frozen column needs no scroll,
+    /// unless the grid is too narrow to pin it (<see cref="KumikoStyle.MaxFrozenColumnsWidthRatio"/>): then it scrolls
+    /// like the others.
     /// </summary>
     /// <param name="columnIndex">The index in the column list.</param>
     /// <param name="position">Where the column lands; <see cref="KumikoScrollPosition.Nearest"/> by default.</param>
