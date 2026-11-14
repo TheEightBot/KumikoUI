@@ -48,6 +48,21 @@
     <WarningsAsErrors>$(WarningsAsErrors);RS0016;RS0017;RS0025;RS0026;RS0027;RS0036;RS0037</WarningsAsErrors>
   </PropertyGroup>
   <!--
+    The KumikoUI packages ship in lockstep (one MinVer version), and the hosts call KumikoUI.Core internals through
+    InternalsVisibleTo (#112, decision D3). Pin each package's dependency on another KumikoUI package to its exact
+    version ([1.0.0], not >= 1.0.0), so a mismatched set fails at restore instead of with MissingMethodException.
+  -->
+  <Target Name="KumikoPinSiblingPackageVersions"
+          AfterTargets="_GetProjectReferenceVersions"
+          Condition="'$(KumikoTrackPublicApi)' == 'true'">
+    <ItemGroup>
+      <_KumikoPinnedReferences Include="@(_ProjectReferencesWithVersions)"
+                               ProjectVersion="[%(_ProjectReferencesWithVersions.ProjectVersion)]" />
+      <_ProjectReferencesWithVersions Remove="@(_ProjectReferencesWithVersions)" />
+      <_ProjectReferencesWithVersions Include="@(_KumikoPinnedReferences)" />
+    </ItemGroup>
+  </Target>
+  <!--
     Apps in this repository (samples, eng/AotSmoke) reference KumikoUI.Core by project, so the targets the
     NuGet package delivers through buildTransitive are not applied to them. Import the same file so a
     PublishAot or TrimMode=full publish switches the reflection fallback off, as it does for package consumers (#76).
