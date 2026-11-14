@@ -1,0 +1,58 @@
+<Page x:Class="SampleApp.Uno.StylingPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      xmlns:core="using:KumikoUI.Core.Models"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <!-- Images and styling (← SampleApp.Maui StylingPage). -->
+    <Grid Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Images and styling: an image column, icon sets and per-cell and per-row styles"
+                   FontSize="16"
+                   FontWeight="Bold"
+                   TextWrapping="Wrap"
+                   Padding="16,12,16,4"
+                   Grid.Row="0" />
+
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal" Padding="16,4" Spacing="8">
+                <!-- KumikoStyle.IconProvider: the built-in set or KumikoFontIconProvider over Material Icons -->
+                <Button x:Name="iconsToggle" Content="Icons: Built-in" Click="OnToggleIconsClicked" />
+                <!-- KumikoStyle.CellStyleResolver and RowStyleResolver -->
+                <Button x:Name="resolversToggle" Content="Cell and row styles: ON" Click="OnToggleResolversClicked" />
+                <!-- KumikoDataGrid.AlternateRowBackground -->
+                <Button x:Name="stripesToggle" Content="Striped rows: OFF" Click="OnToggleStripesClicked" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <kumiko:KumikoDataGrid x:Name="kumiko"
+                               Grid.Row="2"
+                               RowHeight="44"
+                               HeaderHeight="40"
+                               EditTriggers="None"
+                               GridDescription="Images and styling sample grid">
+            <core:KumikoColumn Header="#" PropertyName="Id" Width="70"
+                               ColumnType="Numeric" TextAlignment="Right" IsFrozen="True" />
+            <!-- An app package path (Assets/Avatars/avatar-N.png), loaded and cached by the grid's ImageCache -->
+            <core:KumikoColumn Header="Photo" PropertyName="Avatar" Width="70" ColumnType="Image" />
+            <core:KumikoColumn Header="Name" PropertyName="Name" Width="160" />
+            <core:KumikoColumn Header="Department" PropertyName="Department" Width="130" />
+            <!-- Above 100,000: bold red (CellStyleResolver) -->
+            <core:KumikoColumn Header="Salary" PropertyName="Salary" Width="120"
+                               Format="C0" ColumnType="Numeric" TextAlignment="Right" />
+            <!-- 90 and above: green background (CellStyleResolver) -->
+            <core:KumikoColumn Header="Score" PropertyName="Score" Width="100"
+                               Format="N1" ColumnType="Numeric" TextAlignment="Right" />
+            <!-- Inactive rows are dimmed (RowStyleResolver); Boolean cells draw KumikoIcon.Check -->
+            <core:KumikoColumn Header="Active" PropertyName="IsActive" Width="90" ColumnType="Boolean" />
+        </kumiko:KumikoDataGrid>
+    </Grid>
+</Page>

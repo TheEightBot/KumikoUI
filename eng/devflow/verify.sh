@@ -190,7 +190,7 @@ luminance() {
 test_navigation() {
 	section "Navigation: every page loads with a populated grid"
 	local route
-	for route in MainPage GroupingPage LargeDataPage ThemingPage MvvmActionsPage CustomFontsPage; do
+	for route in MainPage GroupingPage LargeDataPage ThemingPage MvvmActionsPage CustomFontsPage StylingPage EventsPage; do
 		navigate "//$route"
 		local json
 		json=$(ext state '{}')

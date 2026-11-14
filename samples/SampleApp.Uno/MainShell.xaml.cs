@@ -10,13 +10,21 @@ namespace SampleApp.Uno;
 /// </summary>
 public sealed partial class MainShell : Page
 {
+    private bool _initialNavigationDone;
+
     public MainShell()
     {
         this.InitializeComponent();
 
         // Select the first item so the basic grid is shown on launch (this raises
-        // SelectionChanged, which performs the initial navigation).
-        Loaded += (_, _) => NavView.SelectedItem = NavView.MenuItems[0];
+        // SelectionChanged, which performs the initial navigation). Loaded can fire again (for example when the
+        // shell leaves and rejoins the visual tree), so the initial selection happens once.
+        Loaded += (_, _) =>
+        {
+            if (_initialNavigationDone) return;
+            _initialNavigationDone = true;
+            NavView.SelectedItem = NavView.MenuItems[0];
+        };
     }
 
     private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -33,6 +41,8 @@ public sealed partial class MainShell : Page
             "MvvmActions" => typeof(MvvmActionsPage),
             "CustomFonts" => typeof(CustomFontsPage),
             "Images" => typeof(ImagesPage),
+            "Styling" => typeof(StylingPage),
+            "Events" => typeof(EventsPage),
             _ => null,
         };
 

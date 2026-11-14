@@ -15,7 +15,9 @@
                Padding="16,12"
                Grid.Row="0" />
 
-        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+        <!-- One scrolling row: on a phone it takes one line, leaving the room above the soft keyboard to the grid -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+        <FlexLayout Wrap="NoWrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4">
             <Button Text="Add Row" Clicked="OnAddRowClicked" Margin="4,0,0,4" />
             <Button Text="Remove Last Row" Clicked="OnRemoveLastRowClicked" Margin="4,0,0,4" />
             <Button Text="Update Random Salary" Clicked="OnUpdateRandomSalaryClicked" Margin="4,0,0,4" />
@@ -30,6 +32,7 @@
             <Button Text="Save Layout" Clicked="OnSaveLayoutClicked" Margin="4,0,0,4" />
             <Button x:Name="restoreLayoutButton" Text="Restore Layout" Clicked="OnRestoreLayoutClicked" Margin="4,0,0,4" />
         </FlexLayout>
+        </ScrollView>
 
         <dg:KumikoDataGrid x:Name="kumiko"
                          Grid.Row="2"
