@@ -1742,16 +1742,16 @@ kumiko.Scrolled += (_, e) =>
 
 ### Measured numbers
 
-Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14, Release build, 2026-11-10 (filter, grouping and live-update rows 2026-11-13). Frame figures are the managed render loop into a no-op drawing context, so they leave out SkiaSharp's own drawing time; the 100,000-row figures are one view rebuild, except the live-update row.
+Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14, Release build, 2026-11-10 (sort, filter, grouping and live-update rows 2026-11-13). Frame figures are the managed render loop into a no-op drawing context, so they leave out SkiaSharp's own drawing time; the 100,000-row figures are one view rebuild, except the live-update row.
 
 | Operation | Time | Allocated |
 |---|---:|---:|
 | Render a 30 × 10 visible grid (steady state) | 2.9 µs | 0 B |
 | Same, with sort, filter, grouping, summaries, a frozen column and the drag handle | 6.3 µs | 0 B |
 | Render while scrolling (one new row per frame) | 3.7 µs | 501 B |
-| Sort 100K rows (int / string / date column) | 54 / 72 / 211 ms | 86 MB / 1.1 KB / 94 MB |
-| Filter 100K rows (text contains / numeric) | 2.4 / 1.5 ms | 0.5 KB / 2.4 MB |
-| Group 100K rows by 1 / 2 levels, with summaries | 19 / 42 ms | 9.1 / 10.5 MB |
+| Sort 100K rows (int / string / date column) | 24 / 57 / 173 ms | 3.4 / 1.1 / 3.4 MB |
+| Filter 100K rows (text contains / numeric) | 2.2 / 1.4 ms | 1.3 KB / 2.3 MB |
+| Group 100K rows by 1 / 2 levels, with summaries | 21 / 42 ms | 10.3 / 10.4 MB |
 | Add or remove one item of an `ObservableCollection` of 100K rows | 128 µs | 432 B |
 | 100 `PropertyChanged` of a summed property, 100K rows with a Sum summary | 24 µs | 100 KB |
 
