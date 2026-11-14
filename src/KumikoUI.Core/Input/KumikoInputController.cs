@@ -23,6 +23,59 @@ public partial class KumikoInputController
 
     /// <summary>The hover and pressed state a connected renderer draws.</summary>
     internal InteractionFeedback Feedback => _feedback;
+
+    // Transitions after an interaction (#101), advanced by the host's frame loop
+    private readonly InteractionAnimations _animations = new();
+    private bool _animationsEnabled;
+
+    /// <summary>The transitions a connected renderer draws.</summary>
+    internal InteractionAnimations Animations => _animations;
+
+    /// <summary>
+    /// Whether this controller plays transitions after an interaction: a group's rows sliding open or shut, a dragged
+    /// column header lifting and settling into its slot, the current row's highlight fading in (with a connected
+    /// <see cref="KumikoRenderer"/>, see <see cref="KumikoRenderer.InputController"/>). False by default, because a
+    /// transition moves only when the host calls <see cref="UpdateAnimations"/> from its frame loop: a host that does
+    /// sets it. The MAUI and Uno grids set it, except when the platform asks for reduced motion. Turning it off ends
+    /// the transitions in progress. <see cref="KumikoStyle.EnableAnimations"/> turns them off per style.
+    /// </summary>
+    public bool AnimationsEnabled
+    {
+        get => _animationsEnabled;
+        set
+        {
+            if (_animationsEnabled == value) return;
+            _animationsEnabled = value;
+            if (!value && _animations.IsActive)
+            {
+                _animations.StopAll();
+                Redraw();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Whether a transition is running (see <see cref="AnimationsEnabled"/>). Hosts check it after each pointer event
+    /// and after each frame they draw, and while it is true call <see cref="UpdateAnimations"/> once per frame.
+    /// </summary>
+    public bool IsAnimating => _animations.IsActive;
+
+    /// <summary>
+    /// Advance the running transitions by <paramref name="frameIntervalMs"/> and redraw. Call it once per frame from
+    /// the frame loop or timer that runs <see cref="UpdateInertialScroll"/>; it allocates nothing.
+    /// </summary>
+    /// <param name="frameIntervalMs">The time since the previous frame, in milliseconds.</param>
+    /// <returns>Whether a transition is still running.</returns>
+    public bool UpdateAnimations(float frameIntervalMs = 16f)
+    {
+        if (!_animations.IsActive) return false;
+        bool running = _animations.Update(frameIntervalMs);
+        Redraw();
+        return running;
+    }
+
+    /// <summary>Whether transitions play for <paramref name="style"/>: the host drives them and the style allows them.</summary>
+    internal bool CanAnimate(KumikoStyle style) => _animationsEnabled && style.EnableAnimations;
     private readonly InertialScroller _inertialScroller = new();
     private readonly PopupManager _popupManager = new();
     private DrawnFilterPopup? _activeFilterPopup;
@@ -349,7 +402,7 @@ public partial class KumikoInputController
                 break;
             case InputAction.Cancelled:
                 if (_feedback.EndPress()) Redraw();
-                HandlePointerCancelled(e, scroll);
+                HandlePointerCancelled(e, scroll, style, dataSource);
                 break;
             case InputAction.LongPress:
                 if (_feedback.EndPress()) Redraw(); // a long press is not a press on the control
@@ -410,6 +463,7 @@ public partial class KumikoInputController
         _inertialScroller.Reset();
         _feedback.ClearHover();
         _feedback.EndPress();
+        _animations.StopAll();
         if (_popupManager.HasActivePopups) _popupManager.CloseAll();
         if (_editSession is { IsEditing: true }) _editSession.CancelEdit();
         SetCursor(KumikoCursor.Default);
@@ -977,6 +1031,7 @@ public partial class KumikoInputController
                     float columnLeft = ColumnDragGeometry.ScreenLeft(columns, startHit.ColumnIndex, scroll, style);
                     _dragColumnOffset = float.IsNaN(columnLeft) ? 0 : _lastPanX - columnLeft;
                     DragColumnScreenX = e.X - _dragColumnOffset;
+                    if (CanAnimate(style)) _animations.StartLift();
                     e.Handled = true;
                     return;
                 }
@@ -1155,9 +1210,12 @@ public partial class KumikoInputController
 
         if (_isDraggingColumn)
         {
+            var dragged = _dragColumnIndex >= 0 && _dragColumnIndex < columns.Count ? columns[_dragColumnIndex] : null;
+            float releasedAt = DragColumnScreenX;
             FinishColumnReorder(e.X, scroll, columns, style);
             _isDraggingColumn = false;
             _dragColumnIndex = -1;
+            SettleDroppedColumn(dragged, releasedAt, scroll, style, dataSource);
             Redraw();
             e.Handled = true;
             return;
@@ -1226,7 +1284,9 @@ public partial class KumikoInputController
             if (_pressRegion is HitRegion.GroupChevron or HitRegion.GroupHeaderRow && _pressRowIndex == hit.RowIndex &&
                 CommitEditBeforeViewChange(dataSource, selection))
             {
+                int rowsBefore = dataSource.RowCount;
                 ToggleTappedGroup(dataSource, scroll, style, hit.RowIndex);
+                if (CanAnimate(style)) _animations.StartGroupToggle(hit.RowIndex, dataSource.RowCount - rowsBefore);
                 Redraw();
             }
             e.Handled = true;
@@ -1395,7 +1455,7 @@ public partial class KumikoInputController
     /// Handle touch/pointer cancelled (e.g. finger left the screen bounds).
     /// Preserve scroll momentum instead of freezing.
     /// </summary>
-    private void HandlePointerCancelled(KumikoPointerEventArgs e, ScrollState scroll)
+    private void HandlePointerCancelled(KumikoPointerEventArgs e, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
     {
         _editorConsumedPointerDown = false;
 
@@ -1409,9 +1469,11 @@ public partial class KumikoInputController
 
         if (_isDraggingColumn)
         {
-            // Cancel column drag — snap back
+            // Cancel column drag — the header settles back where it was
+            var dragged = _dragColumnIndex >= 0 && _dragColumnIndex < dataSource.Columns.Count ? dataSource.Columns[_dragColumnIndex] : null;
             _isDraggingColumn = false;
             _dragColumnIndex = -1;
+            SettleDroppedColumn(dragged, DragColumnScreenX, scroll, style, dataSource);
             Redraw();
             e.Handled = true;
             return;
@@ -1573,6 +1635,23 @@ public partial class KumikoInputController
             // The host applies the move (KumikoSource.ReorderColumn), so it can keep its own column list in step.
             ColumnReordered?.Invoke(this, new KumikoColumnReorderedEventArgs(
                 _dragColumnIndex, dropIndex, columns[_dragColumnIndex]));
+        }
+    }
+
+    /// <summary>
+    /// A column header was dropped (or the drag canceled) with its ghost at viewport <paramref name="releasedAt"/>: the
+    /// ghost settles into the slot the column now has, after the host applied the move (#101).
+    /// </summary>
+    private void SettleDroppedColumn(KumikoColumn? column, float releasedAt, ScrollState scroll, KumikoStyle style,
+        KumikoSource dataSource)
+    {
+        if (column == null || !CanAnimate(style)) return;
+        var columns = dataSource.Columns;
+        for (int i = 0; i < columns.Count; i++)
+        {
+            if (!ReferenceEquals(columns[i], column)) continue;
+            _animations.StartDrop(column, releasedAt, ColumnDragGeometry.ScreenLeft(columns, i, scroll, style));
+            return;
         }
     }
 

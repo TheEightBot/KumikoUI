@@ -159,6 +159,7 @@ public partial class KumikoDataGrid
     /// <summary>Called when the grid is connected to a handler: draws, and resumes pending frame work.</summary>
     private void AttachRendering()
     {
+        SyncReducedMotion(); // KumikoDataGrid.Motion.cs
         ConnectSurface();
         if (_frames.Attach())
             StartFrameClock();
@@ -256,6 +257,10 @@ public partial class KumikoDataGrid
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
             _inputController.DragRowIndex, _inputController.DragRowScreenY,
             _editSession, _inputController.PopupManager);
+        // The frame may have started a transition (the current row's highlight fading in), or one runs on: the frame
+        // loop steps it
+        if (_inputController.IsAnimating)
+            StartFrameAnimation();
         OnFrameRendered();
     }
 
@@ -317,8 +322,9 @@ public partial class KumikoDataGrid
     // ── Frame loop ────────────────────────────────────────────────
 
     /// <summary>
-    /// Starts stepping the inertial scroller, edge autoscroll and the editor's animation once per frame (a fling or
-    /// a scroll picker coasting after a release, a row drag held at an edge, a spin button held down).
+    /// Starts stepping the inertial scroller, edge autoscroll, the editor's animation and Core's transitions once per
+    /// frame (a fling or a scroll picker coasting after a release, a row drag held at an edge, a spin button held down,
+    /// a group sliding open).
     /// </summary>
     private void StartFrameAnimation()
     {
@@ -349,7 +355,8 @@ public partial class KumikoDataGrid
             bool scrolling = _inputController.UpdateInertialScroll(_scroll, frameMs);
             bool autoScrolling = _inputController.UpdateAutoScroll(_scroll, frameMs);
             bool animating = _editSession.UpdateAnimation(frameMs);
-            if (!scrolling && !autoScrolling && !animating)
+            bool transitioning = _inputController.UpdateAnimations(frameMs); // KumikoDataGrid.Motion.cs
+            if (!scrolling && !autoScrolling && !animating && !transitioning)
                 _frames.StopAnimation();
         }
 

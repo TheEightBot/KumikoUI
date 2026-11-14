@@ -99,6 +99,36 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void Transitions_GroupSlideAndSelectionFade_AllocateNothingPerFrame()
+    {
+        // A group sliding open and the current row's highlight fading in (#101),
+        // stepped by the frame loop between frames: neither the steps nor the frames allocate.
+        var grid = CreateGrid(featured: true);
+        var input = new KumikoUI.Core.Input.KumikoInputController { AnimationsEnabled = true };
+        grid.Renderer.InputController = input;
+        grid.Render(new NoOpDrawingContext());
+        void Pointer(KumikoUI.Core.Input.InputAction action, float x, float y) =>
+            input.HandlePointer(new KumikoUI.Core.Input.KumikoPointerEventArgs { Action = action, X = x, Y = y, TimestampMs = 1 },
+                grid.Scroll, grid.Selection, grid.Style, grid.Source);
+
+        float firstRowY = grid.Style.GroupPanelHeight + grid.Style.HeaderHeight + grid.Style.SummaryRowHeight + 10;
+        Pointer(KumikoUI.Core.Input.InputAction.Pressed, 400, firstRowY); // the first group header: collapse it
+        Pointer(KumikoUI.Core.Input.InputAction.Released, 400, firstRowY);
+        Pointer(KumikoUI.Core.Input.InputAction.Pressed, 400, firstRowY); // and expand it again
+        Pointer(KumikoUI.Core.Input.InputAction.Released, 400, firstRowY);
+        grid.Selection.CurrentCell = new CellPosition(2, 1);
+        Assert.True(input.Animations.IsGroupSliding);
+
+        // The clock is held (0 ms steps), so every measured frame draws the transitions in progress
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+        {
+            input.UpdateAnimations(0);
+            grid.Render(ctx);
+        }));
+        Assert.True(input.Animations.IsGroupSliding && input.Animations.IsSelectionFading);
+    }
+
+    [Fact]
     public void SteadyState_GridUsingEveryPerFrameFeature_WithAFontIconProvider_AllocatesNothing()
     {
         // Every glyph of the featured grid drawn as an icon font glyph (#119): the glyph strings are built once.

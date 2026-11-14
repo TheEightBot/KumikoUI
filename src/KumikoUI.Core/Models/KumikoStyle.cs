@@ -302,6 +302,14 @@ public class KumikoStyle
     /// </summary>
     public KumikoColor PressedOverlayColor { get; set => Set(ref field, value); } = new(0, 0, 0, 31);
 
+    /// <summary>
+    /// Whether the grid plays its short transitions: a group's rows sliding open or shut, a dragged column header
+    /// lifting and settling into its slot, and the current row's highlight fading in. False shows every change at once.
+    /// The built-in hosts also skip them when the platform asks for reduced motion
+    /// (<see cref="Input.KumikoInputController.AnimationsEnabled"/>). Default: true.
+    /// </summary>
+    public bool EnableAnimations { get; set => Set(ref field, value); } = true;
+
     // ── Icons ────────────────────────────────────────────────────
     /// <summary>
     /// Draws every built-in glyph of the grid (group chevrons, sort arrows, filter buttons, grouping chip buttons,

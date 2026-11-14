@@ -81,6 +81,18 @@ public class KumikoRenderer : IDisposable
     private bool _pointerCellPressed;
     private KumikoPoint _pointerInRows;
 
+    // Transitions this frame, from the connected controller (#101). A group sliding open or shut: the rows after
+    // _slideAnchor are drawn _slideShift lower (negative: higher), clipped below _slideTop (the header's bottom).
+    private int _slideAnchor = -1;
+    private float _slideShift, _slideTop;
+    // The current row whose highlight fades in, and how far (0..1); the item it showed last frame
+    private int _fadeRow = -1;
+    private float _fadeProgress = 1f;
+    private object? _lastCurrentItem;
+    private bool _sawFirstFrame;
+    private readonly KumikoPaint _fadePaint = new();
+    private readonly KumikoPaint _ghostShadow = new() { IsAntiAlias = true };
+
     // Hit regions measured while drawing (grouping panel chips), read by the connected controller's hit tester
     private readonly RenderedHitRegions _hitRegions = new();
     private KumikoInputController? _inputController;
@@ -316,15 +328,20 @@ public class KumikoRenderer : IDisposable
         _lastFirstRow = firstRow;
         _lastLastRow = lastRow;
         bool isMultiSort = dataSource.IsMultiSortActive;
-        dataSource.PrepareCellTextCache(frozenRowCount, Math.Max(0, lastRow - firstRow + 1));
 
         // Vertical extent rows may paint in: below header + top summaries, above a pinned footer.
         float dataClipBottom = adjustedViewportHeight - (style.PinBottomSummaryRows ? bottomSummaryHeight : 0);
         float dataClipHeight = Math.Max(0, dataClipBottom - dataAreaTop);
         var dataClip = new KumikoRect(0, dataAreaTop, scroll.ViewportWidth, dataClipHeight);
+        float scrollingRowsTop = dataAreaTop + frozenRowHeight;
+
+        // Transitions (#101): a group sliding open draws rows from below the viewport too, while they slide up into it
+        CaptureTransitions(dataSource, selection, scroll, style, frozenRowCount, scrollingRowsTop, dataClipBottom);
+        if (_slideShift < 0)
+            lastRow = Math.Min(dataSource.RowCount - 1, lastRow + (int)MathF.Ceiling(-_slideShift / style.RowHeight) + 1);
+        dataSource.PrepareCellTextCache(frozenRowCount, Math.Max(0, lastRow - firstRow + 1));
 
         // Sticky group headers (#174): pinned below the frozen rows, over the scrolling rows.
-        float scrollingRowsTop = dataAreaTop + frozenRowHeight;
         float pinnedBandBottom = PinnedGroupHeaders.Compute(dataSource, style, scrollingRowsTop, scroll.OffsetY,
             frozenRowCount, _pinnedGroupHeaders);
 
@@ -338,12 +355,8 @@ public class KumikoRenderer : IDisposable
 
         // Scrolling rows are further clipped to the data area (below the header and top summaries, above a
         // pinned footer); the header is drawn after them with only the pane clip.
-        ctx.Save();
-        ctx.ClipRect(dataClip);
-        DrawRows(ctx, dataSource, scrollableCols, firstRow, lastRow, scroll, selection, style, false, frozenWidth, editSession, topSummaryHeight, frozenRowCount);
-        DrawCurrentCellBorder(ctx, scrollableCols, scroll, selection, style, false, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
-        DrawGridLines(ctx, scrollableCols, firstRow, lastRow, scroll, style, dataSource.RowCount, false, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
-        ctx.Restore();
+        DrawPaneRows(ctx, dataSource, scrollableCols, firstRow, lastRow, scroll, selection, style, ColumnFreezeMode.None,
+            frozenWidth, editSession, topSummaryHeight, frozenRowCount, dataClip);
         DrawHeader(ctx, scrollableCols, scroll, style, false, frozenWidth, handleOffset, rightHandleWidth);
         DrawSortIndicators(ctx, scrollableCols, scroll, style, false, frozenWidth, isMultiSort);
         DrawFilterIcons(ctx, scrollableCols, scroll, style, false, frozenWidth);
@@ -364,12 +377,8 @@ public class KumikoRenderer : IDisposable
 
             ctx.FillRect(new KumikoRect(handleOffset, 0, frozenWidth, adjustedViewportHeight),
                 _paintCache.FrozenColumnBackground);
-            ctx.Save();
-            ctx.ClipRect(dataClip);
-            DrawRows(ctx, dataSource, frozenCols, firstRow, lastRow, scroll, selection, style, true, frozenWidth, editSession, topSummaryHeight, frozenRowCount);
-            DrawCurrentCellBorder(ctx, frozenCols, scroll, selection, style, true, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
-            DrawGridLines(ctx, frozenCols, firstRow, lastRow, scroll, style, dataSource.RowCount, true, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
-            ctx.Restore();
+            DrawPaneRows(ctx, dataSource, frozenCols, firstRow, lastRow, scroll, selection, style, ColumnFreezeMode.Left,
+                frozenWidth, editSession, topSummaryHeight, frozenRowCount, dataClip);
             DrawHeader(ctx, frozenCols, scroll, style, true, frozenWidth, handleOffset, rightHandleWidth);
             DrawSortIndicators(ctx, frozenCols, scroll, style, true, frozenWidth, isMultiSort);
             DrawFilterIcons(ctx, frozenCols, scroll, style, true, frozenWidth);
@@ -394,12 +403,8 @@ public class KumikoRenderer : IDisposable
             ctx.ClipRect(new KumikoRect(rightFrozenLeft, 0, rightFrozenWidth, adjustedViewportHeight));
 
             DrawRightFrozenBackground(ctx, rightFrozenLeft, rightFrozenWidth, scroll, style);
-            ctx.Save();
-            ctx.ClipRect(dataClip);
-            DrawRows(ctx, dataSource, rightFrozenCols, firstRow, lastRow, scroll, selection, style, ColumnFreezeMode.Right, frozenWidth, editSession, topSummaryHeight, frozenRowCount);
-            DrawCurrentCellBorder(ctx, rightFrozenCols, scroll, selection, style, ColumnFreezeMode.Right, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
-            DrawGridLines(ctx, rightFrozenCols, firstRow, lastRow, scroll, style, dataSource.RowCount, ColumnFreezeMode.Right, frozenWidth, dataSource, topSummaryHeight, frozenRowCount, rightFrozenLeft, rightFrozenWidth);
-            ctx.Restore();
+            DrawPaneRows(ctx, dataSource, rightFrozenCols, firstRow, lastRow, scroll, selection, style, ColumnFreezeMode.Right,
+                frozenWidth, editSession, topSummaryHeight, frozenRowCount, dataClip, rightFrozenLeft, rightFrozenWidth);
             DrawHeader(ctx, rightFrozenCols, scroll, style, ColumnFreezeMode.Right, frozenWidth, rightFrozenLeft, rightFrozenWidth, handleOffset, rightHandleWidth);
             DrawSortIndicators(ctx, rightFrozenCols, scroll, style, ColumnFreezeMode.Right, frozenWidth, isMultiSort);
             DrawFilterIcons(ctx, rightFrozenCols, scroll, style, ColumnFreezeMode.Right, frozenWidth);
@@ -440,7 +445,8 @@ public class KumikoRenderer : IDisposable
 
         if (dataSource.BottomSummaryCount > 0 && !style.PinBottomSummaryRows)
         {
-            float bottomSummaryY = dataAreaTop + dataSource.RowCount * style.RowHeight - scroll.OffsetY;
+            float bottomSummaryY = dataAreaTop + dataSource.RowCount * style.RowHeight - scroll.OffsetY
+                + RowShift(dataSource.RowCount);
             DrawTableSummaryRows(ctx, dataSource, allCols, scroll, style, frozenWidth,
                 dataSource.ComputedBottomSummaries, bottomSummaryY, handleOffset);
         }
@@ -454,7 +460,15 @@ public class KumikoRenderer : IDisposable
 
             for (int row = firstRow; row <= lastRow; row++)
             {
-                float rowY = style.HeaderHeight + topSummaryHeight + frozenRowHeight + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY;
+                // The rows after a sliding group's header are drawn below it only (#101)
+                if (_slideAnchor >= 0 && row == _slideAnchor + 1)
+                {
+                    ctx.Save();
+                    ctx.ClipRect(new KumikoRect(0, _slideTop, scroll.ViewportWidth, Math.Max(0, adjustedViewportHeight - _slideTop)));
+                }
+
+                float rowY = style.HeaderHeight + topSummaryHeight + frozenRowHeight + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY
+                    + RowShift(row);
 
                 if (dataSource.IsGroupHeaderRow(row))
                 {
@@ -465,6 +479,7 @@ public class KumikoRenderer : IDisposable
                     DrawGroupSummaryRow(ctx, dataSource, row, rowY, allCols, scroll, style, frozenWidth, handleOffset);
                 }
             }
+            if (_slideAnchor >= 0 && _slideAnchor + 1 >= firstRow && _slideAnchor + 1 <= lastRow) ctx.Restore();
 
             ctx.Restore();
         }
@@ -503,8 +518,20 @@ public class KumikoRenderer : IDisposable
                 dataSource.ComputedBottomSummaries, pinnedBottomSummaryY, handleOffset);
         }
 
+        var animations = _inputController?.Animations;
         if (dragColumnIndex >= 0)
-            DrawColumnDragOverlay(ctx, columns, dragColumnIndex, dragColumnScreenX, scroll, style);
+        {
+            DrawColumnDragOverlay(ctx, columns, dragColumnIndex, dragColumnScreenX, scroll, style,
+                animations?.LiftProgress ?? 1f);
+        }
+        else if (animations is { IsDropping: true, DropColumn: { } dropped } && IndexOf(columns, dropped) is var droppedIndex
+                 && droppedIndex >= 0)
+        {
+            // A dropped header settles into its slot while its shadow fades (#101)
+            float p = animations.DropProgress;
+            DrawColumnDragOverlay(ctx, columns, droppedIndex,
+                animations.DropFromX + (animations.DropToX - animations.DropFromX) * p, scroll, style, 1f - p);
+        }
 
         if (dragRowIndex >= 0)
             DrawRowDragOverlay(ctx, dataSource, columns, dragRowIndex, dragRowScreenY, scroll, style,
@@ -655,6 +682,124 @@ public class KumikoRenderer : IDisposable
             0, dividerY,
             scroll.ViewportWidth, dividerY,
             _paintCache.FrozenRowDivider);
+    }
+
+    /// <summary>
+    /// Reads the connected controller's transitions for this frame (#101): the slide of the rows after a group header
+    /// that was just toggled, and the fade-in of the current row's highlight, which starts here when the current row
+    /// shows another item than last frame (a tap, a key, a binding). Allocation-free.
+    /// </summary>
+    private void CaptureTransitions(KumikoSource dataSource, KumikoSelectionModel selection, ScrollState scroll,
+        KumikoStyle style, int frozenRowCount, float scrollingRowsTop, float dataClipBottom)
+    {
+        _slideAnchor = -1;
+        _slideShift = 0;
+        _fadeRow = -1;
+        _fadeProgress = 1f;
+
+        // The current row's item, to notice the current row moving to another item
+        var current = selection.CurrentCell;
+        object? currentItem = current.IsValid && current.Row < dataSource.RowCount && !dataSource.IsNonDataRow(current.Row)
+            ? dataSource.GetItem(current.Row)
+            : null;
+        bool canAnimate = _inputController != null && _inputController.CanAnimate(style);
+        if (!ReferenceEquals(currentItem, _lastCurrentItem))
+        {
+            if (_sawFirstFrame && currentItem != null && canAnimate) _inputController!.Animations.StartSelection(currentItem);
+            _lastCurrentItem = currentItem;
+        }
+        _sawFirstFrame = true;
+
+        if (!canAnimate || _inputController!.Animations is not { IsActive: true } animations) return;
+
+        if (animations.IsSelectionFading && ReferenceEquals(animations.SelectionItem, currentItem))
+        {
+            _fadeRow = current.Row;
+            _fadeProgress = animations.SelectionProgress;
+        }
+
+        int anchor = animations.GroupAnchorRow;
+        if (animations.IsGroupSliding && anchor >= frozenRowCount && anchor < dataSource.RowCount)
+        {
+            float headerBottom = scrollingRowsTop + (anchor - frozenRowCount + 1) * style.RowHeight - scroll.OffsetY;
+            float top = Math.Max(headerBottom, scrollingRowsTop);
+            float room = dataClipBottom - top;
+            if (room > 0)
+            {
+                // Expanding: the new rows come out from under the header, pushing the rest down. Collapsing: the rows
+                // after the group close up under it. At most the height left below the header slides.
+                float distance = Math.Min(Math.Abs(animations.GroupRowDelta) * style.RowHeight, room);
+                float remaining = (1f - animations.GroupProgress) * distance;
+                _slideAnchor = anchor;
+                _slideTop = top;
+                _slideShift = animations.GroupRowDelta > 0 ? -remaining : remaining;
+            }
+        }
+    }
+
+    /// <summary>How far a sliding group moves <paramref name="row"/> this frame (0 for every row up to its header).</summary>
+    private float RowShift(int row) => _slideAnchor >= 0 && row > _slideAnchor ? _slideShift : 0f;
+
+    /// <summary>
+    /// Lays the row's unselected background over its highlight, fading out as the highlight fades in, so the row
+    /// starts as it was and ends exactly as a selected row is drawn.
+    /// </summary>
+    private void FadeInHighlight(IDrawingContext ctx, KumikoRect rowRect, KumikoPaint unselectedPaint)
+    {
+        var color = unselectedPaint.Color;
+        byte alpha = (byte)(color.A * (1f - _fadeProgress));
+        if (alpha == 0) return;
+        _fadePaint.Color = color.WithAlpha(alpha);
+        ctx.FillRect(rowRect, _fadePaint);
+    }
+
+    /// <summary>
+    /// The data rows of one pane: backgrounds and cells, the current cell's border and the grid lines, clipped to the
+    /// data area. While a group slides open or shut (#101) they are drawn in two bands: the rows up to its header as
+    /// usual, and the rows after it moved by the slide and clipped below the header.
+    /// </summary>
+    private void DrawPaneRows(
+        IDrawingContext ctx, KumikoSource dataSource, List<(KumikoColumn Column, float X, int OriginalIndex)> cols,
+        int firstRow, int lastRow, ScrollState scroll, KumikoSelectionModel selection, KumikoStyle style,
+        ColumnFreezeMode mode, float frozenWidth, EditSession? editSession, float topSummaryHeight, int frozenRowCount,
+        KumikoRect dataClip, float rightFrozenLeft = 0, float rightFrozenWidth = 0)
+    {
+        if (_slideAnchor < 0 || _slideAnchor < firstRow - 1 || _slideAnchor >= lastRow)
+        {
+            ctx.Save();
+            ctx.ClipRect(dataClip);
+            DrawRowBand(ctx, dataSource, cols, firstRow, lastRow, scroll, selection, style, mode, frozenWidth, editSession,
+                topSummaryHeight, frozenRowCount, rightFrozenLeft, rightFrozenWidth);
+            ctx.Restore();
+            return;
+        }
+
+        ctx.Save();
+        ctx.ClipRect(dataClip);
+        DrawRowBand(ctx, dataSource, cols, firstRow, _slideAnchor, scroll, selection, style, mode, frozenWidth, editSession,
+            topSummaryHeight, frozenRowCount, rightFrozenLeft, rightFrozenWidth);
+        ctx.ClipRect(new KumikoRect(0, _slideTop, scroll.ViewportWidth, Math.Max(0, dataClip.Bottom - _slideTop)));
+        DrawRowBand(ctx, dataSource, cols, _slideAnchor + 1, lastRow, scroll, selection, style, mode, frozenWidth, editSession,
+            topSummaryHeight, frozenRowCount, rightFrozenLeft, rightFrozenWidth);
+        ctx.Restore();
+    }
+
+    /// <summary>Rows <paramref name="firstRow"/>..<paramref name="lastRow"/> of a pane, with the current cell's border when it is among them.</summary>
+    private void DrawRowBand(
+        IDrawingContext ctx, KumikoSource dataSource, List<(KumikoColumn Column, float X, int OriginalIndex)> cols,
+        int firstRow, int lastRow, ScrollState scroll, KumikoSelectionModel selection, KumikoStyle style,
+        ColumnFreezeMode mode, float frozenWidth, EditSession? editSession, float topSummaryHeight, int frozenRowCount,
+        float rightFrozenLeft, float rightFrozenWidth)
+    {
+        DrawRows(ctx, dataSource, cols, firstRow, lastRow, scroll, selection, style, mode, frozenWidth, editSession,
+            topSummaryHeight, frozenRowCount);
+        int currentRow = selection.CurrentCell.Row;
+        bool currentInBand = currentRow < frozenRowCount || (currentRow >= firstRow && currentRow <= lastRow) ||
+                             (_slideAnchor < 0 && currentRow > lastRow) || (_slideAnchor < 0 && currentRow < firstRow);
+        if (currentInBand)
+            DrawCurrentCellBorder(ctx, cols, scroll, selection, style, mode, frozenWidth, dataSource, topSummaryHeight, frozenRowCount);
+        DrawGridLines(ctx, cols, firstRow, lastRow, scroll, style, dataSource.RowCount, mode, frozenWidth, dataSource,
+            topSummaryHeight, frozenRowCount, rightFrozenLeft, rightFrozenWidth);
     }
 
     /// <summary>
@@ -843,7 +988,7 @@ public class KumikoRenderer : IDisposable
         {
             // Account for frozen rows: scrollable rows start after frozen rows in screen space
             float rowY = style.HeaderHeight + topSummaryHeight + frozenRowHeight
-                + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY;
+                + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY + RowShift(row);
 
             // Skip group headers and group summaries — they are drawn in a separate full-width pass
             if (dataSource.IsGroupHeaderRow(row))
@@ -860,39 +1005,35 @@ public class KumikoRenderer : IDisposable
             bool isFocused = hasCurrentRow && row == currentRow;
 
             // Resolve row background — prefer cached PaintCache instances for common cases
-            KumikoPaint rowBgPaint;
-            if (isSelected)
+            KumikoPaint unselectedPaint;
+            if (dynamicRowStyle?.BackgroundColor != null)
             {
-                rowBgPaint = _paintCache.SelectionBackground;
-            }
-            else if (isFocused)
-            {
-                rowBgPaint = _paintCache.FocusedRowBackground;
-            }
-            else if (dynamicRowStyle?.BackgroundColor != null)
-            {
-                rowBgPaint = _rowBackground;
-                rowBgPaint.Color = dynamicRowStyle.BackgroundColor.Value;
+                unselectedPaint = _rowBackground;
+                unselectedPaint.Color = dynamicRowStyle.BackgroundColor.Value;
             }
             else if (style.AlternateRowBackground && row % 2 == 1)
             {
-                rowBgPaint = _paintCache.AlternateRowBackground;
+                unselectedPaint = _paintCache.AlternateRowBackground;
             }
             else if (isFrozenLeft || freezeMode == ColumnFreezeMode.Right)
             {
-                rowBgPaint = freezeMode == ColumnFreezeMode.Right
+                unselectedPaint = freezeMode == ColumnFreezeMode.Right
                     ? _paintCache.RightFrozenColumnBackground
                     : _paintCache.FrozenColumnBackground;
             }
             else
             {
-                rowBgPaint = _paintCache.Background;
+                unselectedPaint = _paintCache.Background;
             }
+            KumikoPaint rowBgPaint = isSelected ? _paintCache.SelectionBackground
+                : isFocused ? _paintCache.FocusedRowBackground
+                : unselectedPaint;
 
             // Row background fill area depends on freeze mode — but when inside a clip, fill entire clip
-            ctx.FillRect(
-                new KumikoRect(0, rowY, scroll.ViewportWidth, style.RowHeight),
-                rowBgPaint);
+            var rowRect = new KumikoRect(0, rowY, scroll.ViewportWidth, style.RowHeight);
+            ctx.FillRect(rowRect, rowBgPaint);
+            if (row == _fadeRow && (isSelected || isFocused))
+                FadeInHighlight(ctx, rowRect, unselectedPaint);
 
             DrawRowCells(ctx, dataSource, visibleCols, row, rowY, dataItem, dynamicRowStyle, scroll, style,
                 isSelected, editSession);
@@ -1011,33 +1152,29 @@ public class KumikoRenderer : IDisposable
             bool isFocused = hasCurrentRow && row == currentRow;
 
             // Resolve frozen row background — prefer cached PaintCache instances
-            KumikoPaint rowBgPaint;
-            if (isSelected)
+            KumikoPaint unselectedPaint;
+            if (dynamicRowStyle?.BackgroundColor != null)
             {
-                rowBgPaint = _paintCache.SelectionBackground;
-            }
-            else if (isFocused)
-            {
-                rowBgPaint = _paintCache.FocusedRowBackground;
-            }
-            else if (dynamicRowStyle?.BackgroundColor != null)
-            {
-                rowBgPaint = _rowBackground;
-                rowBgPaint.Color = dynamicRowStyle.BackgroundColor.Value;
+                unselectedPaint = _rowBackground;
+                unselectedPaint.Color = dynamicRowStyle.BackgroundColor.Value;
             }
             else if (style.AlternateRowBackground && row % 2 == 1)
             {
-                rowBgPaint = _paintCache.AlternateRowBackground;
+                unselectedPaint = _paintCache.AlternateRowBackground;
             }
             else
             {
                 // Frozen rows use FrozenRowBackgroundColor by default
-                rowBgPaint = _paintCache.FrozenRowBackground;
+                unselectedPaint = _paintCache.FrozenRowBackground;
             }
+            KumikoPaint rowBgPaint = isSelected ? _paintCache.SelectionBackground
+                : isFocused ? _paintCache.FocusedRowBackground
+                : unselectedPaint;
 
-            ctx.FillRect(
-                new KumikoRect(0, rowY, scroll.ViewportWidth, style.RowHeight),
-                rowBgPaint);
+            var rowRect = new KumikoRect(0, rowY, scroll.ViewportWidth, style.RowHeight);
+            ctx.FillRect(rowRect, rowBgPaint);
+            if (row == _fadeRow && (isSelected || isFocused))
+                FadeInHighlight(ctx, rowRect, unselectedPaint);
 
             DrawRowCells(ctx, dataSource, visibleCols, row, rowY, dataItem, dynamicRowStyle, scroll, style,
                 isSelected, editSession);
@@ -1169,7 +1306,7 @@ public class KumikoRenderer : IDisposable
             for (int row = firstRow; row <= lastRow + 1; row++)
             {
                 float y = style.HeaderHeight + topSummaryHeight + frozenRowHeight
-                    + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY;
+                    + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY + RowShift(row);
                 // Let the clip region handle the horizontal extent
                 ctx.DrawLine(0, y, scroll.ViewportWidth, y, linePaint);
             }
@@ -1243,7 +1380,7 @@ public class KumikoRenderer : IDisposable
                 {
                     // Scrollable row
                     rowY = style.HeaderHeight + topSummaryHeight + frozenRowHeight
-                        + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY;
+                        + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY + RowShift(row);
                 }
                 var cellRect = new KumikoRect(screenX, rowY, col.Width, style.RowHeight);
 
@@ -1661,18 +1798,38 @@ public class KumikoRenderer : IDisposable
             titleStartX, textPaint, textPaint);
     }
 
+    /// <summary>The index of <paramref name="column"/> in <paramref name="columns"/>, or -1.</summary>
+    private static int IndexOf(IReadOnlyList<KumikoColumn> columns, KumikoColumn column)
+    {
+        for (int i = 0; i < columns.Count; i++)
+        {
+            if (ReferenceEquals(columns[i], column)) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// Draws a dragged column header's ghost at <paramref name="dragScreenX"/>, lifted off the header row by
+    /// <paramref name="lift"/> (0 flat, 1 fully lifted): a soft shadow below and to the right of it.
+    /// </summary>
     private void DrawColumnDragOverlay(
         IDrawingContext ctx,
         IReadOnlyList<KumikoColumn> columns,
         int dragColumnIndex,
         float dragScreenX,
         ScrollState scroll,
-        KumikoStyle style)
+        KumikoStyle style,
+        float lift)
     {
         if (dragColumnIndex < 0 || dragColumnIndex >= columns.Count) return;
         var col = columns[dragColumnIndex];
 
         var ghostRect = new KumikoRect(dragScreenX, 0, col.Width, style.HeaderHeight);
+        if (lift > 0.01f)
+        {
+            _ghostShadow.Color = new KumikoColor(0, 0, 0, (byte)(48 * Math.Min(1f, lift)));
+            ctx.FillRoundRect(ghostRect.Offset(3 * lift, 3 * lift), 3, _ghostShadow);
+        }
         ctx.FillRect(ghostRect, _paintCache.ColumnDragGhost);
         ctx.DrawRect(ghostRect, _paintCache.ColumnDragBorder);
 
@@ -1729,8 +1886,11 @@ public class KumikoRenderer : IDisposable
         for (int row = firstRow; row <= lastRow; row++)
         {
             if (dataSource.IsNonDataRow(row)) continue;
-            float rowY = dataAreaTop + frozenRowHeight + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY;
+            float rowY = dataAreaTop + frozenRowHeight + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY
+                + RowShift(row);
             if (rowY + style.RowHeight <= scrollableAreaTop || rowY > adjustedViewportHeight) continue;
+            // A row sliding out from under a group header shows its grip only below the header (#101)
+            if (row > _slideAnchor && _slideAnchor >= 0 && rowY + style.RowHeight / 2 < _slideTop) continue;
             // No grip for a row whose middle is under the sticky group headers (#174)
             if (rowY + style.RowHeight / 2 < pinnedBandBottom) continue;
             DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, style.RowHeight, gripPaint);

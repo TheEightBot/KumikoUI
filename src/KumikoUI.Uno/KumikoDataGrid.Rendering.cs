@@ -118,6 +118,7 @@ public partial class KumikoDataGrid
     /// <summary>Called from <c>OnLoaded</c>: resumes drawing, DPI tracking and any pending frame work.</summary>
     private void AttachSurface()
     {
+        SyncReducedMotion(); // KumikoDataGrid.Motion.cs
         _surface.Attach(_surfaceRenderer!);
         AttachXamlRoot();
         if (_frames.Attach())
@@ -161,6 +162,11 @@ public partial class KumikoDataGrid
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
             _inputController.DragRowIndex, _inputController.DragRowScreenY,
             _editSession, _inputController.PopupManager);
+
+        // The frame may have started a transition (the current row's highlight fading in), or one runs on: the frame
+        // loop steps it
+        if (_inputController.IsAnimating)
+            StartInertialScroll();
     }
 
     /// <summary>
@@ -186,8 +192,8 @@ public partial class KumikoDataGrid
     // ── Frame loop (CompositionTarget.Rendering) ──────────────────
 
     /// <summary>
-    /// Starts stepping the inertial scroller and edge autoscroll once per frame (a fling began on release or cancel,
-    /// or a row drag holds the pointer at an edge).
+    /// Starts stepping the inertial scroller, edge autoscroll, the editor's animation and Core's transitions once per
+    /// frame (a fling began on release or cancel, a row drag holds the pointer at an edge, a group slides open).
     /// </summary>
     private void StartInertialScroll()
     {
@@ -230,7 +236,8 @@ public partial class KumikoDataGrid
             bool scrolling = _inputController.UpdateInertialScroll(_scroll, frameMs);
             bool autoScrolling = _inputController.UpdateAutoScroll(_scroll, frameMs);
             bool animating = _editSession.UpdateAnimation(frameMs);
-            if (!scrolling && !autoScrolling && !animating)
+            bool transitioning = _inputController.UpdateAnimations(frameMs); // KumikoDataGrid.Motion.cs
+            if (!scrolling && !autoScrolling && !animating && !transitioning)
                 _frames.StopAnimation();
         }
 
