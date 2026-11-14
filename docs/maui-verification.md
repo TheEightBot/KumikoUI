@@ -115,12 +115,12 @@ that device with the `render` tool.
 
 Not fixed here (outside `src/KumikoUI.Maui`, the sample and `eng/devflow`, or a product decision):
 
-1. Core renderer: while a row scrolls under a frozen row, its drag handle glyph is drawn over the frozen row's handle
+1. (Fixed: the grips are clipped.) Core renderer: while a row scrolls under a frozen row, its drag handle glyph is drawn over the frozen row's handle
    (visible in `ios-iphone/16-main-scrolled-vertically.jpg` and `android-manual/01-gpu-fling-framestats.jpg`): the handle
    column is not clipped to the scrolling area.
 2. Dragging a column header across a phone-width scrolling pane cannot reach a column that is off screen: only row
    drags autoscroll (`ScrollSettings.AutoScrollEdgeSize`). A horizontal autoscroll for column drags would make reordering
-   work on phones.
+   work on phones. (Done: column header drags autoscroll sideways in the scrolling pane's edge bands.)
 3. Soft keyboard for non-text editors on Android (see above).
 4. Mouse hover and a physical-device pass on Android (hover, haptics feel, GPU driver variety).
 5. DevFlow preview issues that shape the suite: refused point taps on the Android GPU view, blank GPU screenshots,

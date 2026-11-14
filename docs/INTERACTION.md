@@ -39,7 +39,7 @@ Every timing, distance and target size the grid uses to read a gesture or play f
 | Velocity smoothing | 0.3 | same | same | same | `ScrollSettings.VelocitySmoothing`. |
 | Wheel notch | 3 rows | same | same | same | `ScrollSettings.WheelScrollMultiplier`; trackpads scroll by their pixels. Shift turns a vertical wheel horizontal. |
 | Longest frame step integrated | 100 ms | | | | Core `InertialScroller`; the hosts' frame schedulers pass at most 50 ms. |
-| Edge autoscroll band, speed | 40 px, 1200 px/s | same | same | same | `ScrollSettings.AutoScrollEdgeSize`, `AutoScrollMaxSpeed`; during a row drag, linear from the band's inner edge. |
+| Edge autoscroll band, speed | 40 px, 1200 px/s | same | same | same | `ScrollSettings.AutoScrollEdgeSize`, `AutoScrollMaxSpeed`; during a row drag (top and bottom bands) and a column header drag (left and right bands of the scrolling pane), linear from the band's inner edge. |
 
 The MAUI grid picks the iOS preset on iPhone and iPad, Android on Android and Desktop on Mac Catalyst and Windows; the Uno grid picks iOS and Android on those heads, Android in a browser whose main pointer is a finger (CSS `pointer: coarse`), and Desktop elsewhere (`ScrollSettings.FromPreset`). Assigning `ScrollSettings` replaces the preset.
 
