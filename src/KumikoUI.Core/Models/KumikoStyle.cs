@@ -287,6 +287,21 @@ public class KumikoStyle
     /// </summary>
     public float TouchColumnResizeGripWidth { get; set => Set(ref field, value); } = 32f;
 
+    /// <summary>
+    /// Color laid over what the mouse or pen hovers when a click acts on it: a sortable column header, a filter
+    /// icon, a grouping panel chip or its remove button, a group header's chevron, a Boolean cell's check box and an
+    /// enabled action button. Translucent, so it darkens (or, in the Dark theme, lightens) whatever is under it.
+    /// A transparent color turns hover feedback off. Default: black at 6% opacity.
+    /// </summary>
+    public KumikoColor HoverOverlayColor { get; set => Set(ref field, value); } = new(0, 0, 0, 16);
+
+    /// <summary>
+    /// Color laid over the same targets as <see cref="HoverOverlayColor"/> while a press on them is held, with any
+    /// pointer (a finger too), as long as the pointer stays on the target. A transparent color turns pressed feedback
+    /// off. Default: black at 12% opacity.
+    /// </summary>
+    public KumikoColor PressedOverlayColor { get; set => Set(ref field, value); } = new(0, 0, 0, 31);
+
     // ── Icons ────────────────────────────────────────────────────
     /// <summary>
     /// Draws every built-in glyph of the grid (group chevrons, sort arrows, filter buttons, grouping chip buttons,

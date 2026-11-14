@@ -81,6 +81,24 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_HoverAndPressedFeedback_AllocateNothing()
+    {
+        // A connected controller with a hovered header and a pressed check box (#101): the overlays and the pointer
+        // passed to the cell renderer draw from values captured per frame.
+        var grid = CreateGrid(featured: true);
+        var input = new KumikoUI.Core.Input.KumikoInputController();
+        grid.Renderer.InputController = input;
+        grid.Render(new NoOpDrawingContext());
+        void Pointer(KumikoUI.Core.Input.InputAction action, float x, float y) =>
+            input.HandlePointer(new KumikoUI.Core.Input.KumikoPointerEventArgs { Action = action, X = x, Y = y },
+                grid.Scroll, grid.Selection, grid.Style, grid.Source);
+        Pointer(KumikoUI.Core.Input.InputAction.Hover, 60, grid.Style.GroupPanelHeight + 10);
+        Assert.False(input.Feedback.Hover.IsNone);
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
     public void SteadyState_GridUsingEveryPerFrameFeature_WithAFontIconProvider_AllocatesNothing()
     {
         // Every glyph of the featured grid drawn as an icon font glyph (#119): the glyph strings are built once.

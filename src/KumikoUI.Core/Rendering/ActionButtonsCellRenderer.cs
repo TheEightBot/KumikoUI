@@ -76,6 +76,11 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider, IIn
         var cellRect = cell.Bounds;
         if (count == 0 || cellRect.Width <= 0 || cellRect.Height <= 0) return;
 
+        // The enabled button under the pointer gets hover (or, while pressed, pressed) feedback
+        int pointed = cell.PointerPosition is { } pointer
+            ? ActionButtonLayout.IndexAt(cellRect, count, CellPadding, ButtonSpacing, pointer.X, pointer.Y)
+            : -1;
+
         for (int i = 0; i < count; i++)
         {
             var btn = buttons[i];
@@ -84,6 +89,8 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider, IIn
             var rect = ActionButtonLayout.ComputeButtonRect(cellRect, count, i, CellPadding, ButtonSpacing);
             _buttonPaint.Color = enabled ? btn.BackgroundColor : cell.Style.ActionButtonDisabledBackgroundColor;
             ctx.FillRoundRect(rect, CornerRadius, _buttonPaint);
+            if (i == pointed && enabled)
+                ctx.FillRoundRect(rect, CornerRadius, cell.IsPointerPressed ? cell.Paints.PressedOverlay : cell.Paints.HoverOverlay);
             _labelPaint.Color = enabled ? btn.TextColor : cell.Style.ActionButtonDisabledTextColor;
             ctx.DrawTextInRect(btn.Label, rect, _labelPaint, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
         }
@@ -104,10 +111,15 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider, IIn
 
     /// <inheritdoc />
     /// <remarks>True over an enabled button; a disabled button gets the default cursor.</remarks>
-    public bool HasControlAt(KumikoRect cellRect, float x, float y, object? value)
+    public bool HasControlAt(KumikoRect cellRect, float x, float y, object? value) =>
+        GetControlIndexAt(cellRect, x, y, value) >= 0;
+
+    /// <inheritdoc />
+    /// <remarks>The index of the enabled button under the point; -1 over a disabled button or between buttons.</remarks>
+    public int GetControlIndexAt(KumikoRect cellRect, float x, float y, object? value)
     {
         int index = ActionButtonLayout.IndexAt(cellRect, Buttons.Count, CellPadding, ButtonSpacing, x, y);
-        return index >= 0 && ActionButtonPainter.IsEnabled(Buttons[index], value);
+        return index >= 0 && ActionButtonPainter.IsEnabled(Buttons[index], value) ? index : -1;
     }
 
     /// <inheritdoc />

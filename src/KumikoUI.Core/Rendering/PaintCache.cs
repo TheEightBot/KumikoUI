@@ -116,6 +116,18 @@ public class PaintCache
     /// <summary>Fill paint for the dash of an indeterminate (null) value in a three-state Boolean cell.</summary>
     public KumikoPaint CheckIndeterminate { get; private set; } = new();
 
+    /// <summary>
+    /// Fill laid over a control the mouse hovers (<see cref="KumikoStyle.HoverOverlayColor"/>): a check box, an action
+    /// button, a header. A cell renderer draws it over a control at <see cref="CellRenderContext.PointerPosition"/>.
+    /// </summary>
+    public KumikoPaint HoverOverlay { get; private set; } = new();
+
+    /// <summary>
+    /// Fill laid over a control while a press on it is held (<see cref="KumikoStyle.PressedOverlayColor"/>); see
+    /// <see cref="CellRenderContext.IsPointerPressed"/>.
+    /// </summary>
+    public KumikoPaint PressedOverlay { get; private set; } = new();
+
     // ── Grid chrome (drawn by KumikoRenderer only) ───────────────
     internal KumikoPaint SortOrderBadge { get; private set; } = new();
     internal KumikoPaint GroupPanelLabel { get; private set; } = new();
@@ -338,6 +350,8 @@ public class PaintCache
         CheckBoxBorder = Stroke(style.CheckBoxBorderColor ?? style.GridLineColor, 1.5f);
         CheckMark = Stroke(style.AccentColor, 2f);
         CheckIndeterminate = new KumikoPaint { Color = style.AccentColor, Style = PaintStyle.Fill, IsAntiAlias = true };
+        HoverOverlay = new KumikoPaint { Color = style.HoverOverlayColor, Style = PaintStyle.Fill, IsAntiAlias = true };
+        PressedOverlay = new KumikoPaint { Color = style.PressedOverlayColor, Style = PaintStyle.Fill, IsAntiAlias = true };
 
         // Multi-sort order badge; its font is derived from the header font in UpdateSortOrderBadgeFont
         SortOrderBadge = new KumikoPaint { Color = style.SortIndicatorColor, IsAntiAlias = true };

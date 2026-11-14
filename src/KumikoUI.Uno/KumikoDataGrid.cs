@@ -110,7 +110,8 @@ public partial class KumikoDataGrid : UserControl
         // Wire edit session to input controller and style (mirrors MAUI).
         _inputController.EditSession = _editSession;
 
-        // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester (#101).
+        // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester, and draws
+        // the controller's hover and pressed feedback (#101).
         _renderer.InputController = _inputController;
         InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;

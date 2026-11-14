@@ -133,7 +133,8 @@ public partial class KumikoDataGrid : ContentView
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
 
-        // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester (#101).
+        // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester, and draws
+        // the controller's hover and pressed feedback (#101).
         _renderer.InputController = _inputController;
         InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;
@@ -1061,9 +1062,7 @@ public partial class KumikoDataGrid : ContentView
                 platformView.RemoveGestureRecognizer(_nativeSecondaryClickGesture);
             _nativeSecondaryClickGesture = null;
         }
-#if MACCATALYST
         TeardownNativeHover(Handler?.PlatformView as UIView);
-#endif
 
         // Unsubscribe handler changed (prevent duplicate native setup on re-attach)
         this.HandlerChanged -= OnHandlerChanged_SetupNativeKeyboard;
@@ -1251,11 +1250,9 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnHandlerChanged_SetupNativeScroll(object? sender, EventArgs e)
     {
-#if MACCATALYST
-        // Mouse hover (cursor feedback): SKCanvasView only reports touches on Catalyst
+        // Mouse and trackpad hover (hover highlights; the cursor on Catalyst): SKCanvasView only reports touches
         if (Handler?.PlatformView is UIView hoverView)
             SetupNativeHover(hoverView);
-#endif
 
         // Guard against duplicate setup
         if (_nativeScrollGesture != null) return;

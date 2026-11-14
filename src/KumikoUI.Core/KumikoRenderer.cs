@@ -73,6 +73,14 @@ public class KumikoRenderer : IDisposable
 
     private KumikoFrameStats? _frameStats;
 
+    // Hover and pressed feedback this frame, from the connected controller (#101): the hovered target, the pressed
+    // target while the pointer is still on it, and the cell whose control the pointer is over (row, column index)
+    private FeedbackTarget _hoverTarget = FeedbackTarget.None;
+    private FeedbackTarget _pressedTarget = FeedbackTarget.None;
+    private int _pointerCellRow = -1, _pointerCellColumn = -1;
+    private bool _pointerCellPressed;
+    private KumikoPoint _pointerInRows;
+
     // Hit regions measured while drawing (grouping panel chips), read by the connected controller's hit tester
     private readonly RenderedHitRegions _hitRegions = new();
     private KumikoInputController? _inputController;
@@ -250,6 +258,7 @@ public class KumikoRenderer : IDisposable
         scroll.ClampOffset();
 
         _paintCache.Update(style);
+        CaptureFeedback(scroll, style, groupPanelOffset);
 
         ctx.FillRect(new KumikoRect(0, 0, scroll.ViewportWidth, scroll.ViewportHeight),
             _paintCache.Background);
@@ -648,6 +657,49 @@ public class KumikoRenderer : IDisposable
             _paintCache.FrozenRowDivider);
     }
 
+    /// <summary>
+    /// Reads the connected controller's hover and pressed feedback for this frame. Targets on rows and columns are
+    /// dropped once the grid has scrolled since they were set (they would light up whatever moved under a still
+    /// pointer); a transparent overlay color turns its feedback off.
+    /// </summary>
+    private void CaptureFeedback(ScrollState scroll, KumikoStyle style, float groupPanelOffset)
+    {
+        _hoverTarget = _pressedTarget = FeedbackTarget.None;
+        _pointerCellRow = _pointerCellColumn = -1;
+        _pointerCellPressed = false;
+        if (_inputController?.Feedback is not { } feedback) return;
+
+        bool current = feedback.IsCurrent(scroll);
+        if (style.HoverOverlayColor.A > 0) _hoverTarget = Usable(feedback.Hover, current);
+        if (style.PressedOverlayColor.A > 0) _pressedTarget = Usable(feedback.ActivePressed, current);
+
+        // A cell's control under the pointer: the cell renderer draws its feedback from the pointer position, in the
+        // coordinates the rows are drawn in (below the grouping panel)
+        var cellTarget = _pressedTarget.Region == HitRegion.Cell ? _pressedTarget : _hoverTarget;
+        if (cellTarget.Region == HitRegion.Cell && float.IsFinite(feedback.PointerX) && float.IsFinite(feedback.PointerY))
+        {
+            _pointerCellRow = cellTarget.Row;
+            _pointerCellColumn = cellTarget.Column;
+            _pointerCellPressed = _pressedTarget.Region == HitRegion.Cell;
+            _pointerInRows = new KumikoPoint(feedback.PointerX, feedback.PointerY - groupPanelOffset);
+        }
+
+        static FeedbackTarget Usable(FeedbackTarget target, bool current) =>
+            current || target.Region is HitRegion.GroupPanelChip or HitRegion.GroupPanelChipRemove ? target : FeedbackTarget.None;
+    }
+
+    /// <summary>The overlay for the target at <paramref name="region"/> (row, column, group): pressed, hovered, or none.</summary>
+    private KumikoPaint? OverlayFor(HitRegion region, int row, int column, int group)
+    {
+        if (_pressedTarget.Region == region && _pressedTarget.Row == row && _pressedTarget.Column == column &&
+            _pressedTarget.Group == group)
+            return _paintCache.PressedOverlay;
+        if (_hoverTarget.Region == region && _hoverTarget.Row == row && _hoverTarget.Column == column &&
+            _hoverTarget.Group == group)
+            return _paintCache.HoverOverlay;
+        return null;
+    }
+
     private void DrawHeader(
         IDrawingContext ctx,
         List<(KumikoColumn Column, float X, int OriginalIndex)> visibleCols,
@@ -700,7 +752,7 @@ public class KumikoRenderer : IDisposable
 
         var headerPaint = _paintCache.HeaderText;
 
-        foreach (var (col, colX, _) in visibleCols)
+        foreach (var (col, colX, columnIndex) in visibleCols)
         {
             float screenX = ColumnScreenX(colX, scroll, col.Pane);
 
@@ -720,6 +772,10 @@ public class KumikoRenderer : IDisposable
                 _headerBackground.Color = hStyle.BackgroundColor.Value;
                 ctx.FillRect(new KumikoRect(screenX, 0, col.Width, style.HeaderHeight), _headerBackground);
             }
+
+            // Hover and pressed feedback on a sortable header
+            if (OverlayFor(HitRegion.HeaderCell, -1, columnIndex, -1) is { } headerOverlay)
+                ctx.FillRect(new KumikoRect(screenX, 0, col.Width, style.HeaderHeight), headerOverlay);
 
             float padding = hStyle?.Padding ?? style.HeaderPadding;
 
@@ -893,6 +949,8 @@ public class KumikoRenderer : IDisposable
             var cell = new CellRenderContext(cellRect, row, value, displayText, col, style, colCellStyle, isSelected,
                 _paintCache, _paintCache.CellTextPaint(colCellStyle, style, isSelected),
                 colCellStyle?.TextAlignment ?? col.TextAlignment, ImageResolver);
+            if (row == _pointerCellRow && origIdx == _pointerCellColumn)
+                cell = cell with { PointerPosition = _pointerInRows, IsPointerPressed = _pointerCellPressed };
             renderer.Render(ctx, in cell);
         }
     }
@@ -1032,6 +1090,8 @@ public class KumikoRenderer : IDisposable
 
         var pillRect = InteractionGeometry.GroupChevronPill(rowY, groupInfo.Level, style, handleOffset);
         ctx.FillRoundRect(pillRect, 4f, _paintCache.GroupChevronBackground);
+        if (OverlayFor(HitRegion.GroupHeaderRow, row, -1, -1) is { } chevronOverlay)
+            ctx.FillRoundRect(pillRect, 4f, chevronOverlay);
 
         // The disclosure glyph, in the chevron's square: expanded or collapsed
         style.IconProvider.DrawIcon(ctx,
@@ -1260,7 +1320,7 @@ public class KumikoRenderer : IDisposable
         ColumnFreezeMode freezeMode,
         float frozenWidth)
     {
-        foreach (var (col, colX, _) in visibleCols)
+        foreach (var (col, colX, columnIndex) in visibleCols)
         {
             if (!AllowFiltering || !col.AllowFiltering) continue;
 
@@ -1268,9 +1328,12 @@ public class KumikoRenderer : IDisposable
             bool hasActiveFilter = col.ActiveFilter != null && col.ActiveFilter.IsActive;
 
             // Right of header text, left of the sort arrow when one is drawn; the hit tester uses the same geometry
+            var iconRect = InteractionGeometry.FilterIconRect(screenX, col, style);
+            if (OverlayFor(HitRegion.HeaderFilterIcon, -1, columnIndex, -1) is { } iconOverlay)
+                ctx.FillRoundRect(iconRect.Inflate(4, 4), 4, iconOverlay);
             style.IconProvider.DrawIcon(ctx,
                 hasActiveFilter ? KumikoIcon.FilterActive : KumikoIcon.Filter,
-                InteractionGeometry.FilterIconRect(screenX, col, style),
+                iconRect,
                 hasActiveFilter ? _paintCache.FilterActiveIcon : _paintCache.FilterIcon);
         }
     }
@@ -1342,6 +1405,10 @@ public class KumikoRenderer : IDisposable
             ctx.FillRoundRect(accentRect, chipRadius, _paintCache.GroupChipAccent);
             ctx.Restore();
 
+            // Hover and pressed feedback on the chip (a tap reverses the group's sort)
+            if (OverlayFor(HitRegion.GroupPanelChip, -1, -1, g) is { } chipOverlay)
+                ctx.FillRoundRect(chipRect, chipRadius, chipOverlay);
+
             // Draw chip text
             float textStartX = chipX + accentWidth + chipPadding;
             var textRect = new KumikoRect(textStartX, chipY, textSize.Width, chipHeight);
@@ -1366,6 +1433,8 @@ public class KumikoRenderer : IDisposable
             ctx.FillRoundRect(
                 new KumikoRect(removeX - 7, removeCenterY - 7, 14, 14), 7,
                 _paintCache.GroupChipRemoveBackground);
+            if (OverlayFor(HitRegion.GroupPanelChipRemove, -1, -1, g) is { } removeOverlay)
+                ctx.FillRoundRect(new KumikoRect(removeX - 9, removeCenterY - 9, 18, 18), 9, removeOverlay);
 
             style.IconProvider.DrawIcon(ctx, KumikoIcon.Remove,
                 new KumikoRect(removeX - 5, removeCenterY - 5, 10, 10),

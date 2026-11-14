@@ -49,8 +49,10 @@ public class ExactHitRegionTests
         float removeX = chip.Right - 6;
 
         Assert.Equal(HitRegion.GroupPanelChipRemove, ControllerHit(g, removeX, PanelY).Region);
-        // The unconnected tester can only estimate the text widths, and puts the button elsewhere
-        Assert.NotEqual(HitRegion.GroupPanelChipRemove, g.Hit(removeX, PanelY).Region);
+        // A tester no renderer publishes to can only estimate the text widths, and puts the button elsewhere
+        var estimate = new KumikoHitTester().HitTest(removeX, PanelY, g.Scroll, g.Style, g.Source.Columns,
+            g.Source.RowCount, g.Source);
+        Assert.NotEqual(HitRegion.GroupPanelChipRemove, estimate.Region);
     }
 
     [Fact]

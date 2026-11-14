@@ -17,6 +17,12 @@ public partial class KumikoInputController
 
     /// <summary>The hit tester this controller resolves pointer positions with (a renderer publishes regions to it).</summary>
     internal KumikoHitTester HitTester => _hitTester;
+
+    // Hover and pressed feedback for the renderer (#101)
+    private readonly InteractionFeedback _feedback = new();
+
+    /// <summary>The hover and pressed state a connected renderer draws.</summary>
+    internal InteractionFeedback Feedback => _feedback;
     private readonly InertialScroller _inertialScroller = new();
     private readonly PopupManager _popupManager = new();
     private DrawnFilterPopup? _activeFilterPopup;
@@ -258,6 +264,7 @@ public partial class KumikoInputController
         if (e.Action == InputAction.Exited)
         {
             SetCursor(_isResizingColumn ? KumikoCursor.ResizeHorizontal : KumikoCursor.Default);
+            if (_feedback.ClearHover()) Redraw();
             return;
         }
 
@@ -301,6 +308,7 @@ public partial class KumikoInputController
         if (_popupManager.HandlePointer(e))
         {
             if (action == InputAction.Hover) SetCursor(KumikoCursor.Default);
+            if (_feedback.ClearHover() | _feedback.EndPress()) Redraw(); // a popup over the grid takes the pointer
             return;
         }
 
@@ -314,15 +322,17 @@ public partial class KumikoInputController
                 break;
             case InputAction.Moved:
                 HandlePointerMove(e, scroll, selection, style, columns, totalRows, dataSource);
+                TrackPressFeedback(e, scroll, style, dataSource);
                 break;
             case InputAction.Hover:
                 HandleHover(e, scroll, style, dataSource);
                 break;
             case InputAction.Released:
+                if (_feedback.EndPress()) Redraw();
                 HandlePointerUp(e, scroll, selection, style, columns, totalRows, dataSource);
                 // The release may end a resize or change what is under the pointer (a column resized, a
-                // group collapsed, a row removed): the cursor follows.
-                SetCursor(ComputeCursor(e.X, e.Y, scroll, style, dataSource, e.DeviceType));
+                // group collapsed, a row removed): the cursor and the hover follow.
+                UpdatePointerFeedback(e.X, e.Y, e.DeviceType, scroll, style, dataSource);
                 break;
             case InputAction.Scroll:
                 // The wheel over an open editor (a dropdown list, a picker wheel) scrolls the editor
@@ -333,11 +343,16 @@ public partial class KumikoInputController
                     break;
                 }
                 HandleScroll(e, scroll, style);
+                // The rows moved under a still mouse: what it hovers follows
+                if (e.Handled && e.DeviceType != KumikoPointerDeviceType.Touch && !_isPointerDown)
+                    UpdatePointerFeedback(e.X, e.Y, e.DeviceType, scroll, style, dataSource);
                 break;
             case InputAction.Cancelled:
+                if (_feedback.EndPress()) Redraw();
                 HandlePointerCancelled(e, scroll);
                 break;
             case InputAction.LongPress:
+                if (_feedback.EndPress()) Redraw(); // a long press is not a press on the control
                 HandleLongPress(e, scroll, selection, style, columns, totalRows, dataSource);
                 break;
         }
@@ -393,6 +408,8 @@ public partial class KumikoInputController
         _autoScrollVelocityY = 0;
         _editorConsumedPointerDown = false;
         _inertialScroller.Reset();
+        _feedback.ClearHover();
+        _feedback.EndPress();
         if (_popupManager.HasActivePopups) _popupManager.CloseAll();
         if (_editSession is { IsEditing: true }) _editSession.CancelEdit();
         SetCursor(KumikoCursor.Default);
@@ -837,6 +854,9 @@ public partial class KumikoInputController
         _pressColumnIndex = hit.ColumnIndex;
         _pressRowIndex = hit.RowIndex;
         _pressGroupIndex = hit.GroupDescriptionIndex;
+        if (_feedback.BeginPress(FeedbackTargetFor(hit.Region, hit.RowIndex, hit.ColumnIndex, hit.Column,
+                hit.GroupDescriptionIndex, e.X, e.Y, scroll, style, dataSource), e.X, e.Y, scroll))
+            Redraw();
 
         // Group chips and group headers act on the release (HandlePointerUp), on the same target: a press that
         // becomes a pan (scrolling a touch screen over a group header) changes nothing.
@@ -1009,54 +1029,98 @@ public partial class KumikoInputController
         {
             Redraw();
             SetCursor(_isResizingColumn ? KumikoCursor.ResizeHorizontal : KumikoCursor.Default);
+            _feedback.ClearHover(); // the editor's own feedback; the redraw above shows it
             return;
         }
 
-        SetCursor(ComputeCursor(e.X, e.Y, scroll, style, dataSource, e.DeviceType));
+        UpdatePointerFeedback(e.X, e.Y, e.DeviceType, scroll, style, dataSource);
     }
 
     /// <summary>
-    /// The cursor for viewport point (<paramref name="x"/>, <paramref name="y"/>): resize during a resize drag
-    /// and over a resize grip, a hand over something a click acts on directly, else the default. It allocates
-    /// nothing beyond what reading an interactive cell's value does. It reads the columns and row count afresh:
-    /// a release may just have removed rows.
+    /// The cursor and the hover feedback for a pointer resting at viewport point (<paramref name="x"/>,
+    /// <paramref name="y"/>), from one hit test. A finger hovers nothing. Redraws only when the hovered target changes.
     /// </summary>
-    private KumikoCursor ComputeCursor(float x, float y, ScrollState scroll, KumikoStyle style, KumikoSource dataSource,
-        KumikoPointerDeviceType deviceType)
+    private void UpdatePointerFeedback(float x, float y, KumikoPointerDeviceType deviceType,
+        ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
     {
-        if (_isResizingColumn) return KumikoCursor.ResizeHorizontal;
-
         var hit = _hitTester.HitTestCore(x, y, scroll, style, dataSource.Columns, dataSource.RowCount, dataSource, deviceType);
-        switch (hit.Region)
+        var target = FeedbackTargetFor(hit.Region, hit.RowIndex, hit.ColumnIndex, hit.Column, hit.GroupDescriptionIndex,
+            x, y, scroll, style, dataSource);
+        SetCursor(_isResizingColumn ? KumikoCursor.ResizeHorizontal : CursorFor(hit.Region, target));
+        if (_feedback.SetHover(deviceType == KumikoPointerDeviceType.Touch || _isResizingColumn ? FeedbackTarget.None : target,
+                x, y, scroll))
+            Redraw();
+    }
+
+    /// <summary>
+    /// The cursor over a region: resize over a resize grip, a hand over something a click acts on directly (a filter
+    /// icon, a chevron, a chip, a drag handle, a cell's control: <paramref name="target"/>), else the default.
+    /// </summary>
+    private static KumikoCursor CursorFor(HitRegion region, FeedbackTarget target) => region switch
+    {
+        HitRegion.HeaderResizeGrip => KumikoCursor.ResizeHorizontal,
+        HitRegion.HeaderFilterIcon or HitRegion.GroupChevron or HitRegion.GroupPanelChip or HitRegion.GroupPanelChipRemove
+            or HitRegion.RowDragHandle => KumikoCursor.Hand,
+        HitRegion.Cell when !target.IsNone => KumikoCursor.Hand,
+        _ => KumikoCursor.Default,
+    };
+
+    /// <summary>
+    /// What gets hover and pressed feedback at a hit: a sortable header, a filter icon, a chip or its remove button, a
+    /// group header's chevron (the whole header toggles), or the control a click on a cell acts on (an enabled action
+    /// button, a check box that can be toggled); <see cref="FeedbackTarget.None"/> elsewhere. Allocation-free beyond
+    /// reading an interactive cell's value. It reads the columns and row count afresh: a release may just have removed
+    /// rows.
+    /// </summary>
+    private FeedbackTarget FeedbackTargetFor(HitRegion region, int row, int columnIndex, KumikoColumn? column, int group,
+        float x, float y, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    {
+        switch (region)
         {
-            case HitRegion.HeaderResizeGrip:
-                return KumikoCursor.ResizeHorizontal;
-
+            case HitRegion.HeaderCell when column != null && AllowSorting && column.AllowSorting:
+                return new FeedbackTarget(HitRegion.HeaderCell, -1, columnIndex, -1, -1);
             case HitRegion.HeaderFilterIcon:
-            case HitRegion.GroupChevron:
-            case HitRegion.GroupPanelChip:
-            case HitRegion.GroupPanelChipRemove:
-            case HitRegion.RowDragHandle:
-                return KumikoCursor.Hand;
-
-            case HitRegion.Cell when hit.Column != null && hit.RowIndex >= 0 && !dataSource.IsNonDataRow(hit.RowIndex):
-                if (GetInteractiveRenderer(hit.Column) is { } interactive)
+                return new FeedbackTarget(HitRegion.HeaderFilterIcon, -1, columnIndex, -1, -1);
+            case HitRegion.GroupPanelChip or HitRegion.GroupPanelChipRemove:
+                return new FeedbackTarget(region, -1, -1, group, -1);
+            case HitRegion.GroupChevron or HitRegion.GroupHeaderRow:
+                return new FeedbackTarget(HitRegion.GroupHeaderRow, row, -1, -1, -1);
+            case HitRegion.Cell when column != null && row >= 0 && row < dataSource.RowCount && !dataSource.IsNonDataRow(row):
+                if (GetInteractiveRenderer(column) is { } interactive)
                 {
-                    var bounds = GetInteractiveCellBounds(hit.RowIndex, hit.ColumnIndex, scroll, style, dataSource);
-                    var value = dataSource.GetCellValue(hit.RowIndex, hit.Column);
-                    return interactive.HasControlAt(bounds, x, y, value) ? KumikoCursor.Hand : KumikoCursor.Default;
+                    var bounds = GetInteractiveCellBounds(row, columnIndex, scroll, style, dataSource);
+                    int control = interactive.GetControlIndexAt(bounds, x, y, dataSource.GetCellValue(row, column));
+                    return control >= 0 ? new FeedbackTarget(HitRegion.Cell, row, columnIndex, -1, control) : FeedbackTarget.None;
                 }
 
-                var cell = new CellPosition(hit.RowIndex, hit.ColumnIndex);
-                return hit.Column.ColumnType == KumikoColumnType.Boolean &&
-                       CanToggleBooleanCell(cell, dataSource) &&
+                var cell = new CellPosition(row, columnIndex);
+                return column.ColumnType == KumikoColumnType.Boolean && CanToggleBooleanCell(cell, dataSource) &&
                        IsOnCheckBox(x, y, cell, scroll, style, dataSource)
-                    ? KumikoCursor.Hand
-                    : KumikoCursor.Default;
-
+                    ? new FeedbackTarget(HitRegion.Cell, row, columnIndex, -1, 0)
+                    : FeedbackTarget.None;
             default:
-                return KumikoCursor.Default;
+                return FeedbackTarget.None;
         }
+    }
+
+    /// <summary>
+    /// A press moved: its target is drawn pressed only while the pointer is still on it, and not at all once the press
+    /// became a pan, a drag or a resize. Redraws only when that changes.
+    /// </summary>
+    private void TrackPressFeedback(KumikoPointerEventArgs e, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    {
+        if (_feedback.Pressed.IsNone) return;
+        if (_isPanning || _isDraggingColumn || _isDraggingRow || _isResizingColumn)
+        {
+            if (_feedback.EndPress()) Redraw();
+            return;
+        }
+
+        var hit = _hitTester.HitTestCore(e.X, e.Y, scroll, style, dataSource.Columns, dataSource.RowCount, dataSource,
+            _pressDeviceType);
+        var under = FeedbackTargetFor(hit.Region, hit.RowIndex, hit.ColumnIndex, hit.Column, hit.GroupDescriptionIndex,
+            e.X, e.Y, scroll, style, dataSource);
+        if (_feedback.TrackPress(under, e.X, e.Y)) Redraw();
     }
 
     /// <summary>Sets <see cref="Cursor"/>, raising <see cref="CursorChanged"/> only when it changes.</summary>
