@@ -117,7 +117,11 @@ public partial class KumikoDataGrid : ContentView
         // Image cells load through the grid's image cache (KumikoDataGrid.Images.cs)
         InitializeImages();
 
+        // Large sources sort, filter and group on a worker; the new view is swapped in on the UI thread, which raises
+        // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous.
+        _dataSource.BackgroundRebuildThreshold = KumikoSource.DefaultBackgroundRebuildThreshold;
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        _dataSource.ViewUpdated += OnDataSourceViewUpdated;
         // The source is the grid's own, so this never needs removing (KumikoDataGrid.Layout.cs)
         _dataSource.ColumnOrderChanged += OnDataSourceColumnOrderChanged;
 
@@ -920,6 +924,10 @@ public partial class KumikoDataGrid : ContentView
             UpdateAccessibilityHint();
     }
 
+    // A background rebuild's view was swapped in (#254): draw it. The scroll offset is kept and clamped to the new
+    // content on the next frame, so a re-sort shows the same scroll position in the new order.
+    private void OnDataSourceViewUpdated(object? sender, EventArgs e) => RequestRedraw();
+
     private void OnInputControllerNeedsRedraw()
     {
         RequestRedraw();
@@ -1003,6 +1011,7 @@ public partial class KumikoDataGrid : ContentView
 
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
+        _dataSource.ViewUpdated -= OnDataSourceViewUpdated;
         _inputController.NeedsRedraw -= OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.Dispose();
@@ -1081,6 +1090,7 @@ public partial class KumikoDataGrid : ContentView
     {
         ConnectTheming();
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        _dataSource.ViewUpdated += OnDataSourceViewUpdated;
         // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
         _dataSource.Attach();
         ResubscribeObservedCollections();

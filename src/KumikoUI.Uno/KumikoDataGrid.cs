@@ -90,8 +90,15 @@ public partial class KumikoDataGrid : UserControl
         // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
         InitializeAccessibility();
 
+        // Large sources sort, filter and group on a worker; the new view is swapped in on the UI thread, which raises
+        // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous. Single-threaded
+        // WebAssembly has no worker to build on, so it stays synchronous there.
+        if (!OperatingSystem.IsBrowser())
+            _dataSource.BackgroundRebuildThreshold = KumikoSource.DefaultBackgroundRebuildThreshold;
+
         // Core "invalidate" signals → request a single canvas repaint.
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        _dataSource.ViewUpdated += OnDataSourceViewUpdated;
         // The source is the grid's own, so this never needs removing (KumikoDataGrid.Layout.cs)
         _dataSource.ColumnOrderChanged += OnDataSourceColumnOrderChanged;
 
