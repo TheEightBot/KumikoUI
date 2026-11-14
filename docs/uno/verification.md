@@ -60,17 +60,17 @@ this work lists where.
    resolve to there); this is legible but differs from the other heads.
 2. **iOS and Android, sample shell:** the window is drawn edge to edge, and the sample page's title and toolbar
    run under the status bar and the bottom row under the home indicator / gesture bar. The grid itself draws
-   correctly; the sample shell needs to respect the visible bounds (follow-up F10).
+   correctly; the sample shell needs to respect the visible bounds (follow-up F10, #280).
 3. **Desktop (macOS) interaction:** the app renders, follows the dark appearance and exposes its XAML buttons to
    the accessibility tree, but pointer and keyboard input could not be delivered to it in this run (background
    automation only reaches accessibility actions, and full-screen control was not granted). Every interactive row
    is therefore unverified on the desktop head. The desktop head shares all of its input code with WebAssembly
-   except the platform host itself; it needs a hands-on pass (follow-up F1).
+   except the platform host itself; it needs a hands-on pass (follow-up F1, #274).
 4. **Typing on iOS and Android was broken before this pass:** typing over a selected value inserted in front of
    it ("XBob Jones"), and typing at the end of a value threw inside Uno; on Android that exception crashed the app
    from the input connection, on iOS characters were lost ("Kim Lee" became "iK" + the old text). Both are fixed
    on Android and re-checked there on the merged code. On iOS the merged code types every character in order
-   ("Kim Lee" arrives whole), but typing over a selected value still goes in front of it (follow-up F9).
+   ("Kim Lee" arrives whole), but typing over a selected value still goes in front of it (follow-up F9, #279).
 5. **IME on WebAssembly and iOS:** no input method that composes could be driven by the automation (no Japanese
    keyboard is installed in the browser or the simulator). The composition path itself is covered by the unit
    tests of `KumikoTextInputAdapter`.
@@ -85,9 +85,9 @@ this work lists where.
    unchecking items. Both were Core behavior, the same on every host, and are fixed (see
    [Fixed during the pass](#fixed-during-the-pass)).
 8. **Filter popup on Android:** opening it and the check list work, but tapping the search box never shows the soft
-   keyboard, so the search cannot be typed into on a phone (follow-up F2).
+   keyboard, so the search cannot be typed into on a phone (follow-up F2, #275).
 9. **Column reorder by touch (Android):** two slow header drags with `adb input swipe` started neither a column drag
-   nor a pan; mouse reorder works on WebAssembly. Needs a check with a real finger (follow-up F3).
+   nor a pan; mouse reorder works on WebAssembly. Needs a check with a real finger (follow-up F3, #276).
 10. **Row drag on WebAssembly and iOS:** not exercised; the sample had no page with row drag enabled until the sample
     fix in this pass, and the WebAssembly and iOS runs predate it. Android, run after the fix, works.
 11. **Theme follow on Android:** the grid follows a system dark-mode switch live. An editor that was open kept the old
@@ -99,7 +99,7 @@ this work lists where.
     catch a 120 to 200 ms transition. The group expand/collapse, header drag and selection changes all ended in the
     right state.
 14. **VoiceOver on macOS desktop:** the macOS accessibility tree lists the sample's buttons and navigation items but
-    no element for the grid, so VoiceOver cannot reach it (follow-up F4).
+    no element for the grid, so VoiceOver cannot reach it (follow-up F4, #277).
 15. **Screen reader on WebAssembly:** with Uno's "Enable accessibility" semantic DOM on, the grid is a `role="grid"`
     element named by `GridDescription` whose description follows the current cell ("200 rows, 11 columns, current
     cell row 7 column 2"). No screen reader was run against it.
@@ -122,20 +122,20 @@ raises its changes the way Uno's does).
 
 ## Follow-ups
 
-Each needs an issue; repro steps are against `samples/SampleApp.Uno`.
+Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
 
-- **F1. Desktop head needs a hands-on pass.** Launch `dotnet run --project samples/SampleApp.Uno -f net10.0-desktop`
+- **F1. Desktop head needs a hands-on pass.** ([#274](https://github.com/TheEightBot/KumikoUI/issues/274)) Launch `dotnet run --project samples/SampleApp.Uno -f net10.0-desktop`
   on macOS, Windows and Linux and walk every row of the matrix. Nothing in this run suggests a problem, but no input
   reached the macOS app.
-- **F2. Android: the filter popup's search box gets no soft keyboard.** All Components page, tap the Department
+- **F2. Android: the filter popup's search box gets no soft keyboard.** ([#275](https://github.com/TheEightBot/KumikoUI/issues/275)) All Components page, tap the Department
   filter icon, tap the search box: the keyboard never appears (`dumpsys input_method` shows `mInputShown=false`), so
   nothing can be typed. Cell editors do get the keyboard. Core raises `KeyboardFocusRequested` and the host calls
   `InputPane.TryShow()` because the proxy already has focus; that does not show the keyboard on Uno's Android Skia
   head. Check iOS as well.
-- **F3. Touch column reorder on Android.** All Components page, press and slowly drag the Salary header to the left:
+- **F3. Touch column reorder on Android.** ([#276](https://github.com/TheEightBot/KumikoUI/issues/276)) All Components page, press and slowly drag the Salary header to the left:
   no column drag starts (mouse drag works on WebAssembly). Confirm on a device with a real finger before treating
   it as a bug.
-- **F4. macOS desktop: the grid is missing from the accessibility tree.** Launch the desktop head, inspect with
+- **F4. macOS desktop: the grid is missing from the accessibility tree.** ([#277](https://github.com/TheEightBot/KumikoUI/issues/277)) Launch the desktop head, inspect with
   Accessibility Inspector or VoiceOver: buttons and navigation items are there, the grid is not. The same peer is
   exposed on WebAssembly and Android, so the gap is in how Uno's macOS host maps `KumikoDataGridAutomationPeer`.
 - **F5. Combo box keys and list drawing.** *Resolved, no code change.* Picking an item commits the edit, and Enter on
@@ -144,16 +144,16 @@ Each needs an issue; repro steps are against `samples/SampleApp.Uno`.
   popup edge.
 - **F6. Filter popup search and Select All.** *Fixed in Core* (see above).
 - **F7. An open editor keeps the old theme.** *Fixed in Core* (see above); re-check on the Android emulator.
-- **F8. Android Release cold start is slow.** About 15 to 20 seconds from launch to the first grid on the emulator;
+- **F8. Android Release cold start is slow.** ([#278](https://github.com/TheEightBot/KumikoUI/issues/278)) About 15 to 20 seconds from launch to the first grid on the emulator;
   measure on a device.
-- **F9. iOS: typing over a selected cell value goes in front of it.** iOS simulator, All Components, double-tap
+- **F9. iOS: typing over a selected cell value goes in front of it.** ([#279](https://github.com/TheEightBot/KumikoUI/issues/279)) iOS simulator, All Components, double-tap
   "Eve Davis" (the editor selects all of it), type "Kim Lee": the cell reads "Kim LeeEve Davis". The managed proxy
   `TextBox` has the right selection, but Uno's iOS host keeps a native `UITextField` behind it whose own selection is
   not updated: `InvisibleTextBoxViewExtension.StartEntry` copies the selection only when it creates that field, and
   `TextBox.Select` ignores a selection that did not change, so re-syncing from the grid does not reach it. Re-selecting
   through a different selection after focus was tried in this pass and made iOS drop characters, so it was not kept.
   Needs a fix in the host that reaches the native field after it becomes first responder, or an Uno fix.
-- **F10. Sample shell under the system bars on iOS and Android.** The page title and toolbar run under the status bar
+- **F10. Sample shell under the system bars on iOS and Android.** ([#280](https://github.com/TheEightBot/KumikoUI/issues/280)) The page title and toolbar run under the status bar
   and the last row under the home indicator / gesture bar. `VisibleBoundsPadding` on the `NavigationView` had no
   effect on iOS; the shell needs a padded container (or the safe-area insets applied by hand).
 
@@ -161,6 +161,10 @@ Each needs an issue; repro steps are against `samples/SampleApp.Uno`.
 
 Ship the Uno package as `1.0.0-preview` alongside the 1.0.0 Core, SkiaSharp and MAUI packages, and move it to 1.0.0
 once the follow-ups above are closed and the matrix is green on every head.
+
+**Outcome:** the packages ship in lockstep with exact sibling pins (#112), so an Uno-only preview version is not
+possible without splitting the versioning. The first 1.0 release is therefore `1.0.0-preview.1` for all four packages.
+KumikoUI.Uno stays the least verified host until the issues above are closed.
 
 - **Text entry on the two mobile heads was broken until this pass** (an app crash on Android, lost and misplaced
   characters on iOS) and nothing had caught it: the unit tests modeled a text box that behaves better than Uno's.

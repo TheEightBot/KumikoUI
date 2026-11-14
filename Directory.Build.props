@@ -15,9 +15,9 @@
     <!-- Fixed year (not the build date) so package metadata is reproducible; bump when releasing in a new year. -->
     <Copyright>Copyright © Eight-Bot, Inc. 2026</Copyright>
 
-    <!-- Version from git tags (MinVer). Untagged builds after v0.1.x become 0.2.0-alpha.0.N. -->
+    <!-- Version from git tags (MinVer). Untagged builds before the first 1.0 tag become 1.0.0-alpha.0.N. -->
     <MinVerTagPrefix>v</MinVerTagPrefix>
-    <MinVerMinimumMajorMinor>0.2</MinVerMinimumMajorMinor>
+    <MinVerMinimumMajorMinor>1.0</MinVerMinimumMajorMinor>
 
     <!-- Symbol packages (.snupkg) for every packable project, locally and in CI. -->
     <IncludeSymbols>true</IncludeSymbols>

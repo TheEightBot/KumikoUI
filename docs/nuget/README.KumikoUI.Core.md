@@ -2,13 +2,15 @@
 
 # KumikoUI.Core
 
-[![NuGet](https://img.shields.io/nuget/v/KumikoUI.Core.svg)](https://www.nuget.org/packages/KumikoUI.Core)
+[![NuGet](https://img.shields.io/nuget/vpre/KumikoUI.Core.svg)](https://www.nuget.org/packages/KumikoUI.Core)
 [![Downloads](https://img.shields.io/nuget/dt/KumikoUI.Core.svg)](https://www.nuget.org/packages/KumikoUI.Core)
 [![License: MIT](https://img.shields.io/github/license/TheEightBot/KumikoUI.svg)](https://github.com/TheEightBot/KumikoUI/blob/main/LICENSE)
 
 KumikoUI.Core is the platform-independent engine behind the KumikoUI data grid. It holds the data model, the layout and rendering pipeline, selection, editing and input handling. It has no UI framework or rendering dependency and targets `net10.0`, so it runs anywhere .NET does.
 
 Most apps do not install this package directly. It comes in transitively with the host package for your UI framework.
+
+> **Preview.** This is `1.0.0-preview.1`, the first 1.0 prerelease of all four KumikoUI packages. The API may still change before 1.0.0. Install a prerelease with `--prerelease` or an explicit version (`dotnet add package KumikoUI.Core --version 1.0.0-preview.1`), and use the same version for every KumikoUI package. Release notes: [CHANGELOG](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md).
 
 ![KumikoUI data grid](https://raw.githubusercontent.com/TheEightBot/KumikoUI/main/images/main.png)
 

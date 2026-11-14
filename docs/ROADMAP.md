@@ -1,10 +1,10 @@
 # KumikoUI Roadmap to 1.0
 
-**Status:** planned 2026-10-22 from the [release-readiness evaluation](release-readiness/README.md) and two rounds of maintainer decisions. Work items are in the [issue plan](release-readiness/issue-plan.md) (105 issues) and, once approved, on GitHub under the milestones below.
+**Status:** planned 2026-10-22 and updated 2026-11-14 for `1.0.0-preview.1`. Planned from the [release-readiness evaluation](release-readiness/README.md) and two rounds of maintainer decisions. Work items are in the [issue plan](release-readiness/issue-plan.md) (105 issues) and, once approved, on GitHub under the milestones below.
 
 ## 1. Where we are
 
-KumikoUI 0.1.10 is a feature-rich, well-layered canvas-drawn DataGrid whose engine assumes happy-path data, whose edit pipeline can write to the wrong item, whose public API still contains placeholders, whose tests cover models but not the control, and whose packages target a runtime that leaves support on 2026-11-10. It is not ready for a 1.0 tag. The plan below takes it there in three steps: a stabilisation release that freezes the API, a preview line for device verification, then 1.0.0.
+The plan below was written when KumikoUI 0.1.10 had an engine that assumed happy-path data, an edit pipeline that could write to the wrong item, placeholder API and tests that covered models but not the control. `0.2.0` (2026-11-11) delivered the stabilisation step. The 1.0 work since then is on `integration/1.0-wave1` and is released as **`1.0.0-preview.1`** (2026-11-14), a prerelease of all four packages. The API is reviewed but not frozen, and KumikoUI.Uno is the least verified host. `1.0.0` is not scheduled; section 8 lists what it waits for. The original wording of this section (0.1.10 "not ready for a 1.0 tag") is kept in the git history and in the [release-readiness evaluation](release-readiness/README.md).
 
 ## 2. Decisions (record)
 
@@ -13,7 +13,7 @@ Settled with the maintainer on 2026-10-22. Each is the contract the issues imple
 | # | Decision |
 |---|---|
 | Release path | No 1.0.0 from the current state. `0.2.0` (stabilisation + API freeze) → `1.0.0-preview.N` (device verification) → `1.0.0`. Milestone-driven; no public date until blockers are closed. Capacity: solo maintainer plus AI agents. |
-| Package scope | Core, SkiaSharp and MAUI reach 1.0.0 together. KumikoUI.Uno is backed as a first-class target and ships as 1.0.0 only if every head passes the device matrix (H3); otherwise it ships `1.0.0-preview` and joins at 1.0.x. Versions stay in lockstep. |
+| Package scope | Core, SkiaSharp and MAUI reach 1.0.0 together. KumikoUI.Uno is backed as a first-class target and ships as 1.0.0 only if every head passes the device matrix (H3); otherwise it ships `1.0.0-preview` and joins at 1.0.x. Versions stay in lockstep. **Update 2026-11-14:** versions stay in lockstep, so the first release is `1.0.0-preview.1` for all four packages; whether Uno joins the stable `1.0.0` is decided from the device matrix then. |
 | Runtime | `net10.0` everywhere; `net9.0` dropped. |
 | SkiaSharp | 4.153.x before 1.0 (compile-breaking text API and native ABI change land once, before the freeze). |
 | Watermark | Android API 24, iOS 17.0, Mac Catalyst 17.0, Windows 10.0.19041 on both hosts; re-baselined at each .NET major. Uno.Sdk 6.7.x via `global.json`, central package management, pinned workload sets. |
@@ -98,3 +98,22 @@ Planning (this document and the evaluation) used Claude Fable. Implementation is
 - Uno device matrix recorded with the GA/preview decision; MAUI interaction and accessibility checklists signed off per platform.
 - README, per-package NuGet READMEs, CHANGELOG, platform matrix and benchmark numbers current; nuget.org previews checked.
 - Release published through the gated, OIDC-based pipeline from a protected `main`.
+
+## 8. Progress toward 1.0.0 (2026-11-14)
+
+Done and released in `1.0.0-preview.1` (details in the [CHANGELOG](../CHANGELOG.md) and the [release checklist status](release/1.0-checklist-status.md)):
+
+- Dead and unsafe public surface removed or sealed (#37); API governance with PublicApiAnalyzers, `.editorconfig` and the format check (#54); the 1.0 API review (#112, `docs/release-readiness/api-review-1.0.md`).
+- The off-UI-thread view pipeline and the UI-thread-only `KumikoSource` (#69, #254); the allocation-free render loop (#251).
+- Internal docs regenerated from the code (#96); Uno device verification (#67, `docs/uno/verification.md`); MAUI device verification (`docs/maui-verification.md`).
+- Sample apps (#97) and interaction polish (#101); keyboard avoidance (#258); emoji sequences (#259); exact sibling package pins.
+- The 1.x specs (#103 row details, #107 paging and row sources, and the other spec issues).
+
+Remains for `1.0.0`:
+
+- Freeze `PublicAPI.Shipped.txt`, set the package validation baseline, and take the open decisions: 8-digit hex order, the two editor-factory shapes, `Auto` = Hardware on Android (confirm on a physical phone) and the HarfBuzz dependency.
+- Hands-on passes on Windows and on physical devices, and a screen-reader run.
+- The open Uno issues (#274 to #280).
+- A `1.0.0` CHANGELOG section, release notes and announcement.
+
+Deferred to 1.x as before: the specs listed under epic X, the per-cell accessibility tree (#79) and right-to-left layout (#80).

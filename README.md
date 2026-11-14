@@ -23,10 +23,10 @@
     <a href="https://scorecard.dev/viewer/?uri=github.com/TheEightBot/KumikoUI"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/TheEightBot/KumikoUI/badge" /></a>
   </p>
   <p align="center">
-    <a href="https://www.nuget.org/packages/KumikoUI.Maui"><img alt="KumikoUI.Maui on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Maui?label=KumikoUI.Maui&color=512BD4" /></a>
-    <a href="https://www.nuget.org/packages/KumikoUI.Uno"><img alt="KumikoUI.Uno on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Uno?label=KumikoUI.Uno&color=512BD4" /></a>
-    <a href="https://www.nuget.org/packages/KumikoUI.SkiaSharp"><img alt="KumikoUI.SkiaSharp on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.SkiaSharp?label=KumikoUI.SkiaSharp&color=512BD4" /></a>
-    <a href="https://www.nuget.org/packages/KumikoUI.Core"><img alt="KumikoUI.Core on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Core?label=KumikoUI.Core&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.Maui"><img alt="KumikoUI.Maui on NuGet" src="https://img.shields.io/nuget/vpre/KumikoUI.Maui?label=KumikoUI.Maui&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.Uno"><img alt="KumikoUI.Uno on NuGet" src="https://img.shields.io/nuget/vpre/KumikoUI.Uno?label=KumikoUI.Uno&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.SkiaSharp"><img alt="KumikoUI.SkiaSharp on NuGet" src="https://img.shields.io/nuget/vpre/KumikoUI.SkiaSharp?label=KumikoUI.SkiaSharp&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.Core"><img alt="KumikoUI.Core on NuGet" src="https://img.shields.io/nuget/vpre/KumikoUI.Core?label=KumikoUI.Core&color=512BD4" /></a>
   </p>
 </p>
 
@@ -103,11 +103,11 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Package | Contains | Install it when |
 |---|---|---|
 | [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `KumikoDataGrid` for .NET MAUI, `UseKumikoUI()`, `MauiActionButtonDefinition` | you build a .NET MAUI app |
-| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `UnoActionButtonDefinition`, `KumikoFonts` | you build an Uno Platform app (a preview, see [Supported platforms](#supported-platforms)) |
+| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `UnoActionButtonDefinition`, `KumikoFonts` | you build an Uno Platform app (the least verified host, see [Supported platforms](#supported-platforms)) |
 | [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | `SkiaDrawingContext`, `SkiaResourceCache`, `SkiaFontRegistrar` | you host the engine on your own SkiaSharp surface (the host packages reference it) |
 | [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Data, layout, rendering, input and editing engine; models and themes; the `[KumikoGridItem]` source generator | always (the other packages reference it); it has no UI framework or SkiaSharp dependency |
 
-All four packages share one version. Release notes are in the [CHANGELOG](CHANGELOG.md).
+All four packages share one version, and each depends on the exact version of the others. The current version is `1.0.0-preview.1`, the first 1.0 prerelease: the API may still change before 1.0.0. NuGet hides prerelease versions unless you ask for them; see [Getting Started](#getting-started). Release notes are in the [CHANGELOG](CHANGELOG.md) and [docs/release/1.0.0-preview.1-release-notes.md](docs/release/1.0.0-preview.1-release-notes.md).
 
 ---
 
@@ -122,15 +122,15 @@ All packages target **.NET 10** and **SkiaSharp 4.153.1**.
 | KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; the device suite passes (106 of 106) on macOS 27 |
 | KumikoUI.Maui | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build; the device suite passes (106 of 106) on an Android 15 emulator, including the hardware (GPU) surface and Gboard composition; not yet run on a physical phone |
 | KumikoUI.Maui | Windows (`net10.0-windows10.0.19041.0`) | 10.0.19041 | Windows | CI build only; not yet run on a device |
-| KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; the sample renders and follows the system theme on macOS, but pointer and keyboard use of the desktop head has not been checked, and Windows and Linux have not been run |
+| KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; the sample renders and follows the system theme on macOS, but pointer and keyboard use of the desktop head has not been checked (#274), the grid is missing from the macOS accessibility tree (#277), and Windows and Linux have not been run |
 | KumikoUI.Uno | WebAssembly (`net10.0-browserwasm`) | current evergreen browsers | any OS (`wasm-tools` workload) | CI build (trimmed publish); checked interactively in Chromium, including 100,000 rows |
-| KumikoUI.Uno | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build; checked on an iPhone simulator; known issue: typing over a selected cell value goes in front of it |
-| KumikoUI.Uno | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build; checked on an Android 15 emulator; known issue: the filter popup's search box gets no soft keyboard |
+| KumikoUI.Uno | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build; checked on an iPhone simulator; known issue: typing over a selected cell value goes in front of it (#279); the sample shell sits under the system bars (#280) |
+| KumikoUI.Uno | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build; checked on an Android 15 emulator; known issues: the filter popup's search box gets no soft keyboard (#275), a touch column reorder does not work (#276), a Release build starts slowly (#278), and the sample shell sits under the system bars (#280) |
 | KumikoUI.Uno | Windows App SDK (`net10.0-windows10.0.26100`) | 10.0.19041 | Windows | CI build only; not yet run on a device |
 
 "App build host" is where an app for that head can be built; the libraries themselves are compiled and packed for every head on Windows in CI. "CI build" means compiled and packed in CI. The device results come from the verification passes of 2026-11-13 and are written up, with their known issues, in [docs/maui-verification.md](docs/maui-verification.md) and [docs/uno/verification.md](docs/uno/verification.md). KumikoUI.Uno has no Mac Catalyst head: Uno serves macOS through the desktop head.
 
-> **KumikoUI.Uno is a preview.** The Uno host shares its engine, its API and most of its input code with the MAUI host, and the sample app runs on its WebAssembly, iOS and Android heads. It is labeled a preview because its heads have not all been walked end to end: the desktop head has had no interactive pass, Windows and Linux have not been run, and two input problems on the mobile heads are open (see [docs/uno/verification.md](docs/uno/verification.md)). KumikoUI.Core, KumikoUI.SkiaSharp and KumikoUI.Maui carry the full 1.0 compatibility promise of [docs/VERSIONING.md](docs/VERSIONING.md).
+> **1.0.0-preview.1 is a prerelease of all four packages.** The API may still change before 1.0.0, and the compatibility promise of [docs/VERSIONING.md](docs/VERSIONING.md) starts with 1.0.0. **KumikoUI.Uno is the least verified host.** It shares its engine, its API and most of its input code with the MAUI host, and the sample app runs on its WebAssembly, iOS and Android heads, but its heads have not all been walked end to end: the desktop head has had no interactive pass (#274), Windows and Linux have not been run, and several input and accessibility problems on the desktop and mobile heads are open (#275 to #280). See [docs/uno/verification.md](docs/uno/verification.md). KumikoUI.Core, KumikoUI.SkiaSharp and KumikoUI.Maui have had the device passes listed above.
 
 **Minimum OS versions** are defined once in `Directory.Build.props` (`KumikoMin*Version`) and apply to every library, sample and head. They are re-baselined at each .NET major release, and every change is called out as breaking in the [CHANGELOG](CHANGELOG.md).
 
@@ -155,8 +155,10 @@ The grid, its columns and its options are the same on both hosts. What differs i
 1. Add the package (it brings in `KumikoUI.Core` and `KumikoUI.SkiaSharp`):
 
    ```shell
-   dotnet add package KumikoUI.Maui
+   dotnet add package KumikoUI.Maui --prerelease
    ```
+
+   While only prereleases exist, `--prerelease` (or `--version 1.0.0-preview.1`, or `Version="1.0.0-preview.1"` in a `PackageReference`) is required; without it NuGet finds no stable version. The packages depend on each other at their exact version, so a mismatched set does not restore.
 
 2. Register KumikoUI in `MauiProgram.cs`:
 
@@ -209,8 +211,10 @@ The grid, its columns and its options are the same on both hosts. What differs i
 1. Add the package:
 
    ```shell
-   dotnet add package KumikoUI.Uno
+   dotnet add package KumikoUI.Uno --prerelease
    ```
+
+   While only prereleases exist, `--prerelease` (or `--version 1.0.0-preview.1`, or `Version="1.0.0-preview.1"` in a `PackageReference`) is required.
 
 2. In the app project, make Uno use the SkiaSharp major KumikoUI is built with, and turn on the SkiaSharp canvas (Uno.Sdk defaults to SkiaSharp 3.x, and the app must resolve one SkiaSharp major):
 

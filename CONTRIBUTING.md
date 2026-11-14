@@ -85,7 +85,7 @@ dotnet run --project samples/SampleApp.Uno -f net10.0-desktop
 Package versions come from git tags through [MinVer](https://github.com/adamralph/minver); no project file contains a version.
 
 - A commit tagged `vX.Y.Z` (or `vX.Y.Z-suffix`) builds exactly that version for all four packages.
-- Any other commit builds the next version as a prerelease, for example `0.2.0-alpha.0.8`: eight commits after the last tag. `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 0.2).
+- Any other commit builds the next version as a prerelease, for example `1.0.0-alpha.0.8`: eight commits after the last tag. After a prerelease tag it is that version with the commit count appended (`1.0.0-preview.1.5`). `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 1.0; it only affects builds whose computed version would be lower, so untagged commits after `v0.2.0` build `1.0.0-alpha.0.N`, which sorts below `1.0.0-preview.1`).
 - Clones need tags and history (`git fetch --tags`, no shallow clone) or MinVer falls back to `0.2.0-alpha.0`.
 
 To release:
@@ -94,9 +94,14 @@ To release:
 2. Push a version tag on that commit on `main`:
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v1.0.0-preview.1   # a prerelease: published as a NuGet prerelease and a GitHub prerelease
+git push origin v1.0.0-preview.1
+
+git tag v1.0.0             # a stable release
+git push origin v1.0.0
 ```
+
+A tag with a suffix (`v1.0.0-preview.1`) is a prerelease on NuGet.org and on GitHub; NuGet hides it from consumers unless they ask for prereleases (`dotnet add package KumikoUI.Maui --prerelease`). The heading of its CHANGELOG section is `## [1.0.0-preview.1] - YYYY-MM-DD`.
 
 The section becomes the GitHub release notes, and every package links to the CHANGELOG. Versioning rules (SemVer, lockstep packages, deprecation, support window) are in [docs/VERSIONING.md](docs/VERSIONING.md).
 

@@ -53,8 +53,10 @@ desktop head. Minimum OS versions are in the README's "Supported platforms" tabl
 1. Add the package. It brings `KumikoUI.Core` and `KumikoUI.SkiaSharp` with it:
 
    ```shell
-   dotnet add package KumikoUI.Uno
+   dotnet add package KumikoUI.Uno --prerelease
    ```
+
+   The current version is the prerelease `1.0.0-preview.1`, so NuGet needs `--prerelease` (or `--version 1.0.0-preview.1`).
 
 2. Use the Skia renderer, and make Uno use the SkiaSharp major KumikoUI is built with. Uno.Sdk defaults to SkiaSharp
    3.x; an app must resolve one SkiaSharp major, so set `SkiaSharpVersion` to the version `KumikoUI.Uno` depends on:
