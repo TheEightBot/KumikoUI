@@ -129,7 +129,7 @@ reference. What differs on Uno:
 | Namespace in XAML | `clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui` | `using:KumikoUI.Uno` |
 | Startup | `builder.UseKumikoUI()` | none |
 | `RowHeight`, `HeaderHeight` | `float` | `double` |
-| Render modes | `Auto`, `Software`, `Gpu` | `Auto`, `Software`, `Hardware` |
+| Render modes | `Auto`, `Software`, `Hardware` | `Auto`, `Software`, `Hardware` |
 | Fonts | `ConfigureFonts` fonts reach the grid; `KumikoFonts` | `KumikoFonts` (`KumikoUI.Uno`) |
 | Action buttons from code | `MauiActionButtonDefinition` | `UnoActionButtonDefinition` |
 

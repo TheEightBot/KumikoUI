@@ -65,7 +65,7 @@ Full reference with types and defaults: README section "Host Properties, Command
 Collections (XAML content or property elements): `Columns` (content property), `TableSummaryRows`,
 `GroupDescriptions`, `GroupSummaryRows`.
 
-Also bindable: `RenderMode` (`Auto`, `Software`, `Gpu`; `ActiveRenderMode` reports the surface in use),
+Also bindable: `RenderMode` (`Auto`, `Software`, `Hardware`; `ActiveRenderMode` reports the surface in use),
 `BackgroundRebuildThreshold` (rows from which sort, filter, group and summary rebuilds run on a worker; default
 `KumikoSource.DefaultBackgroundRebuildThreshold`), `ClearSelectionOnEmptyAreaTap`, `FollowSystemTheme`,
 `AnnounceChanges`, `EnableHaptics`, `ShowFrameStats`, `CellTappedCommand`, `HeaderTappedCommand`,

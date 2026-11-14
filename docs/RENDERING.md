@@ -64,7 +64,7 @@ Both hosts draw into a private surface and share one frame-loop design: every re
 
 `KumikoDataGrid.RenderMode` picks the SkiaSharp view the MAUI grid draws on (#71):
 
-| Platform | `Auto` | `Gpu` | Paints on |
+| Platform | `Auto` | `Hardware` | Paints on |
 |----------|--------|-------|-----------|
 | Android | `SKGLView` (OpenGL ES, a texture view) | same | GL thread: the UI thread records an `SKPicture`, the GL thread plays it back |
 | Mac Catalyst | `SKGLView` (Metal) | same | UI thread |
