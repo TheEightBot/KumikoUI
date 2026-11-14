@@ -35,6 +35,7 @@
                 <Button x:Name="themeToggle" Content="Theme: Light" Click="OnToggleThemeClicked" />
                 <Button x:Name="iconsToggle" Content="Icons: Built-in" Click="OnToggleIconsClicked" />
                 <Button x:Name="selectionModeToggle" Content="Select: All" Click="OnToggleSelectionModeClicked" />
+                <Button x:Name="rowDragToggle" Content="Row Drag: Handle" Click="OnToggleRowDragClicked" />
                 <Button Content="Save Layout" Click="OnSaveLayoutClicked" />
                 <Button x:Name="restoreLayoutButton" Content="Restore Layout" Click="OnRestoreLayoutClicked" />
             </StackPanel>

@@ -30,6 +30,7 @@ public sealed partial class BasicGridPage : Page
     private readonly BasicGridViewModel _viewModel = new();
     private readonly Random _random = new(42);
     private KumikoThemeMode _themeMode = KumikoThemeMode.Light;
+    private bool _themeChosen;
     private bool _materialIcons;
 
     public BasicGridPage()
@@ -38,8 +39,19 @@ public sealed partial class BasicGridPage : Page
         DataContext = _viewModel;
         LoadSampleData();
 
+        // Rows can be dragged by their handle, as on the MAUI sample's main page (the Row Drag button cycles the modes)
+        kumiko.ShowRowDragHandle = true;
+
         // Right click (or a long press on touch) opens a context menu at the pointer
         kumiko.ContextMenuRequested += OnGridContextMenuRequested;
+
+        // The grid follows the app theme until a theme is picked: the theme button starts from the one it shows
+        Loaded += (_, _) =>
+        {
+            if (_themeChosen) return;
+            _themeMode = kumiko.ActualTheme == ElementTheme.Dark ? KumikoThemeMode.Dark : KumikoThemeMode.Light;
+            themeToggle.Content = $"Theme: {_themeMode}";
+        };
     }
 
     // ── Context menu ──
@@ -158,9 +170,9 @@ public sealed partial class BasicGridPage : Page
 
     private void OnToggleThemeClicked(object sender, RoutedEventArgs e)
     {
-        // Cycle: Light → Dark → HighContrast → Light.
-        // The Uno control has no Theme DP (unlike MAUI); apply the theme by assigning the
-        // KumikoStyle produced by KumikoTheme.Create — same end result.
+        // Cycle: Light → Dark → HighContrast → Light. The style comes from KumikoTheme.Create (what the Theme
+        // property applies) so the chosen icon set can go on it; assigning it stops following the app theme.
+        _themeChosen = true;
         _themeMode = _themeMode switch
         {
             KumikoThemeMode.Light => KumikoThemeMode.Dark,
@@ -184,6 +196,27 @@ public sealed partial class BasicGridPage : Page
         style.IconProvider = _materialIcons ? MaterialIcons : KumikoIconProvider.Default;
         kumiko.GridStyle = style;
         iconsToggle.Content = _materialIcons ? "Icons: Material" : "Icons: Built-in";
+    }
+
+    private void OnToggleRowDragClicked(object sender, RoutedEventArgs e)
+    {
+        // Cycle: Handle → Full Row → Off → Handle. Both are explicit settings, so they survive a theme change.
+        if (kumiko.ShowRowDragHandle == true)
+        {
+            kumiko.ShowRowDragHandle = false;
+            kumiko.AllowRowDragDrop = true;
+            rowDragToggle.Content = "Row Drag: Full Row";
+        }
+        else if (kumiko.AllowRowDragDrop == true)
+        {
+            kumiko.AllowRowDragDrop = false;
+            rowDragToggle.Content = "Row Drag: OFF";
+        }
+        else
+        {
+            kumiko.ShowRowDragHandle = true;
+            rowDragToggle.Content = "Row Drag: Handle";
+        }
     }
 
     private void OnToggleSelectionModeClicked(object sender, RoutedEventArgs e)
