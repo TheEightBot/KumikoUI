@@ -53,6 +53,18 @@ public class FilterDescription
             : null, KumikoComparer.Default);
 
     /// <summary>
+    /// A copy whose conditions are copies too, for a view build on a worker (#254): later changes to this
+    /// filter's conditions do not reach a build that is running.
+    /// </summary>
+    internal FilterDescription CloneForBuild() => new(Column)
+    {
+        SelectedValues = SelectedValues,
+        Condition1 = Condition1?.Clone(),
+        Condition2 = Condition2?.Clone(),
+        Combination = Combination,
+    };
+
+    /// <summary>
     /// Evaluate with a source's text rules: <paramref name="values"/> is <see cref="SelectedValues"/> as a set
     /// using <paramref name="comparer"/>'s text equality.
     /// </summary>

@@ -1022,7 +1022,7 @@ public class KumikoRenderer : IDisposable
         float textX = indent + chevronSize + style.CellPadding;
         float textRight = areaWidth - style.CellPadding;
 
-        string? captionLabel = groupInfo.GetCaptionLabel(dataSource.GetCaptionSummaryText(groupInfo.GroupPath));
+        string? captionLabel = groupInfo.GetCaptionLabel(KumikoSource.GetCaptionSummaryText(groupInfo));
 
         textX = DrawGroupHeaderRun(ctx, groupInfo.GetTitle(), _paintCache.GroupHeaderText, textX, textRight, rowY, style);
         textX = DrawGroupHeaderRun(ctx, groupInfo.GetCountText(), _paintCache.GroupHeaderCount, textX, textRight, rowY, style);
@@ -1548,14 +1548,9 @@ public class KumikoRenderer : IDisposable
         float frozenWidth,
         float handleOffset = 0)
     {
-        var summaryInfo = dataSource.GetGroupSummaryRowInfo(row);
-        if (summaryInfo == null) return;
-
-        var (groupPath, summaryIndex) = summaryInfo.Value;
-        var groupSummaries = dataSource.GetGroupSummaries(groupPath);
-        if (groupSummaries == null || summaryIndex >= groupSummaries.Count) return;
-
-        var summary = groupSummaries[summaryIndex];
+        // Read from the group directly, so drawing composes no group path (#254).
+        var summary = dataSource.GetGroupSummaryRow(row);
+        if (summary == null) return;
         var textPaint = _paintCache.GroupSummaryText;
 
         // Background spans full viewport

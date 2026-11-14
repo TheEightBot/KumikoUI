@@ -1844,6 +1844,8 @@ _ = Task.Run(() =>
 
 For many changes at once, post one callback that makes them inside `using (kumiko.DataSource.BeginUpdate()) { ... }`, or build a new collection in the background and assign it to `ItemsSource` on the UI thread.
 
+**Large sources rebuild in the background.** From `DataSource.BackgroundRebuildThreshold` items up (10,000 in the MAUI and Uno grids; a `KumikoSource` you create stays synchronous), sorting, filtering, grouping and summaries run on a worker. Requests made in one UI turn start one rebuild, and a newer one cancels a running one. The grid keeps drawing the current rows until the new view is swapped in on the UI thread (`ViewChanged`, then `ViewUpdated`); selection, the current cell and an open edit follow their items. `DataSource.IsViewUpdatePending` tells whether a rebuild is under way, and `await DataSource.WhenViewUpdatedAsync()` waits for the new order. While a rebuild runs, the worker reads item properties and calls your comparers, filter predicate, group selectors and custom aggregates, so these must only read.
+
 ---
 
 ## Native AOT and Trimming

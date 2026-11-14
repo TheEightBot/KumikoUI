@@ -28,6 +28,11 @@ public sealed class KumikoViewChangedEventArgs : EventArgs
     internal static KumikoViewChangedEventArgs Rebuild(object?[] oldRowKeys, object?[] newRowKeys) =>
         new(KumikoViewChangeKind.Rebuild, -1, 0, oldRowKeys.Length, oldRowKeys, newRowKeys);
 
+    /// <summary>A rebuild whose row-key index was built already (by a background view build, #254).</summary>
+    internal static KumikoViewChangedEventArgs Rebuild(object?[] oldRowKeys, object?[] newRowKeys,
+        Dictionary<object, int>? newRowByKey) =>
+        new(KumikoViewChangeKind.Rebuild, -1, 0, oldRowKeys.Length, oldRowKeys, newRowKeys) { _newRowByKey = newRowByKey };
+
     internal static KumikoViewChangedEventArgs Insert(int viewIndex, int count, object?[] newRowKeys) =>
         new(KumikoViewChangeKind.Insert, viewIndex, count, newRowKeys.Length - count, null, newRowKeys);
 
@@ -84,16 +89,5 @@ public sealed class KumikoViewChangedEventArgs : EventArgs
         return NewRowByKey().TryGetValue(item, out int row) ? row : -1;
     }
 
-    private Dictionary<object, int> NewRowByKey()
-    {
-        if (_newRowByKey != null) return _newRowByKey;
-
-        var map = new Dictionary<object, int>(_newRowKeys.Length, RowKeyComparer.Instance);
-        for (int i = 0; i < _newRowKeys.Length; i++)
-        {
-            if (_newRowKeys[i] is { } key)
-                map.TryAdd(key, i);
-        }
-        return _newRowByKey = map;
-    }
+    private Dictionary<object, int> NewRowByKey() => _newRowByKey ??= RowKeys.Index(_newRowKeys);
 }

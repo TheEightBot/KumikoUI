@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace KumikoUI.Core.Tests.TestHelpers;
 
@@ -22,12 +23,30 @@ internal sealed class TestUiThread : IDisposable
 
     public int ManagedThreadId => _thread.ManagedThreadId;
 
+    private long _longestWorkTicks;
+
+    /// <summary>
+    /// The longest a single queued work item (an <see cref="Invoke{T}"/> or a posted callback) has run since the last
+    /// <see cref="ResetTiming"/>, not counting garbage collection pauses (which stop every thread, not just this one).
+    /// </summary>
+    public TimeSpan LongestWorkItem => TimeSpan.FromTicks(Interlocked.Read(ref _longestWorkTicks));
+
+    /// <summary>Start measuring <see cref="LongestWorkItem"/> afresh.</summary>
+    public void ResetTiming() => Interlocked.Exchange(ref _longestWorkTicks, 0);
+
     private void Run()
     {
         if (_installContext)
             SynchronizationContext.SetSynchronizationContext(new QueueContext(this));
         foreach (var (callback, state) in _queue.GetConsumingEnumerable())
+        {
+            var pausedBefore = GC.GetTotalPauseDuration();
+            long started = Stopwatch.GetTimestamp();
             callback(state);
+            var worked = Stopwatch.GetElapsedTime(started) - (GC.GetTotalPauseDuration() - pausedBefore);
+            if (worked.Ticks > Interlocked.Read(ref _longestWorkTicks))
+                Interlocked.Exchange(ref _longestWorkTicks, worked.Ticks);
+        }
     }
 
     /// <summary>Run <paramref name="func"/> on the thread, after everything queued before it, and return its result.</summary>
