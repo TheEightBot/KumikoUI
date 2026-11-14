@@ -161,6 +161,7 @@ public partial class KumikoDataGrid
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
             _inputController.DragRowIndex, _inputController.DragRowScreenY,
             _editSession, _inputController.PopupManager);
+        OnKeyboardFrameRendered(); // KumikoDataGrid.KeyboardAvoidance.cs
     }
 
     /// <summary>

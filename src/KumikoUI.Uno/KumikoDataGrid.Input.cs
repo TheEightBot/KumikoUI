@@ -90,6 +90,9 @@ public partial class KumikoDataGrid
 
         // ── Text-input proxy and adapter (see KumikoDataGrid.Editing.cs) ──
         AttachInputProxy();
+
+        // ── On-screen keyboard (see KumikoDataGrid.KeyboardAvoidance.cs) ──
+        ObserveInputPane();
     }
 
     /// <summary>
@@ -113,6 +116,7 @@ public partial class KumikoDataGrid
 
         // Detach the hidden TextBox proxy's events (see KumikoDataGrid.Editing.cs).
         TeardownInputProxy();
+        StopObservingInputPane();
     }
 
     /// <summary>

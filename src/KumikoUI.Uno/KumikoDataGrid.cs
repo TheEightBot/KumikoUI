@@ -72,6 +72,7 @@ public partial class KumikoDataGrid : UserControl
         // The hidden TextBox proxy and the text-input adapter (KumikoDataGrid.Editing.cs).
         _textInput = SetupInputProxy();
         _syncTextInput = SyncTextInputQueued;
+        _scrollAboveKeyboard = ScrollEditedCellAboveKeyboard;
 
         // The content is the grid's own: replacing it would detach the canvas
         RegisterPropertyChangedCallback(ContentProperty, OnContentReplaced);
@@ -218,6 +219,7 @@ public partial class KumikoDataGrid : UserControl
     private void OnEditSessionCellEndEdit(object? sender, CellEndEditEventArgs e)
     {
         _selection.IsEditing = false;
+        QueueKeyboardInsetRelease();
         if (!_filterPopupActive)
             StopCursorBlinkTimer();
         if (_lastPointerWasTouch)

@@ -1036,6 +1036,8 @@ public partial class KumikoDataGrid : ContentView
         _selectionBinder.Detach(); // the app's SelectedItems list, when it supplied one
 
 #if MACCATALYST || IOS
+        StopObservingKeyboardFrame();
+
         // Remove native keyboard input
         if (_nativeKeyInput != null)
         {
@@ -1243,6 +1245,7 @@ public partial class KumikoDataGrid : ContentView
             _nativeKeyInput = CreateNativeTextInput(); // KumikoDataGrid.TextInput.cs
             platformView.AddSubview(_nativeKeyInput);
             _useNativeKeyInput = true;
+            ObserveKeyboardFrame(); // keeps the edited cell above the on-screen keyboard (#258)
         }
     }
 
