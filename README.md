@@ -1989,6 +1989,8 @@ All drawing goes through the `IDrawingContext` abstraction, so Core has no depen
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/RENDERING.md](docs/RENDERING.md) for contributor detail, and [docs/uno/](docs/uno/README.md) for the Uno port's design notes.
 
+Every interaction timing and threshold (double tap, long press, drag and pan thresholds, touch target sizes, momentum presets, transition durations) is listed in [docs/INTERACTION.md](docs/INTERACTION.md).
+
 ---
 
 ## Sample Applications
