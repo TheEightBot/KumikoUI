@@ -19,7 +19,9 @@ namespace KumikoUI.Maui;
 /// <remarks>
 /// <list type="bullet">
 /// <item>The input view takes focus when the grid is pressed, so a hardware keyboard navigates the grid; it
-/// becomes a text editor and shows the soft keyboard only while an edit or the filter popup's search box is open.
+/// becomes a text editor and shows the soft keyboard only while an editor that takes typed text (a text surface) or
+/// the filter popup's search box is open. A scroll picker, date picker or combo box raises no soft keyboard, and a
+/// hardware keyboard still operates it.
 /// </item>
 /// <item>A new edited cell (or the search box) restarts the input method, with the keyboard type of its editor;
 /// a change Core makes to the text (undo, paste, a shortcut) restarts it too, and a selection or composition change
@@ -158,7 +160,10 @@ public partial class KumikoDataGrid
         if (!ReferenceEquals(session, _androidTextInput.Session)) BindAndroidSession(session);
 
         var imm = GetInputMethodManager(view);
-        bool wanted = _editSession.IsEditing || session != null;
+        // Only an editor that takes typed text (a text surface) raises the soft keyboard. A scroll picker, a date picker
+        // or a combo box is operated by touch and by hardware keys, which the input view still receives while it holds
+        // focus, and the keyboard would cover half the grid.
+        bool wanted = session != null;
         if (wanted)
         {
             bool wasRequested = _androidImeRequested;

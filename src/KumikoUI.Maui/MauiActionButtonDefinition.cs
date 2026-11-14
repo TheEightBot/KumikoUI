@@ -16,14 +16,16 @@ namespace KumikoUI.Maui;
 /// <dg:MauiActionButtonDefinition
 ///     Label="Details"
 ///     BackgroundColor="#0D6EFD"
-///     Command="{Binding Path=BindingContext.ViewDetailsCommand,
-///                       Source={x:Reference actionsGrid}}" />
+///     Command="{Binding ViewDetailsCommand}" />
 /// ]]></code>
 ///
 /// Because <c>MauiActionButtonDefinition</c> is not part of the visual tree, it
-/// does <b>not</b> inherit <c>BindingContext</c> automatically. Use
-/// <c>Source={x:Reference …}</c> or <c>Source={RelativeSource …}</c> to point
-/// bindings at the correct source object.
+/// does not inherit <c>BindingContext</c> by itself. <see cref="KumikoDataGrid"/> hands its own
+/// <c>BindingContext</c> to the definitions of every column whose <c>CustomCellRenderer</c> is an
+/// <see cref="ActionButtonsCellRenderer"/>, so a plain <c>{Binding Path}</c> resolves against the grid's
+/// view model (the page's <c>BindingContext</c>, unless the grid sets its own), as
+/// <c>UnoActionButtonDefinition</c> does with <c>DataContext</c>. <c>Source={x:Reference …}</c> still works. The
+/// grid redraws when a property of a definition changes after it is shown.
 /// The colors are <see cref="Color"/> values, like the grid's other color properties (named colors, hex, resources and
 /// <c>AppThemeBinding</c> work); the <see cref="IActionButtonDefinition"/> members expose them as
 /// <see cref="KumikoColor"/>, cached when they change so the render pass reads them without converting.
@@ -110,6 +112,17 @@ public sealed class MauiActionButtonDefinition : BindableObject, IActionButtonDe
     /// to <see cref="Command"/>). Ignored by the display-only renderer.
     /// </summary>
     public Action? Action { get; set; }
+
+    /// <summary>Raised after any property of this definition changed, so a host can redraw.</summary>
+    internal event EventHandler? Changed;
+
+    /// <inheritdoc/>
+    protected override void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+    {
+        base.OnPropertyChanged(propertyName);
+        if (propertyName != BindingContextProperty.PropertyName)
+            Changed?.Invoke(this, EventArgs.Empty);
+    }
 
     // ── IActionButtonDefinition ──────────────────────────────────
 

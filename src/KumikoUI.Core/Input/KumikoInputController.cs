@@ -101,8 +101,10 @@ public sealed partial class KumikoInputController
     // The device of the press in progress: a touch drag on a row pans, a mouse or pen drag reorders it.
     private KumikoPointerDeviceType _pressDeviceType;
 
-    // Edge autoscroll during a row drag, in pixels per second (positive scrolls down); 0 when not autoscrolling.
+    // Edge autoscroll during a row drag (vertical) or a column drag (horizontal), in pixels per second (positive
+    // scrolls down or right); 0 when not autoscrolling.
     private float _autoScrollVelocityY;
+    private float _autoScrollVelocityX;
 
     private const float PanThreshold = 10f;
     private const float DragThreshold = 8f;
@@ -285,12 +287,13 @@ public sealed partial class KumikoInputController
     public bool IsInertialScrolling => _inertialScroller.IsActive;
 
     /// <summary>
-    /// Whether a drag holds the pointer in an edge autoscroll band (see <see cref="ScrollSettings.AutoScrollEdgeSize"/>)
-    /// and the grid can still scroll that way. Hosts check it after each pointer event and, while it is true, call
+    /// Whether a row drag or a column header drag holds the pointer in an edge autoscroll band (see
+    /// <see cref="ScrollSettings.AutoScrollEdgeSize"/>) and the grid can still scroll that way. Hosts check it after each pointer event and, while it is true, call
     /// <see cref="UpdateAutoScroll"/> once per frame (from the same frame loop or timer as
     /// <see cref="UpdateInertialScroll"/>).
     /// </summary>
-    public bool IsAutoScrolling => _isDraggingRow && _autoScrollVelocityY != 0;
+    public bool IsAutoScrolling =>
+        (_isDraggingRow && _autoScrollVelocityY != 0) || (_isDraggingColumn && _autoScrollVelocityX != 0);
 
     /// <summary>
     /// Whether the grid responds to the user. While false, pointer and key events are ignored (the grid does
@@ -481,6 +484,7 @@ public sealed partial class KumikoInputController
         _dragRowIndex = -1;
         _armedDragRow = -1;
         _autoScrollVelocityY = 0;
+        _autoScrollVelocityX = 0;
         _editorConsumedPointerDown = false;
         _inertialScroller.Reset();
         _feedback.ClearHover();
@@ -856,10 +860,11 @@ public sealed partial class KumikoInputController
     }
 
     /// <summary>
-    /// Advance edge autoscroll by one frame: while a row drag holds the pointer in an edge band
+    /// Advance edge autoscroll by one frame: while a row drag holds the pointer in a top or bottom edge band, or a
+    /// column header drag holds it in a left or right edge band of the scrolling columns
     /// (<see cref="IsAutoScrolling"/>), scroll toward that edge by the band's speed times
-    /// <paramref name="frameIntervalMs"/>. The ghost stays under the pointer, so the drop target follows the rows
-    /// scrolling by. Returns true while it keeps scrolling; false when there is nothing to do or the content edge was
+    /// <paramref name="frameIntervalMs"/>. The ghost stays under the pointer, so the drop target follows the rows or
+    /// columns scrolling by. Returns true while it keeps scrolling; false when there is nothing to do or the content edge was
     /// reached (autoscroll then waits for the pointer to move again). Call it from the frame loop or timer that runs
     /// <see cref="UpdateInertialScroll"/>; it allocates nothing.
     /// </summary>
@@ -870,12 +875,25 @@ public sealed partial class KumikoInputController
     {
         if (!IsAutoScrolling) return false;
 
-        float oldY = scroll.OffsetY;
-        scroll.ScrollBy(0, _autoScrollVelocityY * Math.Max(0, frameIntervalMs) / 1000f);
-        if (scroll.OffsetY == oldY)
+        float seconds = Math.Max(0, frameIntervalMs) / 1000f;
+        float oldX = scroll.OffsetX, oldY = scroll.OffsetY;
+        if (_isDraggingColumn)
         {
-            _autoScrollVelocityY = 0; // at the content edge
-            return false;
+            scroll.ScrollBy(_autoScrollVelocityX * seconds, 0);
+            if (scroll.OffsetX == oldX)
+            {
+                _autoScrollVelocityX = 0; // at the content edge
+                return false;
+            }
+        }
+        else
+        {
+            scroll.ScrollBy(0, _autoScrollVelocityY * seconds);
+            if (scroll.OffsetY == oldY)
+            {
+                _autoScrollVelocityY = 0; // at the content edge
+                return false;
+            }
         }
 
         Redraw();
@@ -898,6 +916,7 @@ public sealed partial class KumikoInputController
         _dragRowIndex = -1;
         _armedDragRow = -1;
         _autoScrollVelocityY = 0;
+        _autoScrollVelocityX = 0;
         _pressDeviceType = e.DeviceType;
         _editorConsumedPointerDown = false;
         _lastPanX = e.X;
@@ -998,6 +1017,7 @@ public sealed partial class KumikoInputController
         if (_isDraggingColumn)
         {
             DragColumnScreenX = e.X - _dragColumnOffset;
+            _autoScrollVelocityX = ComputeColumnDragAutoScroll(e.X, scroll, style, columns);
             Redraw();
             e.Handled = true;
             return;
@@ -1052,6 +1072,7 @@ public sealed partial class KumikoInputController
                     float columnLeft = ColumnDragGeometry.ScreenLeft(columns, startHit.ColumnIndex, scroll, style);
                     _dragColumnOffset = float.IsNaN(columnLeft) ? 0 : _lastPanX - columnLeft;
                     DragColumnScreenX = e.X - _dragColumnOffset;
+                    _autoScrollVelocityX = ComputeColumnDragAutoScroll(e.X, scroll, style, columns);
                     if (CanAnimate(style)) _animations.StartLift();
                     RequestHaptic(KumikoHapticKind.DragStart, _pressDeviceType);
                     e.Handled = true;
@@ -1237,6 +1258,7 @@ public sealed partial class KumikoInputController
             FinishColumnReorder(e.X, scroll, columns, style);
             _isDraggingColumn = false;
             _dragColumnIndex = -1;
+            _autoScrollVelocityX = 0;
             SettleDroppedColumn(dragged, releasedAt, scroll, style, dataSource);
             RequestHaptic(KumikoHapticKind.Drop, _pressDeviceType);
             Redraw();
@@ -1497,6 +1519,7 @@ public sealed partial class KumikoInputController
             var dragged = _dragColumnIndex >= 0 && _dragColumnIndex < dataSource.Columns.Count ? dataSource.Columns[_dragColumnIndex] : null;
             _isDraggingColumn = false;
             _dragColumnIndex = -1;
+            _autoScrollVelocityX = 0;
             SettleDroppedColumn(dragged, DragColumnScreenX, scroll, style, dataSource);
             Redraw();
             e.Handled = true;
@@ -1737,7 +1760,7 @@ public sealed partial class KumikoInputController
         DragRowScreenY = RowDragGeometry.ClampGhostTop(pointerY - _dragRowOffset, scroll, style, dataSource);
         _autoScrollVelocityY = ComputeAutoScrollVelocity(
             pointerY, RowDragGeometry.ScrollableTop(style, dataSource),
-            RowDragGeometry.RowsBottom(scroll, style, dataSource), scroll);
+            RowDragGeometry.RowsBottom(scroll, style, dataSource), scroll.OffsetY, scroll.MaxOffsetY);
         Redraw();
     }
 
@@ -1749,24 +1772,42 @@ public sealed partial class KumikoInputController
     }
 
     /// <summary>
-    /// The edge autoscroll speed (pixels per second, positive scrolls down) for a pointer at viewport y
-    /// <paramref name="pointerY"/> over a scrolling area from <paramref name="top"/> to <paramref name="bottom"/>: in
-    /// a band of <see cref="ScrollSettings.AutoScrollEdgeSize"/> at either edge (at most a third of the area), the
-    /// speed grows linearly from 0 at the band's inner edge to <see cref="ScrollSettings.AutoScrollMaxSpeed"/> at its
-    /// outer edge and stays there beyond it. 0 elsewhere, and when the grid cannot scroll further that way. It knows
-    /// nothing of rows, so another drag (a drag-select) can share it.
+    /// The edge autoscroll speed (pixels per second, positive scrolls down or right) for a pointer at viewport
+    /// coordinate <paramref name="pointer"/> over a scrolling area from <paramref name="start"/> to
+    /// <paramref name="end"/> (top and bottom for a row drag, left and right for a column drag): in a band of
+    /// <see cref="ScrollSettings.AutoScrollEdgeSize"/> at either edge (at most a third of the area), the speed grows
+    /// linearly from 0 at the band's inner edge to <see cref="ScrollSettings.AutoScrollMaxSpeed"/> at its outer edge
+    /// and stays there beyond it. 0 elsewhere, and when the grid cannot scroll further that way (<paramref name="offset"/>
+    /// is at 0 or <paramref name="maxOffset"/>). It knows nothing of rows or columns, so another drag (a drag-select)
+    /// can share it.
     /// </summary>
-    private float ComputeAutoScrollVelocity(float pointerY, float top, float bottom, ScrollState scroll)
+    private float ComputeAutoScrollVelocity(float pointer, float start, float end, float offset, float maxOffset)
     {
         var settings = _inertialScroller.Settings;
-        float edge = Math.Min(settings.AutoScrollEdgeSize, (bottom - top) / 3);
+        float edge = Math.Min(settings.AutoScrollEdgeSize, (end - start) / 3);
         if (edge <= 0 || settings.AutoScrollMaxSpeed <= 0) return 0;
 
-        if (pointerY < top + edge && scroll.OffsetY > 0)
-            return -settings.AutoScrollMaxSpeed * Math.Min(1f, (top + edge - pointerY) / edge);
-        if (pointerY > bottom - edge && scroll.OffsetY < scroll.MaxOffsetY)
-            return settings.AutoScrollMaxSpeed * Math.Min(1f, (pointerY - (bottom - edge)) / edge);
+        if (pointer < start + edge && offset > 0)
+            return -settings.AutoScrollMaxSpeed * Math.Min(1f, (start + edge - pointer) / edge);
+        if (pointer > end - edge && offset < maxOffset)
+            return settings.AutoScrollMaxSpeed * Math.Min(1f, (pointer - (end - edge)) / edge);
         return 0;
+    }
+
+    /// <summary>
+    /// The horizontal edge autoscroll speed of a column header drag with the pointer at viewport x
+    /// <paramref name="pointerX"/>: only a column of the scrolling pane scrolls (a frozen pane does not move), with the
+    /// bands inside the scrolling pane's left and right edges.
+    /// </summary>
+    private float ComputeColumnDragAutoScroll(
+        float pointerX, ScrollState scroll, KumikoStyle style, IReadOnlyList<KumikoColumn> columns)
+    {
+        if (_dragColumnIndex < 0 || _dragColumnIndex >= columns.Count ||
+            columns[_dragColumnIndex].Pane != ColumnFreezeMode.None)
+            return 0;
+
+        ColumnDragGeometry.ScrollingPaneBounds(columns, scroll, style, out float left, out float right);
+        return ComputeAutoScrollVelocity(pointerX, left, right, scroll.OffsetX, scroll.MaxOffsetX);
     }
 
     /// <summary>

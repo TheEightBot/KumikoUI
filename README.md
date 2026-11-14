@@ -558,7 +558,7 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
 
 ### XAML with bound commands (.NET MAUI)
 
-`MauiActionButtonDefinition` is a `BindableObject`, so every property, including `Command`, can be bound. It is not in the visual tree and does not inherit `BindingContext`, so point bindings at a source with `x:Reference` or `RelativeSource`. Its colors are MAUI `Color` values, like the grid's other color properties:
+`MauiActionButtonDefinition` is a `BindableObject`, so every property, including `Command`, can be bound. It is not in the visual tree, so the grid hands it its own `BindingContext` (the page's view model, unless the grid sets another) and a plain `{Binding Path}` resolves against it; the grid redraws when a property of a definition changes. Its colors are MAUI `Color` values, like the grid's other color properties:
 
 <!-- snippet: maui -->
 ```xml
@@ -571,11 +571,11 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
                     <kumiko:MauiActionButtonDefinition
                         Label="Details"
                         BackgroundColor="#0D6EFD"
-                        Command="{Binding Path=BindingContext.ViewDetailsCommand, Source={x:Reference actionsGrid}}" />
+                        Command="{Binding ViewDetailsCommand}" />
                     <kumiko:MauiActionButtonDefinition
                         Label="Delete"
                         BackgroundColor="#DC3545"
-                        Command="{Binding Path=BindingContext.DeleteCommand, Source={x:Reference actionsGrid}}" />
+                        Command="{Binding DeleteCommand}" />
                 </render:ActionButtonsCellRenderer.Buttons>
             </render:ActionButtonsCellRenderer>
         </core:KumikoColumn.CustomCellRenderer>

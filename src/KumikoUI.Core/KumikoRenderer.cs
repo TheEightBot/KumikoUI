@@ -1898,6 +1898,9 @@ public sealed class KumikoRenderer : IDisposable
 
         // Draw grip icons for scrollable visible rows (clipped below frozen rows)
         float scrollableAreaTop = dataAreaTop + frozenRowHeight;
+        // Clipped like the cells: a row scrolling under a frozen row must not draw its grip over the frozen row's
+        ctx.Save();
+        ctx.ClipRect(new KumikoRect(handleX, scrollableAreaTop, handleWidth, Math.Max(0, adjustedViewportHeight - scrollableAreaTop)));
         for (int row = firstRow; row <= lastRow; row++)
         {
             if (dataSource.IsNonDataRow(row)) continue;
@@ -1910,6 +1913,7 @@ public sealed class KumikoRenderer : IDisposable
             if (rowY + style.RowHeight / 2 < pinnedBandBottom) continue;
             DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
         }
+        ctx.Restore();
 
         // Draw a subtle vertical divider between handle and columns
         float dividerX = isLeft ? handleWidth : handleX;

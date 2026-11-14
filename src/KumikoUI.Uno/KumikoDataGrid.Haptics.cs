@@ -36,8 +36,20 @@ public partial class KumikoDataGrid
         {
 #if IOS
             var style = e.Kind == KumikoHapticKind.Drop ? UIKit.UIImpactFeedbackStyle.Light : UIKit.UIImpactFeedbackStyle.Medium;
-            using var generator = new UIKit.UIImpactFeedbackGenerator(style);
-            generator.ImpactOccurred();
+            if (OperatingSystem.IsIOSVersionAtLeast(17, 5))
+            {
+                // iOS 17.5 obsoleted the constructor: the generator belongs to a view (the key window here)
+                if (GetHapticWindow() is { } view)
+                {
+                    using var generator = UIKit.UIImpactFeedbackGenerator.GetFeedbackGenerator(style, view);
+                    generator.ImpactOccurred();
+                }
+            }
+            else
+            {
+                using var generator = new UIKit.UIImpactFeedbackGenerator(style);
+                generator.ImpactOccurred();
+            }
 #elif ANDROID
             if (global::Uno.UI.ContextHelper.Current is Android.App.Activity { Window.DecorView: { } view })
             {
@@ -52,4 +64,17 @@ public partial class KumikoDataGrid
             // A device without haptics: nothing to give
         }
     }
+
+#if IOS
+    /// <summary>The key window of the app's scene, the view an impact generator is created for on iOS 17.5 and later.</summary>
+    private static UIKit.UIWindow? GetHapticWindow()
+    {
+        foreach (var scene in UIKit.UIApplication.SharedApplication.ConnectedScenes)
+        {
+            if (scene is UIKit.UIWindowScene windowScene)
+                return windowScene.KeyWindow ?? windowScene.Windows.FirstOrDefault();
+        }
+        return null;
+    }
+#endif
 }

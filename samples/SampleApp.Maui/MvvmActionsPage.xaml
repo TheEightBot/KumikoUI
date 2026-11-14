@@ -151,8 +151,8 @@
                     A Star column shrinks to its MinWidth (40 by default) when the other columns fill the grid, as they
                     do on a phone; MinWidth="180" keeps both buttons wide enough to tap there.
 
-                    MauiActionButtonDefinition is NOT in the visual tree so BindingContext
-                    is not inherited — use Source={x:Reference actionsGrid} to resolve the VM.
+                    MauiActionButtonDefinition is not in the visual tree, so the grid hands it its own BindingContext
+                    (the page's view model): a plain {Binding ...} resolves against it.
                 -->
                 <core:KumikoColumn x:Name="actionsColumn"
                                      Header="Actions"
@@ -170,13 +170,11 @@
                                 <dg:MauiActionButtonDefinition
                                     Label="Details"
                                     BackgroundColor="#0D6EFD"
-                                    Command="{Binding Path=BindingContext.ViewDetailsCommand,
-                                                      Source={x:Reference actionsGrid}}" />
+                                    Command="{Binding ViewDetailsCommand}" />
                                 <dg:MauiActionButtonDefinition
                                     Label="Delete"
                                     BackgroundColor="#DC3545"
-                                    Command="{Binding Path=BindingContext.DeleteCommand,
-                                                      Source={x:Reference actionsGrid}}" />
+                                    Command="{Binding DeleteCommand}" />
                             </render:ActionButtonsCellRenderer.Buttons>
                         </render:ActionButtonsCellRenderer>
                     </core:KumikoColumn.CustomCellRenderer>

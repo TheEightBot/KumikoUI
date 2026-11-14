@@ -84,7 +84,7 @@ Soft keyboard (#41, #258), on a row near the bottom of the grid:
 - Back with the keyboard up hid the keyboard and left the edit open (`06-after-back.jpg`); the layout returned to
   normal. Enter committed the text and ended the edit (`07-after-enter.jpg`); Escape ended an edit. A further Back
   with no edit open left the app, as Android does.
-- Observation, by design per `docs/TEXT-INPUT.md` ("No text surface"): a non-text editor (the Level scroll picker,
+- Observation (fixed since: only a text editor raises the soft keyboard; this was by design when measured): a non-text editor (the Level scroll picker,
   `08-edit-level.jpg`) also raises the soft keyboard, so typed characters reach the picker as key events. It covers the
   lower half of the grid for an editor that mostly needs touch. A product decision, not changed here.
 
@@ -115,12 +115,12 @@ that device with the `render` tool.
 
 Not fixed here (outside `src/KumikoUI.Maui`, the sample and `eng/devflow`, or a product decision):
 
-1. Core renderer: while a row scrolls under a frozen row, its drag handle glyph is drawn over the frozen row's handle
+1. (Fixed: the grips are clipped.) Core renderer: while a row scrolls under a frozen row, its drag handle glyph is drawn over the frozen row's handle
    (visible in `ios-iphone/16-main-scrolled-vertically.jpg` and `android-manual/01-gpu-fling-framestats.jpg`): the handle
    column is not clipped to the scrolling area.
 2. Dragging a column header across a phone-width scrolling pane cannot reach a column that is off screen: only row
    drags autoscroll (`ScrollSettings.AutoScrollEdgeSize`). A horizontal autoscroll for column drags would make reordering
-   work on phones.
+   work on phones. (Done: column header drags autoscroll sideways in the scrolling pane's edge bands.)
 3. Soft keyboard for non-text editors on Android (see above).
 4. Mouse hover and a physical-device pass on Android (hover, haptics feel, GPU driver variety).
 5. DevFlow preview issues that shape the suite: refused point taps on the Android GPU view, blank GPU screenshots,

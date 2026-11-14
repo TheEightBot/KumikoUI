@@ -172,6 +172,7 @@ does not summon the on-screen keyboard, and a real text box is the one element e
 input method to. The `TextBox` mirrors the open editor's text and selection and is empty when no editor is open. It is
 invisible, takes no pointer input and is kept out of assistive technology.
 
+- **Editors without text.** A scroll picker, date picker or combo box takes no typed text, so the soft keyboard the text box's focus raises on Android and iOS is hidden again; a hardware keyboard still reaches the editor through the focused text box.
 - **Text and input methods.** The adapter (`KumikoTextInputAdapter`) replays what the keyboard changes on the editor's
   `ITextInputSession`, so typing, backspace, selection, undo and redo behave as in the MAUI host.
   Input-method composition (Japanese, Chinese, Korean, dead keys) reaches the editor through the text box's composition

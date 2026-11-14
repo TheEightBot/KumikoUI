@@ -28,6 +28,7 @@ public partial class KumikoDataGrid
             _boundCollectionChangedSource = null;
         }
 
+        UnsubscribeActionButtonDefinitions();
         Columns.CollectionChanged -= OnColumnsCollectionChanged;
         TableSummaryRows.CollectionChanged -= OnTableSummaryRowsCollectionChanged;
         GroupDescriptions.CollectionChanged -= OnGroupDescriptionsCollectionChanged;
@@ -58,6 +59,7 @@ public partial class KumikoDataGrid
         // Only what differs is copied, so returning to the page keeps group expansion and the like
         if (!Columns.SequenceEqual(_dataSource.Columns))
             _dataSource.SetColumns(Columns);
+        SyncActionButtonDefinitions();
         if (!TableSummaryRows.SequenceEqual(_dataSource.TableSummaryRows))
             SyncTableSummaryRows(TableSummaryRows);
         if (!GroupDescriptions.SequenceEqual(_dataSource.GroupDescriptions))

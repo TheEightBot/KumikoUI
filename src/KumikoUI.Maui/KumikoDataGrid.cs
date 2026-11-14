@@ -155,6 +155,7 @@ public partial class KumikoDataGrid : ContentView
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
 
+        BindingContextChanged += OnGridBindingContextChanged; // KumikoDataGrid.ActionButtons.cs
 
 #if MACCATALYST || IOS
         // Set up native keyboard input and scroll gesture after the view is loaded
@@ -621,6 +622,7 @@ public partial class KumikoDataGrid : ContentView
             if (IsObservingCollections)
                 newCollection.CollectionChanged += OnColumnsCollectionChanged;
             _dataSource.SetColumns(newCollection);
+            SyncActionButtonDefinitions();
         }
         else
         {
@@ -634,6 +636,7 @@ public partial class KumikoDataGrid : ContentView
     {
         if (_syncingFromSource) return; // the grid is copying the source's column order in (KumikoDataGrid.Layout.cs)
         _dataSource.SetColumns(Columns);
+        SyncActionButtonDefinitions();
         InvalidateSurface();
     }
 
