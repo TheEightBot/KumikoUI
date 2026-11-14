@@ -82,6 +82,8 @@
 
   <ItemGroup Label="Build">
     <PackageVersion Include="MinVer" Version="8.0.0" />
+    <!-- Records the public API of the four shipped libraries in PublicAPI.*.txt files (Directory.Build.targets, #54). -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
   </ItemGroup>
 
   <!--

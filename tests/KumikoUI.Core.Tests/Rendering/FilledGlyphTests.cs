@@ -118,7 +118,8 @@ public class FilledGlyphTests
         public void DrawText(string text, float x, float y, KumikoPaint paint) { }
         public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
             KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
-            KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true) { }
+            KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true)
+        { }
         public KumikoSize MeasureText(string text, KumikoPaint paint) => new(0, 0);
         public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) => new(0, 0, 0);
         public void ClipRect(KumikoRect rect) { }

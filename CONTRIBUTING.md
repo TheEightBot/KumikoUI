@@ -164,6 +164,27 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 - KumikoUI.Core must stay free of UI-framework and SkiaSharp references; host-specific code belongs in KumikoUI.Maui or KumikoUI.Uno.
 - Add or update tests with every behavior change (xUnit; see [`tests/`](tests)). Bug fixes start with a failing test.
 
+### Public API and formatting
+
+**Recording an API change.** The public surface of the four shipped libraries (Core, SkiaSharp, Maui, Uno) is recorded in `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to each project and checked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Adding, changing or removing a public or protected member without updating those files fails the build (RS0016 for an unrecorded member, RS0017 for a recorded one that no longer exists). Nothing has shipped as a stable release yet, so every `Shipped` file is empty and the whole surface is in the `Unshipped` files; at the first stable release the maintainer moves the `Unshipped` lines into `Shipped`, and from then on a removal or change of a shipped line is a breaking change that must be called out in the CHANGELOG.
+
+To record a change, either:
+
+- run `eng/update-public-api.sh` (all four libraries) or `eng/update-public-api.sh Core` (named ones), which rewrites the `Unshipped` files from the current source for every target framework the machine can build, then review `git diff -- '*PublicAPI*.txt'`; or
+- apply the RS0016 code fix in your IDE ("Add to public API"), or edit `PublicAPI.Unshipped.txt` by hand. Lines are sorted and look like `KumikoUI.Core.Models.KumikoColumn.Header.get -> string!`; the first line of a file is `#nullable enable` in the `Shipped` file.
+
+KumikoUI.Maui and KumikoUI.Uno target several frameworks. Members every framework has live in the project's own `PublicAPI.Unshipped.txt`; members only some frameworks have (for example the types that the Android SDK or the Uno XAML generator add to a head) live in `PublicAPI/<target framework>/PublicAPI.Unshipped.txt`. The Windows heads cannot be built on macOS or Linux, so CI is the first to check them; if the Windows build reports RS0016 or RS0017, add or remove the line in `PublicAPI/net10.0-windows10.0.19041.0/` (Maui) or `PublicAPI/net10.0-windows10.0.26100/` (Uno), each with its own `PublicAPI.Shipped.txt` containing `#nullable enable`.
+
+Package validation (`EnablePackageValidation`) also runs when the packages are packed. Once the first stable version is out, the maintainer enables `PackageValidationBaselineVersion` (see `Directory.Build.props`) so that a breaking change against the last release fails the pack.
+
+**Formatting.** [`.editorconfig`](.editorconfig) records the whitespace rules the code follows (four-space indentation, Allman braces, LF line endings, final newline). CI runs:
+
+```bash
+dotnet format whitespace --folder . --verify-no-changes
+```
+
+Run `dotnet format whitespace --folder .` to fix what it reports before you push; it only changes whitespace.
+
 ### Public type names
 
 KumikoUI types are imported next to other UI frameworks' types, so a public type must never share its simple name with a public type of:

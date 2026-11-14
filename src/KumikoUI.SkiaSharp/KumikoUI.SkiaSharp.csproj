@@ -21,6 +21,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Public API is recorded in PublicAPI.*.txt files and checked by PublicApiAnalyzers (Directory.Build.targets, #54). -->
+    <KumikoTrackPublicApi>true</KumikoTrackPublicApi>
+    <!-- Package validation (#54); the baseline is described in Directory.Build.props. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
 
     <!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
     <PackageId>KumikoUI.SkiaSharp</PackageId>

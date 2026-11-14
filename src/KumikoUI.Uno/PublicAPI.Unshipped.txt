@@ -1,0 +1,216 @@
+KumikoUI.Uno.Input.InputMapping
+KumikoUI.Uno.KumikoDataGrid
+KumikoUI.Uno.KumikoDataGrid.ActiveRenderMode.get -> KumikoUI.Uno.KumikoRenderMode
+KumikoUI.Uno.KumikoDataGrid.AllowFiltering.get -> bool
+KumikoUI.Uno.KumikoDataGrid.AllowFiltering.set -> void
+KumikoUI.Uno.KumikoDataGrid.AllowRowDragDrop.get -> bool?
+KumikoUI.Uno.KumikoDataGrid.AllowRowDragDrop.set -> void
+KumikoUI.Uno.KumikoDataGrid.AllowSorting.get -> bool
+KumikoUI.Uno.KumikoDataGrid.AllowSorting.set -> void
+KumikoUI.Uno.KumikoDataGrid.AlternateRowBackground.get -> Windows.UI.Color?
+KumikoUI.Uno.KumikoDataGrid.AlternateRowBackground.set -> void
+KumikoUI.Uno.KumikoDataGrid.AnnounceChanges.get -> bool
+KumikoUI.Uno.KumikoDataGrid.AnnounceChanges.set -> void
+KumikoUI.Uno.KumikoDataGrid.ApplyLayoutState(KumikoUI.Core.Models.KumikoLayoutState! state) -> void
+KumikoUI.Uno.KumikoDataGrid.BackgroundRebuildThreshold.get -> int
+KumikoUI.Uno.KumikoDataGrid.BackgroundRebuildThreshold.set -> void
+KumikoUI.Uno.KumikoDataGrid.CellBeginEdit -> System.EventHandler<KumikoUI.Core.Editing.CellBeginEditEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.CellEndEdit -> System.EventHandler<KumikoUI.Core.Editing.CellEndEditEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.CellTapped -> System.EventHandler<KumikoUI.Core.Input.KumikoCellTappedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.CellTappedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.CellTappedCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.CellValidator.get -> System.Func<int, int, object?, KumikoUI.Core.Editing.CellValidationResult!>?
+KumikoUI.Uno.KumikoDataGrid.CellValidator.set -> void
+KumikoUI.Uno.KumikoDataGrid.CellValueChanged -> System.EventHandler<KumikoUI.Core.Editing.CellValueChangedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.CellValueChangedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.CellValueChangedCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.ClearSelectionOnEmptyAreaTap.get -> bool
+KumikoUI.Uno.KumikoDataGrid.ClearSelectionOnEmptyAreaTap.set -> void
+KumikoUI.Uno.KumikoDataGrid.Clipboard.get -> KumikoUI.Core.Input.IKumikoClipboard?
+KumikoUI.Uno.KumikoDataGrid.Clipboard.set -> void
+KumikoUI.Uno.KumikoDataGrid.ClipboardCopyIncludesHeaders.get -> bool
+KumikoUI.Uno.KumikoDataGrid.ClipboardCopyIncludesHeaders.set -> void
+KumikoUI.Uno.KumikoDataGrid.ColumnReordered -> System.EventHandler<KumikoUI.Core.Input.KumikoColumnReorderedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.ColumnResized -> System.EventHandler<KumikoUI.Core.Input.ColumnResizedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.Columns.get -> System.Collections.ObjectModel.ObservableCollection<KumikoUI.Core.Models.KumikoColumn!>!
+KumikoUI.Uno.KumikoDataGrid.Columns.set -> void
+KumikoUI.Uno.KumikoDataGrid.ContextMenuRequested -> System.EventHandler<KumikoUI.Core.Input.KumikoContextRequestedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.ContextMenuRequestedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.ContextMenuRequestedCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.CurrentCell.get -> KumikoUI.Core.Models.CellPosition
+KumikoUI.Uno.KumikoDataGrid.CurrentCell.set -> void
+KumikoUI.Uno.KumikoDataGrid.DataSource.get -> KumikoUI.Core.Models.KumikoSource!
+KumikoUI.Uno.KumikoDataGrid.DismissKeyboardOnEnter.get -> bool
+KumikoUI.Uno.KumikoDataGrid.DismissKeyboardOnEnter.set -> void
+KumikoUI.Uno.KumikoDataGrid.EditSession.get -> KumikoUI.Core.Editing.EditSession!
+KumikoUI.Uno.KumikoDataGrid.EditTextSelectionMode.get -> KumikoUI.Core.Editing.EditTextSelectionMode
+KumikoUI.Uno.KumikoDataGrid.EditTextSelectionMode.set -> void
+KumikoUI.Uno.KumikoDataGrid.EditTriggers.get -> KumikoUI.Core.Editing.EditTrigger
+KumikoUI.Uno.KumikoDataGrid.EditTriggers.set -> void
+KumikoUI.Uno.KumikoDataGrid.EnableHaptics.get -> bool
+KumikoUI.Uno.KumikoDataGrid.EnableHaptics.set -> void
+KumikoUI.Uno.KumikoDataGrid.FilterChanged -> System.EventHandler<KumikoUI.Core.Models.FilterChangedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.FilterChanging -> System.EventHandler<KumikoUI.Core.Models.FilterChangingEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.FollowSystemTheme.get -> bool
+KumikoUI.Uno.KumikoDataGrid.FollowSystemTheme.set -> void
+KumikoUI.Uno.KumikoDataGrid.FrozenRowCount.get -> int
+KumikoUI.Uno.KumikoDataGrid.FrozenRowCount.set -> void
+KumikoUI.Uno.KumikoDataGrid.GetLayoutState() -> KumikoUI.Core.Models.KumikoLayoutState!
+KumikoUI.Uno.KumikoDataGrid.GridDescription.get -> string?
+KumikoUI.Uno.KumikoDataGrid.GridDescription.set -> void
+KumikoUI.Uno.KumikoDataGrid.GridHint.get -> string?
+KumikoUI.Uno.KumikoDataGrid.GridHint.set -> void
+KumikoUI.Uno.KumikoDataGrid.GridSelectionMode.get -> KumikoUI.Core.Models.KumikoSelectionMode
+KumikoUI.Uno.KumikoDataGrid.GridSelectionMode.set -> void
+KumikoUI.Uno.KumikoDataGrid.GridStyle.get -> KumikoUI.Core.Models.KumikoStyle!
+KumikoUI.Uno.KumikoDataGrid.GridStyle.set -> void
+KumikoUI.Uno.KumikoDataGrid.GroupDescriptions.get -> System.Collections.ObjectModel.ObservableCollection<KumikoUI.Core.Models.GroupDescription!>!
+KumikoUI.Uno.KumikoDataGrid.GroupDescriptions.set -> void
+KumikoUI.Uno.KumikoDataGrid.GroupExpandedChanged -> System.EventHandler<KumikoUI.Core.Models.GroupExpandedChangedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.GroupExpanding -> System.EventHandler<KumikoUI.Core.Models.GroupExpandingEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.GroupSummaryRows.get -> System.Collections.ObjectModel.ObservableCollection<KumikoUI.Core.Models.GroupSummaryRow!>!
+KumikoUI.Uno.KumikoDataGrid.GroupSummaryRows.set -> void
+KumikoUI.Uno.KumikoDataGrid.HeaderHeight.get -> double
+KumikoUI.Uno.KumikoDataGrid.HeaderHeight.set -> void
+KumikoUI.Uno.KumikoDataGrid.HeaderTapped -> System.EventHandler<KumikoUI.Core.Input.KumikoHeaderTappedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.HeaderTappedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.HeaderTappedCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.HorizontalOffset.get -> double
+KumikoUI.Uno.KumikoDataGrid.HorizontalOffset.set -> void
+KumikoUI.Uno.KumikoDataGrid.ImageCache.get -> KumikoUI.SkiaSharp.KumikoImageCache!
+KumikoUI.Uno.KumikoDataGrid.InputController.get -> KumikoUI.Core.Input.KumikoInputController!
+KumikoUI.Uno.KumikoDataGrid.Invalidate() -> void
+KumikoUI.Uno.KumikoDataGrid.IsReadOnly.get -> bool
+KumikoUI.Uno.KumikoDataGrid.IsReadOnly.set -> void
+KumikoUI.Uno.KumikoDataGrid.ItemsSource.get -> System.Collections.IEnumerable?
+KumikoUI.Uno.KumikoDataGrid.ItemsSource.set -> void
+KumikoUI.Uno.KumikoDataGrid.KumikoDataGrid() -> void
+KumikoUI.Uno.KumikoDataGrid.RenderMode.get -> KumikoUI.Uno.KumikoRenderMode
+KumikoUI.Uno.KumikoDataGrid.RenderMode.set -> void
+KumikoUI.Uno.KumikoDataGrid.RowDoubleTapped -> System.EventHandler<KumikoUI.Core.Input.RowTappedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.RowHeight.get -> double
+KumikoUI.Uno.KumikoDataGrid.RowHeight.set -> void
+KumikoUI.Uno.KumikoDataGrid.RowReorderRejected -> System.EventHandler<KumikoUI.Core.Input.RowReorderedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.RowReordered -> System.EventHandler<KumikoUI.Core.Input.RowReorderedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.RowTapped -> System.EventHandler<KumikoUI.Core.Input.RowTappedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.RowTappedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.RowTappedCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.ScrollSettings.get -> KumikoUI.Core.Input.ScrollSettings!
+KumikoUI.Uno.KumikoDataGrid.ScrollSettings.set -> void
+KumikoUI.Uno.KumikoDataGrid.ScrollToColumn(KumikoUI.Core.Models.KumikoColumn! column, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest) -> bool
+KumikoUI.Uno.KumikoDataGrid.ScrollToColumn(int columnIndex, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest) -> bool
+KumikoUI.Uno.KumikoDataGrid.ScrollToItem(object! item, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest, bool expandGroups = true) -> bool
+KumikoUI.Uno.KumikoDataGrid.ScrollToRow(int row, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest) -> bool
+KumikoUI.Uno.KumikoDataGrid.Scrolled -> System.EventHandler<KumikoUI.Core.Models.KumikoScrolledEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.SelectedIndex.get -> int
+KumikoUI.Uno.KumikoDataGrid.SelectedIndex.set -> void
+KumikoUI.Uno.KumikoDataGrid.SelectedItem.get -> object?
+KumikoUI.Uno.KumikoDataGrid.SelectedItem.set -> void
+KumikoUI.Uno.KumikoDataGrid.SelectedItems.get -> System.Collections.IList?
+KumikoUI.Uno.KumikoDataGrid.SelectedItems.set -> void
+KumikoUI.Uno.KumikoDataGrid.Selection.get -> KumikoUI.Core.Models.KumikoSelectionModel!
+KumikoUI.Uno.KumikoDataGrid.SelectionChanged -> System.EventHandler<KumikoUI.Core.Models.KumikoSelectionChangedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.SelectionChangedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.SelectionChangedCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.SelectionChangedCommandParameter.get -> object?
+KumikoUI.Uno.KumikoDataGrid.SelectionChangedCommandParameter.set -> void
+KumikoUI.Uno.KumikoDataGrid.SetCellRenderer(KumikoUI.Core.Models.KumikoColumnType columnType, KumikoUI.Core.Rendering.ICellRenderer! renderer) -> void
+KumikoUI.Uno.KumikoDataGrid.ShowFrameStats.get -> bool
+KumikoUI.Uno.KumikoDataGrid.ShowFrameStats.set -> void
+KumikoUI.Uno.KumikoDataGrid.ShowHorizontalGridLines.get -> bool?
+KumikoUI.Uno.KumikoDataGrid.ShowHorizontalGridLines.set -> void
+KumikoUI.Uno.KumikoDataGrid.ShowRowDragHandle.get -> bool?
+KumikoUI.Uno.KumikoDataGrid.ShowRowDragHandle.set -> void
+KumikoUI.Uno.KumikoDataGrid.ShowVerticalGridLines.get -> bool?
+KumikoUI.Uno.KumikoDataGrid.ShowVerticalGridLines.set -> void
+KumikoUI.Uno.KumikoDataGrid.SortChanged -> System.EventHandler<KumikoUI.Core.Models.SortColumnsChangedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.SortChangedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.SortChangedCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.SortChanging -> System.EventHandler<KumikoUI.Core.Models.SortColumnsChangingEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.TableSummaryRows.get -> System.Collections.ObjectModel.ObservableCollection<KumikoUI.Core.Models.TableSummaryRow!>!
+KumikoUI.Uno.KumikoDataGrid.TableSummaryRows.set -> void
+KumikoUI.Uno.KumikoDataGrid.Theme.get -> KumikoUI.Core.Models.KumikoThemeMode
+KumikoUI.Uno.KumikoDataGrid.Theme.set -> void
+KumikoUI.Uno.KumikoDataGrid.ValidationFailed -> System.EventHandler<KumikoUI.Core.Editing.CellValidationEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.VerticalOffset.get -> double
+KumikoUI.Uno.KumikoDataGrid.VerticalOffset.set -> void
+KumikoUI.Uno.KumikoDataGrid.ViewChanged -> System.EventHandler<KumikoUI.Core.Models.KumikoViewChangedEventArgs!>?
+KumikoUI.Uno.KumikoFonts
+KumikoUI.Uno.KumikoRenderMode
+KumikoUI.Uno.KumikoRenderMode.Auto = 0 -> KumikoUI.Uno.KumikoRenderMode
+KumikoUI.Uno.KumikoRenderMode.Hardware = 1 -> KumikoUI.Uno.KumikoRenderMode
+KumikoUI.Uno.KumikoRenderMode.Software = 2 -> KumikoUI.Uno.KumikoRenderMode
+KumikoUI.Uno.UnoActionButtonDefinition
+KumikoUI.Uno.UnoActionButtonDefinition.Action.get -> System.Action?
+KumikoUI.Uno.UnoActionButtonDefinition.Action.set -> void
+KumikoUI.Uno.UnoActionButtonDefinition.BackgroundColor.get -> Windows.UI.Color
+KumikoUI.Uno.UnoActionButtonDefinition.BackgroundColor.set -> void
+KumikoUI.Uno.UnoActionButtonDefinition.Changed -> System.EventHandler?
+KumikoUI.Uno.UnoActionButtonDefinition.Command.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.UnoActionButtonDefinition.Command.set -> void
+KumikoUI.Uno.UnoActionButtonDefinition.CommandParameter.get -> object?
+KumikoUI.Uno.UnoActionButtonDefinition.CommandParameter.set -> void
+KumikoUI.Uno.UnoActionButtonDefinition.Label.get -> string!
+KumikoUI.Uno.UnoActionButtonDefinition.Label.set -> void
+KumikoUI.Uno.UnoActionButtonDefinition.TextColor.get -> Windows.UI.Color
+KumikoUI.Uno.UnoActionButtonDefinition.TextColor.set -> void
+KumikoUI.Uno.UnoActionButtonDefinition.UnoActionButtonDefinition() -> void
+override KumikoUI.Uno.KumikoDataGrid.OnCreateAutomationPeer() -> Microsoft.UI.Xaml.Automation.Peers.AutomationPeer!
+static KumikoUI.Uno.Input.InputMapping.GetLiveModifiers() -> KumikoUI.Core.Input.InputModifiers
+static KumikoUI.Uno.Input.InputMapping.ToGridKey(Windows.System.VirtualKey key) -> KumikoUI.Core.Input.KumikoKey
+static KumikoUI.Uno.Input.InputMapping.ToInputModifiers(Windows.System.VirtualKeyModifiers mods) -> KumikoUI.Core.Input.InputModifiers
+static KumikoUI.Uno.KumikoFonts.RegisterFromAppPackageAsync(System.Collections.Generic.IEnumerable<(string! Family, string! AppxUri)>! fonts) -> System.Threading.Tasks.Task!
+static KumikoUI.Uno.KumikoFonts.RegisterFromAppPackageAsync(string! family, string! appxUri) -> System.Threading.Tasks.Task!
+static KumikoUI.Uno.KumikoFonts.RegisterFromStream(string! family, System.IO.Stream! stream) -> void
+static readonly KumikoUI.Uno.KumikoDataGrid.AllowFilteringProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.AllowRowDragDropProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.AllowSortingProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.AlternateRowBackgroundProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.AnnounceChangesProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.BackgroundRebuildThresholdProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.CellTappedCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.CellValidatorProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.CellValueChangedCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ClearSelectionOnEmptyAreaTapProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ColumnsProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ContextMenuRequestedCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.CurrentCellProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.DismissKeyboardOnEnterProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.EditTextSelectionModeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.EditTriggersProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.EnableHapticsProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.FollowSystemThemeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.FrozenRowCountProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.GridDescriptionProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.GridHintProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.GridSelectionModeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.GridStyleProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.GroupDescriptionsProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.GroupSummaryRowsProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.HeaderHeightProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.HeaderTappedCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.HorizontalOffsetProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.IsReadOnlyProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ItemsSourceProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.RenderModeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.RowHeightProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.RowTappedCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ScrollSettingsProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SelectedIndexProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SelectedItemProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SelectedItemsProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SelectionChangedCommandParameterProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SelectionChangedCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ShowFrameStatsProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ShowHorizontalGridLinesProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ShowRowDragHandleProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ShowVerticalGridLinesProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SortChangedCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.TableSummaryRowsProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ThemeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.VerticalOffsetProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.UnoActionButtonDefinition.BackgroundColorProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.UnoActionButtonDefinition.CommandParameterProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.UnoActionButtonDefinition.CommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.UnoActionButtonDefinition.LabelProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.UnoActionButtonDefinition.TextColorProperty -> Microsoft.UI.Xaml.DependencyProperty!

@@ -81,7 +81,8 @@ public class BackgroundRebuildBenchmarks
                 SynchronizationContext.SetSynchronizationContext(new Context(this));
                 foreach (var (callback, state) in _queue.GetConsumingEnumerable())
                     callback(state);
-            }) { IsBackground = true };
+            })
+            { IsBackground = true };
             _thread.Start();
         }
 
