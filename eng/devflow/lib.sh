@@ -57,9 +57,22 @@ element_id() {
 	df ui query --selector "$(page_type) $1" | jq -r '.[0].id // empty'
 }
 
-# grid_id: the DevFlow element id of the current page's grid (ids change when a page is rebuilt).
+# grid_id: the DevFlow element id of the current page's grid (ids change when a page is rebuilt). Drags go to it:
+# DevFlow refuses a drag on the drawing surface because the grid's view has a (trackpad-only) pan recognizer.
 grid_id() {
 	df ui query --selector "$(page_type) KumikoDataGrid" | jq -r ".[${GRID_INDEX:-0}].id // empty"
+}
+
+# surface_id: the DevFlow element id of the grid's drawing surface (an SKCanvasView, or an SKGLView where the GPU
+# surface is in use), which fills the grid, so coordinates are the grid's. Taps go to it: DevFlow refuses a tap on
+# the grid element when the GPU view's native view covers it.
+surface_id() {
+	local page id
+	page=$(page_type)
+	id=$(df ui query --selector "$page KumikoDataGrid SKGLView" | jq -r ".[${GRID_INDEX:-0}].id // empty")
+	[ -n "$id" ] || id=$(df ui query --selector "$page KumikoDataGrid SKCanvasView" | jq -r ".[${GRID_INDEX:-0}].id // empty")
+	[ -n "$id" ] || id=$(grid_id)
+	echo "$id"
 }
 
 # ── Input ──
@@ -70,7 +83,7 @@ tap_at() {
 		echo "  (no point to tap: '${1:-}' '${2:-}')"
 		return 1
 	fi
-	dfm ui tap "$(grid_id)" --x "$1" --y "$2" >/dev/null
+	dfm ui tap "$(surface_id)" --x "$1" --y "$2" >/dev/null
 }
 
 # double_tap_at <x> <y>: double-tap the grid at a point: two taps from one batch process, 30 ms apart.
@@ -78,7 +91,7 @@ tap_at() {
 # processes are too far apart to count as a double tap.)
 double_tap_at() {
 	local id
-	id=$(grid_id)
+	id=$(surface_id)
 	free_lease
 	printf 'MAUI tap %s --x %s --y %s\nMAUI tap %s --x %s --y %s\n' "$id" "$1" "$2" "$id" "$1" "$2" \
 		| "$MAUI" devflow batch --delay 30 --agent-port "$AGENT_PORT" >/dev/null

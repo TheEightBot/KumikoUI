@@ -16,7 +16,7 @@ namespace KumikoUI.Maui;
 /// <b>Surface.</b> The grid draws on an internal <see cref="KumikoSurface"/>: SkiaSharp's <c>SKGLView</c>
 /// (<see cref="KumikoRenderMode.Gpu"/>) or <c>SKCanvasView</c> (<see cref="KumikoRenderMode.Software"/>). Switching
 /// <see cref="RenderMode"/> at run time removes the old view (disconnecting its handler, which releases its GPU
-/// context), inserts the new one below the keyboard proxy, and redraws.
+/// context), inserts the new one below the native text-input views, and redraws.
 /// </para>
 /// <para>
 /// <b>Frame loop.</b> Every Core "redraw" signal goes through <see cref="RequestRedraw"/>. Where the platform folds
@@ -105,7 +105,7 @@ public partial class KumikoDataGrid
 
         _surface = KumikoSurfaceFactory.Create(mode);
         _canvasView = _surface.View;
-        // Index 0: below the keyboard proxy, which must stay on top in the z-order.
+        // Index 0: below anything else in the grid's root layout.
         _root.Children.Insert(0, _canvasView);
         if (!_wasCleanedUp)
             ConnectSurface();
@@ -215,7 +215,7 @@ public partial class KumikoDataGrid
 
             // The first blink after a change draws everything and keeps a copy for the next blinks.
             DrawFrame(canvas, scale, width, height);
-            _caretFrame.Capture(surface);
+            _caretFrame.Capture(surface, info);
             return;
         }
 
@@ -256,7 +256,14 @@ public partial class KumikoDataGrid
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
             _inputController.DragRowIndex, _inputController.DragRowScreenY,
             _editSession, _inputController.PopupManager);
+        OnFrameRendered();
     }
+
+    /// <summary>
+    /// Called on the UI thread after each frame is drawn or recorded, whatever the surface; the editor is then
+    /// placed over its cell. Android's text input checks the soft keyboard against the edited cell from here.
+    /// </summary>
+    partial void OnFrameRendered();
 
     /// <summary>
     /// The area a caret can blink in, in logical units: the open editor and every visible popup (a filter popup's

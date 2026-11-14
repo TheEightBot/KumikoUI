@@ -61,16 +61,14 @@ public class KumikoDataGridRenderingTests
     [InlineData(KumikoRenderMode.Gpu)]
     [InlineData(KumikoRenderMode.Software)]
     [InlineData(KumikoRenderMode.Auto)]
-    public void RenderMode_Set_KeepsOneSurfaceBelowTheKeyboardProxy(KumikoRenderMode mode)
+    public void RenderMode_Set_KeepsOneSurface(KumikoRenderMode mode)
     {
         var grid = new KumikoDataGrid();
 
         grid.RenderMode = mode;
 
         var root = Assert.IsType<Grid>(grid.Content);
-        Assert.Equal(2, root.Children.Count);
-        Assert.IsAssignableFrom<View>(root.Children[0]);
-        Assert.IsType<Entry>(root.Children[1]);
+        Assert.IsAssignableFrom<View>(Assert.Single(root.Children));
         Assert.Equal(KumikoSurfaceFactory.Resolve(mode), grid.ActiveRenderMode);
         Assert.Equal(grid.ActiveRenderMode == KumikoRenderMode.Gpu, root.Children[0] is SKGLView);
     }
@@ -113,6 +111,7 @@ public class KumikoDataGridRenderingTests
         {
             ItemsSource = new ObservableCollection<Row>(Enumerable.Range(0, 20).Select(i => new Row { Name = $"R{i}" })),
             RenderMode = KumikoRenderMode.Software,
+            AnnounceChanges = false, // the screen reader has no implementation in the test host
         };
         grid.Columns.Add(new KumikoColumn { Header = "Name", PropertyName = nameof(Row.Name), Width = 200 });
         if (cells is not null) grid.SetCellRenderer(KumikoColumnType.Text, cells);
@@ -226,7 +225,8 @@ public class KumikoDataGridRenderingTests
 
         int m = KumikoCaretFrame.MarginPixels;
         Assert.Equal(new SKRectI(30 - m, 61 - m, 181 + m, 152 + m), clip);
-        Assert.Equal(new SKRectI(0, 0, 100, 40), KumikoCaretFrame.ToDeviceClip(new KumikoRect(-5, -5, 200, 30), 1f, 100, 100));
+        // Clamped to the surface on the left, top and right; the bottom (25) still gets its margin.
+        Assert.Equal(new SKRectI(0, 0, 100, 25 + m), KumikoCaretFrame.ToDeviceClip(new KumikoRect(-5, -5, 200, 30), 1f, 100, 100));
         Assert.True(KumikoCaretFrame.ToDeviceClip(new KumikoRect(500, 500, 10, 10), 1f, 100, 100).IsEmpty);
         Assert.True(KumikoCaretFrame.ToDeviceClip(new KumikoRect(0, 0, 10, 10), 0f, 100, 100).IsEmpty);
     }
@@ -250,8 +250,10 @@ public class KumikoDataGridRenderingTests
         using var surface = NewSurface();
         surface.Canvas.Clear(new SKColor(10, 20, 30));
         using var frame = new KumikoCaretFrame();
-        frame.Capture(surface);
+        frame.Capture(surface, new SKImageInfo(SurfaceWidth, SurfaceHeight, SKColorType.Rgba8888, SKAlphaType.Premul));
         Assert.True(frame.HasFrame);
+        // A snapshot of the unchanged surface is its cached image; disposing it must not free the kept frame.
+        using (surface.Snapshot()) { }
 
         surface.Canvas.Clear(SKColors.White);
         Assert.False(frame.TryRestore(surface.Canvas, new SKImageInfo(SurfaceWidth + 1, SurfaceHeight)));

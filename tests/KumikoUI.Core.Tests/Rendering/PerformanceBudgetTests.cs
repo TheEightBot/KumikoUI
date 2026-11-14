@@ -61,12 +61,20 @@ public class PerformanceBudgetTests
     }
 
     /// <summary>Bytes allocated by <paramref name="action"/>, after one untimed run that absorbs JIT and first-use costs.</summary>
+    // The fewest bytes one run of the action allocated, over three runs after three warm-up runs. A one-off
+    // allocation on the test thread (a type loaded, a method tiered up while the whole suite runs) can land in any
+    // single run; an allocation the action itself makes lands in every one.
     private static long Allocated(Action action)
     {
-        action();
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        action();
-        return GC.GetAllocatedBytesForCurrentThread() - before;
+        for (int i = 0; i < 3; i++) action();
+        long fewest = long.MaxValue;
+        for (int i = 0; i < 3; i++)
+        {
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            action();
+            fewest = Math.Min(fewest, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+        return fewest;
     }
 
     [Fact]
