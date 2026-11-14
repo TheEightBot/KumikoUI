@@ -37,6 +37,14 @@
   <ItemGroup>
     <!-- Lets the test project check internal editing state, such as the editor the focus manager holds. -->
     <InternalsVisibleTo Include="KumikoUI.Core.Tests" />
+    <!-- The hosts hand the input controller's popup manager to the renderer; neither is public API (#37). -->
+    <InternalsVisibleTo Include="KumikoUI.Maui" />
+    <InternalsVisibleTo Include="KumikoUI.Uno" />
+    <!-- The MAUI sample's DevFlow diagnostics read the open popup (a test aid, not shipped behavior). -->
+    <InternalsVisibleTo Include="SampleApp.Maui" />
+    <!-- The host test projects compile the host sources and drive the drawn focus manager directly. -->
+    <InternalsVisibleTo Include="KumikoUI.Maui.Tests" />
+    <InternalsVisibleTo Include="KumikoUI.Uno.Tests" />
   </ItemGroup>
   <!-- The package README shown on nuget.org: plain Markdown with absolute image URLs (#95). -->
   <ItemGroup>

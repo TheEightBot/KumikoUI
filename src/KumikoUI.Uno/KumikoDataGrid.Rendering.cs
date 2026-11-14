@@ -157,7 +157,7 @@ public partial class KumikoDataGrid
 
         using var drawingContext = ResourceCache.CreateContext(canvas);
 
-        _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
+        _renderer.RenderFrame(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
             _inputController.DragRowIndex, _inputController.DragRowScreenY,
             _editSession, _inputController.PopupManager);
@@ -320,10 +320,10 @@ public partial class KumikoDataGrid
 
     private void OnDataSourceViewChanged(object? sender, KumikoUI.Core.Models.KumikoViewChangedEventArgs e) => RequestRedraw();
 
-    private void OnInputControllerNeedsRedraw() => RequestRedraw();
+    private void OnInputControllerNeedsRedraw(object? sender, EventArgs e) => RequestRedraw();
 
-    private void OnEditSessionNeedsRedraw() => RequestRedraw();
+    private void OnEditSessionNeedsRedraw(object? sender, EventArgs e) => RequestRedraw();
 
     // An action button's command raised CanExecuteChanged: that can happen on any thread.
-    private void OnRendererRedrawRequested() => Invalidate();
+    private void OnRendererRedrawRequested(object? sender, EventArgs e) => Invalidate();
 }

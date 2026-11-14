@@ -252,7 +252,7 @@ public partial class KumikoDataGrid
 
         using var drawingContext = ResourceCache.CreateContext(canvas);
 
-        _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
+        _renderer.RenderFrame(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
             _inputController.DragRowIndex, _inputController.DragRowScreenY,
             _editSession, _inputController.PopupManager);

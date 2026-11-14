@@ -920,13 +920,13 @@ public partial class KumikoDataGrid : ContentView
             UpdateAccessibilityHint();
     }
 
-    private void OnInputControllerNeedsRedraw()
+    private void OnInputControllerNeedsRedraw(object? sender, EventArgs e)
     {
         RequestRedraw();
         SyncNativeTextInput(); // an editor or the filter search box may have opened or closed
     }
 
-    private void OnEditSessionNeedsRedraw()
+    private void OnEditSessionNeedsRedraw(object? sender, EventArgs e)
     {
         RequestRedraw();
         SyncNativeTextInput();
@@ -937,7 +937,7 @@ public partial class KumikoDataGrid : ContentView
     }
 
     // An action button's command raised CanExecuteChanged: that can happen on any thread.
-    private void OnRendererRedrawRequested()
+    private void OnRendererRedrawRequested(object? sender, EventArgs e)
     {
         if (Dispatcher.IsDispatchRequired)
             Dispatcher.Dispatch(RequestRedraw);
@@ -956,15 +956,15 @@ public partial class KumikoDataGrid : ContentView
         }
     }
 
-    private void OnKeyboardFocusRequested() => FocusKeyboardInput();
+    private void OnKeyboardFocusRequested(object? sender, EventArgs e) => FocusKeyboardInput();
 
-    private void OnFilterPopupOpened()
+    private void OnFilterPopupOpened(object? sender, EventArgs e)
     {
         _filterPopupActive = true;
         StartCursorBlinkTimer();
     }
 
-    private void OnFilterPopupClosed()
+    private void OnFilterPopupClosed(object? sender, EventArgs e)
     {
         _filterPopupActive = false;
         StopCursorBlinkTimer();

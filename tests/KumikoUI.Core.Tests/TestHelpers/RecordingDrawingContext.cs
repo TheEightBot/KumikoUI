@@ -46,7 +46,6 @@ internal sealed record DrawOp(
     DrawOpKind Kind,
     KumikoRect Rect,
     KumikoColor Color,
-    PaintStyle Style,
     float StrokeWidth,
     KumikoFont? Font,
     KumikoRect? Clip,
@@ -145,7 +144,7 @@ internal sealed class RecordingDrawingContext : IDrawingContext
         KumikoTextAlignment hAlign = KumikoTextAlignment.Left, bool clipsToRect = false,
         float x1 = 0, float y1 = 0, float x2 = 0, float y2 = 0, KumikoPoint[]? points = null)
     {
-        Ops.Add(new DrawOp(Ops.Count, kind, rect, paint.Color, paint.Style, paint.StrokeWidth, paint.Font, _clip,
+        Ops.Add(new DrawOp(Ops.Count, kind, rect, paint.Color, paint.StrokeWidth, paint.Font, _clip,
             text, hAlign, clipsToRect, x1, y1, x2, y2, points));
     }
 

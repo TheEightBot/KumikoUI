@@ -6,7 +6,7 @@ using KumikoUI.Core.Components;
 namespace KumikoUI.Core.Input;
 
 /// <summary>Provides data for the <see cref="KumikoInputController.ColumnResized"/> event.</summary>
-public class ColumnResizedEventArgs : EventArgs
+public sealed class ColumnResizedEventArgs : EventArgs
 {
     /// <summary>Zero-based index of the resized column.</summary>
     public int ColumnIndex { get; }

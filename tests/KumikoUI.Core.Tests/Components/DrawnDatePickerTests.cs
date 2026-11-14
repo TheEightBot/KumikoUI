@@ -74,7 +74,7 @@ public class DrawnDatePickerTests
         int completed = 0;
         p.DateSelected += (_, e) => dates.Add(e);
         p.ValueChanged += (_, e) => values.Add(e);
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         TapDay(p, new DateTime(2024, 3, 20));
 
@@ -403,7 +403,7 @@ public class DrawnDatePickerTests
         int completed = 0;
         p.RangeSelected += (_, e) => ranges.Add(e);
         p.DateSelected += (_, e) => dates.Add(e);
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         TapDay(p, new DateTime(2024, 3, 20));
         var r = Assert.Single(ranges);
@@ -1049,7 +1049,7 @@ public class DrawnDatePickerTests
     {
         var p = CulturePicker(culture);
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
         p.StartTrackingChanges();
 
         Type(p, typed);
@@ -1095,7 +1095,7 @@ public class DrawnDatePickerTests
     {
         var p = CulturePicker(culture);
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
         p.StartTrackingChanges();
 
         p.Key(KumikoKey.Character, 'x'); // starts typing and selects everything

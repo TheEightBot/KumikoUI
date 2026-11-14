@@ -4,7 +4,7 @@ namespace KumikoUI.Core.Models;
 /// Tracks scroll position and visible row/column ranges.
 /// All values are in logical (unscaled) pixels.
 /// </summary>
-public class ScrollState
+public sealed class ScrollState
 {
     private float _offsetX;
     private float _offsetY;
