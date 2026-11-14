@@ -654,9 +654,8 @@ jobs:
           workloads: wasm-tools android
           cache-nuget: 'true'
 
-      # Non-blocking until the trimmed publish has been seen green: #184 fixed the WebAssembly build itself, but a
-      # full-trim publish hasn't run in CI yet. Drop continue-on-error once it passes.
+      # Blocking: the full-trim publish builds (the source generator no longer inherits PublishTrimmed) and the
+      # trimmed app was exercised in Chromium for the Uno verification matrix (docs/uno/verification.md, #67).
       - name: Publish sample — Uno WebAssembly (trimmed)
-        continue-on-error: true
         run: dotnet publish samples/SampleApp.Uno/SampleApp.Uno.csproj -f net10.0-browserwasm -c Release
           -p:PublishTrimmed=true -p:TrimMode=full
