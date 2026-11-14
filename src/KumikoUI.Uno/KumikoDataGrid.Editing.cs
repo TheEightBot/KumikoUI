@@ -143,8 +143,24 @@ public partial class KumikoDataGrid
         // insert before it. Put the editor's selection back now and again once the focus change has settled.
         _textInput.Sync();
         QueueTextInputSync();
-        if (hadFocus && _lastPointerWasTouch)
+        if (_editSession.IsEditing && _inputController.ActiveTextInput == null)
+        {
+            // An editor that takes no typed text (a scroll picker, a date picker, a combo box) needs the proxy's focus
+            // for hardware keys only: focusing a text box raises the soft keyboard on Android and iOS, so it is hidden
+            // again, now and once the focus change has settled.
+            HideSoftKeyboard();
+            DispatcherQueue?.TryEnqueue(HideSoftKeyboardForNonTextEditor);
+        }
+        else if (hadFocus && _lastPointerWasTouch)
+        {
             ShowSoftKeyboard();
+        }
+    }
+
+    private void HideSoftKeyboardForNonTextEditor()
+    {
+        if (_editSession.IsEditing && _inputController.ActiveTextInput == null)
+            HideSoftKeyboard();
     }
 
     private static void ShowSoftKeyboard()

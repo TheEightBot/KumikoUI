@@ -84,7 +84,7 @@ Soft keyboard (#41, #258), on a row near the bottom of the grid:
 - Back with the keyboard up hid the keyboard and left the edit open (`06-after-back.jpg`); the layout returned to
   normal. Enter committed the text and ended the edit (`07-after-enter.jpg`); Escape ended an edit. A further Back
   with no edit open left the app, as Android does.
-- Observation, by design per `docs/TEXT-INPUT.md` ("No text surface"): a non-text editor (the Level scroll picker,
+- Observation (fixed since: only a text editor raises the soft keyboard; this was by design when measured): a non-text editor (the Level scroll picker,
   `08-edit-level.jpg`) also raises the soft keyboard, so typed characters reach the picker as key events. It covers the
   lower half of the grid for an editor that mostly needs touch. A product decision, not changed here.
 

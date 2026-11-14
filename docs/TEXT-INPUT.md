@@ -134,8 +134,9 @@ The MAUI host on Android has no hidden `Entry`. Its adapter has three parts:
 
 ### Focus and the soft keyboard
 
-- Pressing the grid focuses the input view, so a hardware keyboard drives the grid without an editor open. The soft keyboard doesn't appear, because the view is a text editor only while a cell editor or the filter popup's search box is open.
-- When an edit begins, the view takes focus, the input method restarts with the editor's keyboard type, and `InputMethodManager.showSoftInput` shows the keyboard.
+- Pressing the grid focuses the input view, so a hardware keyboard drives the grid without an editor open. The soft keyboard doesn't appear, because the view is a text editor only while an editor that takes typed text (a text box) or the filter popup's search box is open.
+- When an edit with a text surface begins, the view takes focus, the input method restarts with the editor's keyboard type, and `InputMethodManager.showSoftInput` shows the keyboard.
+- An editor with no text surface (a combo box, a date picker or a scroll picker) raises no soft keyboard: it is operated by touch, and by the hardware keyboard through the focused input view. Moving from a text editor to one of these (Tab) hides the keyboard.
 - When the edit ends, the keyboard is hidden and the connection is dropped.
 - An edit that ends and immediately begins again (Tab, or Enter with `DismissKeyboardOnEnter` off) keeps the keyboard up.
 - A tap during an edit brings back a keyboard the user dismissed with Back.
@@ -159,7 +160,7 @@ The MAUI host on Android has no hidden `Entry`. Its adapter has three parts:
 
 After the input method's calls, the adapter reports the new selection and composition with `InputMethodManager.updateSelection`; a monitored extract gets `updateExtractedText`. When Core changes the text itself (undo, paste, a shortcut, a pointer gesture), the adapter calls `restartInput`. When only the selection moves, it calls `updateSelection`.
 
-With no text surface (the open editor is a combo box, a date picker or a picker), committed text becomes `KumikoKeyEventArgs` with `Text` set, deletions become Backspace and Delete, and a composition is typed when it finishes.
+With no text surface (the open editor is a combo box, a date picker or a picker), there is no soft keyboard and no input connection. Characters from a hardware keyboard become `KumikoKeyEventArgs` with `Text` set, and Backspace and Delete are keys.
 
 ### Keyboard type (`EditorInfo`)
 
@@ -170,7 +171,6 @@ With no text surface (the open editor is a combo box, a date picker or a picker)
 | `InputMask` of `#` placeholders only | `TYPE_CLASS_NUMBER` |
 | Any other `InputMask` | `TYPE_CLASS_TEXT \| NO_SUGGESTIONS` |
 | Filter popup search box | `TYPE_CLASS_TEXT \| VARIATION_FILTER \| NO_SUGGESTIONS` |
-| No text surface | `TYPE_CLASS_TEXT \| NO_SUGGESTIONS` |
 
 `imeOptions` is `IME_ACTION_NEXT` when Enter goes on to edit the next cell (`DismissKeyboardOnEnter` off), and `IME_ACTION_DONE` otherwise. It always includes `IME_FLAG_NO_EXTRACT_UI | IME_FLAG_NO_FULLSCREEN`, so landscape phones don't hide the grid behind a full-screen editor. The initial selection and, on Android 11 and later, the surrounding text are set too.
 
