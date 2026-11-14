@@ -9,23 +9,20 @@ namespace KumikoUI.SkiaSharp;
 /// Uses the modern SKFont-based text APIs (SkiaSharp 3.x).
 ///
 /// <para><b>Performance:</b> the native SkiaSharp objects a frame draws with (SKPaint, SKFont,
-/// SKTypeface) come from a <see cref="SkiaResourceCache"/>. A host creates one cache per control and
-/// passes it to <see cref="SkiaDrawingContext(SKCanvas, SkiaResourceCache)"/> every frame, so the same
-/// native objects are reused frame after frame; the context itself is a thin per-frame wrapper over the
-/// canvas. Dispose the context at the end of each frame: that ends the frame on the cache but leaves the
-/// cached objects alive.</para>
+/// SKTypeface, the text blobs, the polygon path) come from a <see cref="SkiaResourceCache"/>. A host creates
+/// one cache per control and starts every frame with <see cref="SkiaResourceCache.CreateContext"/>, which also
+/// reuses the context object itself, so a steady-state frame allocates no managed memory. The constructor
+/// <see cref="SkiaDrawingContext(SKCanvas, SkiaResourceCache)"/> does the same with a new context object per frame
+/// (a few dozen bytes). Dispose the context at the end of each frame: that ends the frame on the cache but
+/// leaves the cached objects alive.</para>
 /// </summary>
 public class SkiaDrawingContext : IDrawingContext, IDisposable
 {
-    private readonly SKCanvas _canvas;
+    private SKCanvas _canvas;
     private readonly SkiaResourceCache _cache;
     private readonly bool _ownsCache;
+    private readonly bool _pooled;
     private bool _disposed;
-
-    // Reused for every FillPolygon / DrawPolyline call, so glyphs allocate nothing per call.
-    // Created on first use and released by Dispose.
-    private SKPath? _path;
-    private SKPaint? _polylinePaint;
 
     /// <summary>
     /// Initializes a new <see cref="SkiaDrawingContext"/> that renders onto the specified <see cref="SKCanvas"/>
@@ -61,6 +58,23 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         _cache = resourceCache;
         _ownsCache = ownsCache;
         _cache.BeginFrame();
+    }
+
+    /// <summary>The context <see cref="SkiaResourceCache.CreateContext"/> reuses for every frame; bound per frame by <see cref="Bind"/>.</summary>
+    internal SkiaDrawingContext(SkiaResourceCache resourceCache)
+    {
+        _canvas = null!;
+        _cache = resourceCache;
+        _pooled = true;
+        _disposed = true;
+    }
+
+    /// <summary>Starts a frame of the reused context on <paramref name="canvas"/>.</summary>
+    internal void Bind(SKCanvas canvas)
+    {
+        _cache.BeginFrame();
+        _canvas = canvas;
+        _disposed = false;
     }
 
     /// <summary>The cache this context draws with.</summary>
@@ -111,27 +125,39 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     public void FillPolygon(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint)
     {
         if (points.Length < 3) return;
-        var path = BuildPath(points, close: true);
         var skPaint = GetOrCreatePaint(paint, SKPaintStyle.Fill);
-        _canvas.DrawPath(path, skPaint);
+        DrawPolygonPath(points, close: true, skPaint);
     }
 
     /// <inheritdoc />
     public void DrawPolyline(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint)
     {
         if (points.Length < 2) return;
-        var path = BuildPath(points, close: false);
         // Joins and caps are not part of the shared paint cache key, so strokes use their own paint.
-        var skPaint = _polylinePaint ??= new SKPaint
-        {
-            Style = SKPaintStyle.Stroke,
-            StrokeJoin = SKStrokeJoin.Round,
-            StrokeCap = SKStrokeCap.Round
-        };
+        var skPaint = _cache.GetPolylinePaint();
         skPaint.Color = new SKColor(paint.Color.R, paint.Color.G, paint.Color.B, paint.Color.A);
         skPaint.StrokeWidth = paint.StrokeWidth;
         skPaint.IsAntialias = paint.IsAntiAlias;
-        _canvas.DrawPath(path, skPaint);
+        DrawPolygonPath(points, close: false, skPaint);
+    }
+
+    /// <summary>
+    /// Draws a polygon or polyline from the path the cache keeps for its shape (translated to where it is drawn), so
+    /// the glyphs drawn every frame (arrows, chevrons, check marks) neither build a path nor allocate.
+    /// </summary>
+    private void DrawPolygonPath(ReadOnlySpan<KumikoPoint> points, bool close, SKPaint skPaint)
+    {
+        var cached = _cache.GetPolygonPath(points, close);
+        if (cached is null)
+        {
+            _canvas.DrawPath(BuildPath(points, close), skPaint);
+            return;
+        }
+
+        _canvas.Save();
+        _canvas.Translate(points[0].X, points[0].Y);
+        _canvas.DrawPath(cached, skPaint);
+        _canvas.Restore();
     }
 
     // SkiaSharp 4 marks SKPath's mutators obsolete in favor of SKPathBuilder, but SKPathBuilder.Detach/Snapshot
@@ -139,7 +165,7 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
 #pragma warning disable CS0618
     private SKPath BuildPath(ReadOnlySpan<KumikoPoint> points, bool close)
     {
-        var path = _path ??= new SKPath();
+        var path = _cache.GetScratchPath();
         path.Rewind();
         path.MoveTo(points[0].X, points[0].Y);
         for (int i = 1; i < points.Length; i++)
@@ -268,14 +294,15 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
 
     /// <summary>
     /// Draws one line of text run by run: each run in its typeface (the requested font, or a fallback for glyphs
-    /// it lacks), advancing by the run widths measured with the runs.
+    /// it lacks), advancing by the run widths measured with the runs. A run is drawn from a text blob built the
+    /// first time it is drawn and kept with the runs, so drawing it again allocates nothing.
     /// </summary>
     private void DrawRuns(string line, FontRuns runs, float x, float baseline, KumikoFont? font, SKFont skFont,
         SKPaint skPaint)
     {
         if (runs.IsPrimaryOnly)
         {
-            _canvas.DrawText(line, x, baseline, SKTextAlign.Left, skFont, skPaint);
+            DrawRun(line, 0, line.Length, runs, 0, x, baseline, skFont, skPaint);
             return;
         }
 
@@ -285,21 +312,23 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
             int end = runs.GetEnd(i);
             int face = runs.GetFace(i);
             var runFont = face == FontRuns.PrimaryFace ? skFont : _cache.GetFallbackFont(face, runs.Generation, font);
-            if (runs.Count == 1)
-            {
-                _canvas.DrawText(line, x, baseline, SKTextAlign.Left, runFont, skPaint);
-                return;
-            }
-
-            // Like DrawText(string, ...), which builds a text blob for every call.
-            using (var blob = SKTextBlob.Create(line.AsSpan(start, end - start), runFont, default))
-            {
-                if (blob is not null)
-                    _canvas.DrawText(blob, x, baseline, skPaint);
-            }
+            DrawRun(line, start, end, runs, i, x, baseline, runFont, skPaint);
             x += runs.GetWidth(i);
             start = end;
         }
+    }
+
+    private void DrawRun(string line, int start, int end, FontRuns runs, int index, float x, float baseline,
+        SKFont runFont, SKPaint skPaint)
+    {
+        var blob = runs.GetBlob(index, out bool blank);
+        if (blob is null)
+        {
+            if (blank) return;
+            blob = runs.SetBlob(index, SKTextBlob.Create(line.AsSpan(start, end - start), runFont, default));
+            if (blob is null) return;
+        }
+        _canvas.DrawText(blob, x, baseline, skPaint);
     }
 
     private static float AlignX(KumikoRect rect, float width, KumikoTextAlignment hAlign) => hAlign switch
@@ -452,11 +481,9 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _path?.Dispose();
-        _path = null;
-        _polylinePaint?.Dispose();
-        _polylinePaint = null;
         _cache.EndFrame();
+        if (_pooled)
+            _cache.ReleasePooledContext();
         if (_ownsCache)
             _cache.Dispose();
     }

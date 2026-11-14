@@ -155,7 +155,7 @@ public partial class KumikoDataGrid
         if (bg.A > 0)
             canvas.DrawColor(new SKColor(bg.R, bg.G, bg.B, bg.A), SKBlendMode.SrcOver);
 
-        using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
+        using var drawingContext = ResourceCache.CreateContext(canvas);
 
         _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,

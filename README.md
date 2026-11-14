@@ -1771,7 +1771,7 @@ public sealed class MyGridSurface : IDisposable
 
     public void Paint(SKCanvas canvas, Action<IDrawingContext> draw)
     {
-        using var ctx = new SkiaDrawingContext(canvas, _resources); // disposing ends the frame and keeps the cache
+        using var ctx = _resources.CreateContext(canvas); // reused every frame; disposing ends the frame and keeps the cache
         draw(ctx);
     }
 

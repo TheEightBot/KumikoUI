@@ -178,15 +178,21 @@ Per-row and per-cell overrides (resolver backgrounds, cell style text color or f
 
 `SkiaDrawingContext` is a thin per-frame wrapper over the `SKCanvas`. The native objects it draws with
 live in a `SkiaResourceCache` that the host control owns for its lifetime (the MAUI and Uno grids create
-one per control, pass it to `new SkiaDrawingContext(canvas, cache)` every frame, and dispose it when the
-MAUI handler disconnects or the Uno control unloads). The cache has 3 tiers:
+one per control, start every frame with `cache.CreateContext(canvas)`, and dispose it when the
+MAUI handler disconnects or the Uno control unloads). `CreateContext` reuses one context object, so a
+steady-state frame allocates no managed memory at all (`new SkiaDrawingContext(canvas, cache)` allocates a
+context object per frame, a few dozen bytes). The cache has 3 tiers:
 
 1. **SKTypeface cache** — Keyed by `(family, bold, italic)`. Resolved from `SkiaFontRegistrar` first (the registered face closest to the style), then the font manager (falling back to the default family in the same style). Font-manager typefaces are reference counted across caches; `SKTypeface.Default` and registered typefaces are never disposed by the cache.
 2. **SKFont cache** — Keyed by `(family, size, bold, italic)`; each font belongs to its typeface entry and is dropped with it. A bold font on a face lighter than semibold gets `SKFont.Embolden`, an italic font on an upright face gets `SKFont.SkewX = -0.25` (synthetic styles).
 3. **SKPaint cache** — Keyed by `(color, strokeWidth, style, isAntialias)`.
 
 Each `IDrawingContext` method (e.g., `FillRect`, `DrawText`) resolves its `KumikoPaint` to an `SKPaint`
-and `SKFont` via the cache, so steady-state frames create no native objects. Each tier is a
+and `SKFont` via the cache, so steady-state frames create no native objects. The cache also keeps what text
+and polygons are drawn from: one `SKTextBlob` per cached text run (building a blob allocates, drawing one does
+not) and one `SKPath` per polygon shape (a path that is changed and drawn again allocates a snapshot per
+draw). `SkiaAllocationTests` renders a full-featured grid through the context into an `SKSurface` and
+asserts 0 managed bytes per steady-state frame. Each tier is a
 least-recently-used map with a capacity (defaults 512 paints, 128 fonts, 32 typefaces), so a renderer that
 keeps producing new colors or font sizes cannot grow it without bound. Objects evicted during a frame are
 disposed when the frame ends (`SkiaDrawingContext.Dispose`), never in the middle of it.

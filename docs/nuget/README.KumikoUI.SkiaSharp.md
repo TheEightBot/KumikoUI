@@ -70,7 +70,7 @@ png.SaveTo(file);
 public record Person(string Name, int Age);
 ```
 
-In a live control, call `renderer.Render` from the control's paint callback. Create the context with a long-lived cache, `new SkiaDrawingContext(canvas, cache)`, so caching works across frames.
+In a live control, call `renderer.Render` from the control's paint callback. Create the context with a long-lived cache, `cache.CreateContext(canvas)`, so caching works across frames and a steady-state frame allocates nothing.
 
 ## Documentation
 

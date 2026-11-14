@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="KumikoUI.Core.Tests" />
+    <InternalsVisibleTo Include="KumikoUI.SkiaSharp.Tests" />
   </ItemGroup>
 
   <ItemGroup>
