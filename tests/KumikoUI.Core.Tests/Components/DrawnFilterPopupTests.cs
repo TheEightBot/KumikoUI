@@ -318,7 +318,7 @@ public class DrawnFilterPopupTests
         }
 
         public void OpenFilter(KumikoColumn column) =>
-            Tap(column == Name ? 125 : 275, Style.HeaderHeight / 2);
+            Tap(column == Name ? 137 : 287, Style.HeaderHeight / 2); // the middle of the filter icon
     }
 
     [Fact]

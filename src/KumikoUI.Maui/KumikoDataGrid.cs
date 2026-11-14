@@ -132,6 +132,9 @@ public partial class KumikoDataGrid : ContentView
 
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
+
+        // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester (#101).
+        _renderer.InputController = _inputController;
         InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;
         ConnectTheming();

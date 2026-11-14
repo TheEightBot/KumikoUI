@@ -193,10 +193,12 @@ public class HitTesterTests
     {
         var g = new InputGrid();
 
-        // Age spans 120..200: the icon covers 168..194, the grip 194..206.
+        // Age spans 120..200: the icon is drawn at 182..192 (the cell padding inside the right edge); a mouse hits it
+        // from 5 px either side, up to the grip at 194..206.
         Assert.Equal(HitRegion.HeaderFilterIcon, g.Hit(180, InputGrid.HeaderY).Region);
-        Assert.Equal(HitRegion.HeaderFilterIcon, g.Hit(168, InputGrid.HeaderY).Region);
-        Assert.Equal(HitRegion.HeaderCell, g.Hit(167, InputGrid.HeaderY).Region);
+        Assert.Equal(HitRegion.HeaderFilterIcon, g.Hit(177, InputGrid.HeaderY).Region);
+        Assert.Equal(HitRegion.HeaderCell, g.Hit(176, InputGrid.HeaderY).Region);
+        Assert.Equal(HitRegion.HeaderFilterIcon, g.Hit(193, InputGrid.HeaderY).Region);
         Assert.Equal(HitRegion.HeaderResizeGrip, g.Hit(196, InputGrid.HeaderY).Region);
     }
 

@@ -73,6 +73,28 @@ public class KumikoRenderer : IDisposable
 
     private KumikoFrameStats? _frameStats;
 
+    // Hit regions measured while drawing (grouping panel chips), read by the connected controller's hit tester
+    private readonly RenderedHitRegions _hitRegions = new();
+    private KumikoInputController? _inputController;
+
+    /// <summary>
+    /// The input controller this renderer draws for. Connecting it gives the controller's hit tester the regions this
+    /// renderer measures while drawing (the grouping panel's chips, whose width depends on their text), so a press
+    /// lands exactly on what was drawn. Both hosts connect their grid's controller; a renderer that is not connected
+    /// draws the same frame and the controller estimates those regions. One renderer serves one controller.
+    /// </summary>
+    public KumikoInputController? InputController
+    {
+        get => _inputController;
+        set
+        {
+            if (ReferenceEquals(_inputController, value)) return;
+            if (_inputController != null) _inputController.HitTester.RenderedRegions = null;
+            _inputController = value;
+            if (value != null) value.HitTester.RenderedRegions = _hitRegions;
+        }
+    }
+
     /// <summary>
     /// Draws a frame-time readout (render time, frames per second, bytes allocated per frame) in the top-right
     /// corner of the grid (#70). Off by default, and then costs one boolean check per frame. The readout is
@@ -236,6 +258,10 @@ public class KumikoRenderer : IDisposable
         if (dataSource.IsGroupingActive)
         {
             DrawGroupingPanel(ctx, dataSource, scroll, style, groupPanelOffset);
+        }
+        else
+        {
+            _hitRegions.BeginGroupPanel(0);
         }
 
         // Offset all rendering below the grouping panel
@@ -997,18 +1023,14 @@ public class KumikoRenderer : IDisposable
             _paintCache.GridLine);
 
         // Indent based on group level
-        float indent = handleOffset + style.CellPadding + groupInfo.Level * style.GroupIndentWidth;
+        float indent = InteractionGeometry.GroupChevronX(groupInfo.Level, style, handleOffset);
 
-        // Draw expand/collapse indicator with background pill
+        // Draw expand/collapse indicator with background pill (the hit tester uses the same geometry)
         float chevronSize = style.GroupChevronSize;
         float chevronX = indent;
         float chevronCenterY = rowY + style.RowHeight / 2;
 
-        // Draw rounded-rect background behind the indicator
-        float pillW = chevronSize + 8f;
-        float pillH = chevronSize + 6f;
-        var pillRect = new KumikoRect(
-            chevronX - 4f, chevronCenterY - pillH / 2, pillW, pillH);
+        var pillRect = InteractionGeometry.GroupChevronPill(rowY, groupInfo.Level, style, handleOffset);
         ctx.FillRoundRect(pillRect, 4f, _paintCache.GroupChevronBackground);
 
         // The disclosure glyph, in the chevron's square: expanded or collapsed
@@ -1245,15 +1267,10 @@ public class KumikoRenderer : IDisposable
             float screenX = ColumnScreenX(colX, scroll, col.Pane);
             bool hasActiveFilter = col.ActiveFilter != null && col.ActiveFilter.IsActive;
 
-            // Position filter icon: right of header text, left of the sort arrow when one is drawn
-            float iconSize = 10f;
-            float sortSpace = SortGlyphSpace(col);
-            float iconX = screenX + col.Width - style.CellPadding - sortSpace - iconSize;
-            float iconCenterY = style.HeaderHeight / 2;
-
+            // Right of header text, left of the sort arrow when one is drawn; the hit tester uses the same geometry
             style.IconProvider.DrawIcon(ctx,
                 hasActiveFilter ? KumikoIcon.FilterActive : KumikoIcon.Filter,
-                new KumikoRect(iconX, iconCenterY - iconSize / 2, iconSize, iconSize),
+                InteractionGeometry.FilterIconRect(screenX, col, style),
                 hasActiveFilter ? _paintCache.FilterActiveIcon : _paintCache.FilterIcon);
         }
     }
@@ -1268,6 +1285,8 @@ public class KumikoRenderer : IDisposable
         KumikoStyle style,
         float panelHeight)
     {
+        _hitRegions.BeginGroupPanel(panelHeight);
+
         // Background
         ctx.FillRect(new KumikoRect(0, 0, scroll.ViewportWidth, panelHeight), _paintCache.GroupPanelBackground);
 
@@ -1285,12 +1304,14 @@ public class KumikoRenderer : IDisposable
         ctx.DrawTextInRect(dataSource.Strings.GroupPanelLabel, labelRect, labelPaint,
             KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
 
-        float chipX = labelX + labelSize.Width + 10;
-        float chipHeight = 26;
-        float chipY = (panelHeight - chipHeight) / 2;
-        float chipPadding = 10;
-        float chipGap = 4;
-        float accentWidth = 4f;
+        // The chip layout is shared with the hit tester's estimate (InteractionGeometry); the chips drawn are
+        // published to it (_hitRegions), so a press hits exactly what is drawn.
+        float chipX = InteractionGeometry.FirstChipX(labelSize.Width, style);
+        float chipHeight = InteractionGeometry.ChipHeight;
+        float chipY = InteractionGeometry.ChipY(panelHeight);
+        float chipPadding = InteractionGeometry.ChipPadding;
+        float accentWidth = InteractionGeometry.ChipAccentWidth;
+        const float chipRadius = InteractionGeometry.ChipCornerRadius;
 
         var chipTextPaint = _paintCache.GroupChipText;
         var columns = dataSource.Columns;
@@ -1300,37 +1321,25 @@ public class KumikoRenderer : IDisposable
             var group = groups[g];
 
             // The chip shows the group's header, else the header of the column it groups by, else the property
-            string chipText = group.Header ?? group.PropertyName;
-            if (group.Header == null)
-            {
-                for (int c = 0; c < columns.Count; c++)
-                {
-                    if (string.Equals(columns[c].PropertyName, group.PropertyName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        chipText = columns[c].Header;
-                        break;
-                    }
-                }
-            }
+            string chipText = KumikoHitTester.ChipText(group, columns);
 
             // Measure chip text
             var textSize = ctx.MeasureText(chipText, chipTextPaint);
-            float sortArrowWidth = 16;  // space for sort direction arrow
-            float removeButtonSize = 16;
-            float chipWidth = accentWidth + chipPadding + textSize.Width + 4 + sortArrowWidth + chipPadding + removeButtonSize + chipPadding / 2;
+            float chipWidth = InteractionGeometry.ChipWidth(textSize.Width);
 
             // Draw chip background with rounded corners
             var chipRect = new KumikoRect(chipX, chipY, chipWidth, chipHeight);
-            ctx.FillRoundRect(chipRect, 6, _paintCache.GroupChipBackground);
+            _hitRegions.AddChip(group, chipRect);
+            ctx.FillRoundRect(chipRect, chipRadius, _paintCache.GroupChipBackground);
 
             // Draw chip border
-            ctx.DrawRoundRect(chipRect, 6, _paintCache.GroupChipBorder);
+            ctx.DrawRoundRect(chipRect, chipRadius, _paintCache.GroupChipBorder);
 
             // Draw left accent bar (rounded)
             var accentRect = new KumikoRect(chipX, chipY, accentWidth + 6, chipHeight);
             ctx.Save();
             ctx.ClipRect(new KumikoRect(chipX, chipY, accentWidth + 3, chipHeight));
-            ctx.FillRoundRect(accentRect, 6, _paintCache.GroupChipAccent);
+            ctx.FillRoundRect(accentRect, chipRadius, _paintCache.GroupChipAccent);
             ctx.Restore();
 
             // Draw chip text
@@ -1349,8 +1358,9 @@ public class KumikoRenderer : IDisposable
                 _paintCache.GroupChipArrow);
 
             // Remove button: a circle with the remove glyph
-            float removeX = chipX + chipWidth - removeButtonSize - chipPadding / 2 + removeButtonSize / 2;
-            float removeCenterY = chipY + chipHeight / 2;
+            var removeCenter = InteractionGeometry.ChipRemoveCenter(chipRect);
+            float removeX = removeCenter.X;
+            float removeCenterY = removeCenter.Y;
 
             // Small circle background for remove
             ctx.FillRoundRect(
@@ -1361,19 +1371,16 @@ public class KumikoRenderer : IDisposable
                 new KumikoRect(removeX - 5, removeCenterY - 5, 10, 10),
                 _paintCache.GroupChipRemove);
 
-            // Advance to next chip
-            chipX += chipWidth + chipGap;
-
-            // Draw hierarchy arrow between group chips (except after last)
+            // Draw hierarchy arrow between group chips (except after last), then advance to the next chip
             if (g < groups.Count - 1)
             {
-                float sepX = chipX + 2;
+                float sepX = chipX + chipWidth + InteractionGeometry.ChipGap + 2;
                 float sepCY = chipY + chipHeight / 2;
                 style.IconProvider.DrawIcon(ctx, KumikoIcon.GroupSeparator,
                     new KumikoRect(sepX - 2.5f, sepCY - 5, 10, 10),
                     _paintCache.GroupChipSeparator);
-                chipX += 14 + chipGap;
             }
+            chipX = InteractionGeometry.NextChipX(chipX, chipWidth);
         }
     }
 

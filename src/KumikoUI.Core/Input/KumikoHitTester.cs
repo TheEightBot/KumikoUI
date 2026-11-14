@@ -9,9 +9,12 @@ namespace KumikoUI.Core.Input;
 /// </summary>
 public class KumikoHitTester
 {
-    private const float ResizeGripWidth = 6f;
-    private const float FilterIconSize = 12f;
-    private const float FilterIconRightMargin = 20f; // Right of sort indicator space
+    /// <summary>
+    /// The regions the renderer measured and drew in its last frame (the grouping panel's chips), set when a renderer
+    /// is connected to the controller that owns this tester (<see cref="KumikoRenderer.InputController"/>). Without
+    /// them the hit tester estimates the chips.
+    /// </summary>
+    internal RenderedHitRegions? RenderedRegions { get; set; }
 
     /// <summary>
     /// Grid-level switch for the header filter icon: when false no column reports
@@ -34,6 +37,28 @@ public class KumikoHitTester
         => HitTestCore(viewportX, viewportY, scroll, style, columns, totalRows, dataSource).ToResult();
 
     /// <summary>
+    /// Resolve a viewport coordinate to a grid region, row, and column for a pointer of type
+    /// <paramref name="deviceType"/>: a finger gets wider targets (the column resize grip is
+    /// <see cref="KumikoStyle.TouchColumnResizeGripWidth"/> wide, the filter icon, group chevrons and group chips take a
+    /// larger margin).
+    /// </summary>
+    /// <param name="viewportX">X in the grid's viewport, from its left edge.</param>
+    /// <param name="viewportY">Y in the grid's viewport, from its top edge (grouping panel included).</param>
+    /// <param name="scroll">The scroll state.</param>
+    /// <param name="style">The grid style.</param>
+    /// <param name="columns">The columns, in display order.</param>
+    /// <param name="totalRows">The number of rows in the view.</param>
+    /// <param name="dataSource">The source, for the grouping panel, summary rows and group rows; null for none.</param>
+    /// <param name="deviceType">The kind of pointer the point comes from.</param>
+    /// <returns>What the point is on.</returns>
+    public KumikoHitTestResult HitTest(
+        float viewportX, float viewportY,
+        ScrollState scroll, KumikoStyle style,
+        IReadOnlyList<KumikoColumn> columns, int totalRows,
+        KumikoSource? dataSource, KumikoPointerDeviceType deviceType)
+        => HitTestCore(viewportX, viewportY, scroll, style, columns, totalRows, dataSource, deviceType).ToResult();
+
+    /// <summary>
     /// Whether a column's header edge is a resize grip: it allows resizing and its width can change
     /// (<see cref="KumikoColumn.MaxWidth"/> above <see cref="KumikoColumn.MinWidth"/>). Elsewhere the edge
     /// is part of the header cell.
@@ -42,13 +67,15 @@ public class KumikoHitTester
         column.AllowResize && column.MaxWidth > column.MinWidth;
 
     /// <summary>
-    /// <see cref="HitTest"/> without allocating: the result is a value. Used on every hover move.
+    /// <see cref="HitTest(float, float, ScrollState, KumikoStyle, IReadOnlyList{KumikoColumn}, int, KumikoSource?, KumikoPointerDeviceType)"/>
+    /// without allocating: the result is a value. Used on every hover move.
     /// </summary>
     internal KumikoHitInfo HitTestCore(
         float viewportX, float viewportY,
         ScrollState scroll, KumikoStyle style,
         IReadOnlyList<KumikoColumn> columns, int totalRows,
-        KumikoSource? dataSource = null)
+        KumikoSource? dataSource = null,
+        KumikoPointerDeviceType deviceType = KumikoPointerDeviceType.Mouse)
     {
         // Pinned bottom summary footer first: it is drawn last, at the bottom of the viewport, over the
         // scrolling rows — and over the header and grouping panel when the viewport is short — so a
@@ -67,7 +94,7 @@ public class KumikoHitTester
             groupPanelOffset = style.GroupPanelHeight;
             if (viewportY < groupPanelOffset)
             {
-                return HitTestGroupPanel(viewportX, viewportY, scroll, style, dataSource);
+                return HitTestGroupPanel(viewportX, viewportY, style, dataSource, deviceType);
             }
         }
 
@@ -121,7 +148,7 @@ public class KumikoHitTester
         if (inHeader)
         {
             return HitTestHeader(columnAreaViewportX, effectiveContentX, contentY, columns, scroll, style,
-                frozenWidth, rightFrozenWidth, rightFrozenLeft, handleOffset);
+                frozenWidth, rightFrozenWidth, rightFrozenLeft, handleOffset, deviceType);
         }
 
         // Account for top summary height
@@ -151,7 +178,8 @@ public class KumikoHitTester
                 if (adjustedY >= pinned.Y && adjustedY < pinned.Y + style.RowHeight
                     && dataSource.GetGroupHeaderInfo(pinned.Row) is { } pinnedInfo)
                 {
-                    return GroupHeaderHit(pinned.Row, pinnedInfo, viewportX, effectiveContentX, contentY, style);
+                    return GroupHeaderHit(pinned.Row, pinnedInfo, viewportX, effectiveContentX, contentY, style,
+                        handleOffset, deviceType);
                 }
             }
         }
@@ -202,7 +230,7 @@ public class KumikoHitTester
         {
             var groupInfo = dataSource.GetGroupHeaderInfo(row);
             if (groupInfo != null)
-                return GroupHeaderHit(row, groupInfo, viewportX, effectiveContentX, contentY, style);
+                return GroupHeaderHit(row, groupInfo, viewportX, effectiveContentX, contentY, style, handleOffset, deviceType);
         }
 
         // Check if click is on the row drag handle
@@ -238,16 +266,12 @@ public class KumikoHitTester
 
     /// <summary>A hit on a group header row: its chevron, or the rest of the row.</summary>
     private static KumikoHitInfo GroupHeaderHit(
-        int row, GroupHeaderInfo groupInfo, float viewportX, float effectiveContentX, float contentY, KumikoStyle style)
+        int row, GroupHeaderInfo groupInfo, float viewportX, float effectiveContentX, float contentY, KumikoStyle style,
+        float handleOffset, KumikoPointerDeviceType deviceType)
     {
-        // Check if click is on the chevron area
-        float indent = style.CellPadding + groupInfo.Level * style.GroupIndentWidth;
-        float chevronLeft = indent;
-        float chevronRight = indent + style.GroupChevronSize;
-
-        // Use viewport X (not content X) for the chevron check
-        // since group headers span the full viewport
-        bool onChevron = viewportX >= chevronLeft && viewportX <= chevronRight + style.CellPadding;
+        // The chevron as the renderer draws it: after the left drag handle, indented by the group's level. Viewport X
+        // (not content X), since group headers span the full viewport.
+        bool onChevron = InteractionGeometry.IsOnGroupChevron(viewportX, groupInfo.Level, style, handleOffset, deviceType);
         return new KumikoHitInfo
         {
             Region = onChevron ? HitRegion.GroupChevron : HitRegion.GroupHeaderRow,
@@ -264,7 +288,8 @@ public class KumikoHitTester
     private KumikoHitInfo HitTestHeader(
         float viewportX, float effectiveContentX, float contentY,
         IReadOnlyList<KumikoColumn> columns, ScrollState scroll, KumikoStyle style,
-        float frozenWidth, float rightFrozenWidth, float rightFrozenLeft, float handleOffset)
+        float frozenWidth, float rightFrozenWidth, float rightFrozenLeft, float handleOffset,
+        KumikoPointerDeviceType deviceType)
     {
         // Try left-frozen columns first (column-area coords, starting at 0)
         if (frozenWidth > 0 && viewportX >= 0 && viewportX < frozenWidth)
@@ -275,7 +300,7 @@ public class KumikoHitTester
                 var col = columns[i];
                 if (!col.IsVisible || col.Pane != ColumnFreezeMode.Left) continue;
                 float colRight = x + col.Width;
-                var result = CheckHeaderColumn(col, i, x, colRight, viewportX, effectiveContentX, contentY, style);
+                var result = CheckHeaderColumn(columns, i, x, colRight, viewportX, effectiveContentX, contentY, style, deviceType);
                 if (result.HasValue) return result.Value;
                 x += col.Width;
             }
@@ -291,7 +316,7 @@ public class KumikoHitTester
                 var col = columns[i];
                 if (!col.IsVisible || col.Pane != ColumnFreezeMode.Right) continue;
                 float colRight = x + col.Width;
-                var result = CheckHeaderColumn(col, i, x, colRight, viewportX, effectiveContentX, contentY, style);
+                var result = CheckHeaderColumn(columns, i, x, colRight, viewportX, effectiveContentX, contentY, style, deviceType);
                 if (result.HasValue) return result.Value;
                 x += col.Width;
             }
@@ -310,9 +335,10 @@ public class KumikoHitTester
                 if (!col.IsVisible || FrozenPanes.ScrollPass(col) != k / n) continue;
                 float colRight = x + col.Width;
 
-                if (IsResizable(col) &&
-                    scrollContentX >= colRight - ResizeGripWidth &&
-                    scrollContentX <= colRight + ResizeGripWidth)
+                float grip = IsResizable(col) ? InteractionGeometry.ResizeGripHalfWidth(col, style, deviceType) : 0f;
+                if (grip > 0 &&
+                    scrollContentX >= colRight - grip &&
+                    scrollContentX <= colRight + InteractionGeometry.ResizeGripReach(NextScrollColumnWidth(columns, k), style, deviceType))
                 {
                     return new KumikoHitInfo
                     {
@@ -326,8 +352,8 @@ public class KumikoHitTester
                 {
                     if (AllowFiltering && col.AllowFiltering)
                     {
-                        float filterIconX = colRight - FilterIconRightMargin - FilterIconSize;
-                        if (scrollContentX >= filterIconX && scrollContentX <= colRight - ResizeGripWidth)
+                        if (InteractionGeometry.IsOnFilterIcon(scrollContentX, x, col, style, deviceType,
+                            InteractionGeometry.ResizeGripHalfWidth(col, style, deviceType)))
                         {
                             return new KumikoHitInfo
                             {
@@ -353,14 +379,46 @@ public class KumikoHitTester
         return new KumikoHitInfo { Region = HitRegion.EmptyArea, ContentX = effectiveContentX, ContentY = contentY };
     }
 
+    /// <summary>
+    /// The width of the column drawn right after <c>columns[index]</c> in its frozen pane, or infinity for the last
+    /// one. Only read near a column edge.
+    /// </summary>
+    private static float NextPaneColumnWidth(IReadOnlyList<KumikoColumn> columns, int index)
+    {
+        var pane = columns[index].Pane;
+        for (int j = index + 1; j < columns.Count; j++)
+        {
+            var c = columns[j];
+            if (c.IsVisible && c.Pane == pane) return c.Width;
+        }
+        return float.PositiveInfinity;
+    }
+
+    /// <summary>
+    /// The width of the column drawn right after step <paramref name="k"/> of the scrolling pane's three-pass walk
+    /// (<see cref="FrozenPanes.ScrollPass"/>), or infinity for the last one.
+    /// </summary>
+    private static float NextScrollColumnWidth(IReadOnlyList<KumikoColumn> columns, int k)
+    {
+        int n = columns.Count;
+        for (int kk = k + 1; kk < 3 * n; kk++)
+        {
+            var c = columns[kk % n];
+            if (c.IsVisible && FrozenPanes.ScrollPass(c) == kk / n) return c.Width;
+        }
+        return float.PositiveInfinity;
+    }
+
     /// <summary>Check a single column header for resize grip, filter icon, or header cell hit.</summary>
     private KumikoHitInfo? CheckHeaderColumn(
-        KumikoColumn col, int index, float colLeft, float colRight,
-        float testX, float effectiveContentX, float contentY, KumikoStyle style)
+        IReadOnlyList<KumikoColumn> columns, int index, float colLeft, float colRight,
+        float testX, float effectiveContentX, float contentY, KumikoStyle style, KumikoPointerDeviceType deviceType)
     {
-        if (IsResizable(col) &&
-            testX >= colRight - ResizeGripWidth &&
-            testX <= colRight + ResizeGripWidth)
+        var col = columns[index];
+        float grip = IsResizable(col) ? InteractionGeometry.ResizeGripHalfWidth(col, style, deviceType) : 0f;
+        if (grip > 0 &&
+            testX >= colRight - grip &&
+            testX <= colRight + InteractionGeometry.ResizeGripReach(NextPaneColumnWidth(columns, index), style, deviceType))
         {
             return new KumikoHitInfo
             {
@@ -374,8 +432,8 @@ public class KumikoHitTester
         {
             if (AllowFiltering && col.AllowFiltering)
             {
-                float filterIconX = colRight - FilterIconRightMargin - FilterIconSize;
-                if (testX >= filterIconX && testX <= colRight - ResizeGripWidth)
+                if (InteractionGeometry.IsOnFilterIcon(testX, colLeft, col, style, deviceType,
+                    InteractionGeometry.ResizeGripHalfWidth(col, style, deviceType)))
                 {
                     return new KumikoHitInfo
                     {
@@ -478,81 +536,73 @@ public class KumikoHitTester
         };
     }
     /// <summary>
-    /// Hit test within the grouping panel area (chips and remove buttons).
+    /// Hit test within the grouping panel area (chips and remove buttons): against the chips the renderer drew in its
+    /// last frame (<see cref="RenderedRegions"/>), or, before a frame or after the groups changed, an estimate of them.
     /// </summary>
     private KumikoHitInfo HitTestGroupPanel(
-        float viewportX, float viewportY,
-        ScrollState scroll, KumikoStyle style,
-        KumikoSource dataSource)
+        float viewportX, float viewportY, KumikoStyle style, KumikoSource dataSource, KumikoPointerDeviceType deviceType)
     {
         var groups = dataSource.GroupDescriptions;
         if (groups.Count == 0)
             return new KumikoHitInfo { Region = HitRegion.EmptyArea };
 
-        // Replicate the layout from DrawGroupingPanel
-        // The group panel label takes space first; there is no drawing context to measure it here, so
-        // approximate each character as 0.6 of the font size.
+        float panelHeight = style.GroupPanelHeight;
+        if (RenderedRegions is { } rendered && rendered.Matches(groups, panelHeight))
+        {
+            var chips = rendered.Chips;
+            for (int i = 0; i < chips.Count; i++)
+            {
+                var hit = HitTestChip(chips[i].Bounds, i, viewportX, viewportY, panelHeight, deviceType);
+                if (hit.HasValue) return hit.Value;
+            }
+            return new KumikoHitInfo { Region = HitRegion.EmptyArea };
+        }
+
+        // No frame drawn for these groups yet: the renderer's layout with text widths estimated at 0.6 of the font
+        // size per character (there is no drawing context to measure with here).
         float labelApproxWidth = dataSource.Strings.GroupPanelLabel.Length * style.GroupPanelLabelFont.Size * 0.6f;
-        float chipX = style.CellPadding + 2 + labelApproxWidth + 10;
-        float chipHeight = 26;
-        float chipY = (style.GroupPanelHeight - chipHeight) / 2;
-        float chipPadding = 10;
-        float chipGap = 4;
-        float accentWidth = 4f;
+        float chipX = InteractionGeometry.FirstChipX(labelApproxWidth, style);
+        float chipY = InteractionGeometry.ChipY(panelHeight);
 
         for (int i = 0; i < groups.Count; i++)
         {
-            var group = groups[i];
-            string displayName = group.Header ?? group.PropertyName;
-            if (group.Header == null)
-            {
-                // A loop, not FirstOrDefault with a capturing lambda: this runs on every hover move.
-                var columns = dataSource.Columns;
-                for (int c = 0; c < columns.Count; c++)
-                {
-                    if (string.Equals(columns[c].PropertyName, group.PropertyName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        displayName = columns[c].Header;
-                        break;
-                    }
-                }
-            }
-
-            // Approximate chip width (match renderer layout)
-            float approxTextWidth = displayName.Length * style.GroupPanelFont.Size * 0.6f;
-            float sortArrowWidth = 16;
-            float removeButtonSize = 16;
-            float chipWidth = accentWidth + chipPadding + approxTextWidth + 4 + sortArrowWidth + chipPadding + removeButtonSize + chipPadding / 2;
-
-            if (viewportX >= chipX && viewportX <= chipX + chipWidth &&
-                viewportY >= chipY && viewportY <= chipY + chipHeight)
-            {
-                // Check if on the remove button (rightmost portion of chip)
-                float removeAreaX = chipX + chipWidth - removeButtonSize - chipPadding / 2 - 4;
-                if (viewportX >= removeAreaX)
-                {
-                    return new KumikoHitInfo
-                    {
-                        Region = HitRegion.GroupPanelChipRemove,
-                        GroupDescriptionIndex = i
-                    };
-                }
-
-                return new KumikoHitInfo
-                {
-                    Region = HitRegion.GroupPanelChip,
-                    GroupDescriptionIndex = i
-                };
-            }
-
-            chipX += chipWidth + chipGap;
-
-            // Skip separator space
-            if (i < groups.Count - 1)
-                chipX += 14 + chipGap;
+            string displayName = ChipText(groups[i], dataSource.Columns);
+            float chipWidth = InteractionGeometry.ChipWidth(displayName.Length * style.GroupPanelFont.Size * 0.6f);
+            var chip = new Rendering.KumikoRect(chipX, chipY, chipWidth, InteractionGeometry.ChipHeight);
+            var hit = HitTestChip(chip, i, viewportX, viewportY, panelHeight, deviceType);
+            if (hit.HasValue) return hit.Value;
+            chipX = InteractionGeometry.NextChipX(chipX, chipWidth);
         }
 
         return new KumikoHitInfo { Region = HitRegion.EmptyArea };
+    }
+
+    /// <summary>The chip at <paramref name="chip"/> under the point: its remove button, the rest of it, or null.</summary>
+    private static KumikoHitInfo? HitTestChip(
+        Rendering.KumikoRect chip, int index, float x, float y, float panelHeight, KumikoPointerDeviceType deviceType)
+    {
+        if (!InteractionGeometry.ChipTarget(chip, panelHeight, deviceType).Contains(x, y)) return null;
+        var remove = InteractionGeometry.ChipRemoveRect(chip);
+        return new KumikoHitInfo
+        {
+            Region = x >= remove.X ? HitRegion.GroupPanelChipRemove : HitRegion.GroupPanelChip,
+            GroupDescriptionIndex = index,
+        };
+    }
+
+    /// <summary>
+    /// The text a grouping panel chip shows: the group's header, else the header of the column it groups by, else the
+    /// property name. A loop, not FirstOrDefault with a capturing lambda: the hit tester runs on every hover move.
+    /// </summary>
+    internal static string ChipText(GroupDescription group, IReadOnlyList<KumikoColumn> columns)
+    {
+        if (group.Header != null) return group.Header;
+        for (int c = 0; c < columns.Count; c++)
+        {
+            if (string.Equals(columns[c].PropertyName, group.PropertyName, StringComparison.OrdinalIgnoreCase))
+                return columns[c].Header;
+        }
+        return group.PropertyName;
     }
 }
 

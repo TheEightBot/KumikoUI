@@ -273,6 +273,20 @@ public class KumikoStyle
     /// <summary>Background color of the drag handle header area.</summary>
     public KumikoColor RowDragHandleHeaderBackgroundColor { get; set => Set(ref field, value); } = new(235, 235, 235);
 
+    // ── Interaction ──────────────────────────────────────────────
+    /// <summary>
+    /// Width in pixels of a column's resize grip for a mouse or a pen: the band centered on the column's right header
+    /// edge where a press starts a resize and the resize cursor shows. Each half reaches at most a quarter of the
+    /// column on that side of the edge (at least 3 px), so the middle of a narrow header still sorts. Default: 12.
+    /// </summary>
+    public float ColumnResizeGripWidth { get; set => Set(ref field, value); } = 12f;
+
+    /// <summary>
+    /// Width in pixels of a column's resize grip for a finger (see <see cref="ColumnResizeGripWidth"/>), wider so a
+    /// touch can find the edge. Default: 32.
+    /// </summary>
+    public float TouchColumnResizeGripWidth { get; set => Set(ref field, value); } = 32f;
+
     // ── Icons ────────────────────────────────────────────────────
     /// <summary>
     /// Draws every built-in glyph of the grid (group chevrons, sort arrows, filter buttons, grouping chip buttons,
