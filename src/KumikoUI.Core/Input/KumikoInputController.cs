@@ -226,6 +226,21 @@ public partial class KumikoInputController
     /// is, or a canceled drag, raises neither event.
     /// </summary>
     public event EventHandler<RowReorderedEventArgs>? RowReorderRejected;
+    /// <summary>
+    /// Raised when a finger or pen gesture reaches a moment phones confirm with a short vibration (#101): a row or a
+    /// column header picked up (<see cref="KumikoHapticKind.DragStart"/>) or dropped (<see cref="KumikoHapticKind.Drop"/>),
+    /// and a long press that asks for a context menu or edits a cell (<see cref="KumikoHapticKind.LongPress"/>). Never
+    /// raised for a mouse. The MAUI and Uno grids answer it when their <c>EnableHaptics</c> is on (off by default).
+    /// </summary>
+    public event EventHandler<KumikoHapticEventArgs>? HapticFeedbackRequested;
+
+    /// <summary>Raises <see cref="HapticFeedbackRequested"/> for a finger or pen gesture.</summary>
+    private void RequestHaptic(KumikoHapticKind kind, KumikoPointerDeviceType device)
+    {
+        if (device == KumikoPointerDeviceType.Mouse || HapticFeedbackRequested is not { } handler) return;
+        handler(this, new KumikoHapticEventArgs(kind, device));
+    }
+
     /// <summary>Raised when a data cell is tapped (after the selection is updated).</summary>
     public event EventHandler<RowTappedEventArgs>? RowTapped;
     /// <summary>Raised on the second tap of a double-tap on a data cell.</summary>
@@ -1032,6 +1047,7 @@ public partial class KumikoInputController
                     _dragColumnOffset = float.IsNaN(columnLeft) ? 0 : _lastPanX - columnLeft;
                     DragColumnScreenX = e.X - _dragColumnOffset;
                     if (CanAnimate(style)) _animations.StartLift();
+                    RequestHaptic(KumikoHapticKind.DragStart, _pressDeviceType);
                     e.Handled = true;
                     return;
                 }
@@ -1216,6 +1232,7 @@ public partial class KumikoInputController
             _isDraggingColumn = false;
             _dragColumnIndex = -1;
             SettleDroppedColumn(dragged, releasedAt, scroll, style, dataSource);
+            RequestHaptic(KumikoHapticKind.Drop, _pressDeviceType);
             Redraw();
             e.Handled = true;
             return;
@@ -1228,6 +1245,7 @@ public partial class KumikoInputController
             int from = _dragRowIndex;
             int to = RowDragGeometry.DropTarget(DragRowScreenY, scroll, style, dataSource);
             EndRowDrag();
+            RequestHaptic(KumikoHapticKind.Drop, _pressDeviceType);
             FinishRowReorder(from, to, dataSource);
             Redraw();
             e.Handled = true;
@@ -1568,6 +1586,7 @@ public partial class KumikoInputController
 
             if (RequestContext(KumikoContextTrigger.LongPress, e, hit, selection, dataSource))
             {
+                RequestHaptic(KumikoHapticKind.LongPress, e.DeviceType);
                 _pressConsumedByContext = true;
                 Redraw();
                 e.Handled = true;
@@ -1590,6 +1609,7 @@ public partial class KumikoInputController
         if (_editSession != null && hit.Column != null &&
             (GetEffectiveEditTriggers(hit.Column) & EditTrigger.LongPress) != 0)
         {
+            RequestHaptic(KumikoHapticKind.LongPress, e.DeviceType);
             if (hit.Column.ColumnType == KumikoColumnType.Boolean)
             {
                 _editSession.ToggleBooleanCell(
@@ -1697,6 +1717,7 @@ public partial class KumikoInputController
         _isPanning = false;
         _isDraggingRow = true;
         _dragRowIndex = row;
+        RequestHaptic(KumikoHapticKind.DragStart, _pressDeviceType);
         _dragRowOffset = grabY - RowDragGeometry.RowTop(row, scroll, style, dataSource);
         _autoScrollVelocityY = 0;
     }

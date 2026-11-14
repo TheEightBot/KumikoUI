@@ -129,6 +129,7 @@ public partial class KumikoDataGrid : ContentView
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
+        _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested; // KumikoDataGrid.Haptics.cs
 
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
@@ -1016,6 +1017,7 @@ public partial class KumikoDataGrid : ContentView
         _inputController.KeyboardFocusRequested -= OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened -= OnFilterPopupOpened;
         _inputController.FilterPopupClosed -= OnFilterPopupClosed;
+        _inputController.HapticFeedbackRequested -= OnHapticFeedbackRequested;
         _inputController.CursorChanged -= OnInputControllerCursorChanged;
         _editSession.NeedsRedraw -= OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit -= OnEditSessionCellBeginEdit;
@@ -1094,6 +1096,7 @@ public partial class KumikoDataGrid : ContentView
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
         _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
+        _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
