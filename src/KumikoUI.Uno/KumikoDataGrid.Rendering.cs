@@ -328,6 +328,10 @@ public partial class KumikoDataGrid
 
     private void OnDataSourceViewChanged(object? sender, KumikoUI.Core.Models.KumikoViewChangedEventArgs e) => RequestRedraw();
 
+    // A background rebuild's view was swapped in (#254): draw it. The scroll offset is kept and clamped to the new
+    // content on the next frame, so a re-sort shows the same scroll position in the new order.
+    private void OnDataSourceViewUpdated(object? sender, EventArgs e) => RequestRedraw();
+
     private void OnInputControllerNeedsRedraw(object? sender, EventArgs e) => RequestRedraw();
 
     private void OnEditSessionNeedsRedraw(object? sender, EventArgs e) => RequestRedraw();

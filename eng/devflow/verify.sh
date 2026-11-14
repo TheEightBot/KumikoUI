@@ -393,6 +393,18 @@ test_large_data_page() {
 	p=$(cell_point 99995 1)
 	tap_at $p; settle
 	check "tapping near the end selects that row" "$(state '.grid.selection.rows | tostring')" "[99995]"
+
+	# 100K rows are above the grid's BackgroundRebuildThreshold, so the sort runs on a worker (#254): the old order
+	# stays on screen until the new view is swapped in. Wait for the swap before reading rows.
+	extm scroll '{"row":0}' >/dev/null; settle
+	p=$(header_point Value center)
+	tap_at $p
+	wait_until "a header tap sorts 100K rows in the background" \
+		'.grid.isViewUpdatePending == false and (.grid.sort | map("\(.header) \(.direction)") | join(",")) == "Value Ascending"' 30
+	extm scroll '{"row":0}' >/dev/null; settle
+	check "100K rows are in ascending value order" "$(column_numbers Value 20 | is_sorted asc)" "true"
+	check "the selection followed its item into the new order" "$(state '.grid.selection.rows | length')" "1"
+	shot large-data-sorted
 }
 
 test_theming_page() {

@@ -1742,16 +1742,16 @@ kumiko.Scrolled += (_, e) =>
 
 ### Measured numbers
 
-Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14, Release build, 2026-11-10 (filter, grouping and live-update rows 2026-11-13). Frame figures are the managed render loop into a no-op drawing context, so they leave out SkiaSharp's own drawing time; the 100,000-row figures are one view rebuild, except the live-update row.
+Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14, Release build, 2026-11-10 (sort, filter, grouping and live-update rows 2026-11-13). Frame figures are the managed render loop into a no-op drawing context, so they leave out SkiaSharp's own drawing time; the 100,000-row figures are one view rebuild, except the live-update row.
 
 | Operation | Time | Allocated |
 |---|---:|---:|
 | Render a 30 × 10 visible grid (steady state) | 2.9 µs | 0 B |
 | Same, with sort, filter, grouping, summaries, a frozen column and the drag handle | 6.3 µs | 0 B |
 | Render while scrolling (one new row per frame) | 3.7 µs | 501 B |
-| Sort 100K rows (int / string / date column) | 54 / 72 / 211 ms | 86 MB / 1.1 KB / 94 MB |
-| Filter 100K rows (text contains / numeric) | 2.4 / 1.5 ms | 0.5 KB / 2.4 MB |
-| Group 100K rows by 1 / 2 levels, with summaries | 19 / 42 ms | 9.1 / 10.5 MB |
+| Sort 100K rows (int / string / date column) | 24 / 57 / 173 ms | 3.4 / 1.1 / 3.4 MB |
+| Filter 100K rows (text contains / numeric) | 2.2 / 1.4 ms | 1.3 KB / 2.3 MB |
+| Group 100K rows by 1 / 2 levels, with summaries | 21 / 42 ms | 10.3 / 10.4 MB |
 | Add or remove one item of an `ObservableCollection` of 100K rows | 128 µs | 432 B |
 | 100 `PropertyChanged` of a summed property, 100K rows with a Sum summary | 24 µs | 100 KB |
 
@@ -1843,6 +1843,8 @@ _ = Task.Run(() =>
 ```
 
 For many changes at once, post one callback that makes them inside `using (kumiko.DataSource.BeginUpdate()) { ... }`, or build a new collection in the background and assign it to `ItemsSource` on the UI thread.
+
+**Large sources rebuild in the background.** From `DataSource.BackgroundRebuildThreshold` items up (10,000 in the MAUI and Uno grids; a `KumikoSource` you create stays synchronous), sorting, filtering, grouping and summaries run on a worker. Requests made in one UI turn start one rebuild, and a newer one cancels a running one. The grid keeps drawing the current rows until the new view is swapped in on the UI thread (`ViewChanged`, then `ViewUpdated`); selection, the current cell and an open edit follow their items. `DataSource.IsViewUpdatePending` tells whether a rebuild is under way, and `await DataSource.WhenViewUpdatedAsync()` waits for the new order. While a rebuild runs, the worker reads item properties and calls your comparers, filter predicate, group selectors and custom aggregates, so these must only read.
 
 ---
 

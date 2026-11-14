@@ -24,6 +24,9 @@ public sealed class FilterCondition
     public bool Evaluate(object? cellValue, KumikoColumnType columnType) =>
         Evaluate(cellValue, columnType, KumikoComparer.Default);
 
+    /// <summary>A copy of this condition (its value is copied by reference).</summary>
+    internal FilterCondition Clone() => (FilterCondition)MemberwiseClone();
+
     /// <summary>Evaluate with a source's culture and text rules.</summary>
     internal bool Evaluate(object? cellValue, KumikoColumnType columnType, KumikoComparer comparer)
     {
