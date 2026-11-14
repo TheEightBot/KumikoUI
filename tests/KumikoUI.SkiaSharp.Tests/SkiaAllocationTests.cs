@@ -39,7 +39,7 @@ public class SkiaAllocationTests : IDisposable
     public SkiaAllocationTests(Xunit.Abstractions.ITestOutputHelper output)
     {
         _output = output;
-        TestFonts.Reset(withCjkFallback: true);
+        TestFonts.Reset(withCjkFallback: true, withEmojiFallback: true);
     }
 
     public void Dispose() => SkiaFontRegistrar.Clear();
@@ -113,7 +113,7 @@ public class SkiaAllocationTests : IDisposable
 
     private static readonly string[] Cities = { "Oslo", "Rome", "Lima", "Kyiv" };
     private static readonly string[] Notes =
-        { "Plain note", "A much longer note that will be cut with an ellipsis at the cell edge", "José Müller 東京" };
+        { "Plain note", "A much longer note that will be cut with an ellipsis at the cell edge", "José Müller 東京", "Thumbs \U0001F44D\U0001F3FD \U0001F468\u200D\U0001F469\u200D\U0001F467 \U0001F3F3\uFE0F\u200D\U0001F308 \U0001F1E9\U0001F1EA" };
 
     private const int WarmUpFrames = 10;
     private const int FramesPerRun = 20;

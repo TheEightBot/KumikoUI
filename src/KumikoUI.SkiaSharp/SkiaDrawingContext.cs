@@ -325,7 +325,9 @@ public class SkiaDrawingContext : IDrawingContext, IDisposable
         if (blob is null)
         {
             if (blank) return;
-            blob = runs.SetBlob(index, SKTextBlob.Create(line.AsSpan(start, end - start), runFont, default));
+            var text = line.AsSpan(start, end - start);
+            var created = runs.IsShaped(index) ? _cache.CreateShapedBlob(text, runFont) : null;
+            blob = runs.SetBlob(index, created ?? SKTextBlob.Create(text, runFont, default));
             if (blob is null) return;
         }
         _canvas.DrawText(blob, x, baseline, skPaint);

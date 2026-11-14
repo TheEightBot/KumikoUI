@@ -71,6 +71,9 @@ public sealed class SkiaResourceCache : IDisposable
     private readonly LruMap<CharFaceKey, int> _charFaces = new(MaxCharacterFaces);
     private readonly LruMap<FallbackFontKey, SKFont> _fallbackFonts;
 
+    // HarfBuzz shapers of the typefaces that draw emoji sequences, created on first use.
+    private readonly Dictionary<SKTypeface, GlyphShaper> _shapers = new(ReferenceEqualityComparer.Instance);
+
     // Incremented whenever the text entries are dropped, so a measurement taken across a drop is not stored.
     private long _textGeneration;
     private long _nativeTextMeasureCount;
@@ -516,6 +519,54 @@ public sealed class SkiaResourceCache : IDisposable
     /// <summary>The number of times the cache has measured text with Skia (tests and diagnostics).</summary>
     internal long NativeTextMeasureCount => Interlocked.Read(ref _nativeTextMeasureCount);
 
+    /// <summary>The width of one run: shaped when it holds an emoji sequence and HarfBuzz is available, else measured by Skia.</summary>
+    private float MeasureRun(SKFont font, ReadOnlySpan<char> text, bool shaped)
+    {
+        if (shaped)
+        {
+            lock (_gate)
+            {
+                if (GetShaperLocked(font.Typeface) is { } shaper)
+                    return shaper.Measure(text, font);
+            }
+        }
+        return MeasureNative(font, text);
+    }
+
+    /// <summary>
+    /// The text blob of a shaped run (see <see cref="FontRuns.IsShaped"/>), or <c>null</c> when HarfBuzz is not
+    /// available and the caller builds the blob glyph by glyph.
+    /// </summary>
+    internal SKTextBlob? CreateShapedBlob(ReadOnlySpan<char> text, SKFont font)
+    {
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            return GetShaperLocked(font.Typeface) is { } shaper ? shaper.CreateBlob(text, font) : null;
+        }
+    }
+
+    private GlyphShaper? GetShaperLocked(SKTypeface typeface)
+    {
+        if (_shapers.TryGetValue(typeface, out var shaper))
+            return shaper;
+
+        shaper = GlyphShaper.TryCreate(typeface);
+        if (shaper is null)
+            return null;
+        if (_shapers.Count >= MaxFallbackFaces + DefaultMaxTypefaces)
+            RetireShapersLocked();
+        _shapers.Add(typeface, shaper);
+        return shaper;
+    }
+
+    private void RetireShapersLocked()
+    {
+        foreach (var shaper in _shapers.Values)
+            Retire(shaper);
+        _shapers.Clear();
+    }
+
     private float MeasureNative(SKFont font, ReadOnlySpan<char> text)
     {
         Interlocked.Increment(ref _nativeTextMeasureCount);
@@ -533,6 +584,7 @@ public sealed class SkiaResourceCache : IDisposable
         _textLayouts.Clear(layouts);
         foreach (var layout in layouts)
             RetireRuns(layout.Runs);
+        RetireShapersLocked();
         ClearFallbackLocked();
     }
 
@@ -555,7 +607,8 @@ public sealed class SkiaResourceCache : IDisposable
 
         var ends = new List<int>();
         var faces = new List<int>();
-        Segment(text, ToFontKey(font), primary, ends, faces);
+        var shaped = new List<bool>();
+        Segment(text, ToFontKey(font), primary, ends, faces, shaped);
         if (faces.Count == 1 && faces[0] == FontRuns.PrimaryFace)
         {
             if (measure) width = MeasureNative(primary, text);
@@ -567,11 +620,11 @@ public sealed class SkiaResourceCache : IDisposable
         for (int i = 0; i < widths.Length; i++)
         {
             var runFont = faces[i] == FontRuns.PrimaryFace ? primary : GetFallbackFont(faces[i], generation, font);
-            widths[i] = MeasureNative(runFont, text[start..ends[i]]);
+            widths[i] = MeasureRun(runFont, text[start..ends[i]], shaped[i]);
             width += widths[i];
             start = ends[i];
         }
-        return new FontRuns([.. ends], [.. faces], widths, generation);
+        return new FontRuns([.. ends], [.. faces], widths, [.. shaped], generation);
     }
 
     /// <summary>The width of <paramref name="text"/> drawn run by run, for <see cref="KumikoTextLayout"/>.</summary>
@@ -582,13 +635,14 @@ public sealed class SkiaResourceCache : IDisposable
 
         var ends = new List<int>();
         var faces = new List<int>();
-        Segment(text, ToFontKey(font), primary, ends, faces);
+        var shaped = new List<bool>();
+        Segment(text, ToFontKey(font), primary, ends, faces, shaped);
         float width = 0f;
         int start = 0;
         for (int i = 0; i < faces.Count; i++)
         {
             var runFont = faces[i] == FontRuns.PrimaryFace ? primary : GetFallbackFont(faces[i], generation, font);
-            width += MeasureNative(runFont, text[start..ends[i]]);
+            width += MeasureRun(runFont, text[start..ends[i]], shaped[i]);
             start = ends[i];
         }
         return width;
@@ -596,9 +650,11 @@ public sealed class SkiaResourceCache : IDisposable
 
     /// <summary>
     /// Splits <paramref name="text"/> into runs of whole text elements drawn with the same face: adds the end of
-    /// each run to <paramref name="ends"/> and its face to <paramref name="faces"/>.
+    /// each run to <paramref name="ends"/>, its face to <paramref name="faces"/> and to <paramref name="shaped"/>
+    /// whether it holds an emoji sequence (a modifier, a joiner, a flag) that must be shaped to draw as one glyph.
     /// </summary>
-    private void Segment(ReadOnlySpan<char> text, FontKey font, SKFont primary, List<int> ends, List<int> faces)
+    private void Segment(ReadOnlySpan<char> text, FontKey font, SKFont primary, List<int> ends, List<int> faces,
+        List<bool> shaped)
     {
         lock (_gate)
         {
@@ -613,8 +669,11 @@ public sealed class SkiaResourceCache : IDisposable
                 {
                     if (current != int.MinValue) ends.Add(pos);
                     faces.Add(face);
+                    shaped.Add(false);
                     current = face;
                 }
+                if (GlyphShaper.IsAvailable && GlyphShaper.NeedsShaping(text.Slice(pos, length)))
+                    shaped[^1] = true;
                 pos += length;
             }
             ends.Add(text.Length);

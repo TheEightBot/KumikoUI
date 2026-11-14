@@ -22,6 +22,7 @@ internal sealed class FontRuns : IDisposable
     private readonly int[] _ends;
     private readonly int[] _faces;
     private readonly float[] _widths;
+    private readonly bool[] _shaped;
 
     private readonly SKTextBlob?[] _blobs;
     private readonly bool[] _blank;
@@ -31,13 +32,14 @@ internal sealed class FontRuns : IDisposable
     /// The whole text is drawn with the requested typeface (the common case): no runs to walk. Every text gets its
     /// own instance, because the instance caches the text's blob.
     /// </summary>
-    public static FontRuns CreatePrimary(long generation) => new([], [], [], generation);
+    public static FontRuns CreatePrimary(long generation) => new([], [], [], [], generation);
 
-    public FontRuns(int[] ends, int[] faces, float[] widths, long generation)
+    public FontRuns(int[] ends, int[] faces, float[] widths, bool[] shaped, long generation)
     {
         _ends = ends;
         _faces = faces;
         _widths = widths;
+        _shaped = shaped;
         Generation = generation;
         // A text drawn in the requested typeface alone has no runs, but still one blob.
         int blobs = Math.Max(1, ends.Length);
@@ -62,6 +64,12 @@ internal sealed class FontRuns : IDisposable
 
     /// <summary>The advance width of run <paramref name="index"/>.</summary>
     public float GetWidth(int index) => _widths[index];
+
+    /// <summary>
+    /// Whether run <paramref name="index"/> holds an emoji sequence (a skin-tone modifier, a joiner, a flag), so its
+    /// width and its glyphs come from shaping (<see cref="GlyphShaper"/>) instead of one glyph per code point.
+    /// </summary>
+    public bool IsShaped(int index) => index < _shaped.Length && _shaped[index];
 
     /// <summary>
     /// The blob of run <paramref name="index"/> (the whole text for <see cref="IsPrimaryOnly"/> runs, index 0), or

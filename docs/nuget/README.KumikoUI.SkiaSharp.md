@@ -72,6 +72,8 @@ public record Person(string Name, int Age);
 
 In a live control, call `renderer.Render` from the control's paint callback. Create the context with a long-lived cache, `cache.CreateContext(canvas)`, so caching works across frames and a steady-state frame allocates nothing.
 
+Emoji sequences (a skin tone, a family, a flag) are shaped with HarfBuzz so each draws as one glyph. On Linux, add `SkiaSharp.NativeAssets.Linux` and `HarfBuzzSharp.NativeAssets.Linux` next to this package; without HarfBuzz's native library the sequences are drawn glyph by glyph.
+
 ## Documentation
 
 - [Project README](https://github.com/TheEightBot/KumikoUI#readme): features, column types, editing, theming and more.

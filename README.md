@@ -1558,7 +1558,7 @@ kumiko.Columns.Add(new KumikoColumn
 
 **Bold and italic.** A family can hold several faces. Register the bold or italic file under the same family name with a `SKFontStyle`, and bold or italic text uses the closest registered face. When the closest face lacks the style (a bold font with only a regular face registered), the text is emboldened or slanted synthetically.
 
-**Fallback fonts.** Text that the requested font has no glyph for (emoji, CJK, symbols) is drawn glyph by glyph with a fallback font: first the families you list with `SetFallbackFamilies`, in order, then the platform font manager's own choice. An emoji sequence or a letter with combining marks is never split between two fonts.
+**Fallback fonts.** Text that the requested font has no glyph for (emoji, CJK, symbols) is drawn glyph by glyph with a fallback font: first the families you list with `SetFallbackFamilies`, in order, then the platform font manager's own choice. An emoji sequence or a letter with combining marks is never split between two fonts, and an emoji sequence (a skin tone, a family, a flag) is drawn as the one glyph the emoji font has for it.
 
 ```csharp
 using KumikoUI.SkiaSharp;
