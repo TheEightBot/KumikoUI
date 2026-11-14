@@ -5,7 +5,7 @@ icon glyphs via `MaterialIcons`), reusing `KumikoUI.SkiaSharp`'s `SkiaFontRegist
 
 Why this matters: SkiaSharp renders text with whatever typeface it can resolve. On Android in
 particular, CJK and icon fonts garble without an explicitly registered typeface — exactly what
-`SkiaFontRegistrar` solves (see commit history / [../RENDERING.md](../RENDERING.md)).
+`SkiaFontRegistrar` solves (see commit history / [../RENDERING.md](../../RENDERING.md)).
 
 ---
 
