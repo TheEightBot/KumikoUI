@@ -8,6 +8,7 @@ public sealed class ScrollState
 {
     private float _offsetX;
     private float _offsetY;
+    private float _bottomInset;
 
     /// <summary>
     /// Raised when <see cref="OffsetX"/> or <see cref="OffsetY"/> changes, once per change: setting a property
@@ -35,6 +36,17 @@ public sealed class ScrollState
     /// <summary>Total content height (row count × row height + header).</summary>
     public float ContentHeight { get; set; }
 
+    /// <summary>
+    /// Extra room below the content that the grid can scroll into, in pixels (0 by default). A host sets it while an
+    /// on-screen keyboard covers the bottom of the grid, so the last rows can still be scrolled above it (#258), and
+    /// sets it back to 0 when the keyboard hides. <see cref="MaxOffsetY"/> includes it.
+    /// </summary>
+    public float BottomInset
+    {
+        get => _bottomInset;
+        set => _bottomInset = float.IsNaN(value) ? 0 : Math.Max(0, value);
+    }
+
     /// <summary>Viewport width.</summary>
     public float ViewportWidth { get; set; }
 
@@ -43,8 +55,8 @@ public sealed class ScrollState
 
     /// <summary>Maximum horizontal scroll offset (content width minus viewport width, minimum 0).</summary>
     public float MaxOffsetX => Math.Max(0, ContentWidth - ViewportWidth);
-    /// <summary>Maximum vertical scroll offset (content height minus viewport height, minimum 0).</summary>
-    public float MaxOffsetY => Math.Max(0, ContentHeight - ViewportHeight);
+    /// <summary>Maximum vertical scroll offset (content height plus <see cref="BottomInset"/> minus viewport height, minimum 0).</summary>
+    public float MaxOffsetY => Math.Max(0, ContentHeight + _bottomInset - ViewportHeight);
 
     /// <summary>Clamps the current scroll offset to valid bounds.</summary>
     public void ClampOffset() =>
