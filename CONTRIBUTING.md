@@ -224,6 +224,16 @@ An annotation that is not directly followed by a code block, or has an unknown w
 
 CI (`Build (Documentation snippets — MAUI + Uno)`) runs this on every pull request that changes code or one of those Markdown files.
 
+### Documentation identifiers
+
+The documents that tell contributors and AI assistants how the code is built (`.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`, `docs/ARCHITECTURE.md`, `docs/RENDERING.md` and `docs/uno/README.md`) must name only code that exists. `eng/DocsIdentifiers` (a console tool, not part of `KumikoUI.sln`) reads every backticked identifier and file name in them, and the multi-hump names in their code blocks, and fails when one does not occur in the source, or is not a member of the type it is written after (`KumikoSource.Name`). It reads text files only, needs no workload and takes about a second:
+
+```shell
+dotnet run --project eng/DocsIdentifiers -c Release
+```
+
+Run it after you rename or remove a type or member, or edit one of those documents. Fix the document; when a name is not code (a platform API, an example name in a template), add it to `eng/DocsIdentifiers/allowlist.txt` with a reason: an allowlist entry that no document uses is itself an error. It is a word check, not a compiler: it does not tell a public member from a private one or notice a changed signature, so it complements, and does not replace, the compiled snippets above. CI (`Check documentation identifiers`) runs it on every pull request that changes code or one of those documents.
+
 ### Pull requests
 
 1. Rebase on the latest `main`, build the projects you touched and run the tests.
