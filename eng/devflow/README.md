@@ -30,7 +30,7 @@ and tells a script where things are drawn. Every tool takes an optional `grid` (
 | Tool | Method | Returns or does |
 | --- | --- | --- |
 | `page` | GET | Current page title, type, Shell route and grid count (works on pages without a grid). |
-| `state` | GET | Rows, items, columns (display index, width, freeze, sort, filter), sort, filters, groups, collapsed groups, selection, current cell, edit state and editor type, scroll offsets, summaries, theme and colors, whether a popup is open. |
+| `state` | GET | Rows, items, whether a background view rebuild is pending (`isViewUpdatePending`; wait for `false` before reading rows after a sort, filter or grouping change on a large source), columns (display index, width, freeze, sort, filter), sort, filters, groups, collapsed groups, selection, current cell, edit state and editor type, scroll offsets, summaries, theme and colors, whether a popup is open. |
 | `cell` | GET | Bounds, center and display text of a cell (`row`, `column` as index, header or property name). |
 | `header` | GET | Header bounds plus the filter funnel and resize grip points, each with the region Core's hit tester reports there. |
 | `hit-test` | GET | Region, row and column at a point. |

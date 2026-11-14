@@ -48,6 +48,26 @@ public class KumikoDataGridRenderingTests
     }
 
     [Fact]
+    public void NewGrid_RebuildsLargeSourcesInTheBackground()
+    {
+        var grid = new KumikoDataGrid();
+
+        // #254: sources of 10 000 rows or more sort, filter and group on a worker; smaller ones stay synchronous.
+        Assert.Equal(KumikoSource.DefaultBackgroundRebuildThreshold, grid.BackgroundRebuildThreshold);
+        Assert.Equal(KumikoSource.DefaultBackgroundRebuildThreshold, grid.DataSource.BackgroundRebuildThreshold);
+        grid.BackgroundRebuildThreshold = 500;
+        Assert.Equal(500, grid.DataSource.BackgroundRebuildThreshold);
+        grid.BackgroundRebuildThreshold = -1; // rejected by the property's validation
+        Assert.Equal(500, grid.BackgroundRebuildThreshold);
+        Assert.Equal(500, grid.DataSource.BackgroundRebuildThreshold);
+        grid.BackgroundRebuildThreshold = KumikoSource.DefaultBackgroundRebuildThreshold;
+        grid.ItemsSource = new ObservableCollection<string> { "b", "a" };
+        grid.DataSource.Refresh();
+        Assert.False(grid.DataSource.IsViewUpdatePending);
+        Assert.Equal(2, grid.DataSource.RowCount);
+    }
+
+    [Fact]
     public void NewGrid_RenderModeIsAuto_AndTheActiveModeIsResolved()
     {
         var grid = new KumikoDataGrid();
