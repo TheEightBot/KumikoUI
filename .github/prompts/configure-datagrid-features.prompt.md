@@ -6,7 +6,10 @@ description: Set up sorting, filtering, grouping, and summaries on KumikoDataGri
 # Configure KumikoSource Features
 
 Adds sorting, filtering, grouping, and/or summary rows to an existing `KumikoDataGrid`
-binding. All configuration targets `KumikoSource` in `KumikoUI.Core.Models`.
+binding, on .NET MAUI (`KumikoUI.Maui`) or the Uno Platform (`KumikoUI.Uno`): the properties and `DataSource` are the same
+on both. All data configuration targets `KumikoSource` in `KumikoUI.Core.Models`, which the grid exposes as
+`DataSource`. The XAML examples use the MAUI namespace prefix `dg:` (`clr-namespace:KumikoUI.Maui`); on Uno it is
+`kumiko:` (`using:KumikoUI.Uno`) and the Core prefix is `using:KumikoUI.Core.Models`.
 
 ## What to ask before generating
 
@@ -20,8 +23,8 @@ binding. All configuration targets `KumikoSource` in `KumikoUI.Core.Models`.
 
 ## Sorting
 
-Sorting is **automatic** — tapping a column header cycles Ascending → Descending → None.
-To enable/disable per-column:
+Sorting is **automatic**: tapping a column header cycles Ascending → Descending → None (Ctrl or Shift on a header adds a
+column to the sort chain). Turn it off for the grid or per column:
 
 ```csharp
 // XAML:
@@ -39,13 +42,15 @@ kumikoDataGrid.DataSource.SetSort(column, KumikoSortDirection.Ascending);
 // Multi-column (the order is the place in the chain, 1 = primary):
 kumikoDataGrid.DataSource.SetSort(columnA, KumikoSortDirection.Ascending, 1);
 kumikoDataGrid.DataSource.SetSort(columnB, KumikoSortDirection.Descending, 2);
+
+kumikoDataGrid.DataSource.ClearSort();
 ```
 
 ---
 
 ## Filtering
 
-Filtering uses `FilterDescription` with up to two `FilterCondition` objects (AND/OR).
+Filtering uses `FilterDescription` with up to two `FilterCondition` objects, joined by `Combination`.
 
 ```csharp
 // Text contains filter:
@@ -57,7 +62,7 @@ var filter = new FilterDescription(column)
         Value        = "Engineering"
     }
 };
-kumikoDataGrid.Source.ApplyFilter(column, filter);
+kumikoDataGrid.DataSource.SetColumnFilter(column, filter);
 
 // Numeric range filter (AND):
 var numFilter = new FilterDescription(numericColumn)
@@ -67,45 +72,51 @@ var numFilter = new FilterDescription(numericColumn)
         NumericOperator = NumericFilterOperator.GreaterThan,
         Value = 50000d
     },
-    LogicalOperator = FilterLogicalOperator.And,
+    Combination = FilterCombination.And,
     Condition2 = new FilterCondition
     {
         NumericOperator = NumericFilterOperator.LessThanOrEqual,
         Value = 150000d
     }
 };
-kumikoDataGrid.Source.ApplyFilter(numericColumn, numFilter);
+kumikoDataGrid.DataSource.SetColumnFilter(numericColumn, numFilter);
 
-// Clear filter:
-kumikoDataGrid.Source.ApplyFilter(column, null);
+// Clear one column's filter, or all of them:
+kumikoDataGrid.DataSource.SetColumnFilter(column, null);
+kumikoDataGrid.DataSource.ClearAllFilters();
 ```
 
+A predicate over the items themselves is `DataSource.SetFilter(item => ...)` (null clears it).
+
 **Excel-style value-checklist filter** (built into the column header popup; user-driven):
-Enabled by default when `AllowFiltering="True"` on the column (the default).
+Enabled by default when `AllowFiltering="True"` on the column (the default); the grid-level `AllowFiltering` switch turns
+every filter icon off.
 
 ---
 
 ## Grouping
 
+`KumikoSource.GroupDescriptions` is a read-only list: change it with `AddGroupDescription`, `RemoveGroupDescription`,
+`SetGroupDescriptions` or `ClearGroupDescriptions`, each of which rebuilds the view.
+
 ```csharp
-// Code — add before or after ItemsSource is set:
-kumikoDataGrid.Source.GroupDescriptions.Add(
-    new GroupDescription("Department"));
+// Code: before or after ItemsSource is set:
+kumikoDataGrid.DataSource.AddGroupDescription(new GroupDescription("Department"));
 
 // Multi-level:
-kumikoDataGrid.Source.GroupDescriptions.Add(
-    new GroupDescription("Department"));
-kumikoDataGrid.Source.GroupDescriptions.Add(
-    new GroupDescription("City"));
-
-kumikoDataGrid.Source.RebuildView();   // required after changing GroupDescriptions
+kumikoDataGrid.DataSource.AddGroupDescription(new GroupDescription("City"));
 
 // Custom display text:
-kumikoDataGrid.Source.GroupDescriptions.Add(new GroupDescription("HireDate")
+kumikoDataGrid.DataSource.AddGroupDescription(new GroupDescription("HireDate")
 {
     DisplayTextSelector = key => key is DateTime dt ? dt.ToString("yyyy") : key?.ToString() ?? ""
 });
+
+// Expand or collapse:
+kumikoDataGrid.DataSource.CollapseAllGroups();   // ExpandAllGroups(), ToggleGroupExpansion(row)
 ```
+
+The host's own `GroupDescriptions` collection (settable in XAML) feeds the same list.
 
 **Group summary rows (in XAML):**
 ```xml
@@ -166,8 +177,10 @@ var summaryRow = new TableSummaryRow("Totals", SummaryPosition.Bottom)
         new SummaryColumnDescription("Rating", SummaryType.Max)   { Label = "Best: " }
     }
 };
-kumikoDataGrid.TableSummaryRows.Add(summaryRow);
+kumikoDataGrid.TableSummaryRows.Add(summaryRow);   // the collection exists on both hosts; or DataSource.AddTableSummaryRow(summaryRow)
 ```
+
+A bottom summary stays visible as a footer while `KumikoStyle.PinBottomSummaryRows` is on (the default).
 
 **Summary types:**
 | `SummaryType` | Description |
@@ -177,7 +190,7 @@ kumikoDataGrid.TableSummaryRows.Add(summaryRow);
 | `Count` | Number of visible rows |
 | `Min` | Minimum value |
 | `Max` | Maximum value |
-| `Custom` | Provide `CustomAggregator = (values) => ...` |
+| `Custom` | Set `SummaryColumnDescription.CustomAggregate` to a `Func<IReadOnlyList<object?>, object?>` |
 
 ---
 
@@ -190,12 +203,16 @@ Employees = new ObservableCollection<Employee>(data);
 // Bind:
 kumikoDataGrid.ItemsSource = Employees;
 
-// Add/remove — grid updates automatically:
+// Add/remove: the grid updates automatically (on the UI thread):
 Employees.Add(new Employee { ... });
 Employees.RemoveAt(index);
 
-// For bulk changes, batch with BeginUpdate/EndUpdate (one ViewChanged at the end):
-kumikoDataGrid.DataSource.BeginUpdate();
-foreach (var item in newItems) Employees.Add(item);
-kumikoDataGrid.DataSource.EndUpdate();
+// For bulk changes, batch them: one rebuild and one ViewChanged at the end.
+using (kumikoDataGrid.DataSource.BeginUpdate())
+{
+    foreach (var item in newItems) Employees.Add(item);
+}
 ```
+
+With many rows (from `BackgroundRebuildThreshold`, 10,000 by default in the hosts), sort, filter, grouping and summary
+changes rebuild on a worker; `DataSource.ViewUpdated` is raised when the new view is in place.

@@ -14,7 +14,7 @@ namespace KumikoUI.Uno;
 /// <b>The library ships no fonts.</b> Exactly like <c>KumikoUI.Maui</c>, <c>KumikoUI.Uno</c> stays
 /// font-agnostic — the consuming app supplies the TTFs (typically under its own
 /// <c>Assets/Fonts/</c> marked as <c>Content</c>) and registers them via this helper, usually during
-/// <c>App.OnLaunched</c> before the first grid renders. See <c>docs/uno/05-fonts-and-assets.md</c>.
+/// <c>App.OnLaunched</c> before the first grid renders. See <c>docs/uno/plan/05-fonts-and-assets.md</c>.
 /// </para>
 /// <para>
 /// This is a deliberate improvement over the MAUI sample, which carried an app-private
