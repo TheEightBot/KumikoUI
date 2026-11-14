@@ -72,6 +72,7 @@ public partial class KumikoDataGrid : UserControl
         // The hidden TextBox proxy and the text-input adapter (KumikoDataGrid.Editing.cs).
         _textInput = SetupInputProxy();
         _syncTextInput = SyncTextInputQueued;
+        _scrollAboveKeyboard = ScrollEditedCellAboveKeyboard;
 
         // The content is the grid's own: replacing it would detach the canvas
         RegisterPropertyChangedCallback(ContentProperty, OnContentReplaced);
@@ -167,7 +168,7 @@ public partial class KumikoDataGrid : UserControl
         // Use a throwaway 1x1 Skia surface for text measurement (mirrors MAUI).
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
-        using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
+        using var measureCtx = ResourceCache.CreateContext(canvas);
 
         // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
         // Auto column becomes Fixed at the fitted width so it keeps it.
@@ -183,10 +184,10 @@ public partial class KumikoDataGrid : UserControl
     /// active text input into the hidden TextBox proxy and focuses it — on iOS/Android that summons the
     /// soft keyboard; on every head it routes subsequent keys and text to the proxy (which forwards to Core).
     /// </summary>
-    private void OnKeyboardFocusRequested() => FocusKeyboardInput();
+    private void OnKeyboardFocusRequested(object? sender, EventArgs e) => FocusKeyboardInput();
 
     /// <summary>A filter popup opened: start the cursor-blink repaint timer so its search caret blinks.</summary>
-    private void OnFilterPopupOpened()
+    private void OnFilterPopupOpened(object? sender, EventArgs e)
     {
         _filterPopupActive = true;
         StartCursorBlinkTimer();
@@ -194,7 +195,7 @@ public partial class KumikoDataGrid : UserControl
     }
 
     /// <summary>The filter popup closed: stop the cursor-blink timer (unless a cell edit is still active).</summary>
-    private void OnFilterPopupClosed()
+    private void OnFilterPopupClosed(object? sender, EventArgs e)
     {
         _filterPopupActive = false;
         if (!_editSession.IsEditing)
@@ -225,6 +226,7 @@ public partial class KumikoDataGrid : UserControl
     private void OnEditSessionCellEndEdit(object? sender, CellEndEditEventArgs e)
     {
         _selection.IsEditing = false;
+        QueueKeyboardInsetRelease();
         if (!_filterPopupActive)
             StopCursorBlinkTimer();
         if (_lastPointerWasTouch)

@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Input;
 /// <summary>
 /// Platform-independent pointer/touch event.
 /// </summary>
-public class KumikoPointerEventArgs
+public sealed class KumikoPointerEventArgs
 {
     /// <summary>Position in grid viewport coordinates.</summary>
     public float X { get; init; }

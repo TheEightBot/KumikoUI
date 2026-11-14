@@ -90,6 +90,9 @@ public partial class KumikoDataGrid
 
         // ── Text-input proxy and adapter (see KumikoDataGrid.Editing.cs) ──
         AttachInputProxy();
+
+        // ── On-screen keyboard (see KumikoDataGrid.KeyboardAvoidance.cs) ──
+        ObserveInputPane();
     }
 
     /// <summary>
@@ -113,6 +116,7 @@ public partial class KumikoDataGrid
 
         // Detach the hidden TextBox proxy's events (see KumikoDataGrid.Editing.cs).
         TeardownInputProxy();
+        StopObservingInputPane();
     }
 
     /// <summary>
@@ -279,7 +283,7 @@ public partial class KumikoDataGrid
     /// clickable glyphs). <see cref="UIElement.ProtectedCursor"/> is protected, which this control can set
     /// on itself. Touch-only heads ignore it.
     /// </summary>
-    private void OnInputControllerCursorChanged(KumikoCursor cursor)
+    private void OnInputControllerCursorChanged(object? sender, KumikoCursor cursor)
     {
         ProtectedCursor = cursor switch
         {

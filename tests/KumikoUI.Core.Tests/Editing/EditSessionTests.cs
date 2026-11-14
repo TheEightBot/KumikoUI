@@ -52,7 +52,7 @@ public class EditSessionTests
             Session.CellBeginEdit += (_, e) => Begun.Add(e);
             Session.CellEndEdit += (_, e) => Ended.Add(e);
             Session.CellValueChanged += (_, e) => Changed.Add(e);
-            Session.NeedsRedraw += () => Redraws++;
+            Session.NeedsRedraw += (_, _) => Redraws++;
         }
 
         public bool Begin(int row, int column, char? initial = null) =>
@@ -614,8 +614,14 @@ public class EditSessionTests
 
     // ── Editor completion, input forwarding ───────────────────────
 
-    private sealed class CompletingCombo : DrawnComboBox
+    // A drawn editor that can finish an edit on demand, as a combo box does when an item is picked.
+    private sealed class CompletingCombo : DrawnComponent, IValueEditor
     {
+        public object? Value { get; private set; }
+        public bool HasValue => Value != null;
+        public bool IsDirty => Value != null;
+        public void Pick(string item) => Value = item;
+        public override void OnDraw(IDrawingContext ctx) { }
         public void Complete() => RaiseEditCompleted();
     }
 
@@ -624,12 +630,10 @@ public class EditSessionTests
     {
         var f = new Fixture();
         var combo = new CompletingCombo { IsVisible = true };
-        combo.AddItem("Zed");
-        combo.AddItem("Yan");
         f.Name.ColumnType = KumikoColumnType.Template;
         f.Name.CustomEditorFactory = (_, _) => combo;
         f.Begin(0, 0);
-        combo.SelectedIndex = 1;
+        combo.Pick("Yan");
 
         combo.Complete();
 
@@ -643,7 +647,6 @@ public class EditSessionTests
     {
         var f = new Fixture();
         var combo = new CompletingCombo { IsVisible = true };
-        combo.AddItem("Zed");
         f.Name.ColumnType = KumikoColumnType.Template;
         f.Name.CustomEditorFactory = (_, _) => combo;
         f.Begin(0, 0);

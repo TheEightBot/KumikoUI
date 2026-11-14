@@ -9,6 +9,11 @@ namespace KumikoUI.Core.Components;
 /// </summary>
 public abstract class DrawnComponent
 {
+    private PaintMemo? _paints;
+
+    /// <summary>The paints this component draws with: the same values give the same instance, so drawing allocates nothing once warm.</summary>
+    internal PaintMemo Paints => _paints ??= new PaintMemo();
+
     private KumikoRect _bounds;
     private KumikoRect _popupViewport;
     private bool _isFocused;
@@ -147,10 +152,10 @@ public abstract class DrawnComponent
     public virtual bool UpdateAnimation(float frameIntervalMs) => false;
 
     /// <summary>Request a redraw of the hosting surface.</summary>
-    public void InvalidateVisual() => RedrawRequested?.Invoke();
+    public void InvalidateVisual() => RedrawRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Raised when the component needs to be redrawn.</summary>
-    public event Action? RedrawRequested;
+    public event EventHandler? RedrawRequested;
 
     // ── Input ────────────────────────────────────────────────────
 
@@ -208,7 +213,7 @@ public abstract class DrawnComponent
     /// is complete (e.g. date picked, combo item selected). The hosting edit
     /// session should commit the value when this fires.
     /// </summary>
-    public event Action? EditCompleted;
+    public event EventHandler? EditCompleted;
 
     /// <summary>Invoke the ValueChanged event.</summary>
     protected void RaiseValueChanged(object? oldValue, object? newValue)
@@ -242,5 +247,5 @@ public abstract class DrawnComponent
     /// Call this from editors that have a definitive "selection made" gesture
     /// (e.g. day clicked in calendar, item picked in combo dropdown).
     /// </summary>
-    protected void RaiseEditCompleted() => EditCompleted?.Invoke();
+    protected void RaiseEditCompleted() => EditCompleted?.Invoke(this, EventArgs.Empty);
 }

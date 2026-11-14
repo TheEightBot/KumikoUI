@@ -60,11 +60,15 @@
 
   <ItemGroup Label="Rendering (SkiaSharp)">
     <PackageVersion Include="SkiaSharp" Version="$(SkiaSharpVersion)" />
+    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.Views" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.Views.Maui.Controls" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.Views.WinUI" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.Skottie" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="$(SkiaSharpVersion)" />
+    <!-- The HarfBuzzSharp version SkiaSharp.HarfBuzz depends on; its Linux native library is a separate package. -->
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.301" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.2.1.301" />
   </ItemGroup>
 
   <ItemGroup Label="Hosts">

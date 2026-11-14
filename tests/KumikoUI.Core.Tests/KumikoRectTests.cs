@@ -53,10 +53,38 @@ public class KumikoRectTests
     }
 
     [Fact]
-    public void Contains_PointOnRightEdge_ReturnsTrue()
+    public void Contains_PointOnTopEdge_ReturnsTrue()
     {
         var rect = new KumikoRect(10, 10, 80, 80);
-        Assert.True(rect.Contains(90, 50));
+        Assert.True(rect.Contains(50, 10));
+        Assert.True(rect.Contains(10, 10)); // the top-left corner is inside
+    }
+
+    [Fact]
+    public void Contains_PointOnRightOrBottomEdge_ReturnsFalse()
+    {
+        var rect = new KumikoRect(10, 10, 80, 80);
+        Assert.False(rect.Contains(90, 50)); // half-open: the right edge belongs to the next rectangle
+        Assert.False(rect.Contains(50, 90));
+        Assert.False(rect.Contains(90, 90));
+        Assert.True(rect.Contains(89.99f, 89.99f));
+    }
+
+    [Fact]
+    public void Contains_AdjacentRectangles_ShareNoPoint()
+    {
+        var left = new KumikoRect(0, 0, 50, 20);
+        var right = new KumikoRect(50, 0, 50, 20);
+
+        Assert.False(left.Contains(50, 10));
+        Assert.True(right.Contains(50, 10));
+    }
+
+    [Fact]
+    public void Contains_EmptyRectangle_ContainsNothing()
+    {
+        Assert.False(new KumikoRect(5, 5, 0, 0).Contains(5, 5));
+        Assert.False(KumikoRect.Empty.Contains(0, 0));
     }
 
     [Fact]

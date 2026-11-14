@@ -28,7 +28,7 @@ namespace KumikoUI.Core.Models;
 /// from the current one; see <see cref="BackgroundRebuildThreshold"/> for the contract.
 /// </para>
 /// </summary>
-public partial class KumikoSource : IDisposable
+public sealed partial class KumikoSource : IDisposable
 {
     private IList _sourceItems = Array.Empty<object>();
     private bool _sourceItemsAreCopy;                 // the items were not an IList: _sourceItems is a private copy

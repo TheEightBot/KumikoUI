@@ -43,5 +43,5 @@ public interface IInteractiveCellRenderer
     /// Raised when the cell's appearance changed without the grid knowing (for example a command's
     /// <c>CanExecuteChanged</c>). The grid redraws.
     /// </summary>
-    event Action? RedrawRequested;
+    event EventHandler? RedrawRequested;
 }

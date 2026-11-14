@@ -48,7 +48,7 @@ public class ActionButtonsCellRendererTests
         Assert.Equal(fills[1].Rect, delete.Rect);
         Assert.Equal(new KumikoColor(9, 9, 9), delete.Color);
         Assert.Equal(KumikoColor.White, ctx.SingleText("Edit").Color);
-        Assert.True(delete.Font!.IsBold);
+        Assert.True(delete.Font!.Value.IsBold);
     }
 
     [Fact]

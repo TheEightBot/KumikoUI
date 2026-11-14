@@ -10,11 +10,7 @@ using KumikoUI.Core.Rendering;
 internal sealed class HeaderMeasurement
 {
     private string? _text;
-    private KumikoFont? _font;
-    private string? _family;
-    private float _size;
-    private bool _bold;
-    private bool _italic;
+    private KumikoFont _font;
 
     /// <summary>Whether a measurement has been stored.</summary>
     public bool HasValue { get; private set; }
@@ -26,21 +22,13 @@ internal sealed class HeaderMeasurement
     public bool IsCurrentFor(string text, KumikoFont font) =>
         HasValue
         && string.Equals(_text, text, StringComparison.Ordinal)
-        && ReferenceEquals(_font, font)
-        && string.Equals(_family, font.Family, StringComparison.Ordinal)
-        && _size.Equals(font.Size) // exact: cache change detection
-        && _bold == font.IsBold
-        && _italic == font.IsItalic;
+        && _font == font; // value equality: exact family, size, weight and slant
 
     /// <summary>Stores the width of <paramref name="text"/> measured in <paramref name="font"/>.</summary>
     public void Store(string text, KumikoFont font, float textWidth)
     {
         _text = text;
         _font = font;
-        _family = font.Family;
-        _size = font.Size;
-        _bold = font.IsBold;
-        _italic = font.IsItalic;
         TextWidth = textWidth;
         HasValue = true;
     }

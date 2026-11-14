@@ -4,7 +4,7 @@ namespace KumikoUI.Core.Models;
 /// Describes how to group rows by a column value.
 /// Multiple GroupDescriptions create multi-level (nested) grouping.
 /// </summary>
-public class GroupDescription
+public sealed class GroupDescription
 {
     /// <summary>The column property name to group by.</summary>
     public string PropertyName { get; set; } = "";

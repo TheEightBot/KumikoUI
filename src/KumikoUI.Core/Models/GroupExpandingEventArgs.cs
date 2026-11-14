@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Models;
 /// Event args raised before a group is expanded or collapsed.
 /// Set Cancel = true to prevent the action.
 /// </summary>
-public class GroupExpandingEventArgs : EventArgs
+public sealed class GroupExpandingEventArgs : EventArgs
 {
     /// <summary>The group being expanded or collapsed.</summary>
     public GroupHeaderInfo Group { get; }

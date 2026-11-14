@@ -12,7 +12,7 @@ namespace KumikoUI.Core.Components;
 /// input-method composition (<see cref="ITextInputSession"/>), undo/redo, word and line selection by
 /// double and triple click, drag selection, clipboard requests and horizontal scrolling.
 /// </summary>
-public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
+public sealed class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
 {
     private const int MaxUndoDepth = 200;
     private const long MultiClickTimeMs = 500;
@@ -33,13 +33,13 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     private float[]? _prefixWidths;
 
     // Paints reused by every frame (a render pass allocates nothing); the colors and font are set before each use
-    private readonly KumikoPaint _bgPaint = new() { Style = PaintStyle.Fill };
-    private readonly KumikoPaint _borderPaint = new() { Style = PaintStyle.Stroke, IsAntiAlias = true };
-    private readonly KumikoPaint _textPaint = new() { Style = PaintStyle.Fill };
-    private readonly KumikoPaint _placeholderPaint = new() { Style = PaintStyle.Fill };
-    private readonly KumikoPaint _selectionPaint = new() { Style = PaintStyle.Fill };
-    private readonly KumikoPaint _underlinePaint = new() { Style = PaintStyle.Stroke, StrokeWidth = 1f };
-    private readonly KumikoPaint _cursorPaint = new() { Style = PaintStyle.Stroke, StrokeWidth = 1.5f };
+    private readonly KumikoPaint _bgPaint = new();
+    private readonly KumikoPaint _borderPaint = new() { IsAntiAlias = true };
+    private readonly KumikoPaint _textPaint = new();
+    private readonly KumikoPaint _placeholderPaint = new();
+    private readonly KumikoPaint _selectionPaint = new();
+    private readonly KumikoPaint _underlinePaint = new() { StrokeWidth = 1f };
+    private readonly KumikoPaint _cursorPaint = new() { StrokeWidth = 1.5f };
     private (string Family, float Size, bool Bold, bool Italic, IDrawingContext? Context) _widthKey;
 
     // Undo history: states before each edit; consecutive typing or deleting coalesce into one step
@@ -206,9 +206,6 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     /// </summary>
     public ValidationState Validation { get; set; } = ValidationState.None;
 
-    /// <summary>Error message shown when validation fails.</summary>
-    public string? ValidationMessage { get; set; }
-
     /// <summary>Border color used when validation state is Error.</summary>
     public KumikoColor ErrorBorderColor { get; set; } = new(220, 50, 50);
 
@@ -246,13 +243,13 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
     /// Raised when Enter is pressed during editing (not while an input method is composing). The key itself
     /// is left unhandled, so a host (the grid's edit session) can commit the edit.
     /// </summary>
-    public event Action? Committed;
+    public event EventHandler? Committed;
 
     /// <summary>
     /// Raised when Escape is pressed during editing (not while an input method is composing). The key itself
     /// is left unhandled, so a host (the grid's edit session) can cancel the edit.
     /// </summary>
-    public event Action? Cancelled;
+    public event EventHandler? Cancelled;
 
     /// <summary>Raised when clipboard paste is requested (host must provide text).</summary>
     public event EventHandler<ClipboardRequestEventArgs>? PasteRequested;
@@ -642,11 +639,11 @@ public class DrawnTextBox : DrawnComponent, ITextInputSession, IValueEditor
 
             // A single-line box has no use for Enter and Escape: they are reported and left to the host
             case KumikoKey.Enter:
-                Committed?.Invoke();
+                Committed?.Invoke(this, EventArgs.Empty);
                 return false;
 
             case KumikoKey.Escape:
-                Cancelled?.Invoke();
+                Cancelled?.Invoke(this, EventArgs.Empty);
                 return false;
 
             case KumikoKey.A when command:

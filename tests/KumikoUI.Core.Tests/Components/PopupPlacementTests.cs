@@ -16,16 +16,16 @@ public class PopupPlacementTests
         new() { Bounds = new KumikoRect(0, 0, width, height) };
 
     [Theory]
-    [InlineData(PopupPlacement.Below, 200, 130)]
-    [InlineData(PopupPlacement.Above, 200, 50)]
-    [InlineData(PopupPlacement.Right, 280, 100)]
-    [InlineData(PopupPlacement.Left, 100, 100)]
-    public void Show_PlacesThePopupNextToTheAnchor(PopupPlacement placement, float x, float y)
+    [InlineData("Below", 200, 130)]
+    [InlineData("Above", 200, 50)]
+    [InlineData("Right", 280, 100)]
+    [InlineData("Left", 100, 100)]
+    public void Show_PlacesThePopupNextToTheAnchor(string placementName, float x, float y)
     {
         var popups = new PopupManager();
         var popup = Popup();
 
-        popups.Show(popup, Anchor, placement);
+        popups.Show(popup, Anchor, Enum.Parse<PopupPlacement>(placementName));
 
         Assert.Equal(new KumikoRect(x, y, 100, 50), popup.Bounds);
         Assert.True(popup.IsVisible);
@@ -44,14 +44,14 @@ public class PopupPlacementTests
     }
 
     [Theory]
-    [InlineData(PopupPlacement.Below, 200, 130)]
-    [InlineData(PopupPlacement.Above, 200, -100)]
-    public void Show_WithoutASize_UsesTheAnchorWidthAndADefaultHeight(PopupPlacement placement, float x, float y)
+    [InlineData("Below", 200, 130)]
+    [InlineData("Above", 200, -100)]
+    public void Show_WithoutASize_UsesTheAnchorWidthAndADefaultHeight(string placementName, float x, float y)
     {
         var popups = new PopupManager();
         var popup = new ProbeComponent();
 
-        popups.Show(popup, Anchor, placement);
+        popups.Show(popup, Anchor, Enum.Parse<PopupPlacement>(placementName));
 
         Assert.Equal(new KumikoRect(x, y, 80, 200), popup.Bounds);
     }

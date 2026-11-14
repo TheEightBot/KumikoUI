@@ -476,7 +476,7 @@ With a mouse, the cursor shows what a click does:
 | A filter icon, a group chevron, a grouping chip or its remove button, the row drag handle, an editable check box, an enabled action button | Hand |
 | Anything else | Arrow |
 
-`InputController.Cursor` holds the current cursor (`KumikoCursor`) and `InputController.CursorChanged` reports changes. The Uno control applies it on the Windows, desktop and WebAssembly heads, and the MAUI control on Windows and Mac Catalyst; touch platforms ignore it. Moving the mouse with no button pressed never scrolls or selects.
+`InputController.Cursor` holds the current cursor (`KumikoCursor`) and `InputController.CursorChanged` (an `EventHandler<KumikoCursor>`) reports changes. The Uno control applies it on the Windows, desktop and WebAssembly heads, and the MAUI control on Windows and Mac Catalyst; touch platforms ignore it. Moving the mouse with no button pressed never scrolls or selects.
 
 ### Reordering columns
 
@@ -645,7 +645,7 @@ kumiko.Columns.Add(actionsColumn);
 | Button property | Type | Meaning |
 |---|---|---|
 | `Label` | `string` | Text on the button |
-| `BackgroundColor` | `KumikoColor` | Pill color (`R,G,B`, `R,G,B,A`, `#RRGGBB` or `#AARRGGBB` in XAML) |
+| `BackgroundColor` | `KumikoColor` | Pill color (`R,G,B`, `R,G,B,A`, `#RGB`, `#RRGGBB`, `#AARRGGBB` or a color name in XAML) |
 | `TextColor` | `KumikoColor` | Label color (default: white) |
 | `Command` | `ICommand?` | Executed on tap; the row item is the default parameter |
 | `CommandParameter` | `object?` | Overrides the row item as the parameter |
@@ -1207,7 +1207,7 @@ style.ShowVerticalGridLines = false;
 kumiko.GridStyle = style;
 ```
 
-`KumikoColor` takes bytes (`R`, `G`, `B` and an optional `A`) and has named colors such as `White`, `Black` and `Transparent`. In XAML, a `KumikoColor` property accepts `R,G,B`, `R,G,B,A`, `#RRGGBB`, `#AARRGGBB` and the names `White`, `Black`, `Red`, `Blue`, `Green`, `Gray` and `Transparent`. `KumikoFont` has `Family` (`"Default"` is the platform font, or a family you registered, see [Custom Fonts](#custom-fonts)), `Size`, `IsBold` and `IsItalic`.
+`KumikoColor` takes bytes (`R`, `G`, `B` and an optional `A`) and has named colors such as `White`, `Black` and `Transparent`. In XAML, a `KumikoColor` property accepts `R,G,B`, `R,G,B,A`, `#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` (alpha first, as in XAML and MAUI), any CSS color name (`Orange`, `CornflowerBlue`, `SlateGray`, ... in any case) and `Transparent`; text it cannot read throws a `FormatException` that names it. `KumikoFont` is a value (a `readonly record struct`): two fonts with the same content are equal, and you change one with `with` (`style.CellFont = style.CellFont with { Size = 16 }`). It has `Family` (`"Default"` is the platform font, or a family you registered, see [Custom Fonts](#custom-fonts)), `Size`, `IsBold` and `IsItalic`.
 
 ### Per-cell and per-row styles
 
@@ -1224,7 +1224,7 @@ style.RowStyleResolver = item =>
 kumiko.GridStyle = style;
 ```
 
-`KumikoCellStyle` has `BackgroundColor`, `TextColor`, `Font`, `Padding`, `BorderColor`, `BorderWidth` and `TextAlignment`; `KumikoRowStyle` has `BackgroundColor`, `TextColor` and `Font` (every row has the grid's `RowHeight`; variable row height is tracked in #102). Every member is nullable, and null means "no override". A cell's style is composed from the cell resolver, then the column's `CellStyle`, then the row resolver's text color and font, then the grid style; the row resolver's background is drawn behind unselected rows. Resolvers run for every visible cell on every frame, so return cached instances rather than allocating new ones where you can.
+`KumikoCellStyle` has `BackgroundColor`, `TextColor`, `Font`, `Padding` and `TextAlignment`; `KumikoRowStyle` has `BackgroundColor`, `TextColor` and `Font` (every row has the grid's `RowHeight`; variable row height is tracked in #102). Every member is nullable, and null means "no override". A cell's style is composed from the cell resolver, then the column's `CellStyle`, then the row resolver's text color and font, then the grid style; the row resolver's background is drawn behind unselected rows. Resolvers run for every visible cell on every frame, so return cached instances rather than allocating new ones where you can.
 
 ### KumikoStyle reference
 
@@ -1558,7 +1558,7 @@ kumiko.Columns.Add(new KumikoColumn
 
 **Bold and italic.** A family can hold several faces. Register the bold or italic file under the same family name with a `SKFontStyle`, and bold or italic text uses the closest registered face. When the closest face lacks the style (a bold font with only a regular face registered), the text is emboldened or slanted synthetically.
 
-**Fallback fonts.** Text that the requested font has no glyph for (emoji, CJK, symbols) is drawn glyph by glyph with a fallback font: first the families you list with `SetFallbackFamilies`, in order, then the platform font manager's own choice. An emoji sequence or a letter with combining marks is never split between two fonts.
+**Fallback fonts.** Text that the requested font has no glyph for (emoji, CJK, symbols) is drawn glyph by glyph with a fallback font: first the families you list with `SetFallbackFamilies`, in order, then the platform font manager's own choice. An emoji sequence or a letter with combining marks is never split between two fonts, and an emoji sequence (a skin tone, a family, a flag) is drawn as the one glyph the emoji font has for it.
 
 ```csharp
 using KumikoUI.SkiaSharp;
@@ -1628,7 +1628,7 @@ kumiko.GridStyle = style;
 public sealed class RoundCheckIcons : KumikoIconProvider
 {
     // Reused every frame: DrawIcon runs for each visible glyph and should not allocate
-    private readonly KumikoPaint _dot = new() { Style = PaintStyle.Fill, IsAntiAlias = true };
+    private readonly KumikoPaint _dot = new() { IsAntiAlias = true };
 
     public override void DrawIcon(IDrawingContext ctx, KumikoIcon icon, KumikoRect bounds, KumikoPaint paint)
     {
@@ -1663,7 +1663,7 @@ kumiko.GridStyle = style;
 | `Remove` | Grouping chip remove button | × |
 | `GroupSeparator` | Between grouping chips | Chevron right |
 | `DragHandle` | Row drag handle | Six dots |
-| `Check`, `Indeterminate` | Boolean cells, `DrawnCheckBox`, filter popup values | Tick, dash |
+| `Check`, `Indeterminate` | Boolean cells, the filter popup's value list | Tick, dash |
 | `DropDown`, `DropDownOpen` | `DrawnComboBox` | Triangle down, triangle up |
 | `Increment`, `Decrement` | `DrawnNumericUpDown` | Plus, minus |
 | `Calendar` | `DrawnDatePicker` field | Calendar page |
@@ -1771,7 +1771,7 @@ public sealed class MyGridSurface : IDisposable
 
     public void Paint(SKCanvas canvas, Action<IDrawingContext> draw)
     {
-        using var ctx = new SkiaDrawingContext(canvas, _resources); // disposing ends the frame and keeps the cache
+        using var ctx = _resources.CreateContext(canvas); // reused every frame; disposing ends the frame and keeps the cache
         draw(ctx);
     }
 
@@ -1985,7 +1985,7 @@ All drawing goes through the `IDrawingContext` abstraction, so Core has no depen
 | `CellEditorFactory` | Creates the drawn editor for a column type |
 | `PaintCache` | The paints the grid draws with, rebuilt only when the style changes |
 | `InertialScroller` | Fling deceleration (`ScrollSettings`) |
-| `PopupManager` | Popup z-order and input priority (filter popup, combo box, date picker) |
+| `PopupManager` (internal) | Popup z-order and input priority (filter popup, combo box, date picker) |
 | `SkiaDrawingContext`, `SkiaResourceCache` | The SkiaSharp drawing context and its per-control cache |
 | `KumikoDataGrid` (MAUI, Uno) | The host controls |
 
