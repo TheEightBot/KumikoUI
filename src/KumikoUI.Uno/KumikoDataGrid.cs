@@ -94,7 +94,10 @@ public partial class KumikoDataGrid : UserControl
         // Large sources sort, filter and group on a worker; the new view is swapped in on the UI thread, which raises
         // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous. Single-threaded
         // WebAssembly has no worker to build on, so it stays synchronous there.
-        if (!OperatingSystem.IsBrowser())
+        // The property's default is not applied through its change callback, so give the source the default here.
+        if (OperatingSystem.IsBrowser())
+            BackgroundRebuildThreshold = int.MaxValue;
+        else
             _dataSource.BackgroundRebuildThreshold = KumikoSource.DefaultBackgroundRebuildThreshold;
 
         // Core "invalidate" signals → request a single canvas repaint.

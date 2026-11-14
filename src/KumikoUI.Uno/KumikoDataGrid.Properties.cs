@@ -280,6 +280,35 @@ public partial class KumikoDataGrid
         view.Invalidate();
     }
 
+    // ── BackgroundRebuildThreshold ───────────────────────────────
+
+    /// <summary>Identifies the <see cref="BackgroundRebuildThreshold"/> dependency property.</summary>
+    public static readonly DependencyProperty BackgroundRebuildThresholdProperty =
+        DependencyProperty.Register(
+            nameof(BackgroundRebuildThreshold), typeof(int), typeof(KumikoDataGrid),
+            new PropertyMetadata(KumikoSource.DefaultBackgroundRebuildThreshold, OnBackgroundRebuildThresholdChanged));
+
+    /// <summary>
+    /// The number of items from which sorting, filtering, grouping and summaries are rebuilt on a worker thread
+    /// instead of the UI thread (forwarded to <see cref="KumikoSource.BackgroundRebuildThreshold"/> of
+    /// <see cref="DataSource"/>). Default <see cref="KumikoSource.DefaultBackgroundRebuildThreshold"/> (10,000).
+    /// Below it rebuilds are synchronous; <see cref="int.MaxValue"/> keeps every rebuild synchronous. During a
+    /// background rebuild the grid keeps drawing the current rows, then draws the new view when it is swapped in;
+    /// selection, the current cell and an open edit follow their items. Item properties, comparers, the filter
+    /// predicate and group selectors must be safe to read from a worker while a rebuild runs.
+    /// Setting a negative value throws <see cref="ArgumentOutOfRangeException"/>.
+    /// In the browser (single-threaded WebAssembly, no worker to build on) the grid sets it to
+    /// <see cref="int.MaxValue"/>, so rebuilds stay synchronous there.
+    /// </summary>
+    public int BackgroundRebuildThreshold
+    {
+        get => (int)GetValue(BackgroundRebuildThresholdProperty);
+        set => SetValue(BackgroundRebuildThresholdProperty, value);
+    }
+
+    private static void OnBackgroundRebuildThresholdChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
+        ((KumikoDataGrid)d)._dataSource.BackgroundRebuildThreshold = (int)e.NewValue; // throws for a negative value
+
     // ── FrozenRowCount ────────────────────────────────────────────
 
     /// <summary>Identifies the <see cref="FrozenRowCount"/> dependency property.</summary>

@@ -118,7 +118,8 @@ public partial class KumikoDataGrid : ContentView
         InitializeImages();
 
         // Large sources sort, filter and group on a worker; the new view is swapped in on the UI thread, which raises
-        // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous.
+        // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous. The property's
+        // default is not applied through its change callback, so give the source the default here.
         _dataSource.BackgroundRebuildThreshold = KumikoSource.DefaultBackgroundRebuildThreshold;
         _dataSource.ViewChanged += OnDataSourceViewChanged;
         _dataSource.ViewUpdated += OnDataSourceViewUpdated;
@@ -291,6 +292,31 @@ public partial class KumikoDataGrid : ContentView
             Dispatcher.Dispatch(InvalidateSurface);
         else
             InvalidateSurface();
+    }
+
+    // ── BackgroundRebuildThreshold ──
+
+    /// <summary>Identifies the <see cref="BackgroundRebuildThreshold"/> bindable property.</summary>
+    public static readonly BindableProperty BackgroundRebuildThresholdProperty = BindableProperty.Create(
+        nameof(BackgroundRebuildThreshold), typeof(int), typeof(KumikoDataGrid),
+        KumikoSource.DefaultBackgroundRebuildThreshold,
+        validateValue: (_, value) => (int)value >= 0,
+        propertyChanged: (b, _, n) => ((KumikoDataGrid)b)._dataSource.BackgroundRebuildThreshold = (int)n);
+
+    /// <summary>
+    /// The number of items from which sorting, filtering, grouping and summaries are rebuilt on a worker thread
+    /// instead of the UI thread (forwarded to <see cref="KumikoSource.BackgroundRebuildThreshold"/> of
+    /// <see cref="DataSource"/>). Default <see cref="KumikoSource.DefaultBackgroundRebuildThreshold"/> (10,000).
+    /// Below it rebuilds are synchronous; <see cref="int.MaxValue"/> keeps every rebuild synchronous. During a
+    /// background rebuild the grid keeps drawing the current rows, then draws the new view when it is swapped in;
+    /// selection, the current cell and an open edit follow their items. Item properties, comparers, the filter
+    /// predicate and group selectors must be safe to read from a worker while a rebuild runs.
+    /// A negative value is rejected: the property keeps its value.
+    /// </summary>
+    public int BackgroundRebuildThreshold
+    {
+        get => (int)GetValue(BackgroundRebuildThresholdProperty);
+        set => SetValue(BackgroundRebuildThresholdProperty, value);
     }
 
     // ── FrozenRowCount ──
