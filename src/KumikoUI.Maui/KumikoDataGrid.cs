@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KumikoUI.Core;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
@@ -33,6 +34,8 @@ namespace KumikoUI.Maui;
 /// its XAML content is <see cref="Columns"/>.
 /// </remarks>
 [ContentProperty(nameof(Columns))]
+[SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "A control is not disposed by its owner; the grid releases its resources when its handler is disconnected or it is unloaded.")]
 public partial class KumikoDataGrid : ContentView
 {
     private readonly Grid _root = new();

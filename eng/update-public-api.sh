@@ -31,12 +31,12 @@ tfms_for() {
 # Public types that SDK source generators add to a head. The RS0016 code fix skips generated code, but the analyzer still
 # checks it, so these lines are written into that head's own file (never into the common file: the Windows heads are
 # built by other generators and do not have them). Add a line here when a build reports a symbol from generated code.
+# The Uno XAML generator always emits a public GlobalStaticResources class, which app heads call to register the library's
+# resources, so it cannot be made internal (docs/release-readiness/api-review-1.0.md). The Android Resource designer class
+# is switched off in both host projects (AndroidGenerateResourceDesigner=false), so no Android head adds one.
 generated_for() { # <project> <tfm>
-  local android_resource=$'KumikoUI.Maui.Resource\nKumikoUI.Maui.Resource.Resource() -> void'
   local uno_resources=$'KumikoUI.Uno.GlobalStaticResources\nKumikoUI.Uno.GlobalStaticResources.GlobalStaticResources() -> void\nstatic KumikoUI.Uno.GlobalStaticResources.Initialize() -> void\nstatic KumikoUI.Uno.GlobalStaticResources.RegisterDefaultStyles() -> void\nstatic KumikoUI.Uno.GlobalStaticResources.RegisterResourceDictionariesBySource() -> void'
   case "$1:$2" in
-    Maui:net10.0-android) printf '%s\n' "$android_resource" ;;
-    Uno:net10.0-android) printf '%s\n%s\n' "$uno_resources" "${android_resource//Maui/Uno}" ;;
     Uno:*) printf '%s\n' "$uno_resources" ;;
   esac
 }

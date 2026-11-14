@@ -15,5 +15,9 @@ public readonly record struct KumikoTextRange(int Start, int Length)
     public bool IsEmpty => Length == 0;
 
     /// <summary>The range between two indices, in either order.</summary>
-    public static KumikoTextRange FromBounds(int a, int b) => a <= b ? new(a, b - a) : new(b, a - b);
+    /// <param name="start">One end of the range.</param>
+    /// <param name="end">The other end of the range; it may come before <paramref name="start"/>.</param>
+    /// <returns>The range from the smaller index to the larger one.</returns>
+    public static KumikoTextRange FromBounds(int start, int end) =>
+        start <= end ? new(start, end - start) : new(end, start - end);
 }

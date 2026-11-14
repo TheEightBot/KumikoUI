@@ -13,11 +13,11 @@ public sealed class AutoFitColumnEventArgs : EventArgs
     /// <summary>The column to auto-fit.</summary>
     public KumikoColumn Column { get; }
     /// <summary>Initializes a new instance of the <see cref="AutoFitColumnEventArgs"/> class.</summary>
-    /// <param name="index">The zero-based column index.</param>
+    /// <param name="columnIndex">The zero-based column index.</param>
     /// <param name="column">The column to auto-fit.</param>
-    public AutoFitColumnEventArgs(int index, KumikoColumn column)
+    public AutoFitColumnEventArgs(int columnIndex, KumikoColumn column)
     {
-        ColumnIndex = index;
+        ColumnIndex = columnIndex;
         Column = column;
     }
 }

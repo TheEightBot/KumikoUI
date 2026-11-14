@@ -199,9 +199,7 @@ public sealed class SkiaDrawingContext : IDrawingContext, IDisposable
     /// <see cref="ResourceCache"/>, so unchanged text is measured only the first time it is drawn.
     /// </remarks>
     public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
-        KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
-        KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center,
-        bool clip = true)
+        KumikoTextAlignment horizontalAlignment, KumikoVerticalAlignment verticalAlignment, bool clip)
     {
         if (string.IsNullOrEmpty(text)) return;
 
@@ -220,7 +218,7 @@ public sealed class SkiaDrawingContext : IDrawingContext, IDisposable
         }
 
         float textHeight = metrics.Descent - metrics.Ascent;
-        float top = vAlign switch
+        float top = verticalAlignment switch
         {
             KumikoVerticalAlignment.Top => rect.Y,
             KumikoVerticalAlignment.Bottom => rect.Bottom - textHeight,
@@ -233,7 +231,7 @@ public sealed class SkiaDrawingContext : IDrawingContext, IDisposable
             _canvas.ClipRect(ToSKRect(rect));
         }
 
-        DrawRuns(line, runs, AlignX(rect, width, hAlign), top - metrics.Ascent, paint.Font, skFont, skPaint);
+        DrawRuns(line, runs, AlignX(rect, width, horizontalAlignment), top - metrics.Ascent, paint.Font, skFont, skPaint);
 
         if (clip)
             _canvas.Restore();
@@ -246,11 +244,13 @@ public sealed class SkiaDrawingContext : IDrawingContext, IDisposable
     /// time it is drawn and later frames allocate nothing.
     /// </remarks>
     public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
-        KumikoTextAlignment hAlign, KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap)
+        KumikoTextAlignment horizontalAlignment = KumikoTextAlignment.Left,
+        KumikoVerticalAlignment verticalAlignment = KumikoVerticalAlignment.Center,
+        bool clip = true, KumikoTextWrap wrap = KumikoTextWrap.None)
     {
         if (wrap == KumikoTextWrap.None)
         {
-            DrawTextInRect(text, rect, paint, hAlign, vAlign, clip);
+            DrawTextInRect(text, rect, paint, horizontalAlignment, verticalAlignment, clip);
             return;
         }
         if (string.IsNullOrEmpty(text)) return;
@@ -264,7 +264,7 @@ public sealed class SkiaDrawingContext : IDrawingContext, IDisposable
         if (lines.Count == 0) return;
 
         float height = lines.GetHeight(metrics);
-        float top = vAlign switch
+        float top = verticalAlignment switch
         {
             KumikoVerticalAlignment.Top => rect.Y,
             KumikoVerticalAlignment.Bottom => rect.Bottom - height,
@@ -283,7 +283,7 @@ public sealed class SkiaDrawingContext : IDrawingContext, IDisposable
             string line = lines.GetLine(i);
             if (line.Length > 0)
             {
-                float x = AlignX(rect, lines.GetLineWidth(i), hAlign);
+                float x = AlignX(rect, lines.GetLineWidth(i), horizontalAlignment);
                 DrawRuns(line, lineRuns[i], x, baseline + i * metrics.LineHeight, paint.Font, skFont, skPaint);
             }
         }
@@ -333,7 +333,7 @@ public sealed class SkiaDrawingContext : IDrawingContext, IDisposable
         _canvas.DrawText(blob, x, baseline, skPaint);
     }
 
-    private static float AlignX(KumikoRect rect, float width, KumikoTextAlignment hAlign) => hAlign switch
+    private static float AlignX(KumikoRect rect, float width, KumikoTextAlignment horizontalAlignment) => horizontalAlignment switch
     {
         KumikoTextAlignment.Center => rect.X + (rect.Width - width) / 2,
         KumikoTextAlignment.Right => rect.Right - width,

@@ -15,7 +15,7 @@ namespace KumikoUI.Maui;
 /// <code><![CDATA[
 /// <dg:MauiActionButtonDefinition
 ///     Label="Details"
-///     BackgroundColor="13,110,253"
+///     BackgroundColor="#0D6EFD"
 ///     Command="{Binding Path=BindingContext.ViewDetailsCommand,
 ///                       Source={x:Reference actionsGrid}}" />
 /// ]]></code>
@@ -24,9 +24,17 @@ namespace KumikoUI.Maui;
 /// does <b>not</b> inherit <c>BindingContext</c> automatically. Use
 /// <c>Source={x:Reference …}</c> or <c>Source={RelativeSource …}</c> to point
 /// bindings at the correct source object.
+/// The colors are <see cref="Color"/> values, like the grid's other color properties (named colors, hex, resources and
+/// <c>AppThemeBinding</c> work); the <see cref="IActionButtonDefinition"/> members expose them as
+/// <see cref="KumikoColor"/>, cached when they change so the render pass reads them without converting.
 /// </remarks>
 public sealed class MauiActionButtonDefinition : BindableObject, IActionButtonDefinition
 {
+    private static readonly KumikoColor DefaultBackground = new(13, 110, 253);
+
+    private KumikoColor _backgroundColor = DefaultBackground;
+    private KumikoColor _textColor = KumikoColor.White;
+
     // ── BindableProperty declarations ────────────────────────────
 
     /// <summary>Backing store for <see cref="Label"/>.</summary>
@@ -35,11 +43,14 @@ public sealed class MauiActionButtonDefinition : BindableObject, IActionButtonDe
 
     /// <summary>Backing store for <see cref="BackgroundColor"/>.</summary>
     public static readonly BindableProperty BackgroundColorProperty =
-        BindableProperty.Create(nameof(BackgroundColor), typeof(KumikoColor), typeof(MauiActionButtonDefinition), new KumikoColor(13, 110, 253));
+        BindableProperty.Create(nameof(BackgroundColor), typeof(Color), typeof(MauiActionButtonDefinition),
+            Color.FromRgb(13, 110, 253),
+            propertyChanged: (b, _, n) => ((MauiActionButtonDefinition)b)._backgroundColor = ToKumikoColor((Color?)n, DefaultBackground));
 
     /// <summary>Backing store for <see cref="TextColor"/>.</summary>
     public static readonly BindableProperty TextColorProperty =
-        BindableProperty.Create(nameof(TextColor), typeof(KumikoColor), typeof(MauiActionButtonDefinition), KumikoColor.White);
+        BindableProperty.Create(nameof(TextColor), typeof(Color), typeof(MauiActionButtonDefinition), Colors.White,
+            propertyChanged: (b, _, n) => ((MauiActionButtonDefinition)b)._textColor = ToKumikoColor((Color?)n, KumikoColor.White));
 
     /// <summary>Backing store for <see cref="Command"/>.</summary>
     public static readonly BindableProperty CommandProperty =
@@ -58,21 +69,17 @@ public sealed class MauiActionButtonDefinition : BindableObject, IActionButtonDe
         set => SetValue(LabelProperty, value);
     }
 
-    /// <summary>
-    /// Button pill background color.
-    /// Supports the <c>R,G,B</c> / <c>#RRGGBB</c> / named-color string formats
-    /// from <see cref="KumikoColorTypeConverter"/> in XAML.
-    /// </summary>
-    public KumikoColor BackgroundColor
+    /// <summary>Button pill background color. Defaults to a blue (13, 110, 253).</summary>
+    public Color BackgroundColor
     {
-        get => (KumikoColor)GetValue(BackgroundColorProperty);
+        get => (Color)GetValue(BackgroundColorProperty);
         set => SetValue(BackgroundColorProperty, value);
     }
 
-    /// <summary>Button label text color. Defaults to <see cref="KumikoColor.White"/>.</summary>
-    public KumikoColor TextColor
+    /// <summary>Button label text color. Defaults to white.</summary>
+    public Color TextColor
     {
-        get => (KumikoColor)GetValue(TextColorProperty);
+        get => (Color)GetValue(TextColorProperty);
         set => SetValue(TextColorProperty, value);
     }
 
@@ -103,4 +110,17 @@ public sealed class MauiActionButtonDefinition : BindableObject, IActionButtonDe
     /// to <see cref="Command"/>). Ignored by the display-only renderer.
     /// </summary>
     public Action? Action { get; set; }
+
+    // ── IActionButtonDefinition ──────────────────────────────────
+
+    KumikoColor IActionButtonDefinition.BackgroundColor => _backgroundColor;
+
+    KumikoColor IActionButtonDefinition.TextColor => _textColor;
+
+    private static KumikoColor ToKumikoColor(Color? color, KumikoColor fallback)
+    {
+        if (color is null) return fallback;
+        color.ToRgba(out byte r, out byte g, out byte b, out byte a);
+        return new KumikoColor(r, g, b, a);
+    }
 }

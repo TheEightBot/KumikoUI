@@ -99,7 +99,7 @@ public class SkiaAllocationTests : IDisposable
             Source.EndUpdate();
 
             Selection = new KumikoSelectionModel(Source);
-            Selection.HandleRowSelection(4, shift: false, ctrl: false);
+            Selection.HandleRowSelection(4, shift: false, control: false);
             Selection.SetCurrentCell(4, 1);
         }
 

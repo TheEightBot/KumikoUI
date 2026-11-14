@@ -25,6 +25,8 @@
     <KumikoTrackPublicApi>true</KumikoTrackPublicApi>
     <!-- Package validation (#54); the baseline is described in Directory.Build.props. -->
     <EnablePackageValidation>true</EnablePackageValidation>
+    <!-- The recommended code-analysis rules (#112); Directory.Build.props sets `latest` for tests and samples. -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
 
     <!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
     <PackageId>KumikoUI.SkiaSharp</PackageId>

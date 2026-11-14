@@ -428,34 +428,38 @@ public sealed class EditSession
     /// reported and the value kept. An edit that is open is committed first, and the toggle is skipped when
     /// that commit is refused.
     /// </summary>
-    public void ToggleBooleanCell(int row, int col, KumikoColumn column, KumikoSource dataSource)
+    /// <param name="rowIndex">The view row of the cell.</param>
+    /// <param name="columnIndex">The index of the cell's column.</param>
+    /// <param name="column">The cell's column.</param>
+    /// <param name="dataSource">The source the row belongs to.</param>
+    public void ToggleBooleanCell(int rowIndex, int columnIndex, KumikoColumn column, KumikoSource dataSource)
     {
         if (column.IsReadOnly) return;
-        if (row < 0 || row >= dataSource.RowCount || dataSource.IsNonDataRow(row)) return;
+        if (rowIndex < 0 || rowIndex >= dataSource.RowCount || dataSource.IsNonDataRow(rowIndex)) return;
 
         if (_isEditing && !CommitEdit(_editDataSource ?? dataSource)) return;
         // The commit may have moved rows (sort, grouping): the row is checked again
-        if (row >= dataSource.RowCount || dataSource.IsNonDataRow(row)) return;
+        if (rowIndex >= dataSource.RowCount || dataSource.IsNonDataRow(rowIndex)) return;
 
-        var item = dataSource.GetItem(row);
-        var currentValue = dataSource.GetCellValue(row, column);
+        var item = dataSource.GetItem(rowIndex);
+        var currentValue = dataSource.GetCellValue(rowIndex, column);
         var newValue = NextBooleanValue(currentValue, column.IsThreeState);
 
         // Raise begin-edit (cancelable)
-        var beginArgs = new CellBeginEditEventArgs(row, col, column, currentValue);
+        var beginArgs = new CellBeginEditEventArgs(rowIndex, columnIndex, column, currentValue);
         CellBeginEdit?.Invoke(this, beginArgs);
         if (beginArgs.Cancel) return;
 
-        CellValidationResult? result = CellValidator?.Invoke(row, col, newValue);
+        CellValidationResult? result = CellValidator?.Invoke(rowIndex, columnIndex, newValue);
         if (result is { IsValid: false })
         {
-            RefuseToggle(row, col, column, item, currentValue, newValue, result);
+            RefuseToggle(rowIndex, columnIndex, column, item, currentValue, newValue, result);
             return;
         }
 
         if (!dataSource.TrySetItemValue(item, column, newValue, out var writeError))
         {
-            RefuseToggle(row, col, column, item, currentValue, newValue,
+            RefuseToggle(rowIndex, columnIndex, column, item, currentValue, newValue,
                 CellValidationResult.Error(writeError ?? "The value could not be saved."));
             return;
         }
@@ -464,19 +468,19 @@ public sealed class EditSession
         if (modelResult is { IsValid: false })
         {
             dataSource.TrySetItemValue(item, column, currentValue, out _);
-            RefuseToggle(row, col, column, item, currentValue, newValue, modelResult);
+            RefuseToggle(rowIndex, columnIndex, column, item, currentValue, newValue, modelResult);
             return;
         }
         result = MoreSevere(result, modelResult);
 
         NeedsRedraw?.Invoke(this, EventArgs.Empty);
         CellEndEdit?.Invoke(this, new CellEndEditEventArgs(
-            row, col, column, currentValue, newValue, committed: true));
+            rowIndex, columnIndex, column, currentValue, newValue, committed: true));
         CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(
-            row, col, column, currentValue, newValue));
+            rowIndex, columnIndex, column, currentValue, newValue));
         if (result is { ErrorMessage: { Length: > 0 } })
             ValidationFailed?.Invoke(this, new CellValidationEventArgs(
-                row, col, column, item, newValue, result, committed: true));
+                rowIndex, columnIndex, column, item, newValue, result, committed: true));
     }
 
     /// <summary>
@@ -556,8 +560,11 @@ public sealed class EditSession
     /// <summary>
     /// Check if the given cell is currently being edited.
     /// </summary>
-    public bool IsCellBeingEdited(int row, int col) =>
-        _isEditing && _editCell.Row == row && _editCell.Column == col;
+    /// <param name="rowIndex">The view row of the cell.</param>
+    /// <param name="columnIndex">The index of the cell's column.</param>
+    /// <returns>True while that cell has an open editor.</returns>
+    public bool IsCellBeingEdited(int rowIndex, int columnIndex) =>
+        _isEditing && _editCell.Row == rowIndex && _editCell.Column == columnIndex;
 
     // ── Rendering ───────────────────────────────────────────────
 

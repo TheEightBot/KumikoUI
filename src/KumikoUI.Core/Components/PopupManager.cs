@@ -36,6 +36,9 @@ internal class PopupManager
     /// <summary>Are there any active popups?</summary>
     public bool HasActivePopups => _popups.Count > 0;
 
+    /// <summary>The popup shown last (drawn on top of the others), or null when none is open.</summary>
+    public DrawnComponent? TopPopup => _popups.Count > 0 ? _popups[^1].Component : null;
+
     /// <summary>
     /// Raised when the popup manager needs the hosting surface to redraw.
     /// Wire this to the same redraw callback used by the grid.

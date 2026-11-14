@@ -10,7 +10,7 @@ KumikoUI.Core.Components.ClipboardTextEventArgs.Handled.get -> bool
 KumikoUI.Core.Components.ClipboardTextEventArgs.Handled.set -> void
 KumikoUI.Core.Components.ClipboardTextEventArgs.Text.get -> string!
 KumikoUI.Core.Components.ComboBoxSelectionChangedEventArgs
-KumikoUI.Core.Components.ComboBoxSelectionChangedEventArgs.ComboBoxSelectionChangedEventArgs(KumikoUI.Core.Components.DrawnComboBoxItem? old, KumikoUI.Core.Components.DrawnComboBoxItem? new) -> void
+KumikoUI.Core.Components.ComboBoxSelectionChangedEventArgs.ComboBoxSelectionChangedEventArgs(KumikoUI.Core.Components.DrawnComboBoxItem? oldItem, KumikoUI.Core.Components.DrawnComboBoxItem? newItem) -> void
 KumikoUI.Core.Components.ComboBoxSelectionChangedEventArgs.NewItem.get -> KumikoUI.Core.Components.DrawnComboBoxItem?
 KumikoUI.Core.Components.ComboBoxSelectionChangedEventArgs.OldItem.get -> KumikoUI.Core.Components.DrawnComboBoxItem?
 KumikoUI.Core.Components.ComponentValueChangedEventArgs
@@ -417,7 +417,7 @@ KumikoUI.Core.Components.KumikoTextChangedEventArgs.KumikoTextChangedEventArgs(s
 KumikoUI.Core.Components.KumikoTextChangedEventArgs.NewText.get -> string!
 KumikoUI.Core.Components.KumikoTextChangedEventArgs.OldText.get -> string!
 KumikoUI.Core.Components.KumikoTimeChangedEventArgs
-KumikoUI.Core.Components.KumikoTimeChangedEventArgs.KumikoTimeChangedEventArgs(int oldH, int oldM, int newH, int newM) -> void
+KumikoUI.Core.Components.KumikoTimeChangedEventArgs.KumikoTimeChangedEventArgs(int oldHour, int oldMinute, int newHour, int newMinute) -> void
 KumikoUI.Core.Components.KumikoTimeChangedEventArgs.NewHour.get -> int
 KumikoUI.Core.Components.KumikoTimeChangedEventArgs.NewMinute.get -> int
 KumikoUI.Core.Components.KumikoTimeChangedEventArgs.OldHour.get -> int
@@ -447,7 +447,7 @@ KumikoUI.Core.Data.KumikoValueConverter
 KumikoUI.Core.Editing.CellBeginEditEventArgs
 KumikoUI.Core.Editing.CellBeginEditEventArgs.Cancel.get -> bool
 KumikoUI.Core.Editing.CellBeginEditEventArgs.Cancel.set -> void
-KumikoUI.Core.Editing.CellBeginEditEventArgs.CellBeginEditEventArgs(int row, int col, KumikoUI.Core.Models.KumikoColumn! column, object? value) -> void
+KumikoUI.Core.Editing.CellBeginEditEventArgs.CellBeginEditEventArgs(int rowIndex, int columnIndex, KumikoUI.Core.Models.KumikoColumn! column, object? value) -> void
 KumikoUI.Core.Editing.CellBeginEditEventArgs.CellValue.get -> object?
 KumikoUI.Core.Editing.CellBeginEditEventArgs.Column.get -> KumikoUI.Core.Models.KumikoColumn!
 KumikoUI.Core.Editing.CellBeginEditEventArgs.ColumnIndex.get -> int
@@ -464,7 +464,7 @@ KumikoUI.Core.Editing.CellEditorContext.Value.get -> object?
 KumikoUI.Core.Editing.CellEditorContext.Value.init -> void
 KumikoUI.Core.Editing.CellEditorFactory
 KumikoUI.Core.Editing.CellEndEditEventArgs
-KumikoUI.Core.Editing.CellEndEditEventArgs.CellEndEditEventArgs(int row, int col, KumikoUI.Core.Models.KumikoColumn! column, object? oldValue, object? newValue, bool committed) -> void
+KumikoUI.Core.Editing.CellEndEditEventArgs.CellEndEditEventArgs(int rowIndex, int columnIndex, KumikoUI.Core.Models.KumikoColumn! column, object? oldValue, object? newValue, bool committed) -> void
 KumikoUI.Core.Editing.CellEndEditEventArgs.Column.get -> KumikoUI.Core.Models.KumikoColumn!
 KumikoUI.Core.Editing.CellEndEditEventArgs.ColumnIndex.get -> int
 KumikoUI.Core.Editing.CellEndEditEventArgs.Committed.get -> bool
@@ -491,7 +491,7 @@ KumikoUI.Core.Editing.CellValidationResult.IsValid.set -> void
 KumikoUI.Core.Editing.CellValidationResult.Severity.get -> KumikoUI.Core.Editing.ValidationSeverity
 KumikoUI.Core.Editing.CellValidationResult.Severity.set -> void
 KumikoUI.Core.Editing.CellValueChangedEventArgs
-KumikoUI.Core.Editing.CellValueChangedEventArgs.CellValueChangedEventArgs(int row, int col, KumikoUI.Core.Models.KumikoColumn! column, object? oldValue, object? newValue) -> void
+KumikoUI.Core.Editing.CellValueChangedEventArgs.CellValueChangedEventArgs(int rowIndex, int columnIndex, KumikoUI.Core.Models.KumikoColumn! column, object? oldValue, object? newValue) -> void
 KumikoUI.Core.Editing.CellValueChangedEventArgs.Column.get -> KumikoUI.Core.Models.KumikoColumn!
 KumikoUI.Core.Editing.CellValueChangedEventArgs.ColumnIndex.get -> int
 KumikoUI.Core.Editing.CellValueChangedEventArgs.NewValue.get -> object?
@@ -524,7 +524,7 @@ KumikoUI.Core.Editing.EditSession.EditTriggers.set -> void
 KumikoUI.Core.Editing.EditSession.HandleKeyEvent(KumikoUI.Core.Input.KumikoKeyEventArgs! e) -> bool
 KumikoUI.Core.Editing.EditSession.HandlePointerEvent(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
 KumikoUI.Core.Editing.EditSession.IsAnimating.get -> bool
-KumikoUI.Core.Editing.EditSession.IsCellBeingEdited(int row, int col) -> bool
+KumikoUI.Core.Editing.EditSession.IsCellBeingEdited(int rowIndex, int columnIndex) -> bool
 KumikoUI.Core.Editing.EditSession.IsEditing.get -> bool
 KumikoUI.Core.Editing.EditSession.IsReadOnly.get -> bool
 KumikoUI.Core.Editing.EditSession.IsReadOnly.set -> void
@@ -534,7 +534,7 @@ KumikoUI.Core.Editing.EditSession.Style.get -> KumikoUI.Core.Models.KumikoStyle?
 KumikoUI.Core.Editing.EditSession.Style.set -> void
 KumikoUI.Core.Editing.EditSession.TextSelectionMode.get -> KumikoUI.Core.Editing.EditTextSelectionMode
 KumikoUI.Core.Editing.EditSession.TextSelectionMode.set -> void
-KumikoUI.Core.Editing.EditSession.ToggleBooleanCell(int row, int col, KumikoUI.Core.Models.KumikoColumn! column, KumikoUI.Core.Models.KumikoSource! dataSource) -> void
+KumikoUI.Core.Editing.EditSession.ToggleBooleanCell(int rowIndex, int columnIndex, KumikoUI.Core.Models.KumikoColumn! column, KumikoUI.Core.Models.KumikoSource! dataSource) -> void
 KumikoUI.Core.Editing.EditSession.UpdateAnimation(float frameIntervalMs = 16) -> bool
 KumikoUI.Core.Editing.EditSession.UpdateEditorBounds(KumikoUI.Core.Rendering.KumikoRect cellBounds) -> void
 KumikoUI.Core.Editing.EditSession.ValidationFailed -> System.EventHandler<KumikoUI.Core.Editing.CellValidationEventArgs!>?
@@ -580,13 +580,13 @@ KumikoUI.Core.Editing.ValidationSeverity.Error = 0 -> KumikoUI.Core.Editing.Vali
 KumikoUI.Core.Editing.ValidationSeverity.Info = 2 -> KumikoUI.Core.Editing.ValidationSeverity
 KumikoUI.Core.Editing.ValidationSeverity.Warning = 1 -> KumikoUI.Core.Editing.ValidationSeverity
 KumikoUI.Core.Input.AutoFitColumnEventArgs
-KumikoUI.Core.Input.AutoFitColumnEventArgs.AutoFitColumnEventArgs(int index, KumikoUI.Core.Models.KumikoColumn! column) -> void
+KumikoUI.Core.Input.AutoFitColumnEventArgs.AutoFitColumnEventArgs(int columnIndex, KumikoUI.Core.Models.KumikoColumn! column) -> void
 KumikoUI.Core.Input.AutoFitColumnEventArgs.Column.get -> KumikoUI.Core.Models.KumikoColumn!
 KumikoUI.Core.Input.AutoFitColumnEventArgs.ColumnIndex.get -> int
 KumikoUI.Core.Input.ColumnResizedEventArgs
 KumikoUI.Core.Input.ColumnResizedEventArgs.Column.get -> KumikoUI.Core.Models.KumikoColumn!
 KumikoUI.Core.Input.ColumnResizedEventArgs.ColumnIndex.get -> int
-KumikoUI.Core.Input.ColumnResizedEventArgs.ColumnResizedEventArgs(int index, KumikoUI.Core.Models.KumikoColumn! column) -> void
+KumikoUI.Core.Input.ColumnResizedEventArgs.ColumnResizedEventArgs(int columnIndex, KumikoUI.Core.Models.KumikoColumn! column) -> void
 KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.Cell = 1 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.EmptyArea = 6 -> KumikoUI.Core.Input.HitRegion
@@ -713,10 +713,10 @@ KumikoUI.Core.Input.KumikoHitTestResult.RowIndex.init -> void
 KumikoUI.Core.Input.KumikoHitTester
 KumikoUI.Core.Input.KumikoHitTester.AllowFiltering.get -> bool
 KumikoUI.Core.Input.KumikoHitTester.AllowFiltering.set -> void
-KumikoUI.Core.Input.KumikoHitTester.HitTest(float viewportX, float viewportY, KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoStyle! style, System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Models.KumikoColumn!>! columns, int totalRows, KumikoUI.Core.Models.KumikoSource? dataSource = null) -> KumikoUI.Core.Input.KumikoHitTestResult
-KumikoUI.Core.Input.KumikoHitTester.HitTest(float viewportX, float viewportY, KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoStyle! style, System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Models.KumikoColumn!>! columns, int totalRows, KumikoUI.Core.Models.KumikoSource? dataSource, KumikoUI.Core.Input.KumikoPointerDeviceType deviceType) -> KumikoUI.Core.Input.KumikoHitTestResult
+KumikoUI.Core.Input.KumikoHitTester.HitTest(float viewportX, float viewportY, KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoStyle! style, System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Models.KumikoColumn!>! columns, int totalRows, KumikoUI.Core.Models.KumikoSource? dataSource = null, KumikoUI.Core.Input.KumikoPointerDeviceType deviceType = KumikoUI.Core.Input.KumikoPointerDeviceType.Mouse) -> KumikoUI.Core.Input.KumikoHitTestResult
 KumikoUI.Core.Input.KumikoHitTester.KumikoHitTester() -> void
 KumikoUI.Core.Input.KumikoInputController
+KumikoUI.Core.Input.KumikoInputController.ActivePopup.get -> KumikoUI.Core.Components.DrawnComponent?
 KumikoUI.Core.Input.KumikoInputController.ActiveTextInput.get -> KumikoUI.Core.Input.ITextInputSession?
 KumikoUI.Core.Input.KumikoInputController.AllowFiltering.get -> bool
 KumikoUI.Core.Input.KumikoInputController.AllowFiltering.set -> void
@@ -813,7 +813,7 @@ KumikoUI.Core.Input.KumikoMomentumPreset
 KumikoUI.Core.Input.KumikoMomentumPreset.Android = 2 -> KumikoUI.Core.Input.KumikoMomentumPreset
 KumikoUI.Core.Input.KumikoMomentumPreset.Default = 0 -> KumikoUI.Core.Input.KumikoMomentumPreset
 KumikoUI.Core.Input.KumikoMomentumPreset.Desktop = 3 -> KumikoUI.Core.Input.KumikoMomentumPreset
-KumikoUI.Core.Input.KumikoMomentumPreset.Ios = 1 -> KumikoUI.Core.Input.KumikoMomentumPreset
+KumikoUI.Core.Input.KumikoMomentumPreset.IOS = 1 -> KumikoUI.Core.Input.KumikoMomentumPreset
 KumikoUI.Core.Input.KumikoPointerDeviceType
 KumikoUI.Core.Input.KumikoPointerDeviceType.Mouse = 0 -> KumikoUI.Core.Input.KumikoPointerDeviceType
 KumikoUI.Core.Input.KumikoPointerDeviceType.Pen = 2 -> KumikoUI.Core.Input.KumikoPointerDeviceType
@@ -877,7 +877,7 @@ KumikoUI.Core.Input.RowTappedEventArgs
 KumikoUI.Core.Input.RowTappedEventArgs.ColumnIndex.get -> int
 KumikoUI.Core.Input.RowTappedEventArgs.DataItem.get -> object!
 KumikoUI.Core.Input.RowTappedEventArgs.RowIndex.get -> int
-KumikoUI.Core.Input.RowTappedEventArgs.RowTappedEventArgs(int row, int col, object! item) -> void
+KumikoUI.Core.Input.RowTappedEventArgs.RowTappedEventArgs(int rowIndex, int columnIndex, object! item) -> void
 KumikoUI.Core.Input.ScrollSettings
 KumikoUI.Core.Input.ScrollSettings.AutoScrollEdgeSize.get -> float
 KumikoUI.Core.Input.ScrollSettings.AutoScrollEdgeSize.set -> void
@@ -971,11 +971,11 @@ KumikoUI.Core.Models.ComputedSummaryRow.ComputedSummaryRow() -> void
 KumikoUI.Core.Models.ComputedSummaryRow.GetRawValue(string! propertyName, KumikoUI.Core.Models.SummaryType summaryType) -> object?
 KumikoUI.Core.Models.ComputedSummaryRow.Name.get -> string!
 KumikoUI.Core.Models.ComputedSummaryRow.Name.init -> void
-KumikoUI.Core.Models.ComputedSummaryRow.RawValues.get -> System.Collections.Generic.Dictionary<string!, object?>!
+KumikoUI.Core.Models.ComputedSummaryRow.RawValues.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
 KumikoUI.Core.Models.ComputedSummaryRow.RawValues.init -> void
 KumikoUI.Core.Models.ComputedSummaryRow.Title.get -> string?
 KumikoUI.Core.Models.ComputedSummaryRow.Title.init -> void
-KumikoUI.Core.Models.ComputedSummaryRow.Values.get -> System.Collections.Generic.Dictionary<string!, string!>!
+KumikoUI.Core.Models.ComputedSummaryRow.Values.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 KumikoUI.Core.Models.ComputedSummaryRow.Values.init -> void
 KumikoUI.Core.Models.ComputedSummaryValue
 KumikoUI.Core.Models.ComputedSummaryValue.ComputedSummaryValue() -> void
@@ -1383,21 +1383,20 @@ KumikoUI.Core.Models.KumikoSelectionModel.CurrentCell.set -> void
 KumikoUI.Core.Models.KumikoSelectionModel.CurrentCellChanged -> System.EventHandler?
 KumikoUI.Core.Models.KumikoSelectionModel.CurrentItem.get -> object?
 KumikoUI.Core.Models.KumikoSelectionModel.Deselect(object! item) -> void
-KumikoUI.Core.Models.KumikoSelectionModel.HandleRowSelection(int row, bool shift, bool ctrl) -> void
+KumikoUI.Core.Models.KumikoSelectionModel.HandleRowSelection(int row, bool shift, bool control) -> void
 KumikoUI.Core.Models.KumikoSelectionModel.IsEditing.get -> bool
-KumikoUI.Core.Models.KumikoSelectionModel.IsEditing.set -> void
 KumikoUI.Core.Models.KumikoSelectionModel.IsRowSelected(int row) -> bool
 KumikoUI.Core.Models.KumikoSelectionModel.IsSelected(object! item) -> bool
 KumikoUI.Core.Models.KumikoSelectionModel.KumikoSelectionModel(KumikoUI.Core.Models.KumikoSource! source) -> void
 KumikoUI.Core.Models.KumikoSelectionModel.Mode.get -> KumikoUI.Core.Models.KumikoSelectionMode
 KumikoUI.Core.Models.KumikoSelectionModel.Mode.set -> void
 KumikoUI.Core.Models.KumikoSelectionModel.NavigateDown(int totalRows, bool shift) -> void
-KumikoUI.Core.Models.KumikoSelectionModel.NavigateEnd(bool ctrlHeld, int totalRows, int totalColumns, bool shift) -> void
-KumikoUI.Core.Models.KumikoSelectionModel.NavigateHome(bool ctrlHeld, int totalRows, bool shift) -> void
-KumikoUI.Core.Models.KumikoSelectionModel.NavigateLeft(int totalColumns, bool shift) -> void
+KumikoUI.Core.Models.KumikoSelectionModel.NavigateEnd(int totalRows, bool shift, bool control) -> void
+KumikoUI.Core.Models.KumikoSelectionModel.NavigateHome(int totalRows, bool shift, bool control) -> void
+KumikoUI.Core.Models.KumikoSelectionModel.NavigateLeft(bool shift) -> void
 KumikoUI.Core.Models.KumikoSelectionModel.NavigatePageDown(int pageSize, int totalRows, bool shift) -> void
-KumikoUI.Core.Models.KumikoSelectionModel.NavigatePageUp(int pageSize, bool shift, int totalRows) -> void
-KumikoUI.Core.Models.KumikoSelectionModel.NavigateRight(int totalColumns, bool shift) -> void
+KumikoUI.Core.Models.KumikoSelectionModel.NavigatePageUp(int pageSize, int totalRows, bool shift) -> void
+KumikoUI.Core.Models.KumikoSelectionModel.NavigateRight(bool shift) -> void
 KumikoUI.Core.Models.KumikoSelectionModel.NavigateUp(int totalRows, bool shift) -> void
 KumikoUI.Core.Models.KumikoSelectionModel.Select(object! item) -> void
 KumikoUI.Core.Models.KumikoSelectionModel.SelectAll() -> void
@@ -1929,7 +1928,6 @@ KumikoUI.Core.Rendering.ActionButtonDefinition.Label.get -> string!
 KumikoUI.Core.Rendering.ActionButtonDefinition.Label.set -> void
 KumikoUI.Core.Rendering.ActionButtonDefinition.TextColor.get -> KumikoUI.Core.Rendering.KumikoColor
 KumikoUI.Core.Rendering.ActionButtonDefinition.TextColor.set -> void
-KumikoUI.Core.Rendering.ActionButtonLayout
 KumikoUI.Core.Rendering.ActionButtonsCellRenderer
 KumikoUI.Core.Rendering.ActionButtonsCellRenderer.ActionButtonsCellRenderer() -> void
 KumikoUI.Core.Rendering.ActionButtonsCellRenderer.ButtonSpacing.get -> float
@@ -1991,8 +1989,8 @@ KumikoUI.Core.Rendering.IDrawingContext.DrawPolyline(System.ReadOnlySpan<KumikoU
 KumikoUI.Core.Rendering.IDrawingContext.DrawRect(KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
 KumikoUI.Core.Rendering.IDrawingContext.DrawRoundRect(KumikoUI.Core.Rendering.KumikoRect rect, float cornerRadius, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
 KumikoUI.Core.Rendering.IDrawingContext.DrawText(string! text, float x, float y, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
-KumikoUI.Core.Rendering.IDrawingContext.DrawTextInRect(string! text, KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint, KumikoUI.Core.Rendering.KumikoTextAlignment hAlign = KumikoUI.Core.Rendering.KumikoTextAlignment.Left, KumikoUI.Core.Rendering.KumikoVerticalAlignment vAlign = KumikoUI.Core.Rendering.KumikoVerticalAlignment.Center, bool clip = true) -> void
-KumikoUI.Core.Rendering.IDrawingContext.DrawTextInRect(string! text, KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint, KumikoUI.Core.Rendering.KumikoTextAlignment hAlign, KumikoUI.Core.Rendering.KumikoVerticalAlignment vAlign, bool clip, KumikoUI.Core.Rendering.KumikoTextWrap wrap) -> void
+KumikoUI.Core.Rendering.IDrawingContext.DrawTextInRect(string! text, KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint, KumikoUI.Core.Rendering.KumikoTextAlignment horizontalAlignment = KumikoUI.Core.Rendering.KumikoTextAlignment.Left, KumikoUI.Core.Rendering.KumikoVerticalAlignment verticalAlignment = KumikoUI.Core.Rendering.KumikoVerticalAlignment.Center, bool clip = true, KumikoUI.Core.Rendering.KumikoTextWrap wrap = KumikoUI.Core.Rendering.KumikoTextWrap.None) -> void
+KumikoUI.Core.Rendering.IDrawingContext.DrawTextInRect(string! text, KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint, KumikoUI.Core.Rendering.KumikoTextAlignment horizontalAlignment, KumikoUI.Core.Rendering.KumikoVerticalAlignment verticalAlignment, bool clip) -> void
 KumikoUI.Core.Rendering.IDrawingContext.FillPolygon(System.ReadOnlySpan<KumikoUI.Core.Rendering.KumikoPoint> points, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
 KumikoUI.Core.Rendering.IDrawingContext.FillRect(KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
 KumikoUI.Core.Rendering.IDrawingContext.FillRoundRect(KumikoUI.Core.Rendering.KumikoRect rect, float cornerRadius, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
@@ -2025,7 +2023,7 @@ KumikoUI.Core.Rendering.KumikoColor.G.get -> byte
 KumikoUI.Core.Rendering.KumikoColor.KumikoColor() -> void
 KumikoUI.Core.Rendering.KumikoColor.KumikoColor(byte r, byte g, byte b, byte a = 255) -> void
 KumikoUI.Core.Rendering.KumikoColor.R.get -> byte
-KumikoUI.Core.Rendering.KumikoColor.ToUint32() -> uint
+KumikoUI.Core.Rendering.KumikoColor.ToUInt32() -> uint
 KumikoUI.Core.Rendering.KumikoColor.WithAlpha(byte alpha) -> KumikoUI.Core.Rendering.KumikoColor
 KumikoUI.Core.Rendering.KumikoColorTypeConverter
 KumikoUI.Core.Rendering.KumikoColorTypeConverter.KumikoColorTypeConverter() -> void
@@ -2293,7 +2291,7 @@ static KumikoUI.Core.Editing.CellValidationResult.Error(string! message) -> Kumi
 static KumikoUI.Core.Editing.CellValidationResult.Valid.get -> KumikoUI.Core.Editing.CellValidationResult!
 static KumikoUI.Core.Editing.CellValidationResult.Warning(string! message) -> KumikoUI.Core.Editing.CellValidationResult!
 static KumikoUI.Core.Input.KumikoHitTestResult.Empty.get -> KumikoUI.Core.Input.KumikoHitTestResult
-static KumikoUI.Core.Input.KumikoTextRange.FromBounds(int a, int b) -> KumikoUI.Core.Input.KumikoTextRange
+static KumikoUI.Core.Input.KumikoTextRange.FromBounds(int start, int end) -> KumikoUI.Core.Input.KumikoTextRange
 static KumikoUI.Core.Input.KumikoTsvFormatter.EscapeField(string? field) -> string!
 static KumikoUI.Core.Input.KumikoTsvFormatter.Format(KumikoUI.Core.Models.KumikoSource! source, System.Collections.Generic.IEnumerable<int>! rows, bool includeHeaders) -> string!
 static KumikoUI.Core.Input.ScrollSettings.FromPreset(KumikoUI.Core.Input.KumikoMomentumPreset preset) -> KumikoUI.Core.Input.ScrollSettings!
@@ -2328,8 +2326,6 @@ static KumikoUI.Core.Models.KumikoTheme.Create(KumikoUI.Core.Models.KumikoThemeM
 static KumikoUI.Core.Models.KumikoTheme.CreateDark() -> KumikoUI.Core.Models.KumikoStyle!
 static KumikoUI.Core.Models.KumikoTheme.CreateHighContrast() -> KumikoUI.Core.Models.KumikoStyle!
 static KumikoUI.Core.Models.KumikoTheme.CreateLight() -> KumikoUI.Core.Models.KumikoStyle!
-static KumikoUI.Core.Rendering.ActionButtonLayout.ComputeButtonRects(KumikoUI.Core.Rendering.KumikoRect bounds, int count, float padding, float spacing) -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Rendering.KumikoRect>!
-static KumikoUI.Core.Rendering.ActionButtonLayout.IndexAt(KumikoUI.Core.Rendering.KumikoRect bounds, int count, float padding, float spacing, float x, float y) -> int
 static KumikoUI.Core.Rendering.KumikoColor.Black.get -> KumikoUI.Core.Rendering.KumikoColor
 static KumikoUI.Core.Rendering.KumikoColor.Blue.get -> KumikoUI.Core.Rendering.KumikoColor
 static KumikoUI.Core.Rendering.KumikoColor.CornflowerBlue.get -> KumikoUI.Core.Rendering.KumikoColor
@@ -2357,7 +2353,6 @@ static KumikoUI.Core.Rendering.KumikoTextLayout.FitTextElements(System.ReadOnlyS
 static KumikoUI.Core.Rendering.KumikoTextLayout.GetMaxLines(float height, KumikoUI.Core.Rendering.KumikoFontMetrics metrics) -> int
 static KumikoUI.Core.Rendering.KumikoTextLayout.LayOut(string? text, float maxWidth, KumikoUI.Core.Rendering.KumikoTextWrap wrap, int maxLines, KumikoUI.Core.Rendering.KumikoTextMeasurer! measure) -> KumikoUI.Core.Rendering.KumikoTextLines!
 static KumikoUI.Core.Rendering.KumikoTextLines.Empty.get -> KumikoUI.Core.Rendering.KumikoTextLines!
-static KumikoUI.Core.Rendering.PaintCache.BackgroundPaint(KumikoUI.Core.Rendering.KumikoColor color) -> KumikoUI.Core.Rendering.KumikoPaint!
 virtual KumikoUI.Core.Components.DrawnActionButtons.ApplyTheme(KumikoUI.Core.Models.KumikoStyle! style) -> void
 virtual KumikoUI.Core.Components.DrawnComponent.ActivatesImmediately.get -> bool
 virtual KumikoUI.Core.Components.DrawnComponent.HitTest(float x, float y) -> bool

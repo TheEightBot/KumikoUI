@@ -151,29 +151,29 @@ public class KumikoColorTests
         Assert.Contains("40", str);
     }
 
-    // ── ToUint32 ──────────────────────────────────────────────────
+    // ── ToUInt32 ──────────────────────────────────────────────────
 
     [Fact]
-    public void ToUint32_PacksArgbCorrectly()
+    public void ToUInt32_PacksArgbCorrectly()
     {
         var color = new KumikoColor(0x12, 0x34, 0x56, 0x78); // RGBA
-        uint packed = color.ToUint32();
+        uint packed = color.ToUInt32();
         // Expected: A=0x78, R=0x12, G=0x34, B=0x56
         uint expected = (0x78u << 24) | (0x12u << 16) | (0x34u << 8) | 0x56u;
         Assert.Equal(expected, packed);
     }
 
     [Fact]
-    public void ToUint32_Black_IsZeroWithFullAlpha()
+    public void ToUInt32_Black_IsZeroWithFullAlpha()
     {
-        var packed = KumikoColor.Black.ToUint32();
+        var packed = KumikoColor.Black.ToUInt32();
         Assert.Equal(0xFF000000u, packed);
     }
 
     [Fact]
-    public void ToUint32_White_IsAllOnes()
+    public void ToUInt32_White_IsAllOnes()
     {
-        var packed = KumikoColor.White.ToUint32();
+        var packed = KumikoColor.White.ToUInt32();
         Assert.Equal(0xFFFFFFFFu, packed);
     }
 }

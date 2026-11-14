@@ -5,7 +5,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Theme / style settings for the grid renderer.
 /// </summary>
-public class KumikoStyle
+public sealed class KumikoStyle
 {
     /// <summary>
     /// A counter incremented whenever a property of this style is set to a different value. The renderer
@@ -240,7 +240,7 @@ public class KumikoStyle
 
     // ── Row drag & drop ──────────────────────────────────────────
     /// <summary>Enable row drag &amp; drop reordering. Default is false.</summary>
-    public bool AllowRowDragDrop { get; set => Set(ref field, value); } = false;
+    public bool AllowRowDragDrop { get; set => Set(ref field, value); }
     /// <summary>Semi-transparent overlay color applied to the row being dragged.</summary>
     public KumikoColor RowDragOverlayColor { get; set => Set(ref field, value); } = new(255, 255, 255, 200);
     /// <summary>Border color around the row being dragged.</summary>
@@ -256,7 +256,7 @@ public class KumikoStyle
     /// when the user presses and drags the handle. This works independently of
     /// AllowRowDragDrop (which enables full-row drag from any cell).
     /// </summary>
-    public bool ShowRowDragHandle { get; set => Set(ref field, value); } = false;
+    public bool ShowRowDragHandle { get; set => Set(ref field, value); }
 
     /// <summary>Which side of the row the drag handle appears on.</summary>
     public DragHandlePosition RowDragHandlePosition { get; set => Set(ref field, value); } = DragHandlePosition.Left;

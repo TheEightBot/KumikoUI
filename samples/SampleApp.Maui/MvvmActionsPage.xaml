@@ -165,12 +165,12 @@
                             <render:ActionButtonsCellRenderer.Buttons>
                                 <dg:MauiActionButtonDefinition
                                     Label="Details"
-                                    BackgroundColor="13,110,253"
+                                    BackgroundColor="#0D6EFD"
                                     Command="{Binding Path=BindingContext.ViewDetailsCommand,
                                                       Source={x:Reference actionsGrid}}" />
                                 <dg:MauiActionButtonDefinition
                                     Label="Delete"
-                                    BackgroundColor="220,53,69"
+                                    BackgroundColor="#DC3545"
                                     Command="{Binding Path=BindingContext.DeleteCommand,
                                                       Source={x:Reference actionsGrid}}" />
                             </render:ActionButtonsCellRenderer.Buttons>

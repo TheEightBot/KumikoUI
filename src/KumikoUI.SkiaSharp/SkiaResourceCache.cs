@@ -351,7 +351,7 @@ public sealed class SkiaResourceCache : IDisposable
     /// <summary>Returns the cached <see cref="SKPaint"/> for <paramref name="paint"/> drawn with <paramref name="style"/>.</summary>
     internal SKPaint GetPaint(KumikoPaint paint, SKPaintStyle style)
     {
-        var key = new PaintKey(paint.Color.ToUint32(), paint.StrokeWidth, style, paint.IsAntiAlias);
+        var key = new PaintKey(paint.Color.ToUInt32(), paint.StrokeWidth, style, paint.IsAntiAlias);
         lock (_gate)
         {
             if (_paints.TryGet(key, out var skPaint))
