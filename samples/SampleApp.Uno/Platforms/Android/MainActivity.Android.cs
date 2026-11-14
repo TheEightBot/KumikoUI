@@ -6,10 +6,11 @@ using Android.Widget;
 
 namespace SampleApp.Uno.Droid;
 
+// AdjustResize shrinks the window above the soft keyboard so the cell being edited stays visible (docs/TEXT-INPUT.md#android).
 [Activity(
     MainLauncher = true,
     ConfigurationChanges = global::Uno.UI.ActivityHelper.AllConfigChanges,
-    WindowSoftInputMode = SoftInput.AdjustNothing | SoftInput.StateHidden
+    WindowSoftInputMode = SoftInput.AdjustResize | SoftInput.StateHidden
 )]
 public class MainActivity : Microsoft.UI.Xaml.ApplicationActivity
 {

@@ -47,8 +47,8 @@ public sealed class KumikoFontIconProviderTests : IDisposable
         Assert.Equal(DrawOpKind.Text, glyph.Kind);
         Assert.Equal("", glyph.Text);
         Assert.Equal(Ink, glyph.Color);
-        Assert.Equal("Icons", glyph.Font!.Family);
-        Assert.Equal(16 * 1.5f, glyph.Font.Size); // the shorter side times the scale
+        Assert.Equal("Icons", glyph.Font!.Value.Family);
+        Assert.Equal(16 * 1.5f, glyph.Font!.Value.Size); // the shorter side times the scale
         // Centered on its measured width, and on the font's ascent (-11) and descent (3): baseline at 28 + 4
         Assert.Equal(25, glyph.Rect.X + glyph.Rect.Width / 2, 3);
         Assert.Equal(32, glyph.Rect.Bottom, 3);

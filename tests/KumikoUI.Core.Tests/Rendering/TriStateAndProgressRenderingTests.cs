@@ -154,7 +154,6 @@ public class TriStateAndProgressRenderingTests
         var ctx = h.Render();
 
         var dash = Assert.Single(ctx.Polygons, o => o.Color == h.Style.AccentColor && o.Rect.Y >= h.RowTop(2));
-        Assert.Equal(PaintStyle.Fill, dash.Style);
         Assert.Equal(4, dash.Points!.Length);
         Assert.True(dash.Rect.Width > dash.Rect.Height);
         Assert.DoesNotContain(ctx.Polylines, o => o.Rect.Y >= h.RowTop(2));

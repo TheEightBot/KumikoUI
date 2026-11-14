@@ -95,7 +95,7 @@ resolve it. The version matches the template (`Uno.Templates`/`Uno.Sdk` 6.5.31):
   > the template intentionally omits it). The bare `net9.0` is Uno's reference/tooling head and is the
   > canonical packable slice.
 - [x] Mirror MAUI's Windows-only conditioning so non-Windows machines/CI don't try to build the
-  Windows head (compare with [`src/KumikoUI.Maui/KumikoUI.Maui.csproj`](../../src/KumikoUI.Maui/KumikoUI.Maui.csproj) lines 4–5).
+  Windows head (compare with [`src/KumikoUI.Maui/KumikoUI.Maui.csproj`](../../../src/KumikoUI.Maui/KumikoUI.Maui.csproj) lines 4–5).
   The Windows head is split out onto its own conditioned line:
   ```xml
   <!-- keep the Windows head only on Windows; other heads everywhere -->
@@ -118,8 +118,8 @@ on Skia Renderer targets"* and fires when `UnoFeatures` contains `;skiarenderer;
 still required:
 
 - [x] **Pin the version to `3.119.2`** (matching
-  [`KumikoUI.SkiaSharp`](../../src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj) and
-  [`KumikoUI.Maui`](../../src/KumikoUI.Maui/KumikoUI.Maui.csproj), to avoid native-binary conflicts).
+  [`KumikoUI.SkiaSharp`](../../../src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj) and
+  [`KumikoUI.Maui`](../../../src/KumikoUI.Maui/KumikoUI.Maui.csproj), to avoid native-binary conflicts).
   Uno.Sdk 6.5.31 would otherwise apply its own group version **3.119.1** to the implicit SkiaSharp
   packages. Override it with the SDK-recognised property:
   ```xml
@@ -161,7 +161,7 @@ still required:
 ## 6. NuGet metadata (mirror the sibling projects)
 
 - [x] Add package metadata to the `<PropertyGroup>` (Authors/License/URLs/icon/README come for free
-  from [`Directory.Build.props`](../../Directory.Build.props) — verified inherited: the produced
+  from [`Directory.Build.props`](../../../Directory.Build.props) — verified inherited: the produced
   `.nuspec` carries `authors=Eight-Bot, Inc.,Michael Stonis`, `license=MIT`, the GitHub `projectUrl`,
   `README.md`, and `logo.png`):
   ```xml

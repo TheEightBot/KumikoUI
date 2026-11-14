@@ -2,6 +2,8 @@ using KumikoUI.Core.Input;
 #if MACCATALYST
 using System.Runtime.InteropServices;
 using ObjCRuntime;
+#endif
+#if MACCATALYST || IOS
 using UIKit;
 #endif
 #if WINDOWS
@@ -12,8 +14,9 @@ using Microsoft.UI.Input;
 namespace KumikoUI.Maui;
 
 /// <summary>
-/// Hover cursor feedback (#181): Core's <see cref="KumikoInputController.Cursor"/> shown as the platform cursor
-/// on the desktop heads, and the hover moves that drive it.
+/// Hover feedback (#181, #101): the hover moves that drive Core's hover highlights (headers, chips, filter icons,
+/// check boxes, action buttons), and Core's <see cref="KumikoInputController.Cursor"/> shown as the platform cursor
+/// on the desktop heads.
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
@@ -23,18 +26,22 @@ namespace KumikoUI.Maui;
 /// handles, so trimming and Native AOT safe): UIKit's pointer styles have no left-right resize cursor.
 /// Because UIKit may restore the arrow as the pointer moves, a non-default cursor is set again on every
 /// hover and drag move.</item>
+/// <item><b>iPad</b>: the same hover recognizer reports a trackpad or mouse pointer, which gets the hover
+/// highlights; iPadOS draws its own pointer, so the cursor is ignored.</item>
 /// <item><b>Windows</b>: SKCanvasView reports hover as a move that is not in contact (sent to Core as
 /// <see cref="InputAction.Hover"/>) and the pointer leaving as Exited. The cursor is
 /// <c>UIElement.ProtectedCursor</c> on the canvas's platform view; the property is protected, and the
 /// handler's view cannot be subclassed, so it is set through reflection on a statically known member.</item>
-/// <item><b>iOS and Android</b>: touch only; the cursor is ignored.</item>
+/// <item><b>Android</b>: a mouse's hover events (<c>ACTION_HOVER_ENTER/MOVE/EXIT</c>) reach the canvas's hover
+/// listener and are sent to Core as hover and exit (<c>KumikoDataGrid.Pointer.cs</c>); Android shows its own
+/// pointer, so the cursor is ignored. A finger never hovers.</item>
 /// </list>
 /// </remarks>
 public partial class KumikoDataGrid
 {
-    private void OnInputControllerCursorChanged(KumikoCursor cursor) => ApplyPlatformCursor(cursor);
+    private void OnInputControllerCursorChanged(object? sender, KumikoCursor cursor) => ApplyPlatformCursor(cursor);
 
-#if MACCATALYST
+#if MACCATALYST || IOS
     private UIHoverGestureRecognizer? _nativeHoverGesture;
 
     private void SetupNativeHover(UIView platformView)
@@ -82,7 +89,9 @@ public partial class KumikoDataGrid
         _inputController.HandlePointer(gridEvent, _scroll, _selection, _style, _dataSource);
         ReassertPlatformCursor();
     }
+#endif
 
+#if MACCATALYST
     // [NSCursor <shape>] then [cursor set]. Selectors and the class are looked up once.
     private static readonly IntPtr s_nsCursorClass = Class.GetHandle("NSCursor");
     private static readonly IntPtr s_selSet = Selector.GetHandle("set");

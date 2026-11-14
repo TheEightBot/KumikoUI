@@ -12,16 +12,16 @@ public enum KumikoRenderMode
     Auto,
 
     /// <summary>
+    /// Draw into a bitmap that is then copied to the screen (<c>SKXamlCanvas</c>). Works on every head; the only
+    /// surface on WinAppSDK.
+    /// </summary>
+    Software,
+
+    /// <summary>
     /// Draw straight into the window's own Skia canvas (Uno's <c>SKCanvasElement</c>): no intermediate bitmap and
     /// no copy, and GPU-accelerated wherever Uno renders the window on the GPU. Available on the Skia-rendered
     /// heads (desktop, WebAssembly, and iOS/Android with the Skia renderer); where it is not (WinAppSDK, native
     /// renderers) the grid uses <see cref="Software"/> instead.
     /// </summary>
     Hardware,
-
-    /// <summary>
-    /// Draw into a bitmap that is then copied to the screen (<c>SKXamlCanvas</c>). Works on every head; the only
-    /// surface on WinAppSDK.
-    /// </summary>
-    Software,
 }

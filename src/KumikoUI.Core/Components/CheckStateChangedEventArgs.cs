@@ -3,7 +3,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Check state changed event args.</summary>
-public class CheckStateChangedEventArgs : EventArgs
+internal class CheckStateChangedEventArgs : EventArgs
 {
     /// <summary>The previous check state before the change.</summary>
     public DrawnCheckState OldState { get; }

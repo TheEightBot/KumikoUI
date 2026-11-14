@@ -47,6 +47,7 @@ new KumikoColumn
 | `ComboBox` | `TextCellRenderer` | `DrawnComboBox` |
 | `Picker` | `TextCellRenderer` | `DrawnScrollPicker` |
 | `Image` | `ImageCellRenderer` | (not editable) |
+| `ProgressBar` | `ProgressBarCellRenderer` | `DrawnProgressBar` slider when editable |
 | `Template` | `CustomCellRenderer` or text | `CustomEditorFactory` or `EditorDescriptor` |
 
 ---
@@ -78,6 +79,19 @@ using (source.BeginUpdate())
 source.ViewChanged += (_, e) => { int newRow = e.MapRow(oldRow); };
 ```
 
+Items and columns are set with `source.SetItems(items)` and `source.SetColumns(columns)`; `source.Refresh()`
+re-reads everything after a change the source cannot observe.
+
+### Background view rebuilds
+
+From `KumikoSource.BackgroundRebuildThreshold` items (default `int.MaxValue`: always synchronous; the hosts set
+`KumikoSource.DefaultBackgroundRebuildThreshold`, 10,000) a sort, filter, grouping or summary change rebuilds the view on a
+worker from a snapshot, and the finished `ViewSnapshot` is swapped in on the UI thread, raising `ViewChanged`
+and then `ViewUpdated`. Until then every read answers from the current view. Code that runs on the worker
+(accessors, comparers, predicates, key and aggregate delegates) must only read. Tests that need the rebuilt view
+call `await source.WhenViewUpdatedAsync()`; `IsViewUpdatePending` says whether one is under way. The code is in
+`KumikoSource.Background.cs` and `ViewBuilder.cs`.
+
 ### Sorting
 
 Sort state lives on the columns (`SortDirection`, `SortOrder`) but only the source writes it:
@@ -102,13 +116,14 @@ var filter = new FilterDescription(column)
         Value        = "Engineering"
     }
 };
-source.ApplyFilter(column, filter);   // pass null to clear
+source.SetColumnFilter(column, filter);   // pass null to clear; source.ClearAllFilters() clears every column
+source.SetFilter(item => ((Employee)item).IsActive);   // one predicate over the items (null clears it)
 
 // Numeric range:
 var numFilter = new FilterDescription(numericColumn)
 {
     Condition1      = new FilterCondition { NumericOperator = NumericFilterOperator.GreaterThan, Value = 50000d },
-    LogicalOperator = FilterLogicalOperator.And,
+    Combination     = FilterCombination.And,   // how Condition1 and Condition2 combine (And | Or)
     Condition2      = new FilterCondition { NumericOperator = NumericFilterOperator.LessThanOrEqual, Value = 150000d }
 };
 ```
@@ -116,15 +131,20 @@ var numFilter = new FilterDescription(numericColumn)
 ### Grouping
 
 ```csharp
-source.GroupDescriptions.Add(new GroupDescription("Department"));
-source.GroupDescriptions.Add(new GroupDescription("City"));    // multi-level
-source.RebuildView();   // required after changing GroupDescriptions
+// GroupDescriptions is a read-only list: change it through the source, which rebuilds the view.
+source.AddGroupDescription(new GroupDescription("Department"));
+source.AddGroupDescription(new GroupDescription("City"));    // multi-level
+source.SetGroupDescriptions([new GroupDescription("Department")]);   // replace them all
+source.RemoveGroupDescription("City");
+source.ClearGroupDescriptions();
 
 // Custom key display:
-source.GroupDescriptions.Add(new GroupDescription("HireDate")
+source.AddGroupDescription(new GroupDescription("HireDate")
 {
     DisplayTextSelector = key => key is DateTime dt ? dt.ToString("yyyy") : key?.ToString() ?? ""
 });
+
+// Group headers expand and collapse: ToggleGroupExpansion(row), ExpandAllGroups(), CollapseAllGroups().
 ```
 
 ### Summaries
@@ -143,7 +163,13 @@ var row = new TableSummaryRow("Totals", SummaryPosition.Bottom)
 };
 ```
 
-`SummaryType` values: `Sum`, `Average`, `Count`, `Min`, `Max`, `Custom`.
+```csharp
+source.AddTableSummaryRow(row);       // RemoveTableSummaryRow(name), ClearTableSummaryRows()
+source.AddGroupSummaryRow(groupRow);  // a GroupSummaryRow per group level; SetGroupSummaryRows(rows)
+```
+
+`SummaryType` values: `Sum`, `Average`, `Count`, `Min`, `Max`, `Custom` (set `SummaryColumnDescription.CustomAggregate`).
+`KumikoStyle.PinBottomSummaryRows` keeps the bottom summary visible as a footer.
 
 ---
 
@@ -177,17 +203,19 @@ All properties are nullable — `null` means "inherit from grid-level `KumikoSty
 
 ## Adding a new `KumikoStyle` property
 
-1. Add property (with `///` XML doc) to `KumikoStyle` in `KumikoStyle.cs`.
+1. Add the property (with `///` XML doc) to `KumikoStyle` in `KumikoStyle.cs`; it raises `Version` through the style's setter so `PaintCache` rebuilds.
 2. Set value in `KumikoTheme.CreateDark()` and `KumikoTheme.CreateHighContrast()`.
-3. Use in `KumikoRenderer.cs`.
-4. Add `[Fact]` tests in `KumikoThemeTests.cs` for Dark and HighContrast values.
+3. If it is a color a paint is built from, add it to `PaintCache.Update`; use the paint in `KumikoRenderer.cs`.
+4. Add xUnit tests: `KumikoThemeTests` for the Dark and HighContrast values, `PaintCacheTests` for the paint (the render harness gives every color of its style a distinct value).
+5. A setting hosts expose as a bindable property goes through `KumikoStyleOptions` (nullable, applied over the theme).
 
 ---
 
 ## Adding a new `KumikoColumnType`
 
-1. Add enum value to `KumikoColumnType` in `KumikoColumn.cs`.
+1. Add the enum value to `KumikoColumnType` in `KumikoColumnType.cs`.
 2. Create cell renderer in `src/KumikoUI.Core/Rendering/` (if display differs from text).
 3. Create editor (`DrawnComponent`) in `src/KumikoUI.Core/Components/` (if needed).
-4. Wire `CellEditorFactory`: `CreateEditor`, `GetEditorValue`, `ApplyThemeToEditor`.
-5. Dispatch in `KumikoRenderer.cs` to the renderer.
+4. Wire `CellEditorFactory`: `CreateEditor`, `GetEditorValue`, `ApplyThemeToEditor` (and `ApplyFontToEditor`, `ApplyViewportToEditor` when the editor uses them).
+5. Register the renderer in the `KumikoRenderer` constructor (`_cellRenderers[KumikoColumnType.X]`), or leave the type on `TextCellRenderer`.
+6. Add tests next to `CellEditorFactoryTests` and `KumikoRendererTests`.

@@ -21,7 +21,7 @@ public class SkiaGlyphRasterTests
         // The group-header chevron's collapsed shape, in logical pixels.
         var tri = new[] { new KumikoPoint(4, 3), new KumikoPoint(12, 10), new KumikoPoint(4, 17) };
         using var bitmap = Render(scale, 20, 20, ctx =>
-            ctx.FillPolygon(tri, new KumikoPaint { Color = Ink, Style = PaintStyle.Fill, IsAntiAlias = true }));
+            ctx.FillPolygon(tri, new KumikoPaint { Color = Ink, IsAntiAlias = true }));
 
         // Every sample at least 1.5 device pixels inside every edge is fully opaque ink: no gaps or notches.
         int sampled = 0;
@@ -53,7 +53,7 @@ public class SkiaGlyphRasterTests
     {
         var chevron = new[] { new KumikoPoint(4, 3), new KumikoPoint(12, 10), new KumikoPoint(4, 17) };
         using var bitmap = Render(scale, 20, 20, ctx =>
-            ctx.DrawPolyline(chevron, new KumikoPaint { Color = Ink, Style = PaintStyle.Stroke, StrokeWidth = 3f, IsAntiAlias = true }));
+            ctx.DrawPolyline(chevron, new KumikoPaint { Color = Ink, StrokeWidth = 3f, IsAntiAlias = true }));
 
         // The vertex and the pixel just beyond it on the outer side are covered by the round join.
         Assert.Equal(255, bitmap.GetPixel(12 * scale, 10 * scale).Alpha);
@@ -68,7 +68,7 @@ public class SkiaGlyphRasterTests
     {
         var tick = new[] { new KumikoPoint(4, 10), new KumikoPoint(8, 15), new KumikoPoint(16, 5) };
         using var bitmap = Render(scale, 20, 20, ctx =>
-            ctx.DrawPolyline(tick, new KumikoPaint { Color = Ink, Style = PaintStyle.Stroke, StrokeWidth = 2f, IsAntiAlias = true }));
+            ctx.DrawPolyline(tick, new KumikoPaint { Color = Ink, StrokeWidth = 2f, IsAntiAlias = true }));
 
         // The bottom vertex and the pixel just below it (the outer side of the corner) are solid: no notch.
         Assert.InRange((int)bitmap.GetPixel(8 * scale, 15 * scale).Alpha, 150, 255);
@@ -85,7 +85,7 @@ public class SkiaGlyphRasterTests
         using var bitmap = Render(1, 12, 12, ctx =>
         {
             for (int i = 0; i < 50; i++)
-                ctx.FillPolygon(tri, new KumikoPaint { Color = Ink, Style = PaintStyle.Fill, IsAntiAlias = true });
+                ctx.FillPolygon(tri, new KumikoPaint { Color = Ink, IsAntiAlias = true });
         });
 
         Assert.Equal(255, bitmap.GetPixel(6, 4).Alpha);

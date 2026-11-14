@@ -4,7 +4,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Date range selected event args.</summary>
-public class DateRangeSelectedEventArgs : EventArgs
+public sealed class DateRangeSelectedEventArgs : EventArgs
 {
     /// <summary>The start date of the selected range.</summary>
     public DateTime StartDate { get; }

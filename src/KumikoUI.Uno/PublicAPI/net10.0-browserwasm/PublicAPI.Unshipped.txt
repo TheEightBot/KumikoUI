@@ -1,0 +1,5 @@
+KumikoUI.Uno.GlobalStaticResources
+KumikoUI.Uno.GlobalStaticResources.GlobalStaticResources() -> void
+static KumikoUI.Uno.GlobalStaticResources.Initialize() -> void
+static KumikoUI.Uno.GlobalStaticResources.RegisterDefaultStyles() -> void
+static KumikoUI.Uno.GlobalStaticResources.RegisterResourceDictionariesBySource() -> void

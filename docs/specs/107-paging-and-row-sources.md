@@ -838,3 +838,103 @@ Track A:
   resolving `IListSource`)? It would drop the `.DefaultView` step but changes a public property type on both hosts.
 - **Q10.** Paging UI for incremental sources: should #104 expose a "footer: N of M loaded" label from the same
   `KumikoPager` label machinery, or stay separate?
+
+## 13. Effort estimate
+
+Sizes: S = under 2 days, M = 3 to 5 days, L = 1 to 2 weeks (one engineer, including tests, docs and the CHANGELOG
+entry). They map to the staged issues in section 11.
+
+| Issue | Size | Main risk |
+|---|---|---|
+| 1. Dictionary / `ExpandoObject` / non-generic `IDictionary` rows, `ValueType` conversion | M | Default-on behavior change for `PropertyName` such as `Count` (Q1); AOT smoke case |
+| 2. `IBindingList` adapter, `DynamicObject` provider, `KumikoColumnFactory.FromDictionaries` | M | `ListChanged` mapping (reset vs item changed) and a unit-test matrix |
+| 3. `KumikoUI.Data` package (`DataRowView`, `ColumnsFor`) | M to L | New project, packaging and CI wiring; trim/AOT behavior of `System.Data.Common` is unverified |
+| 4. Paging core (`KumikoPager`, client slice, summaries scope, exclusivity with #104) | L | Interaction with grouping (Q2), selection and the #104 loader type |
+| 5. `DrawnPager` and host surface | L | A new drawn component with accessibility and keyboard, on both hosts |
+| 6. Server paging (`IKumikoPagedSource`, stale/cancel/failure/retry, filter guard) | L | Concurrency and the cancellation matrix |
+| 7. Docs and benchmarks | S | None |
+
+Track B (1 to 3): about 2 to 3 engineer-weeks. Track A (4 to 6): about 4 to 5 engineer-weeks. The tracks are
+independent, so two people can run them in parallel. Total: 6 to 8 engineer-weeks, with track B first because it
+is smaller and fixes the blank cells reported as CORE-33.
+
+## 14. XAML usage examples (proposal)
+
+All members below are proposals from sections 6 and 8, not compiled. Hosts share names and defaults.
+
+### 14.1 MAUI, client paging with the drawn pager
+
+```xml
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core">
+    <dg:KumikoDataGrid ItemsSource="{Binding Orders}"
+                       PageSize="50"
+                       PageIndex="{Binding PageIndex, Mode=TwoWay}"
+                       PagerPosition="Bottom">
+        <dg:KumikoDataGrid.Columns>
+            <core:KumikoColumn Header="Order" PropertyName="Number" />
+            <core:KumikoColumn Header="Total" PropertyName="Total" ColumnType="Numeric" Format="C2" />
+        </dg:KumikoDataGrid.Columns>
+    </dg:KumikoDataGrid>
+</ContentPage>
+```
+
+### 14.2 Uno, server paging with the app's own pager
+
+```xml
+<Page xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      xmlns:core="using:KumikoUI.Core.Models">
+    <Grid RowDefinitions="*,Auto">
+        <kumiko:KumikoDataGrid x:Name="Grid"
+                               PagedSource="{x:Bind ViewModel.Orders}"
+                               PageSize="25"
+                               PagerPosition="None">
+            <kumiko:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="Order" PropertyName="Number" />
+            </kumiko:KumikoDataGrid.Columns>
+        </kumiko:KumikoDataGrid>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <Button Content="Previous" Click="OnPrevious" />
+            <TextBlock Text="{x:Bind Grid.PageIndex, Mode=OneWay}" />
+            <Button Content="Next" Click="OnNext" />
+            <ProgressRing IsActive="{x:Bind Grid.IsPageLoading, Mode=OneWay}" />
+        </StackPanel>
+    </Grid>
+</Page>
+```
+
+Code-behind calls `Grid.PreviousPage()` / `Grid.NextPage()`.
+
+### 14.3 Dictionary and `DataTable` rows
+
+Dictionary and `ExpandoObject` rows need no registration (Core, section 8.2). Columns name the keys:
+
+```xml
+<dg:KumikoDataGrid ItemsSource="{Binding Rows}">   <!-- IList<Dictionary<string, object?>> -->
+    <dg:KumikoDataGrid.Columns>
+        <core:KumikoColumn Header="Name" PropertyName="Name" ValueType="{x:Type x:String}" />
+        <core:KumikoColumn Header="Qty" PropertyName="Qty" ColumnType="Numeric" ValueType="{x:Type x:Int32}" />
+    </dg:KumikoDataGrid.Columns>
+</dg:KumikoDataGrid>
+```
+
+When the keys are not known at design time, build the columns in code with
+`KumikoColumnFactory.FromDictionaries(rows)` and add them to `Columns`. For a `DataTable`, call
+`KumikoDataTable.Use()` once at startup, then bind `{Binding Table.DefaultView}` as `ItemsSource` and add
+`KumikoDataTable.ColumnsFor(table)` in code. A `DataTable` cannot be bound directly (Q9).
+
+## 15. Interaction with column auto-generation and the source generator
+
+There is no column auto-generation today (not even for POCOs), so the hosts keep `Columns` explicit and these
+helpers are opt-in. `[KumikoGridItem]` (`src/KumikoUI.SourceGenerators`) generates accessors per attributed type
+and registers them by type, so it never applies to dictionaries, `ExpandoObject` or `DataRowView`: those go through
+the global providers in `KumikoAccessorRegistry`, after any type-specific provider and before reflection. A
+future "emit a column list from `[KumikoGridItem]`" feature would be the POCO counterpart of
+`KumikoColumnFactory`, and would reuse the same type-to-`ColumnType` mapping table (section 8.6) so that all
+factories infer `ColumnType`, `Format` and alignment alike. Paging does not touch accessors. Server paging only
+needs `KumikoColumn.PropertyName` (or the column `Id`) to build `KumikoPageRequest` sort keys, so it works the same
+for POCO, dictionary and `DataRowView` rows.

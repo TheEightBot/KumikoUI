@@ -157,7 +157,7 @@ space the renderer was fed in [03 §4](03-kumikodatagrid-host.md#4-dpi--scaling)
 > `ResetProxy()` and the `TextChanged` handler described below were replaced by the text-input adapter
 > (`Input/KumikoTextInputAdapter.cs`): the proxy mirrors the open editor's text, `TextChanging` and the
 > `TextComposition*` events drive Core's `ITextInputSession`, keys are marked handled only when Core
-> handled them, and focus stays on the proxy after a touch edit. See [docs/TEXT-INPUT.md](../TEXT-INPUT.md).
+> handled them, and focus stays on the proxy after a touch edit. See [docs/TEXT-INPUT.md](../../TEXT-INPUT.md).
 
 ### Why `CharacterReceived` and `Grid` focus don't work on WASM/Skia
 

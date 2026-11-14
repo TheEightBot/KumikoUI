@@ -910,7 +910,7 @@ Order: C1 → C2 → C3 → W0 → W1 → W2 → I1 → A1 → B0 → B1. D1 run
 ## 18. References
 
 - Findings: A11Y-01 ([02](../release-readiness/02-core-components-editing-input.md)), MAUI-09 ([03](../release-readiness/03-skiasharp-maui.md)), UNO-03 and UNO-04 ([04](../release-readiness/04-uno.md)), platform research ([07 §4](../release-readiness/07-external-research.md#4-accessibility-for-a-canvas-drawn-grid)).
-- Repository docs: [ARCHITECTURE.md](../ARCHITECTURE.md), [TEXT-INPUT.md](../TEXT-INPUT.md), [uno/04-input-keyboard-focus.md](../uno/04-input-keyboard-focus.md), [ROADMAP.md](../ROADMAP.md).
+- Repository docs: [ARCHITECTURE.md](../ARCHITECTURE.md), [TEXT-INPUT.md](../TEXT-INPUT.md), [uno/plan/04-input-keyboard-focus.md](../uno/plan/04-input-keyboard-focus.md), [ROADMAP.md](../ROADMAP.md).
 - Code:
   - `KumikoRenderer.Render`;
   - `KumikoLayoutEngine` (`GetVisibleRowRangeWithOffset`, `Populate*Columns`);

@@ -103,5 +103,5 @@ public readonly struct KumikoColor : IEquatable<KumikoColor>
     public override string ToString() => $"KumikoColor({R}, {G}, {B}, {A})";
 
     /// <summary>Pack ARGB into a single uint for use as a cache key.</summary>
-    public uint ToUint32() => ((uint)A << 24) | ((uint)R << 16) | ((uint)G << 8) | B;
+    public uint ToUInt32() => ((uint)A << 24) | ((uint)R << 16) | ((uint)G << 8) | B;
 }

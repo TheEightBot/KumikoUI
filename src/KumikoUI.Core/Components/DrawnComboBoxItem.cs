@@ -4,7 +4,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>An item in a combo box.</summary>
-public class DrawnComboBoxItem
+public sealed class DrawnComboBoxItem
 {
     /// <summary>Text shown in the dropdown list.</summary>
     public string DisplayText { get; }

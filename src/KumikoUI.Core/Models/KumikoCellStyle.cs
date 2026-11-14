@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Models;
 /// Defines visual properties for an individual cell.
 /// All properties are nullable; a null value means "inherit from grid-level style".
 /// </summary>
-public class KumikoCellStyle
+public sealed class KumikoCellStyle
 {
     /// <summary>Background color of the cell.</summary>
     public KumikoColor? BackgroundColor { get; set; }
@@ -20,12 +20,6 @@ public class KumikoCellStyle
     /// <summary>Cell content padding in pixels.</summary>
     public float? Padding { get; set; }
 
-    /// <summary>Border color of the cell.</summary>
-    public KumikoColor? BorderColor { get; set; }
-
-    /// <summary>Border width in pixels.</summary>
-    public float? BorderWidth { get; set; }
-
     /// <summary>Text alignment override.</summary>
     public KumikoTextAlignment? TextAlignment { get; set; }
 
@@ -33,9 +27,8 @@ public class KumikoCellStyle
     /// Returns true if any property is set (non-null), meaning this style has overrides.
     /// </summary>
     public bool HasOverrides =>
-        BackgroundColor.HasValue || TextColor.HasValue || Font != null ||
-        Padding.HasValue || BorderColor.HasValue || BorderWidth.HasValue ||
-        TextAlignment.HasValue;
+        BackgroundColor.HasValue || TextColor.HasValue || Font.HasValue ||
+        Padding.HasValue || TextAlignment.HasValue;
 
     /// <summary>
     /// Merge two KumikoCellStyle instances. Values from <paramref name="primary"/> take precedence;
@@ -52,8 +45,6 @@ public class KumikoCellStyle
             TextColor = primary.TextColor ?? fallback.TextColor,
             Font = primary.Font ?? fallback.Font,
             Padding = primary.Padding ?? fallback.Padding,
-            BorderColor = primary.BorderColor ?? fallback.BorderColor,
-            BorderWidth = primary.BorderWidth ?? fallback.BorderWidth,
             TextAlignment = primary.TextAlignment ?? fallback.TextAlignment,
         };
     }

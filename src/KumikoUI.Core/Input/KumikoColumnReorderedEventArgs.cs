@@ -15,7 +15,7 @@ namespace KumikoUI.Core.Input;
 /// boundaries of the pane's other columns: the column lands before the first of them whose middle is right of the
 /// pointer.
 /// </remarks>
-public class KumikoColumnReorderedEventArgs : EventArgs
+public sealed class KumikoColumnReorderedEventArgs : EventArgs
 {
     /// <summary>The column's index in <see cref="KumikoSource.Columns"/> before the move.</summary>
     public int OldIndex { get; }

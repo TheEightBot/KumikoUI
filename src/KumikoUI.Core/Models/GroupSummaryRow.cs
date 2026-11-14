@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Describes a group-level summary row displayed after each group's data.
 /// </summary>
-public class GroupSummaryRow
+public sealed class GroupSummaryRow
 {
     /// <summary>Unique name for identification.</summary>
     public string Name { get; set; } = "";

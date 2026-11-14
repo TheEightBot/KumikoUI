@@ -14,7 +14,7 @@ namespace KumikoUI.Maui;
 /// <remarks>
 /// <para>
 /// <b>Surface.</b> The grid draws on an internal <see cref="KumikoSurface"/>: SkiaSharp's <c>SKGLView</c>
-/// (<see cref="KumikoRenderMode.Gpu"/>) or <c>SKCanvasView</c> (<see cref="KumikoRenderMode.Software"/>). Switching
+/// (<see cref="KumikoRenderMode.Hardware"/>) or <c>SKCanvasView</c> (<see cref="KumikoRenderMode.Software"/>). Switching
 /// <see cref="RenderMode"/> at run time removes the old view (disconnecting its handler, which releases its GPU
 /// context), inserts the new one below the native text-input views, and redraws.
 /// </para>
@@ -63,7 +63,7 @@ public partial class KumikoDataGrid
     /// <summary>
     /// Gets or sets the surface the grid draws on. <see cref="KumikoRenderMode.Auto"/> (the default) rasterizes on
     /// the GPU (SkiaSharp's <c>SKGLView</c>) on Android and Mac Catalyst and on the CPU (<c>SKCanvasView</c>) on iOS
-    /// and Windows; <see cref="KumikoRenderMode.Gpu"/> and <see cref="KumikoRenderMode.Software"/> ask for one.
+    /// and Windows; <see cref="KumikoRenderMode.Hardware"/> and <see cref="KumikoRenderMode.Software"/> ask for one.
     /// Asking for the GPU where SkiaSharp has no GPU view falls back to software; the surface in use is
     /// <see cref="ActiveRenderMode"/>. Changing it at run time replaces the surface and redraws. If a device's GPU
     /// driver draws the grid wrongly, set it to <see cref="KumikoRenderMode.Software"/>.
@@ -75,7 +75,7 @@ public partial class KumikoDataGrid
     }
 
     /// <summary>
-    /// Gets the surface the grid draws on now: <see cref="KumikoRenderMode.Gpu"/> or
+    /// Gets the surface the grid draws on now: <see cref="KumikoRenderMode.Hardware"/> or
     /// <see cref="KumikoRenderMode.Software"/>, never <see cref="KumikoRenderMode.Auto"/> (see <see cref="RenderMode"/>).
     /// Raises <see cref="BindableObject.PropertyChanged"/> when it changes.
     /// </summary>
@@ -159,6 +159,7 @@ public partial class KumikoDataGrid
     /// <summary>Called when the grid is connected to a handler: draws, and resumes pending frame work.</summary>
     private void AttachRendering()
     {
+        SyncReducedMotion(); // KumikoDataGrid.Motion.cs
         ConnectSurface();
         if (_frames.Attach())
             StartFrameClock();
@@ -250,12 +251,16 @@ public partial class KumikoDataGrid
         _scroll.ViewportWidth = width;
         _scroll.ViewportHeight = height;
 
-        using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
+        using var drawingContext = ResourceCache.CreateContext(canvas);
 
-        _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
+        _renderer.RenderFrame(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
             _inputController.DragRowIndex, _inputController.DragRowScreenY,
             _editSession, _inputController.PopupManager);
+        // The frame may have started a transition (the current row's highlight fading in), or one runs on: the frame
+        // loop steps it
+        if (_inputController.IsAnimating)
+            StartFrameAnimation();
         OnFrameRendered();
     }
 
@@ -317,8 +322,9 @@ public partial class KumikoDataGrid
     // ── Frame loop ────────────────────────────────────────────────
 
     /// <summary>
-    /// Starts stepping the inertial scroller, edge autoscroll and the editor's animation once per frame (a fling or
-    /// a scroll picker coasting after a release, a row drag held at an edge, a spin button held down).
+    /// Starts stepping the inertial scroller, edge autoscroll, the editor's animation and Core's transitions once per
+    /// frame (a fling or a scroll picker coasting after a release, a row drag held at an edge, a spin button held down,
+    /// a group sliding open).
     /// </summary>
     private void StartFrameAnimation()
     {
@@ -349,7 +355,8 @@ public partial class KumikoDataGrid
             bool scrolling = _inputController.UpdateInertialScroll(_scroll, frameMs);
             bool autoScrolling = _inputController.UpdateAutoScroll(_scroll, frameMs);
             bool animating = _editSession.UpdateAnimation(frameMs);
-            if (!scrolling && !autoScrolling && !animating)
+            bool transitioning = _inputController.UpdateAnimations(frameMs); // KumikoDataGrid.Motion.cs
+            if (!scrolling && !autoScrolling && !animating && !transitioning)
                 _frames.StopAnimation();
         }
 

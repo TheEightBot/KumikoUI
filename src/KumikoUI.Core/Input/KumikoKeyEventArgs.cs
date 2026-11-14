@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Input;
 /// <summary>
 /// Platform-independent keyboard event.
 /// </summary>
-public class KumikoKeyEventArgs
+public sealed class KumikoKeyEventArgs : EventArgs
 {
     /// <summary>Key identifier.</summary>
     public KumikoKey Key { get; init; }

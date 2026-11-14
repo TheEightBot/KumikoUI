@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Describes a single filter condition for a column.
 /// </summary>
-public class FilterCondition
+public sealed class FilterCondition
 {
     /// <summary>The text filter operator (for Text columns).</summary>
     public TextFilterOperator TextOperator { get; set; } = TextFilterOperator.Contains;
@@ -23,6 +23,9 @@ public class FilterCondition
     /// </summary>
     public bool Evaluate(object? cellValue, KumikoColumnType columnType) =>
         Evaluate(cellValue, columnType, KumikoComparer.Default);
+
+    /// <summary>A copy of this condition (its value is copied by reference).</summary>
+    internal FilterCondition Clone() => (FilterCondition)MemberwiseClone();
 
     /// <summary>Evaluate with a source's culture and text rules.</summary>
     internal bool Evaluate(object? cellValue, KumikoColumnType columnType, KumikoComparer comparer)

@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Event args for FilterChanging. Set Cancel=true to prevent.
 /// </summary>
-public class FilterChangingEventArgs : EventArgs
+public sealed class FilterChangingEventArgs : EventArgs
 {
     /// <summary>Column whose filter is changing.</summary>
     public KumikoColumn Column { get; }

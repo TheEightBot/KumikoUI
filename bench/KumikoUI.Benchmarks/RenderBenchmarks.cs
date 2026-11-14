@@ -34,7 +34,8 @@ public sealed class NoOpDrawingContext : IDrawingContext
     public void DrawText(string text, float x, float y, KumikoPaint paint) { }
     public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
         KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
-        KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true) { }
+        KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true)
+    { }
     public KumikoSize MeasureText(string text, KumikoPaint paint) => new(text.Length * 7f, 14f);
     public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) => new(-11, 3, 2);
     public void ClipRect(KumikoRect rect) { }
@@ -191,7 +192,7 @@ public class RenderBenchmarks
                 + (featured ? style.GroupPanelHeight + 2 * style.SummaryRowHeight : 0),
         };
         var selection = new KumikoSelectionModel(source);
-        selection.HandleRowSelection(3, shift: false, ctrl: false);
+        selection.HandleRowSelection(3, shift: false, control: false);
         selection.SetCurrentCell(3, 1);
         return new Grid(source, scroll, selection, style);
     }

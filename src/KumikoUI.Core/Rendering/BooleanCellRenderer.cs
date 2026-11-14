@@ -39,6 +39,10 @@ public class BooleanCellRenderer : ICellRenderer
 
         var boxRect = GetCheckBoxBounds(cell.Bounds);
 
+        // Hover and pressed feedback: a soft square around the box while the pointer is on its target
+        if (cell.PointerPosition is { } pointer && GetCheckBoxHitBounds(cell.Bounds).Contains(pointer.X, pointer.Y))
+            ctx.FillRoundRect(boxRect.Inflate(4, 4), 4, cell.IsPointerPressed ? cell.Paints.PressedOverlay : cell.Paints.HoverOverlay);
+
         // Checkbox border
         ctx.DrawRect(boxRect, cell.Paints.CheckBoxBorder);
 

@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Editing;
 /// <summary>
 /// XAML-declarable editor descriptor for text box editors.
 /// </summary>
-public class TextEditorDescriptor : EditorDescriptor
+public sealed class TextEditorDescriptor : EditorDescriptor
 {
     /// <summary>Restrict to numeric characters only.</summary>
     public bool NumericOnly { get; set; }

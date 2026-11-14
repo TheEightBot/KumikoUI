@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Windows.Input;
 using KumikoUI.Core.Rendering;
 using Microsoft.UI.Xaml;
@@ -33,7 +34,9 @@ namespace KumikoUI.Uno;
 /// <see cref="IActionButtonDefinition"/> members expose them as <see cref="KumikoColor"/>.
 /// The values are cached when they change, so the render pass reads them without allocating.
 /// </remarks>
-public partial class UnoActionButtonDefinition : FrameworkElement, IActionButtonDefinition
+[SuppressMessage("Design", "CA1010:Generic interface should also be implemented",
+    Justification = "Inherited from the Uno framework element, which enumerates its children; not part of the grid's own API.")]
+public sealed partial class UnoActionButtonDefinition : FrameworkElement, IActionButtonDefinition
 {
     private static readonly Color DefaultBackgroundColor = Color.FromArgb(255, 13, 110, 253);
     private static readonly Color DefaultTextColor = Color.FromArgb(255, 255, 255, 255);
@@ -152,7 +155,7 @@ public partial class UnoActionButtonDefinition : FrameworkElement, IActionButton
     public Action? Action { get; set; }
 
     /// <summary>Raised after any property of this definition changed, so a host can redraw.</summary>
-    public event EventHandler? Changed;
+    internal event EventHandler? Changed;
 
     // ── IActionButtonDefinition ──────────────────────────────────
 

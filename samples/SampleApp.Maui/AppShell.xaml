@@ -48,6 +48,18 @@
             Icon="icon_image.png"
             ContentTemplate="{DataTemplate local:ImagesPage}"
             Route="ImagesPage" />
+
+        <ShellContent
+            Title="Styling"
+            Icon="icon_styling.png"
+            ContentTemplate="{DataTemplate local:StylingPage}"
+            Route="StylingPage" />
+
+        <ShellContent
+            Title="Events"
+            Icon="icon_events.png"
+            ContentTemplate="{DataTemplate local:EventsPage}"
+            Route="EventsPage" />
     </TabBar>
 
 </Shell>

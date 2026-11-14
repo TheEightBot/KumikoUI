@@ -13,7 +13,7 @@ namespace KumikoUI.Core.Input;
 /// edit on another cell is committed first; if the commit is refused, the editor stays open and no event is raised.
 /// Elsewhere (a header, a group row, the empty area) the selection is left as it is.
 /// </remarks>
-public class KumikoContextRequestedEventArgs : EventArgs
+public sealed class KumikoContextRequestedEventArgs : EventArgs
 {
     /// <summary>Initializes a new instance of the <see cref="KumikoContextRequestedEventArgs"/> class.</summary>
     /// <param name="trigger">What asked for the menu.</param>

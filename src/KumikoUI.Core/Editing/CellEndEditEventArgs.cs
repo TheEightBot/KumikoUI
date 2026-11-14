@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Editing;
 /// <summary>
 /// Event args for CellEndEdit.
 /// </summary>
-public class CellEndEditEventArgs : EventArgs
+public sealed class CellEndEditEventArgs : EventArgs
 {
     /// <summary>Zero-based row index of the cell.</summary>
     public int RowIndex { get; }
@@ -27,17 +27,17 @@ public class CellEndEditEventArgs : EventArgs
     public bool Committed { get; }
 
     /// <summary>Initializes the event data.</summary>
-    /// <param name="row">Zero-based row index of the cell.</param>
-    /// <param name="col">Zero-based column index of the cell.</param>
+    /// <param name="rowIndex">Zero-based row index of the cell.</param>
+    /// <param name="columnIndex">Zero-based column index of the cell.</param>
     /// <param name="column">Column definition for the cell.</param>
     /// <param name="oldValue">Cell value before editing.</param>
     /// <param name="newValue">Cell value after editing.</param>
     /// <param name="committed">True if the edit was committed; false if canceled.</param>
-    public CellEndEditEventArgs(int row, int col, KumikoColumn column,
+    public CellEndEditEventArgs(int rowIndex, int columnIndex, KumikoColumn column,
         object? oldValue, object? newValue, bool committed)
     {
-        RowIndex = row;
-        ColumnIndex = col;
+        RowIndex = rowIndex;
+        ColumnIndex = columnIndex;
         Column = column;
         OldValue = oldValue;
         NewValue = newValue;

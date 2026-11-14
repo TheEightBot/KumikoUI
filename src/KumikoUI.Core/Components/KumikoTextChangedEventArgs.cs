@@ -5,7 +5,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Text changed event args.</summary>
-public class KumikoTextChangedEventArgs : EventArgs
+public sealed class KumikoTextChangedEventArgs : EventArgs
 {
     /// <summary>The text value before the change.</summary>
     public string OldText { get; }

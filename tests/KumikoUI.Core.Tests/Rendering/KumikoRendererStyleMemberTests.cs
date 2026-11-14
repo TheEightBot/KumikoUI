@@ -19,7 +19,7 @@ public class KumikoRendererStyleMemberTests
     public void SelectionTextColor_DrawsTheTextOfSelectedRowsOnly()
     {
         var h = Create(rows: 6);
-        h.Selection.HandleRowSelection(2, shift: false, ctrl: false);
+        h.Selection.HandleRowSelection(2, shift: false, control: false);
 
         var ctx = h.Render();
 
@@ -32,7 +32,7 @@ public class KumikoRendererStyleMemberTests
     public void SelectionTextColor_ChangingIt_ChangesTheSelectedText()
     {
         var h = Create(rows: 6);
-        h.Selection.HandleRowSelection(2, shift: false, ctrl: false);
+        h.Selection.HandleRowSelection(2, shift: false, control: false);
         var custom = new KumikoColor(1, 2, 3);
         h.Style.SelectionTextColor = custom;
 
@@ -46,7 +46,7 @@ public class KumikoRendererStyleMemberTests
     {
         var h = Create(rows: 6);
         h.Style.CellFont = CustomFont;
-        h.Selection.HandleRowSelection(2, shift: false, ctrl: false);
+        h.Selection.HandleRowSelection(2, shift: false, control: false);
 
         var ctx = h.Render();
 
@@ -59,7 +59,7 @@ public class KumikoRendererStyleMemberTests
         var h = Create(rows: 6);
         var own = new KumikoColor(9, 8, 7);
         h.Style.CellStyleResolver = (_, col) => col.PropertyName == "Name" ? new KumikoCellStyle { TextColor = own } : null;
-        h.Selection.HandleRowSelection(2, shift: false, ctrl: false);
+        h.Selection.HandleRowSelection(2, shift: false, control: false);
 
         var ctx = h.Render();
 
@@ -74,7 +74,7 @@ public class KumikoRendererStyleMemberTests
         var h = Create(rows: 6);
         var own = new KumikoColor(9, 8, 7);
         h.Style.RowStyleResolver = _ => new KumikoRowStyle { TextColor = own };
-        h.Selection.HandleRowSelection(2, shift: false, ctrl: false);
+        h.Selection.HandleRowSelection(2, shift: false, control: false);
 
         var ctx = h.Render();
 
@@ -86,7 +86,7 @@ public class KumikoRendererStyleMemberTests
     {
         var h = Create(rows: 6);
         h.Style.RowStyleResolver = _ => new KumikoRowStyle { Font = CustomFont };
-        h.Selection.HandleRowSelection(2, shift: false, ctrl: false);
+        h.Selection.HandleRowSelection(2, shift: false, control: false);
 
         var text = h.Render().SingleText("P02");
 

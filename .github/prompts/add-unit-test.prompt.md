@@ -5,18 +5,21 @@ description: Add a unit test for a KumikoUI.Core class
 
 # Add a Unit Test
 
-Add xUnit tests to `tests/KumikoUI.Core.Tests/` for a class in `KumikoUI.Core`.
+Add xUnit tests to `tests/KumikoUI.Core.Tests/` for a class in `KumikoUI.Core`. Read
+`.github/instructions/testing.instructions.md` first: it lists the test projects and the helpers.
 
 ## Key rules (read before generating)
 
-- Test framework: **xUnit** (`[Fact]` and `[Theory]` + `[InlineData]`). Never use NUnit or MSTest.
-- One test class per source class (e.g., `KumikoRectTests` for `KumikoRect`).
-- Test file name: `{ClassName}Tests.cs` — must match the existing naming convention.
-- No SkiaSharp or MAUI dependencies — `KumikoUI.Core` only.
-- Test project targets `net10.0`.
-- Tests go in `tests/KumikoUI.Core.Tests/`.
+- Test framework: **xUnit** (`[Fact]` and `[Theory]` + `[InlineData]`). Never use NUnit or MSTest. `Xunit` is a global using.
+- One test class per source class or behavior (for example `KumikoRectTests` for `KumikoRect`).
+- Test file name: `{ClassName}Tests.cs`, in the folder that mirrors the source (`Input/`, `Editing/`, `Rendering/`,
+  `Components/`, `Data/`; Models and Layout tests are at the project root).
+- Core tests see Core's `internal` members; do not make a member public to test it.
+- Test project targets `net10.0`. Tests for the SkiaSharp backend go in `tests/KumikoUI.SkiaSharp.Tests`, for the hosts'
+  platform-independent logic in `tests/KumikoUI.Maui.Tests` and `tests/KumikoUI.Uno.Tests`.
 - Existing test files for reference: `KumikoRectTests.cs`, `KumikoSelectionModelTests.cs`,
   `KumikoSourceTests.cs`, `InertialScrollerTests.cs`, `KumikoLayoutEngineTests.cs`.
+- Timing tests carry `[Trait("Category", "Performance")]`; a test that needs a real SkiaSharp surface belongs in the SkiaSharp tests.
 
 ## What to ask before generating
 
@@ -60,30 +63,31 @@ public void {MethodName}_{GeneralScenario}(/* paramType input */, /* resultType 
 
 ## Example: `KumikoSource` sorting test
 
+The sorting API is `SetSort`, `ToggleSort` and `ClearSort`; columns and items are set with `SetColumns` and `SetItems`.
+
 ```csharp
-public class DataGridSourceSortingTests
+public class KumikoSourceSortingExampleTests
 {
-    private static KumikoSource MakeSource(IList items, List<KumikoColumn> columns)
+    private sealed class Employee
     {
-        var source = new KumikoSource();
-        foreach (var col in columns) source.Columns.Add(col);
-        source.ItemsSource = items;
-        return source;
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
     }
 
     [Fact]
-    public void ApplySort_Ascending_OrdersRowsCorrectly()
+    public void SetSort_Ascending_OrdersRowsCorrectly()
     {
-        var items   = new List<Employee>
+        var col = new KumikoColumn { PropertyName = "Name", ColumnType = KumikoColumnType.Text };
+        var source = new KumikoSource();
+        source.SetColumns(new[] { col });
+        source.SetItems(new List<Employee>
         {
-            new Employee { Id = 3, Name = "Charlie" },
-            new Employee { Id = 1, Name = "Alice" },
-            new Employee { Id = 2, Name = "Bob" },
-        };
-        var col     = new KumikoColumn { PropertyName = "Name", ColumnType = KumikoColumnType.Text };
-        var source  = MakeSource(items, [col]);
+            new() { Id = 3, Name = "Charlie" },
+            new() { Id = 1, Name = "Alice" },
+            new() { Id = 2, Name = "Bob" },
+        });
 
-        source.ApplySort(col);   // ascending first
+        source.SetSort(col, KumikoSortDirection.Ascending);
 
         Assert.Equal("Alice",   source.GetCellDisplayText(0, col));
         Assert.Equal("Bob",     source.GetCellDisplayText(1, col));
@@ -94,48 +98,37 @@ public class DataGridSourceSortingTests
 
 ---
 
-## `FakeDrawingContext` helper (if needed)
+## Test doubles for rendering (when needed)
 
-When testing renderers, create a no-op `IDrawingContext` test double:
+Do not write a new `IDrawingContext` stub: use the helpers in `tests/KumikoUI.Core.Tests/TestHelpers/`.
+
+| Helper | Use |
+|---|---|
+| `RecordingDrawingContext` | Records every draw call as a `DrawOp` (rect, color, text, clip) in call order; `ctx.Texts`, `ctx.Fills`, `ctx.SingleText("P00")` |
+| `NoOpDrawingContext` | Draws and records nothing; for allocation tests |
+| `RenderHarness` | A grid of people wired to a `KumikoRenderer`; `RenderHarness.Create(rows: 20)` then `h.Render()` |
+| `CellRendererExtensions` | Calls an `ICellRenderer` with a context built like the grid's |
 
 ```csharp
-// tests/KumikoUI.Core.Tests/TestHelpers/FakeDrawingContext.cs
-using KumikoUI.Core.Rendering;
+var h = RenderHarness.Create(width: 300);
+h.Column("Name").FreezeMode = ColumnFreezeMode.Left;
 
-namespace KumikoUI.Core.Tests.TestHelpers;
+var ctx = h.Render();
 
-internal sealed class FakeDrawingContext : IDrawingContext
-{
-    public void DrawRect(KumikoRect r, KumikoPaint p) { }
-    public void FillRect(KumikoRect r, KumikoPaint p) { }
-    public void DrawRoundRect(KumikoRect r, float cr, KumikoPaint p) { }
-    public void FillRoundRect(KumikoRect r, float cr, KumikoPaint p) { }
-    public void DrawLine(float x1, float y1, float x2, float y2, KumikoPaint p) { }
-    public void DrawText(string t, float x, float y, KumikoPaint p) { }
-    public void DrawTextInRect(string t, KumikoRect r, KumikoPaint p,
-        KumikoTextAlignment h = KumikoTextAlignment.Left,
-        KumikoVerticalAlignment v = KumikoVerticalAlignment.Center,
-        bool clip = true) { }
-    public KumikoSize MeasureText(string t, KumikoPaint p) => new KumikoSize(t.Length * 8, 14);
-    public KumikoFontMetrics GetFontMetrics(KumikoPaint p) => new KumikoFontMetrics(14, 0, 2);
-    public void ClipRect(KumikoRect r) { }
-    public void Save() { }
-    public void Restore() { }
-    public void Translate(float dx, float dy) { }
-    public void DrawImage(object image, KumikoRect dest) { }
-    public void Dispose() { }
-}
+Assert.Equal(new KumikoRect(0, 0, 150, 400), ctx.SingleText("P00").Clip);
 ```
+
+Pointer and keyboard behavior is tested with `InputGrid` (`Input/`), drawn components with `ComponentInput` (`Components/`).
 
 ---
 
 ## Running tests
 
 ```shell
-dotnet test tests/KumikoUI.Core.Tests/
+dotnet test tests/KumikoUI.Core.Tests -c Release
 ```
 
 To run a single test class:
 ```shell
-dotnet test tests/KumikoUI.Core.Tests/ --filter "FullyQualifiedName~{ClassName}Tests"
+dotnet test tests/KumikoUI.Core.Tests -c Release --filter "FullyQualifiedName~{ClassName}Tests"
 ```

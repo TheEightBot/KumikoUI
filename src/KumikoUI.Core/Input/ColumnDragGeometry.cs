@@ -53,6 +53,11 @@ internal static class ColumnDragGeometry
         }
     }
 
+    /// <summary>The viewport x range of the scrolling pane (between the frozen panes and the drag handles).</summary>
+    public static void ScrollingPaneBounds(
+        IReadOnlyList<KumikoColumn> columns, ScrollState scroll, KumikoStyle style, out float left, out float right) =>
+        PaneBounds(ColumnFreezeMode.None, columns, scroll, style, out left, out right, out _);
+
     /// <summary>
     /// The viewport x of the left edge of <c>columns[columnIndex]</c> as drawn, or NaN when the index is out of
     /// range or the column is hidden.

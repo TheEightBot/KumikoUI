@@ -33,7 +33,7 @@ namespace KumikoUI.Core.Components;
 /// events ends the hold as soon as the key is released, otherwise it ends when the repeat stops.
 /// </para>
 /// </remarks>
-public class DrawnNumericUpDown : DrawnComponent, IValueEditor
+public sealed class DrawnNumericUpDown : DrawnComponent, IValueEditor
 {
     private const int MaxPrecision = 15;
     private const int AutoPrecision = 10;
@@ -79,10 +79,10 @@ public class DrawnNumericUpDown : DrawnComponent, IValueEditor
     private CultureInfo? _textCulture;
 
     // Paints reused by every draw
-    private readonly KumikoPaint _fillPaint = new() { Style = PaintStyle.Fill };
-    private readonly KumikoPaint _strokePaint = new() { Style = PaintStyle.Stroke };
-    private readonly KumikoPaint _symbolPaint = new() { Style = PaintStyle.Stroke, StrokeWidth = 2f, IsAntiAlias = true };
-    private readonly KumikoPaint _textPaint = new() { Style = PaintStyle.Fill, IsAntiAlias = true };
+    private readonly KumikoPaint _fillPaint = new();
+    private readonly KumikoPaint _strokePaint = new();
+    private readonly KumikoPaint _symbolPaint = new() { StrokeWidth = 2f, IsAntiAlias = true };
+    private readonly KumikoPaint _textPaint = new() { IsAntiAlias = true };
 
     /// <summary>Creates a numeric up/down showing 0, with no limits and a step of 1.</summary>
     public DrawnNumericUpDown()
@@ -96,7 +96,7 @@ public class DrawnNumericUpDown : DrawnComponent, IValueEditor
             EditingBackgroundColor = BackgroundColor,
         };
         _box.TextChanged += (_, _) => OnTextEdited();
-        _box.RedrawRequested += InvalidateVisual;
+        _box.RedrawRequested += (_, _) => InvalidateVisual();
     }
 
     // ── Style ───────────────────────────────────────────────────
@@ -390,7 +390,7 @@ public class DrawnNumericUpDown : DrawnComponent, IValueEditor
 
         // A culture's own minus sign (U+2212 in some) and the ASCII hyphen both mean negative
         if (number.NegativeSign != "-" && text[0] == '-')
-            text = number.NegativeSign + text.Substring(1);
+            text = string.Concat(number.NegativeSign, text.AsSpan(1));
 
         var styles = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint;
         if (group.Length > 0 && text.Contains(group, StringComparison.Ordinal))

@@ -17,12 +17,8 @@ public enum HitRegion
     HeaderResizeGrip,
     /// <summary>The filter icon in a column header.</summary>
     HeaderFilterIcon,
-    /// <summary>A row header cell.</summary>
-    RowHeader,
     /// <summary>The drag handle used to reorder a row.</summary>
     RowDragHandle,
-    /// <summary>A cell in a frozen column.</summary>
-    FrozenColumn,
     /// <summary>Empty space below the last row or right of the last column.</summary>
     EmptyArea,
     /// <summary>A group header row.</summary>

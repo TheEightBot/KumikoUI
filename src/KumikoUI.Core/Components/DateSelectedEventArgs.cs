@@ -4,7 +4,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Date selected event args.</summary>
-public class DateSelectedEventArgs : EventArgs
+public sealed class DateSelectedEventArgs : EventArgs
 {
     /// <summary>The previously selected date.</summary>
     public DateTime OldDate { get; }

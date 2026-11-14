@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Input;
 /// Provides data for the <see cref="KumikoInputController.RowReordered"/> and
 /// <see cref="KumikoInputController.RowReorderRejected"/> events.
 /// </summary>
-public class RowReorderedEventArgs : EventArgs
+public sealed class RowReorderedEventArgs : EventArgs
 {
     /// <summary>Original zero-based visible index of the row before it was moved.</summary>
     public int OldIndex { get; }

@@ -3,7 +3,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Where to place a popup relative to its anchor.</summary>
-public enum PopupPlacement
+internal enum PopupPlacement
 {
     /// <summary>Place the popup below the anchor.</summary>
     Below,

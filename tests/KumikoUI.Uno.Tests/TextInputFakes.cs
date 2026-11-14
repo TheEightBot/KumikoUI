@@ -26,8 +26,19 @@ internal sealed class FakeTextInputProxy : IKumikoTextInputProxy
     /// <summary>How many times the adapter wrote the proxy.</summary>
     public int Writes { get; private set; }
 
+    /// <summary>
+    /// Raise typing changes the way Uno's <c>TextBox</c> does, with <see cref="IsChangingText"/> true while the
+    /// adapter handles them (its displayed text is still the old one then).
+    /// </summary>
+    public bool RaisesChangesLikeUno { get; set; }
+
+    public bool IsChangingText { get; private set; }
+
     public void SetTextAndSelection(string text, int selectionStart, int selectionLength)
     {
+        // Uno's TextBox.Select throws for a selection past the end of the text it still displays (#67)
+        if (IsChangingText)
+            throw new InvalidOperationException("The proxy was written while it was raising its own text change.");
         Writes++;
         bool changed = Text != text;
         Text = text;
@@ -52,9 +63,33 @@ internal sealed class FakeTextInputProxy : IKumikoTextInputProxy
     public void Replace(int start, int length, string text)
     {
         Text = Text.Remove(start, length).Insert(start, text);
+        if (!RaisesChangesLikeUno)
+        {
+            SelectionStart = start + text.Length;
+            SelectionLength = 0;
+            Adapter.OnProxyTextChanged();
+            return;
+        }
+
+        // Uno raises TextChanging before it moves the caret
+        IsChangingText = true;
+        try
+        {
+            Adapter.OnProxyTextChanged();
+        }
+        finally
+        {
+            IsChangingText = false;
+        }
         SelectionStart = start + text.Length;
         SelectionLength = 0;
-        Adapter.OnProxyTextChanged();
+    }
+
+    /// <summary>The platform moves the caret on its own (Uno's mobile heads put it at the start on focus).</summary>
+    public void MoveCaret(int position)
+    {
+        SelectionStart = position;
+        SelectionLength = 0;
     }
 
     // ── Input method (mirrors Uno's TextBoxCore IME flow) ──

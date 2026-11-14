@@ -44,7 +44,7 @@ public class DrawnComponentTests
     {
         var c = Make();
         int redraws = 0;
-        c.RedrawRequested += () => redraws++;
+        c.RedrawRequested += (_, _) => redraws++;
         var manager = new DrawnFocusManager();
         manager.Register(c);
 
@@ -64,7 +64,7 @@ public class DrawnComponentTests
     {
         var c = Make();
         int redraws = 0;
-        c.RedrawRequested += () => redraws++;
+        c.RedrawRequested += (_, _) => redraws++;
 
         c.IsEnabled = true;
         c.IsVisible = true;
@@ -129,8 +129,8 @@ public class DrawnComponentTests
     {
         var c = Make();
         int a = 0, b = 0;
-        c.EditCompleted += () => a++;
-        c.EditCompleted += () => b++;
+        c.EditCompleted += (_, _) => a++;
+        c.EditCompleted += (_, _) => b++;
 
         c.Complete();
         c.Complete();

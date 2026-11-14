@@ -7,9 +7,9 @@ namespace KumikoUI.Maui;
 public enum KumikoRenderMode
 {
     /// <summary>
-    /// The default: <see cref="Gpu"/> on Android and Mac Catalyst, <see cref="Software"/> on iOS and Windows.
+    /// The default: <see cref="Hardware"/> on Android and Mac Catalyst, <see cref="Software"/> on iOS and Windows.
     /// SkiaSharp's GPU view is OpenGL ES on iOS, which Apple deprecated, and has not been verified on Windows yet, so
-    /// those platforms use it only when <see cref="Gpu"/> is asked for.
+    /// those platforms use it only when <see cref="Hardware"/> is asked for.
     /// </summary>
     Auto,
 
@@ -22,7 +22,7 @@ public enum KumikoRenderMode
     /// <summary>
     /// Rasterize on the GPU (SkiaSharp's <c>SKGLView</c>): OpenGL ES on Android (a <c>TextureView</c>) and iOS,
     /// Metal on Mac Catalyst, Direct3D through ANGLE on Windows. On a platform without a GPU view the grid uses
-    /// <see cref="Software"/> instead.
+    /// <see cref="Software"/> instead. Named like the Uno grid's mode of the same value.
     /// </summary>
-    Gpu,
+    Hardware,
 }

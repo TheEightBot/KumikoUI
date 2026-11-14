@@ -300,12 +300,12 @@ public class KumikoSelectionBehaviorTests
     public void NavigateWithNoCurrentCell_ArrowsStartAtTheFirstCell_OthersDoNothing()
     {
         var f = new Fixture();
-        f.Selection.NavigateLeft(3, false);
-        f.Selection.NavigateRight(3, false);
-        f.Selection.NavigateHome(true, 5, false);
-        f.Selection.NavigateEnd(true, 5, 3, false);
+        f.Selection.NavigateLeft(false);
+        f.Selection.NavigateRight(false);
+        f.Selection.NavigateHome(5, false, true);
+        f.Selection.NavigateEnd(5, false, true);
         f.Selection.NavigatePageDown(2, 5, false);
-        f.Selection.NavigatePageUp(2, false, 5);
+        f.Selection.NavigatePageUp(2, 5, false);
         Assert.False(f.Selection.CurrentCell.IsValid);
 
         f.Selection.NavigateDown(5, false);
@@ -321,9 +321,9 @@ public class KumikoSelectionBehaviorTests
         f.Selection.HandleRowSelection(2, false, false);
         f.Changes.Clear();
 
-        f.Selection.NavigateRight(3, true);
-        f.Selection.NavigateRight(3, true);
-        f.Selection.NavigateRight(3, true);
+        f.Selection.NavigateRight(true);
+        f.Selection.NavigateRight(true);
+        f.Selection.NavigateRight(true);
 
         Assert.Equal(new CellPosition(2, 2), f.Selection.CurrentCell);
         Assert.Equal(new[] { "Charlie" }, f.Selected);
@@ -336,7 +336,7 @@ public class KumikoSelectionBehaviorTests
         var f = new Fixture();
         f.Selection.HandleRowSelection(3, false, false);
 
-        f.Selection.NavigateEnd(true, 5, 3, true);
+        f.Selection.NavigateEnd(5, true, true);
 
         Assert.Equal(new[] { "Diana", "Eve" }, f.Selected);
         Assert.Equal(new CellPosition(4, 2), f.Selection.CurrentCell);
@@ -348,7 +348,7 @@ public class KumikoSelectionBehaviorTests
         var f = new Fixture();
         f.Selection.HandleRowSelection(2, false, false);
 
-        f.Selection.NavigateHome(true, 5, true);
+        f.Selection.NavigateHome(5, true, true);
 
         Assert.Equal(new[] { "Alice", "Bob", "Charlie" }, f.Selected);
     }
@@ -558,7 +558,7 @@ public class KumikoSelectionBehaviorTests
         f.Selection.HandleRowSelection(0, false, false);
         f.Changes.Clear();
 
-        f.Selection.NavigateRight(3, false);
+        f.Selection.NavigateRight(false);
         f.Selection.SetCurrentCell(0, 0);
 
         Assert.Empty(f.Changes);

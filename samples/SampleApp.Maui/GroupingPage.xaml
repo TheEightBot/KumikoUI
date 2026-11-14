@@ -13,7 +13,9 @@
                Padding="16,12"
                Grid.Row="0" />
 
-        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+        <!-- One scrolling row: on a phone it takes one line, leaving the room above the soft keyboard to the grid -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+        <FlexLayout Wrap="NoWrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4">
             <Button Text="Group by Department" Clicked="OnGroupByDepartmentClicked" Margin="4,0,0,4" />
             <Button Text="Group by Level" Clicked="OnGroupByLevelClicked" Margin="4,0,0,4" />
             <Button Text="Group by Both" Clicked="OnGroupByBothClicked" Margin="4,0,0,4" />
@@ -24,6 +26,7 @@
             <Button Text="Toggle Filtering" Clicked="OnToggleFilteringClicked" Margin="4,0,0,4" />
             <Button Text="Toggle Grid Lines" Clicked="OnToggleGridLinesClicked" Margin="4,0,0,4" />
         </FlexLayout>
+        </ScrollView>
 
         <dg:KumikoDataGrid x:Name="kumiko"
                          Grid.Row="2"

@@ -53,7 +53,7 @@ public class KumikoLayoutEngineEdgeTests
     [Fact]
     public void VisibleRowRange_ClampsTheLastRowToTheRowCount()
     {
-        Assert.Equal((0, 4), Engine.GetVisibleRowRange(Scroll(), Style, 5));
+        Assert.Equal((0, 4), Engine.GetVisibleRowRangeWithOffset(Scroll(), Style, 5, 0));
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class KumikoLayoutEngineEdgeTests
     [Fact]
     public void VisibleRowRange_WithAZeroHeightViewport_StillReturnsAValidRange()
     {
-        var (first, last) = Engine.GetVisibleRowRange(Scroll(height: 0), Style, 10);
+        var (first, last) = Engine.GetVisibleRowRangeWithOffset(Scroll(height: 0), Style, 10, 0);
 
         Assert.InRange(first, 0, 9);
         Assert.InRange(last, first - 1, 9);
@@ -82,7 +82,7 @@ public class KumikoLayoutEngineEdgeTests
     [Fact]
     public void VisibleRowRange_ScrolledPastTheEnd_ClampsToTheLastRow()
     {
-        var (first, last) = Engine.GetVisibleRowRange(Scroll(y: 100000), Style, 20);
+        var (first, last) = Engine.GetVisibleRowRangeWithOffset(Scroll(y: 100000), Style, 20, 0);
 
         Assert.Equal(19, last);
         Assert.True(first >= last);
@@ -199,19 +199,6 @@ public class KumikoLayoutEngineEdgeTests
 
         Assert.Equal(new[] { 1, 3 }, result.Select(r => r.OriginalIndex));
         Assert.Equal(new[] { 100f, 200f }, result.Select(r => r.X));
-    }
-
-    [Fact]
-    public void GetVisibleColumns_IncludesPartiallyVisibleColumns_AndSkipsHiddenOnes()
-    {
-        var cols = new List<KumikoColumn> { Fixed(100), Fixed(100), Fixed(100), Fixed(100) };
-        cols[1].IsVisible = false;
-
-        var result = Engine.GetVisibleColumns(cols, Scroll(x: 50, width: 120));
-
-        // Visible columns sit at x = 0, 100, 200; the viewport covers 50..170.
-        Assert.Equal(new[] { 0f, 100f }, result.Select(r => r.X));
-        Assert.Equal(new[] { cols[0], cols[2] }, result.Select(r => r.Column));
     }
 
     // ── ComputeColumnWidths ───────────────────────────────────────
@@ -336,64 +323,6 @@ public class KumikoLayoutEngineEdgeTests
         Engine.ComputeColumnWidths(cols, 400f);
 
         Assert.Equal(400f, Engine.GetContentWidth(cols), 0.01f);
-    }
-
-    // ── Hit testing ───────────────────────────────────────────────
-
-    [Fact]
-    public void HitTestColumn_AtAColumnBoundary_BelongsToTheColumnThatStartsThere()
-    {
-        var cols = new List<KumikoColumn> { Fixed(100), Fixed(100) };
-
-        Assert.Equal(0, Engine.HitTestColumn(cols, 99.9f).Index);
-        Assert.Equal(1, Engine.HitTestColumn(cols, 100f).Index);
-        Assert.Equal(-1, Engine.HitTestColumn(cols, 200f).Index);
-    }
-
-    [Fact]
-    public void HitTestColumn_SkipsHiddenColumns_ButReportsTheOriginalIndex()
-    {
-        var cols = new List<KumikoColumn> { Fixed(100), Fixed(100), Fixed(100) };
-        cols[0].IsVisible = false;
-
-        var (column, index) = Engine.HitTestColumn(cols, 10f);
-
-        Assert.Same(cols[1], column);
-        Assert.Equal(1, index);
-    }
-
-    [Fact]
-    public void HitTestColumn_LeftOfTheContent_AndWithNoColumns_HitsNothing()
-    {
-        Assert.Null(Engine.HitTestColumn(new List<KumikoColumn> { Fixed(100) }, -1f).Column);
-        Assert.Null(Engine.HitTestColumn(new List<KumikoColumn>(), 5f).Column);
-    }
-
-    [Fact]
-    public void HitTestRow_AtTheHeaderEdge_IsTheFirstRow_AndAtTheLastRowsEnd_IsOutOfBounds()
-    {
-        Assert.Equal(-1, Engine.HitTestRow(39.9f, Style, 3));
-        Assert.Equal(0, Engine.HitTestRow(40f, Style, 3));
-        Assert.Equal(2, Engine.HitTestRow(40f + 36f * 3 - 0.1f, Style, 3));
-        Assert.Equal(-2, Engine.HitTestRow(40f + 36f * 3, Style, 3));
-    }
-
-    [Fact]
-    public void HitTestRow_WithNoRows_IsEitherTheHeaderOrOutOfBounds()
-    {
-        Assert.Equal(-1, Engine.HitTestRow(10f, Style, 0));
-        Assert.Equal(-2, Engine.HitTestRow(50f, Style, 0));
-    }
-
-    [Fact]
-    public void GetColumnX_SumsOnlyTheVisibleColumnsBefore_AndClampsAnIndexPastTheEnd()
-    {
-        var cols = new List<KumikoColumn> { Fixed(100), Fixed(50), Fixed(70) };
-        cols[0].IsVisible = false;
-
-        Assert.Equal(0f, Engine.GetColumnX(cols, 1));
-        Assert.Equal(50f, Engine.GetColumnX(cols, 2));
-        Assert.Equal(120f, Engine.GetColumnX(cols, 9));
     }
 
     // ── Content sizes ─────────────────────────────────────────────

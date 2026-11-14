@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.StylingPage"
+             Title="Images &amp; Styling">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+        <Label Text="Images and styling: an image column, icon sets and per-cell and per-row styles"
+               FontSize="16"
+               FontAttributes="Bold"
+               Padding="16,12,16,4"
+               Grid.Row="0" />
+
+        <!-- One scrolling row: on a phone it takes one line, leaving the room above the soft keyboard to the grid -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+        <FlexLayout Wrap="NoWrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4">
+            <!-- KumikoStyle.IconProvider: the built-in set or KumikoFontIconProvider over Material Icons -->
+            <Button x:Name="iconsToggle" Text="Icons: Built-in" Clicked="OnToggleIconsClicked" Margin="4,0,0,4" />
+            <!-- KumikoStyle.CellStyleResolver and RowStyleResolver -->
+            <Button x:Name="resolversToggle" Text="Cell and row styles: ON" Clicked="OnToggleResolversClicked" Margin="4,0,0,4" />
+            <!-- KumikoDataGrid.AlternateRowBackground -->
+            <Button x:Name="stripesToggle" Text="Striped rows: OFF" Clicked="OnToggleStripesClicked" Margin="4,0,0,4" />
+        </FlexLayout>
+        </ScrollView>
+
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="2"
+                           RowHeight="44"
+                           HeaderHeight="40"
+                           EditTriggers="None"
+                           GridDescription="Images and styling sample grid"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill">
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="#" PropertyName="Id" Width="70"
+                                   ColumnType="Numeric" TextAlignment="Right" IsFrozen="True" />
+                <!-- A MauiAsset file name, loaded and cached by the grid's ImageCache -->
+                <core:KumikoColumn Header="Photo" PropertyName="Avatar" Width="70" ColumnType="Image" />
+                <core:KumikoColumn Header="Name" PropertyName="Name" Width="160" />
+                <core:KumikoColumn Header="Department" PropertyName="Department" Width="130" />
+                <!-- Above 100,000: bold red (CellStyleResolver) -->
+                <core:KumikoColumn Header="Salary" PropertyName="Salary" Width="120"
+                                   Format="C0" ColumnType="Numeric" TextAlignment="Right" />
+                <!-- 90 and above: green background (CellStyleResolver) -->
+                <core:KumikoColumn Header="Score" PropertyName="Score" Width="100"
+                                   Format="N1" ColumnType="Numeric" TextAlignment="Right" />
+                <!-- Inactive rows are dimmed (RowStyleResolver); Boolean cells draw KumikoIcon.Check -->
+                <core:KumikoColumn Header="Active" PropertyName="IsActive" Width="90" ColumnType="Boolean" />
+            </dg:KumikoDataGrid.Columns>
+        </dg:KumikoDataGrid>
+    </Grid>
+
+</ContentPage>

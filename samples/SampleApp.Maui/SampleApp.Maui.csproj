@@ -119,6 +119,7 @@
 	<!-- Code shared with SampleApp.Uno, so both samples draw the same grid (the Grouping page's style). -->
 	<ItemGroup>
 		<Compile Include="../Shared/GroupingTheme.cs" Link="Shared/GroupingTheme.cs" />
+		<Compile Include="../Shared/ShowcaseData.cs" Link="Shared/ShowcaseData.cs" />
 	</ItemGroup>
 
 </Project>

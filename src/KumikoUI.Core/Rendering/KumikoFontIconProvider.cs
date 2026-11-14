@@ -22,7 +22,7 @@ public class KumikoFontIconProvider : IKumikoIconProvider
     private static readonly int s_iconCount = Enum.GetValues<KumikoIcon>().Length;
 
     private readonly string?[] _glyphs = new string?[s_iconCount];
-    private readonly KumikoFont _font;
+    private KumikoFont _font;
     private readonly KumikoPaint _paint;
 
     /// <summary>Creates a provider for the icon font <paramref name="fontFamily"/> with no glyphs mapped yet.</summary>
@@ -33,7 +33,7 @@ public class KumikoFontIconProvider : IKumikoIconProvider
         ArgumentException.ThrowIfNullOrWhiteSpace(fontFamily);
         FontFamily = fontFamily;
         _font = new KumikoFont(fontFamily, 12f);
-        _paint = new KumikoPaint { Font = _font, Style = PaintStyle.Fill, IsAntiAlias = true };
+        _paint = new KumikoPaint { Font = _font, IsAntiAlias = true };
     }
 
     /// <summary>The family name of the icon font.</summary>
@@ -119,7 +119,8 @@ public class KumikoFontIconProvider : IKumikoIconProvider
         float size = Math.Min(bounds.Width, bounds.Height) * Scale;
         if (float.IsNaN(size) || size <= 0) return;
 
-        _font.Size = size;
+        _font = _font with { Size = size };
+        _paint.Font = _font;
         _paint.Color = paint.Color;
         _paint.IsAntiAlias = paint.IsAntiAlias;
 

@@ -1,7 +1,7 @@
 # 06 — Sample App (`SampleApp.Uno`)
 
 Goal: a runnable Uno app that exercises `KumikoUI.Uno` on every head, mirroring
-[`samples/SampleApp.Maui`](../../samples/SampleApp.Maui). Created with the `dotnet` CLI.
+[`samples/SampleApp.Maui`](../../../samples/SampleApp.Maui). Created with the `dotnet` CLI.
 
 ---
 
@@ -28,7 +28,7 @@ Goal: a runnable Uno app that exercises `KumikoUI.Uno` on every head, mirroring
     `src/KumikoUI.Uno`;
   - removed the generated `Directory.Packages.props` **and** `Directory.Build.props` — the latter enabled
     Central Package Management (`ManagePackageVersionsCentrally=true`), which the repo does **not** use and
-    which would fight the root [`Directory.Build.props`](../../Directory.Build.props). Its `ImplicitUsings` /
+    which would fight the root [`Directory.Build.props`](../../../Directory.Build.props). Its `ImplicitUsings` /
     `Nullable` / `NoWarn` settings were baked directly into the csproj instead;
   - also removed generated `Directory.Build.targets`, `.gitignore`, `.editorconfig`, `.vsconfig`, `.vscode/`,
     `.run/` from the output root (template cruft / would conflict with repo-level equivalents).

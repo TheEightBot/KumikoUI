@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KumikoUI.Core.Input;
 using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
@@ -90,6 +91,8 @@ public partial class KumikoDataGrid
     /// button on Android), plus a mouse's right and middle buttons on Android. Core takes the button from the press,
     /// so a release that names none is fine.
     /// </summary>
+    [SuppressMessage("Performance", "CA1822:Mark members as static",
+        Justification = "Reads the platform view on Android; static only on the other heads.")]
     private PointerButton GetPointerButton(SKTouchEventArgs e)
     {
 #if ANDROID
@@ -203,6 +206,7 @@ public partial class KumikoDataGrid
         _nativeCanvasView = view;
         view.Touch += OnNativeCanvasTouch;
         view.GenericMotion += OnNativeCanvasGenericMotion;
+        view.Hover += OnNativeCanvasHover;
         // SkiaSharp subscribed its touch listener when the canvas handler connected; mapping EnableTouchEvents again
         // re-subscribes it after this one, so each event's button and modifier state is read before SkiaSharp
         // reports it.
@@ -214,6 +218,7 @@ public partial class KumikoDataGrid
         if (_nativeCanvasView == null) return;
         _nativeCanvasView.Touch -= OnNativeCanvasTouch;
         _nativeCanvasView.GenericMotion -= OnNativeCanvasGenericMotion;
+        _nativeCanvasView.Hover -= OnNativeCanvasHover;
         _nativeCanvasView = null;
     }
 
@@ -250,6 +255,50 @@ public partial class KumikoDataGrid
         if ((meta & Android.Views.MetaKeyStates.AltOn) != 0) modifiers |= InputModifiers.Alt;
         if ((meta & Android.Views.MetaKeyStates.MetaOn) != 0) modifiers |= InputModifiers.Meta;
         return modifiers;
+    }
+
+    /// <summary>
+    /// A mouse (or a hovering stylus) moving over the canvas with no button down: Core's hover highlights and cursor.
+    /// SkiaSharp's touch listener never sees hover events. The pointer leaving the canvas resets them.
+    /// </summary>
+    private void OnNativeCanvasHover(object? sender, Android.Views.View.HoverEventArgs e)
+    {
+        var motion = e.Event;
+        if (motion == null || !_inputController.IsEnabled || !TryGetTouchScale(out float scale))
+        {
+            e.Handled = false;
+            return;
+        }
+
+        InputAction action;
+        switch (motion.ActionMasked)
+        {
+            case Android.Views.MotionEventActions.HoverEnter:
+            case Android.Views.MotionEventActions.HoverMove:
+                action = InputAction.Hover;
+                break;
+            case Android.Views.MotionEventActions.HoverExit:
+                action = InputAction.Exited;
+                break;
+            default:
+                e.Handled = false;
+                return;
+        }
+
+        var pointerEvent = new KumikoPointerEventArgs
+        {
+            X = motion.GetX() / scale,
+            Y = motion.GetY() / scale,
+            Action = action,
+            Button = PointerButton.None,
+            DeviceType = motion.GetToolType(0) == Android.Views.MotionEventToolType.Stylus
+                ? KumikoPointerDeviceType.Pen
+                : KumikoPointerDeviceType.Mouse,
+            Modifiers = ToInputModifiers(motion.MetaState),
+            TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+        };
+        _inputController.HandlePointer(pointerEvent, _scroll, _selection, _style, _dataSource);
+        e.Handled = true;
     }
 
     /// <summary>

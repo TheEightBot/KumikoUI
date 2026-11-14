@@ -241,7 +241,7 @@ public class HeaderFitWidthTests
     }
 
     [Fact]
-    public void ChangingAPropertyOfTheHeaderFontInPlace_MeasuresAgain()
+    public void ReplacingTheHeaderFontWithALargerOne_MeasuresAgain()
     {
         var column = new KumikoColumn { Header = LongHeader, PropertyName = "Name" };
         var h = GridWith(600, column);
@@ -249,7 +249,7 @@ public class HeaderFitWidthTests
         h.Renderer.Render(ctx, h.Source, h.Scroll, h.Selection, h.Style);
         float before = column.Width;
 
-        h.Style.HeaderFont.Size = 28;
+        h.Style.HeaderFont = h.Style.HeaderFont with { Size = 28 };
         h.Renderer.Render(ctx, h.Source, h.Scroll, h.Selection, h.Style);
 
         Assert.Equal(2, ctx.HeaderMeasures(LongHeader));
@@ -294,7 +294,8 @@ public class HeaderFitWidthTests
         public void DrawText(string text, float x, float y, KumikoPaint paint) { }
         public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
             KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
-            KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true) { }
+            KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true)
+        { }
         public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) => new(-11, 3, 2);
         public void ClipRect(KumikoRect rect) { }
         public void Save() { }

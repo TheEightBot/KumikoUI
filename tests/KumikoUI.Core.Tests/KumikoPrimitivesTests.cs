@@ -104,7 +104,6 @@ public class KumikoPrimitivesTests
         var paint = new KumikoPaint();
         Assert.Equal(KumikoColor.Black, paint.Color);
         Assert.Equal(1f, paint.StrokeWidth);
-        Assert.Equal(PaintStyle.Fill, paint.Style);
         Assert.True(paint.IsAntiAlias);
         Assert.Null(paint.Font);
     }
@@ -117,15 +116,13 @@ public class KumikoPrimitivesTests
         {
             Color = KumikoColor.Red,
             StrokeWidth = 2f,
-            Style = PaintStyle.Stroke,
             IsAntiAlias = false,
             Font = font
         };
         Assert.Equal(KumikoColor.Red, paint.Color);
         Assert.Equal(2f, paint.StrokeWidth);
-        Assert.Equal(PaintStyle.Stroke, paint.Style);
         Assert.False(paint.IsAntiAlias);
-        Assert.Same(font, paint.Font);
+        Assert.Equal(font, paint.Font);
     }
 }
 

@@ -1,8 +1,10 @@
 ---
-applyTo: "src/KumikoUI.Core/Rendering/**,src/KumikoUI.SkiaSharp/**,src/KumikoUI.Core/KumikoRenderer.cs"
+applyTo: "src/KumikoUI.Core/Rendering/**,src/KumikoUI.SkiaSharp/**,src/KumikoUI.Core/KumikoRenderer.cs,src/KumikoUI.Core/Layout/**"
 ---
 
 # KumikoUI — Rendering Pipeline
+
+The long form, with diagrams, is [docs/RENDERING.md](../../docs/RENDERING.md). This file is the rule set.
 
 ## `IDrawingContext` — The Only Drawing API
 
@@ -20,43 +22,54 @@ void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
     KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
     KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center,
     bool clip = true);
-// Default interface members (#23): wrapping draw and measure; see KumikoTextWrap / KumikoTextLayout.
-void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint, KumikoTextAlignment hAlign,
-    KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap);
 KumikoSize MeasureText(string text, KumikoPaint paint);
-KumikoSize MeasureText(string text, KumikoPaint paint, float maxWidth, KumikoTextWrap wrap);
 KumikoFontMetrics GetFontMetrics(KumikoPaint paint);
 void ClipRect(KumikoRect rect);
 void Save();
 void Restore();
 void Translate(float dx, float dy);
 void DrawImage(object image, KumikoRect destRect);
+
+// Default interface members (an implementer need not override them):
+void FillPolygon(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint);      // closed, anti-aliased glyphs
+void DrawPolyline(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint);     // open path, round joins and caps
+void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint, KumikoTextAlignment hAlign,
+    KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap);        // wrapping draw
+KumikoSize MeasureText(string text, KumikoPaint paint, float maxWidth, KumikoTextWrap wrap);
 ```
+
+Icons and arrows are polygons or polylines (`FillPolygon`, `DrawPolyline`), built in a `stackalloc` span, not
+separate `DrawLine` strokes. Text that must be cut or wrapped goes through `KumikoTextLayout`, which never splits a
+text element (emoji, combining sequence).
 
 ---
 
 ## `KumikoPaint` — Describe how to draw
+
+`KumikoPaint` is a sealed class with `Color`, `StrokeWidth`, `IsAntiAlias` and `Font`. Whether a call fills or
+strokes is the `IDrawingContext` method (`FillRect` or `DrawRect`), not a paint property.
 
 ```csharp
 var paint = new KumikoPaint
 {
     Color       = new KumikoColor(r, g, b),   // or (r, g, b, a)
     StrokeWidth = 1.5f,
-    Style       = PaintStyle.Fill,           // Fill | Stroke | FillAndStroke
     IsAntiAlias = true,
-    Font        = new KumikoFont("Default", 13, bold: false)
+    Font        = new KumikoFont("Default", 13, bold: false)   // KumikoFont is a readonly record struct
 };
 ```
 
-Never construct `SKPaint`, `SKFont`, or `SKColor` in Core. `SkiaDrawingContext` draws with
-Skia objects from the host's long-lived `SkiaResourceCache`; they are reused across frames.
+Never construct `SKPaint`, `SKFont`, or `SKColor` in Core. `SkiaDrawingContext` draws with Skia objects from the
+host's long-lived `SkiaResourceCache`; they are reused across frames. In the render loop never create a
+`KumikoPaint` either: take one from `PaintCache` (below), or from a `PaintMemo` in a drawn component (internal; it hands
+back the same instance for the same values), or reuse a field.
 
 ## `KumikoColor`
 
 ```csharp
 new KumikoColor(r, g, b)      // alpha = 255
 new KumikoColor(r, g, b, a)   // explicit alpha
-KumikoColor.White / KumikoColor.Black
+KumikoColor.White / KumikoColor.Black / KumikoColor.Transparent
 ```
 
 ## `KumikoRect`
@@ -73,109 +86,140 @@ rect.Left / .Top / .Right / .Bottom
 
 ## `ICellRenderer` — Custom cell display
 
+A renderer receives one `CellRenderContext` per cell (an `in` readonly struct), so adding data to a cell never
+changes the interface.
+
 ```csharp
-public class MyRenderer : ICellRenderer
+public class StarRatingRenderer : ICellRenderer
 {
-    public void Render(
-        IDrawingContext ctx,
-        KumikoRect cellRect,       // padded cell area — stay inside this
-        object? value,           // raw value from KumikoSource
-        string displayText,      // formatted via KumikoColumn.Format
-        KumikoColumn column,
-        KumikoStyle style,
-        bool isSelected,
-        KumikoCellStyle? cellStyle = null)
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
     {
+        // cell.Bounds        padded cell area, stay inside it
+        // cell.Value         raw value from KumikoSource
+        // cell.DisplayText   formatted via KumikoColumn.Format (cached by the source)
+        // cell.Column, cell.Style, cell.CellStyle, cell.IsSelected
+        // cell.Paints        the frame's PaintCache; cell.TextPaint the resolved text paint
+        // cell.ImageResolver turns image cell values into drawable images
         // Use ctx.* only. No SkiaSharp. No allocation.
     }
 }
 ```
 
-Built-in renderers: `TextCellRenderer`, `BooleanCellRenderer`, `ImageCellRenderer`, `ProgressBarCellRenderer`.
+Built-in renderers: `TextCellRenderer` (Text, Numeric, Date, Template, ComboBox, Picker), `BooleanCellRenderer`,
+`ImageCellRenderer`, `ProgressBarCellRenderer`, `ActionButtonsCellRenderer`. A renderer that animates or reacts to
+the pointer implements `IInteractiveCellRenderer`; `KumikoRenderer` listens to its `RedrawRequested`.
 
-Attach to column:
+Attach to a column:
 ```csharp
-column.CustomCellRenderer = new MyRenderer();   // code
+column.CustomCellRenderer = new StarRatingRenderer();   // code
 ```
 ```xml
 <core:KumikoColumn.CustomCellRenderer>
-    <render:MyRenderer />
+    <render:StarRatingRenderer />
 </core:KumikoColumn.CustomCellRenderer>
 ```
+
+`KumikoRenderer.SetCellRenderer(columnType, renderer)` replaces the renderer of a whole column type.
 
 ---
 
 ## `KumikoRenderer` — Render loop structure
 
+Hosts call `KumikoRenderer.RenderFrame(...)` (internal; the public `Render(...)` is the same without popups) once per
+paint with a context from `SkiaResourceCache.CreateContext(canvas)`. The passes, in z-order (read `RenderFrame` for
+the exact code before changing it):
+
 ```
-KumikoDataGrid.OnPaintSurface
-  └─ KumikoRenderer.Render(IDrawingContext, ...)
-       ├─ DrawHeaderRow          — headers, sort indicator, filter icon, resize handle
-       ├─ DrawFrozenRows         — pinned-top data rows
-       ├─ DrawScrollableArea     — virtual row loop (visible rows only)
-       │    └─ DrawDataRow → DrawCell → ICellRenderer.Render
-       ├─ DrawFrozenColumns      — left/right frozen column overlays
-       ├─ DrawGroupHeaders       — expandable group header rows
-       ├─ DrawSummaryRows        — table-level summary rows (top/bottom)
-       ├─ DrawGroupSummaryRows   — per-group summary rows
-       ├─ DrawActiveEditor       — DrawnComponent overlay (always last data layer)
-       ├─ DrawScrollbars         — canvas-drawn scrollbars
-       └─ DrawRowDragOverlay     — drag-reorder ghost
+RenderFrame
+  ├─ layout           SyncCellTextCulture, GetVisibleRowRangeWithOffset, ComputeColumnWidths, FrozenPanes.Resolve,
+  │                   content size, ScrollState.ClampOffset, PaintCache.Update, CaptureFeedback
+  ├─ background       FillRect(PaintCache.Background), DrawGroupingPanel (when grouped)
+  ├─ pass 1  scrolling columns    DrawPaneRows → DrawHeader → DrawSortIndicators → DrawFilterIcons → DrawFrozenRows
+  ├─ pass 2  left-frozen columns  the same calls, clipped to the pane, then DrawFrozenColumnDivider
+  ├─ pass 3  right-frozen columns DrawRightFrozenBackground, the same calls, then DrawRightFrozenColumnDivider
+  │            (DrawPaneRows = DrawRowBand: DrawRows, DrawCurrentCellBorder, DrawGridLines)
+  ├─ DrawFrozenRowDivider
+  ├─ DrawTableSummaryRows          top summaries, and bottom ones that scroll with the rows
+  ├─ DrawGroupHeaderRow / DrawGroupSummaryRow   full-width rows, outside the column clips
+  ├─ sticky group headers          DrawGroupHeaderRow for each PinnedGroupHeaders entry
+  ├─ DrawDragHandleColumn
+  ├─ DrawTableSummaryRows          the pinned bottom summary (footer), when PinBottomSummaryRows
+  ├─ DrawColumnDragOverlay, DrawRowDragOverlay
+  └─ EditSession.PlaceEditor + DrawEditor, PopupManager.DrawPopups, KumikoFrameStats overlay
 ```
 
-Adding a new draw pass: add a `private void Draw{Feature}(IDrawingContext ctx, ...)` method
-and call it from `Render(...)` at the correct z-order. Always wrap clip/translate in `Save()`/`Restore()`.
+Adding a new draw pass: add a `private void Draw{Feature}(IDrawingContext ctx, ...)` method and call it from
+`RenderFrame` at the correct z-order. Wrap every `ClipRect` and `Translate` in `Save()`/`Restore()`.
+Overlays that must sit above the grid (editor, popups) are drawn after the last `Restore()`, in absolute coordinates.
+
+Hit testing mirrors the drawing: `KumikoHitTester` resolves a point against the same geometry, and what a
+frame measured (the grouping chips) is handed over through `RenderedHitRegions`; shared sizes live in
+`InteractionGeometry`. A change to where something is drawn changes its hit region too.
 
 ---
 
 ## `PaintCache`
 
-`KumikoUI.Core.Rendering.PaintCache` holds pre-built `KumikoPaint` instances derived from
-`KumikoStyle`. When adding new style-driven paints, add them to `PaintCache` and rebuild
-it on theme change.
+`KumikoUI.Core.Rendering.PaintCache` holds pre-built `KumikoPaint` instances derived from `KumikoStyle` (for example
+`PaintCache.Background`, `HeaderText`, `GridLine`, `SelectionBackground`). `PaintCache.Update(style)` runs every
+frame and rebuilds only when the style instance or `KumikoStyle.Version` changed. When adding a style-driven paint,
+add it to `PaintCache.Update`. Per-cell overrides use `PaintCache.CellTextPaint(cellStyle, style)`, which reuses one
+override paint.
 
 ---
 
 ## `SkiaDrawingContext` — SkiaSharp internals
 
 - Thin per-frame wrapper over the canvas; paints, fonts and typefaces come from a `SkiaResourceCache`
-  (`record struct` keys, bounded LRU) that each host control owns, passes to
-  `new SkiaDrawingContext(canvas, cache)` every frame, and disposes on teardown (MAUI `Cleanup`, Uno `Unloaded`).
-- `IDisposable` — hosts dispose the context at the end of every `PaintSurface` frame; that ends the frame
-  (objects evicted mid-frame are released then) and leaves the cached objects alive.
+  (`record struct` keys, bounded LRU) that each host control owns and disposes on teardown (MAUI handler disconnect,
+  Uno `Unloaded`).
+- A host starts every frame with `cache.CreateContext(canvas)`, which reuses one context object, so a steady-state
+  frame allocates nothing. `IDisposable`: disposing at the end of the frame releases what the frame evicted and
+  leaves the cached objects alive.
 - `SkiaFontRegistrar` changes invalidate every live cache before the registrar disposes a typeface.
-- Text rendering uses modern SkiaSharp 3.x `SKFont`-based API (not deprecated `SKPaint.TextSize`).
-- Text widths and laid-out lines (ellipsis cuts, wrapped lines) are cached in the `SkiaResourceCache` across
-  frames, keyed by text and font values; a steady-state frame measures no text. Ellipsis cuts and wraps use
-  `KumikoTextLayout` (Core), which never splits a text element (emoji, combining sequence).
+- Text rendering uses the `SKFont`-based SkiaSharp API (not the obsolete `SKPaint` text members).
+- Text widths and laid-out lines are cached in the `SkiaResourceCache` across frames, keyed by text and font values;
+  a steady-state frame measures no text. Ellipsis cuts and wraps use `KumikoTextLayout` (Core).
 - Glyphs the requested typeface lacks are drawn run by run with fallback typefaces (`SkiaFontRegistrar.FallbackFamilies`,
-  then `SKFontManager.MatchCharacter`); the runs are cached with the text's measurement, so measure through the cache
-  (never `SKFont.MeasureText` directly) to get widths that match what is drawn. See docs/RENDERING.md "Font fallback".
-- If a new `IDrawingContext` method is needed: **add to the interface in Core first**, then implement in `SkiaDrawingContext`.
+  then `SKFontManager.MatchCharacter`); emoji sequences are shaped with HarfBuzz (`GlyphShaper`). Runs are cached with
+  the text's measurement, so measure through the cache (never `SKFont.MeasureText` directly) to get widths that match
+  what is drawn. See docs/RENDERING.md "Font fallback".
+- If a new `IDrawingContext` method is needed: **add to the interface in Core first** (with a default implementation
+  when others can implement it), then implement it in `SkiaDrawingContext`, and add it to `NoOpDrawingContext` and
+  `RecordingDrawingContext` in the Core tests.
 
 ---
 
 ## Performance Rules
 
-1. **No per-frame heap allocations** — no `new` inside `Render(...)` or methods it calls.
-2. Use `Populate*` variants on `KumikoLayoutEngine` (write into pre-allocated `List<>`).
+`RenderAllocationTests` (Core, through a no-op context) and `SkiaAllocationTests` (SkiaSharp, through a real
+`SKSurface`) assert 0 managed bytes per steady-state frame; `PerformanceBudgetTests` holds the timing budgets.
+
+1. **No per-frame heap allocations**: no `new` inside `RenderFrame` or the methods it calls, no closures, no
+   `params`, no boxing, no string building (the source's `GetCachedCellText` caches display text).
+2. Use the `Populate*` variants on `KumikoLayoutEngine` (they write into pre-allocated `List<>`s).
 3. No LINQ in any method called from the render loop.
-4. Virtual scrolling: only rows in `GetVisibleRowRange()` and columns in `GetVisibleScrollableColumns()` are drawn.
-5. Frozen column draw passes must **not** apply `scroll.HorizontalOffset`.
+4. Virtual scrolling: only the rows `GetVisibleRowRangeWithOffset` returns and the columns the pane lists hold are drawn.
+5. Frozen pane passes must **not** apply the scroll offset (`ScrollState.OffsetX`): `ColumnScreenX` handles each pane.
 
 ---
 
 ## `KumikoLayoutEngine` — Key methods
 
 ```csharp
-engine.ComputeColumnWidths(columns, viewportWidth);
-engine.GetVisibleRowRange(scroll, style, totalRows);
-engine.GetVisibleScrollableColumns(columns, scroll, frozenWidth, rightFrozenWidth);
-engine.GetVisibleFrozenColumns(columns);
-engine.GetVisibleRightFrozenColumns(columns, viewportWidth);
-engine.HitTestColumn(columns, contentX);
-engine.HitTestRow(contentY, style, totalRows);
+engine.ComputeColumnWidths(columns, viewportWidth, ctx, style, dataSource, firstRow, lastRow);
+engine.GetVisibleRowRangeWithOffset(scroll, style, totalRows, topSummaryHeight, frozenRowCount);
+engine.GetContentWidth(columns);
+engine.GetContentHeight(rowCount, style);
+engine.GetFrozenColumnWidth(columns);
+engine.GetRightFrozenColumnWidth(columns);
+engine.GetFrozenRowHeight(frozenRowCount, style);
 engine.CalculateAutoFitWidth(column, dataSource, ctx, style);
-// Prefer Populate* variants in the render loop:
+// The render loop uses the Populate* variants (the Get* ones allocate a list):
+engine.PopulateVisibleFrozenColumns(columns, list);
+engine.PopulateVisibleRightFrozenColumns(columns, viewportWidth, list);
 engine.PopulateVisibleScrollableColumns(columns, scroll, frozenWidth, rightFrozenWidth, list);
 ```
+
+`FrozenPanes.Resolve` decides per frame which frozen columns stay pinned; `KumikoScroller` (scroll-to-row,
+column offsets) and `PinnedGroupHeaders` (sticky group headers) live next to the engine in `src/KumikoUI.Core/Layout/`.

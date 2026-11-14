@@ -4,7 +4,7 @@ namespace KumikoUI.Core.Models;
 /// Describes a table-level summary row that spans the full grid width.
 /// A single summary row can contain multiple column aggregates.
 /// </summary>
-public class TableSummaryRow
+public sealed class TableSummaryRow
 {
     /// <summary>Unique name for identification.</summary>
     public string Name { get; set; } = "";

@@ -27,7 +27,7 @@ public partial class App : Application
         // family name. Awaited before Activate() so the very first paint already sees the
         // typefaces (no flash of fallback/tofu glyphs). Registration is non-fatal: a missing
         // font is logged and the grid falls back to the system default.
-        // See docs/uno/05-fonts-and-assets.md and docs/uno/06-sample-app.md §3.
+        // See docs/uno/plan/05-fonts-and-assets.md and docs/uno/plan/06-sample-app.md §3.
         await KumikoFonts.RegisterFromAppPackageAsync(new[]
         {
             ("NotoSansJP", "ms-appx:///Assets/Fonts/NotoSansJP-Regular.ttf"),

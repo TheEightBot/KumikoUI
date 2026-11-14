@@ -15,7 +15,7 @@ namespace KumikoUI.Core.Editing;
 /// &lt;/core:KumikoColumn&gt;
 /// </code>
 /// </summary>
-public class NumericUpDownEditorDescriptor : EditorDescriptor
+public sealed class NumericUpDownEditorDescriptor : EditorDescriptor
 {
     /// <summary>Minimum allowed value.</summary>
     public double Minimum { get; set; } = double.MinValue;

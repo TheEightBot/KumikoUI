@@ -23,16 +23,16 @@
     <a href="https://scorecard.dev/viewer/?uri=github.com/TheEightBot/KumikoUI"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/TheEightBot/KumikoUI/badge" /></a>
   </p>
   <p align="center">
-    <a href="https://www.nuget.org/packages/KumikoUI.Maui"><img alt="KumikoUI.Maui on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Maui?label=KumikoUI.Maui&color=512BD4" /></a>
-    <a href="https://www.nuget.org/packages/KumikoUI.Uno"><img alt="KumikoUI.Uno on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Uno?label=KumikoUI.Uno&color=512BD4" /></a>
-    <a href="https://www.nuget.org/packages/KumikoUI.SkiaSharp"><img alt="KumikoUI.SkiaSharp on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.SkiaSharp?label=KumikoUI.SkiaSharp&color=512BD4" /></a>
-    <a href="https://www.nuget.org/packages/KumikoUI.Core"><img alt="KumikoUI.Core on NuGet" src="https://img.shields.io/nuget/v/KumikoUI.Core?label=KumikoUI.Core&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.Maui"><img alt="KumikoUI.Maui on NuGet" src="https://img.shields.io/nuget/vpre/KumikoUI.Maui?label=KumikoUI.Maui&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.Uno"><img alt="KumikoUI.Uno on NuGet" src="https://img.shields.io/nuget/vpre/KumikoUI.Uno?label=KumikoUI.Uno&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.SkiaSharp"><img alt="KumikoUI.SkiaSharp on NuGet" src="https://img.shields.io/nuget/vpre/KumikoUI.SkiaSharp?label=KumikoUI.SkiaSharp&color=512BD4" /></a>
+    <a href="https://www.nuget.org/packages/KumikoUI.Core"><img alt="KumikoUI.Core on NuGet" src="https://img.shields.io/nuget/vpre/KumikoUI.Core?label=KumikoUI.Core&color=512BD4" /></a>
   </p>
 </p>
 
 ---
 
-Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pickers and the grouping panel are drawn by `KumikoUI.Core`, so a grid looks the same on every platform. The host controls add what a canvas can't do: a hidden native text field that receives keyboard and soft-keyboard input, the platform's pointer and gesture events, and the mouse cursor. The grid draws no scrollbars; it scrolls by touch, mouse wheel, trackpad and keyboard.
+Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pickers and the grouping panel are drawn by `KumikoUI.Core`, so a grid looks the same on every platform. The host controls add what a canvas can't do: a connection to the platform's text input (keyboard, soft keyboard and input methods), the platform's pointer and gesture events, and the mouse cursor. The grid draws no scrollbars; it scrolls by touch, mouse wheel, trackpad and keyboard.
 
 <p align="center">
   <img src="images/main.png" alt="KumikoUI DataGrid showing every column type" width="100%" />
@@ -77,7 +77,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Area | What you get |
 |---|---|
 | Hosts | `KumikoDataGrid` for .NET MAUI and for the Uno Platform, with the same properties, commands and events |
-| Rendering | Only visible rows and columns are drawn; steady-state frames allocate nothing in the managed render loop ([Performance](#performance)) |
+| Rendering | Only visible rows and columns are drawn; steady-state frames allocate nothing in the managed render loop; sorting, filtering and grouping of 10,000 rows or more run on a background thread ([Performance](#performance)) |
 | Column types | Text, Numeric, Boolean (optionally three-state), Date, ComboBox, Picker, Image, ProgressBar, Template (custom renderers such as the built-in action buttons) |
 | Column layout | Fixed, Star and Auto (fitted to content) sizing; headers fit unless you set a width; resize by dragging or double-click auto-fit; wrapping text cells; drag a header to reorder; freeze columns left or right and rows at the top; save and restore the layout as JSON |
 | Sorting | Header tap cycles through a type-aware first direction, the opposite direction and none; Shift or Ctrl adds columns to a multi-column sort |
@@ -87,6 +87,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Editing | Text, numeric, date, combo box, picker and custom editors; edit triggers per grid and per column; typed conversion and validation with messages |
 | Selection | None, Single, Multiple, Extended; item-based, so it survives sort, filter and regrouping; MVVM-bindable |
 | Rows | Drag and drop reorder by handle or by row |
+| Interaction | Hover and pressed feedback, short transitions (group expand and collapse, column drag), momentum presets for iOS, Android and desktop, optional haptics, and a context-menu event; every timing is listed in [docs/INTERACTION.md](docs/INTERACTION.md) |
 | Scrolling | Touch, wheel, trackpad and keyboard; `ScrollToRow`, `ScrollToItem` and `ScrollToColumn`; bindable `VerticalOffset` and `HorizontalOffset`; a `Scrolled` event |
 | Clipboard | Ctrl/Cmd+C copies the selected rows as tab-separated text; copy, cut and paste work in editors |
 | Theming | Light, Dark and HighContrast presets, bindable, following the system light/dark setting by default; every color, font and size on `KumikoStyle`; per-cell and per-row style resolvers |
@@ -102,11 +103,11 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Package | Contains | Install it when |
 |---|---|---|
 | [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `KumikoDataGrid` for .NET MAUI, `UseKumikoUI()`, `MauiActionButtonDefinition` | you build a .NET MAUI app |
-| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `UnoActionButtonDefinition`, `KumikoFonts` | you build an Uno Platform app |
+| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `UnoActionButtonDefinition`, `KumikoFonts` | you build an Uno Platform app (the least verified host, see [Supported platforms](#supported-platforms)) |
 | [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | `SkiaDrawingContext`, `SkiaResourceCache`, `SkiaFontRegistrar` | you host the engine on your own SkiaSharp surface (the host packages reference it) |
 | [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Data, layout, rendering, input and editing engine; models and themes; the `[KumikoGridItem]` source generator | always (the other packages reference it); it has no UI framework or SkiaSharp dependency |
 
-All four packages share one version. Release notes are in the [CHANGELOG](CHANGELOG.md).
+All four packages share one version, and each depends on the exact version of the others. The current version is `1.0.0-preview.1`, the first 1.0 prerelease: the API may still change before 1.0.0. NuGet hides prerelease versions unless you ask for them; see [Getting Started](#getting-started). Release notes are in the [CHANGELOG](CHANGELOG.md) and [docs/release/1.0.0-preview.1-release-notes.md](docs/release/1.0.0-preview.1-release-notes.md).
 
 ---
 
@@ -116,18 +117,20 @@ All packages target **.NET 10** and **SkiaSharp 4.153.1**.
 
 | Package | Platform (target framework) | Minimum OS | App build host | Verification |
 |---|---|---|---|---|
-| KumikoUI.Core, KumikoUI.SkiaSharp | any .NET 10 runtime (`net10.0`) | — | any OS | unit tests in CI |
-| KumikoUI.Maui | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build |
-| KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; sample launch checked on macOS 27 (#121) |
-| KumikoUI.Maui | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build |
-| KumikoUI.Maui | Windows (`net10.0-windows10.0.19041.0`) | 10.0.19041 | Windows | CI build |
-| KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; sample run on macOS |
-| KumikoUI.Uno | WebAssembly (`net10.0-browserwasm`) | current evergreen browsers | any OS (`wasm-tools` workload) | CI build |
-| KumikoUI.Uno | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build |
-| KumikoUI.Uno | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build |
-| KumikoUI.Uno | Windows App SDK (`net10.0-windows10.0.26100`) | 10.0.19041 | Windows | CI build |
+| KumikoUI.Core, KumikoUI.SkiaSharp | any .NET 10 runtime (`net10.0`) | — | any OS | Unit tests in CI |
+| KumikoUI.Maui | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build; the device suite passes on iPhone (106 of 106) and iPad (104 of 105, 1 skipped) simulators |
+| KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; the device suite passes (106 of 106) on macOS 27 |
+| KumikoUI.Maui | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build; the device suite passes (106 of 106) on an Android 15 emulator, including the hardware (GPU) surface and Gboard composition; not yet run on a physical phone |
+| KumikoUI.Maui | Windows (`net10.0-windows10.0.19041.0`) | 10.0.19041 | Windows | CI build only; not yet run on a device |
+| KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; the sample renders and follows the system theme on macOS, but pointer and keyboard use of the desktop head has not been checked (#274), the grid is missing from the macOS accessibility tree (#277), and Windows and Linux have not been run |
+| KumikoUI.Uno | WebAssembly (`net10.0-browserwasm`) | current evergreen browsers | any OS (`wasm-tools` workload) | CI build (trimmed publish); checked interactively in Chromium, including 100,000 rows |
+| KumikoUI.Uno | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build; checked on an iPhone simulator; known issue: typing over a selected cell value goes in front of it (#279); the sample shell sits under the system bars (#280) |
+| KumikoUI.Uno | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build; checked on an Android 15 emulator; known issues: the filter popup's search box gets no soft keyboard (#275), a touch column reorder does not work (#276), a Release build starts slowly (#278), and the sample shell sits under the system bars (#280) |
+| KumikoUI.Uno | Windows App SDK (`net10.0-windows10.0.26100`) | 10.0.19041 | Windows | CI build only; not yet run on a device |
 
-"App build host" is where an app for that head can be built; the libraries themselves are compiled and packed for every head on Windows in CI. "CI build" means compiled and packed in CI; interactive device testing for each head is tracked in #67. KumikoUI.Uno has no Mac Catalyst head: Uno serves macOS through the desktop head.
+"App build host" is where an app for that head can be built; the libraries themselves are compiled and packed for every head on Windows in CI. "CI build" means compiled and packed in CI. The device results come from the verification passes of 2026-11-13 and are written up, with their known issues, in [docs/maui-verification.md](docs/maui-verification.md) and [docs/uno/verification.md](docs/uno/verification.md). KumikoUI.Uno has no Mac Catalyst head: Uno serves macOS through the desktop head.
+
+> **1.0.0-preview.1 is a prerelease of all four packages.** The API may still change before 1.0.0, and the compatibility promise of [docs/VERSIONING.md](docs/VERSIONING.md) starts with 1.0.0. **KumikoUI.Uno is the least verified host.** It shares its engine, its API and most of its input code with the MAUI host, and the sample app runs on its WebAssembly, iOS and Android heads, but its heads have not all been walked end to end: the desktop head has had no interactive pass (#274), Windows and Linux have not been run, and several input and accessibility problems on the desktop and mobile heads are open (#275 to #280). See [docs/uno/verification.md](docs/uno/verification.md). KumikoUI.Core, KumikoUI.SkiaSharp and KumikoUI.Maui have had the device passes listed above.
 
 **Minimum OS versions** are defined once in `Directory.Build.props` (`KumikoMin*Version`) and apply to every library, sample and head. They are re-baselined at each .NET major release, and every change is called out as breaking in the [CHANGELOG](CHANGELOG.md).
 
@@ -152,8 +155,10 @@ The grid, its columns and its options are the same on both hosts. What differs i
 1. Add the package (it brings in `KumikoUI.Core` and `KumikoUI.SkiaSharp`):
 
    ```shell
-   dotnet add package KumikoUI.Maui
+   dotnet add package KumikoUI.Maui --prerelease
    ```
+
+   While only prereleases exist, `--prerelease` (or `--version 1.0.0-preview.1`, or `Version="1.0.0-preview.1"` in a `PackageReference`) is required; without it NuGet finds no stable version. The packages depend on each other at their exact version, so a mismatched set does not restore.
 
 2. Register KumikoUI in `MauiProgram.cs`:
 
@@ -175,7 +180,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
    }
    ```
 
-   A `KumikoDataGrid` attached to a handler without this call throws an exception that says so. `UseSkiaKumikoUI()` from earlier versions is obsolete and calls `UseKumikoUI()`.
+   A `KumikoDataGrid` attached to a handler without this call throws an exception that says so. `UseSkiaKumikoUI()` from earlier versions was removed in 1.0; call `UseKumikoUI()`.
 
 3. Declare the grid. The XAML is the same as on Uno once the `kumiko` and `core` prefixes are declared:
 
@@ -206,8 +211,10 @@ The grid, its columns and its options are the same on both hosts. What differs i
 1. Add the package:
 
    ```shell
-   dotnet add package KumikoUI.Uno
+   dotnet add package KumikoUI.Uno --prerelease
    ```
+
+   While only prereleases exist, `--prerelease` (or `--version 1.0.0-preview.1`, or `Version="1.0.0-preview.1"` in a `PackageReference`) is required.
 
 2. In the app project, make Uno use the SkiaSharp major KumikoUI is built with, and turn on the SkiaSharp canvas (Uno.Sdk defaults to SkiaSharp 3.x, and the app must resolve one SkiaSharp major):
 
@@ -476,7 +483,7 @@ With a mouse, the cursor shows what a click does:
 | A filter icon, a group chevron, a grouping chip or its remove button, the row drag handle, an editable check box, an enabled action button | Hand |
 | Anything else | Arrow |
 
-`InputController.Cursor` holds the current cursor (`KumikoCursor`) and `InputController.CursorChanged` reports changes. The Uno control applies it on the Windows, desktop and WebAssembly heads, and the MAUI control on Windows and Mac Catalyst; touch platforms ignore it. Moving the mouse with no button pressed never scrolls or selects.
+`InputController.Cursor` holds the current cursor (`KumikoCursor`) and `InputController.CursorChanged` (an `EventHandler<KumikoCursor>`) reports changes. The Uno control applies it on the Windows, desktop and WebAssembly heads, and the MAUI control on Windows and Mac Catalyst; touch platforms ignore it. Moving the mouse with no button pressed never scrolls or selects.
 
 ### Reordering columns
 
@@ -555,7 +562,7 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
 
 ### XAML with bound commands (.NET MAUI)
 
-`MauiActionButtonDefinition` is a `BindableObject`, so every property, including `Command`, can be bound. It is not in the visual tree and does not inherit `BindingContext`, so point bindings at a source with `x:Reference` or `RelativeSource`:
+`MauiActionButtonDefinition` is a `BindableObject`, so every property, including `Command`, can be bound. It is not in the visual tree, so the grid hands it its own `BindingContext` (the page's view model, unless the grid sets another) and a plain `{Binding Path}` resolves against it; the grid redraws when a property of a definition changes. Its colors are MAUI `Color` values, like the grid's other color properties:
 
 <!-- snippet: maui -->
 ```xml
@@ -567,12 +574,12 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
                 <render:ActionButtonsCellRenderer.Buttons>
                     <kumiko:MauiActionButtonDefinition
                         Label="Details"
-                        BackgroundColor="13,110,253"
-                        Command="{Binding Path=BindingContext.ViewDetailsCommand, Source={x:Reference actionsGrid}}" />
+                        BackgroundColor="#0D6EFD"
+                        Command="{Binding ViewDetailsCommand}" />
                     <kumiko:MauiActionButtonDefinition
                         Label="Delete"
-                        BackgroundColor="220,53,69"
-                        Command="{Binding Path=BindingContext.DeleteCommand, Source={x:Reference actionsGrid}}" />
+                        BackgroundColor="#DC3545"
+                        Command="{Binding DeleteCommand}" />
                 </render:ActionButtonsCellRenderer.Buttons>
             </render:ActionButtonsCellRenderer>
         </core:KumikoColumn.CustomCellRenderer>
@@ -645,7 +652,7 @@ kumiko.Columns.Add(actionsColumn);
 | Button property | Type | Meaning |
 |---|---|---|
 | `Label` | `string` | Text on the button |
-| `BackgroundColor` | `KumikoColor` | Pill color (`R,G,B`, `R,G,B,A`, `#RRGGBB` or `#AARRGGBB` in XAML) |
+| `BackgroundColor` | `KumikoColor` | Pill color (`R,G,B`, `R,G,B,A`, `#RGB`, `#RRGGBB`, `#AARRGGBB` or a color name in XAML) |
 | `TextColor` | `KumikoColor` | Label color (default: white) |
 | `Command` | `ICommand?` | Executed on tap; the row item is the default parameter |
 | `CommandParameter` | `object?` | Overrides the row item as the parameter |
@@ -1104,13 +1111,13 @@ Tab stops at every visible column that isn't read-only, whatever its type, unles
 
 ### Keys per platform
 
-Each host captures the keyboard through a native input view, and that decides which keys arrive: a hidden `TextBox` on Uno, a `UITextInput` responder on MAUI for iOS and Mac Catalyst, an input view on MAUI for Android, and the grid's own platform view on MAUI for Windows. This table is derived from the host code (`KumikoUI.Uno/Input/InputMapping.cs`, `KumikoUI.Maui/KeyInputResponder.cs`, `KumikoUI.Maui/AndroidTextInputMapper.cs` and `KumikoUI.Maui/Input/WindowsKeyInput.cs`); device-by-device verification is tracked in #67.
+Each host captures the keyboard through a native input view, and that decides which keys arrive: a hidden `TextBox` on Uno, a `UITextInput` responder on MAUI for iOS and Mac Catalyst, an input view on MAUI for Android, and the grid's own platform view on MAUI for Windows. This table is derived from the host code (`KumikoUI.Uno/Input/InputMapping.cs`, `KumikoUI.Maui/KeyInputResponder.cs`, `KumikoUI.Maui/AndroidTextInputMapper.cs` and `KumikoUI.Maui/Input/WindowsKeyInput.cs`); the device results are in [docs/maui-verification.md](docs/maui-verification.md) and [docs/uno/verification.md](docs/uno/verification.md).
 
 | Key | Uno, every head (hardware keyboard) | MAUI on iOS and Mac Catalyst | MAUI on Android (hardware keyboard) | MAUI on Windows |
 |---|---|---|---|---|
 | Characters, Space, Backspace, Enter | Yes | Yes | Yes | Yes |
-| Arrow keys (with Shift) | Yes | Yes | Yes | No |
-| Home, End, Page Up, Page Down | Yes | Yes | Yes | No |
+| Arrow keys (with Shift) | Yes | Yes | Yes | Yes |
+| Home, End, Page Up, Page Down | Yes | Yes | Yes | Yes |
 | Tab, Shift+Tab | Yes | Yes | Yes; past the last tab stop Android moves focus on | Yes |
 | Escape, F2, Delete | Yes | Yes | Yes | Yes |
 | Ctrl+A, editor undo / redo | Yes; Cmd works as Ctrl on macOS, iOS and WebAssembly | Yes, with Cmd | Yes (Ctrl or Meta) | Yes |
@@ -1118,7 +1125,7 @@ Each host captures the keyboard through a native input view, and that decides wh
 
 On Android, pressing the grid gives it keyboard focus, so a hardware keyboard navigates it without opening an editor. The soft keyboard appears only while a cell editor or the filter popup's search box is open.
 
-The MAUI control drives the editors through `ITextInputSession` on every platform: a native text-input client (`UITextInput`) on iOS and Mac Catalyst, an `InputConnection` on Android, and the Windows text services (`CoreTextEditContext`) on Windows. So input-method composition (Japanese, Chinese, Korean, Gboard word suggestions), the emoji keyboard, dictation, voice and swipe input reach the editor whole. On Windows the text services compose in place where the system offers them to desktop apps; elsewhere, characters and text committed by an input method's own window arrive through WinUI's `CharacterReceived`, and Ctrl+Alt (AltGr) types characters, not shortcuts. The Uno host passes committed characters to the editors and doesn't drive composition yet (#43).
+The MAUI control drives the editors through `ITextInputSession` on every platform: a native text-input client (`UITextInput`) on iOS and Mac Catalyst, an `InputConnection` on Android, and the Windows text services (`CoreTextEditContext`) on Windows. So input-method composition (Japanese, Chinese, Korean, Gboard word suggestions), the emoji keyboard, dictation, voice and swipe input reach the editor whole. On Windows the text services compose in place where the system offers them to desktop apps; elsewhere, characters and text committed by an input method's own window arrive through WinUI's `CharacterReceived`, and Ctrl+Alt (AltGr) types characters, not shortcuts. The Uno host does the same through the composition events of its hidden text box (`KumikoTextInputAdapter`): input-method composition (Japanese, Chinese, Korean, dead keys) reaches the editor as marked text and is committed when it ends. Composition has been exercised with Gboard on Android; on WebAssembly and iOS it is covered by unit tests only, because no composing input method could be driven there ([docs/TEXT-INPUT.md](docs/TEXT-INPUT.md)).
 
 To keep the edited cell visible above the soft keyboard on Android, set the activity's `WindowSoftInputMode` ([docs/TEXT-INPUT.md](docs/TEXT-INPUT.md#android)).
 
@@ -1207,7 +1214,7 @@ style.ShowVerticalGridLines = false;
 kumiko.GridStyle = style;
 ```
 
-`KumikoColor` takes bytes (`R`, `G`, `B` and an optional `A`) and has named colors such as `White`, `Black` and `Transparent`. In XAML, a `KumikoColor` property accepts `R,G,B`, `R,G,B,A`, `#RRGGBB`, `#AARRGGBB` and the names `White`, `Black`, `Red`, `Blue`, `Green`, `Gray` and `Transparent`. `KumikoFont` has `Family` (`"Default"` is the platform font, or a family you registered, see [Custom Fonts](#custom-fonts)), `Size`, `IsBold` and `IsItalic`.
+`KumikoColor` takes bytes (`R`, `G`, `B` and an optional `A`) and has named colors such as `White`, `Black` and `Transparent`. In XAML, a `KumikoColor` property accepts `R,G,B`, `R,G,B,A`, `#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` (alpha first, as in XAML and MAUI), any CSS color name (`Orange`, `CornflowerBlue`, `SlateGray`, ... in any case) and `Transparent`; text it cannot read throws a `FormatException` that names it. `KumikoFont` is a value (a `readonly record struct`): two fonts with the same content are equal, and you change one with `with` (`style.CellFont = style.CellFont with { Size = 16 }`). It has `Family` (`"Default"` is the platform font, or a family you registered, see [Custom Fonts](#custom-fonts)), `Size`, `IsBold` and `IsItalic`.
 
 ### Per-cell and per-row styles
 
@@ -1224,7 +1231,7 @@ style.RowStyleResolver = item =>
 kumiko.GridStyle = style;
 ```
 
-`KumikoCellStyle` has `BackgroundColor`, `TextColor`, `Font`, `Padding`, `BorderColor`, `BorderWidth` and `TextAlignment`; `KumikoRowStyle` has `BackgroundColor`, `TextColor` and `Font` (every row has the grid's `RowHeight`; variable row height is tracked in #102). Every member is nullable, and null means "no override". A cell's style is composed from the cell resolver, then the column's `CellStyle`, then the row resolver's text color and font, then the grid style; the row resolver's background is drawn behind unselected rows. Resolvers run for every visible cell on every frame, so return cached instances rather than allocating new ones where you can.
+`KumikoCellStyle` has `BackgroundColor`, `TextColor`, `Font`, `Padding` and `TextAlignment`; `KumikoRowStyle` has `BackgroundColor`, `TextColor` and `Font` (every row has the grid's `RowHeight`; variable row height is tracked in #102). Every member is nullable, and null means "no override". A cell's style is composed from the cell resolver, then the column's `CellStyle`, then the row resolver's text color and font, then the grid style; the row resolver's background is drawn behind unselected rows. Resolvers run for every visible cell on every frame, so return cached instances rather than allocating new ones where you can.
 
 ### KumikoStyle reference
 
@@ -1396,7 +1403,7 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `VerticalOffset`, `HorizontalOffset` | `double` | 0 | The scroll offsets; two-way ([Scrolling](#scrolling)). |
 | `Clipboard` | `IKumikoClipboard?` | the platform clipboard | Used for copy, cut and paste; null turns them off ([Copying rows](#copying-rows)). |
 | `ClipboardCopyIncludesHeaders` | `bool` | false | Ctrl/Cmd+C starts the copied text with the column headers. |
-| `RenderMode` | `KumikoRenderMode` | `Auto` | The drawing surface; `ActiveRenderMode` reports the one in use. MAUI: `Auto` rasterizes on the GPU (`SKGLView`) on Android and Mac Catalyst and on the CPU (`SKCanvasView`) on iOS and Windows; `Gpu` and `Software` ask for one. Uno: `Auto` draws through Uno's GPU-backed `SKCanvasElement` on the Skia-rendered heads and through `SKXamlCanvas` elsewhere; `Hardware` and `Software` ask for one. |
+| `RenderMode` | `KumikoRenderMode` | `Auto` | The drawing surface; `ActiveRenderMode` reports the one in use. MAUI: `Auto` rasterizes on the GPU (`SKGLView`) on Android and Mac Catalyst and on the CPU (`SKCanvasView`) on iOS and Windows; `Hardware` (the GPU view) and `Software` ask for one. Uno: `Auto` draws through Uno's GPU-backed `SKCanvasElement` on the Skia-rendered heads and through `SKXamlCanvas` elsewhere; `Hardware` and `Software` ask for one. |
 | `IsReadOnly` | `bool` | false | True refuses every edit, Boolean toggle and Tab stop; combines with `KumikoColumn.IsReadOnly`. |
 | `AllowSorting`, `AllowFiltering` | `bool` | true | False stops header-tap sorting, or hides and disables the header filter icons; a grid-level false wins over the column's setting. |
 
@@ -1558,7 +1565,7 @@ kumiko.Columns.Add(new KumikoColumn
 
 **Bold and italic.** A family can hold several faces. Register the bold or italic file under the same family name with a `SKFontStyle`, and bold or italic text uses the closest registered face. When the closest face lacks the style (a bold font with only a regular face registered), the text is emboldened or slanted synthetically.
 
-**Fallback fonts.** Text that the requested font has no glyph for (emoji, CJK, symbols) is drawn glyph by glyph with a fallback font: first the families you list with `SetFallbackFamilies`, in order, then the platform font manager's own choice. An emoji sequence or a letter with combining marks is never split between two fonts.
+**Fallback fonts.** Text that the requested font has no glyph for (emoji, CJK, symbols) is drawn glyph by glyph with a fallback font: first the families you list with `SetFallbackFamilies`, in order, then the platform font manager's own choice. An emoji sequence or a letter with combining marks is never split between two fonts, and an emoji sequence (a skin tone, a family, a flag) is drawn as the one glyph the emoji font has for it.
 
 ```csharp
 using KumikoUI.SkiaSharp;
@@ -1628,7 +1635,7 @@ kumiko.GridStyle = style;
 public sealed class RoundCheckIcons : KumikoIconProvider
 {
     // Reused every frame: DrawIcon runs for each visible glyph and should not allocate
-    private readonly KumikoPaint _dot = new() { Style = PaintStyle.Fill, IsAntiAlias = true };
+    private readonly KumikoPaint _dot = new() { IsAntiAlias = true };
 
     public override void DrawIcon(IDrawingContext ctx, KumikoIcon icon, KumikoRect bounds, KumikoPaint paint)
     {
@@ -1663,7 +1670,7 @@ kumiko.GridStyle = style;
 | `Remove` | Grouping chip remove button | × |
 | `GroupSeparator` | Between grouping chips | Chevron right |
 | `DragHandle` | Row drag handle | Six dots |
-| `Check`, `Indeterminate` | Boolean cells, `DrawnCheckBox`, filter popup values | Tick, dash |
+| `Check`, `Indeterminate` | Boolean cells, the filter popup's value list | Tick, dash |
 | `DropDown`, `DropDownOpen` | `DrawnComboBox` | Triangle down, triangle up |
 | `Increment`, `Decrement` | `DrawnNumericUpDown` | Plus, minus |
 | `Calendar` | `DrawnDatePicker` field | Calendar page |
@@ -1735,23 +1742,23 @@ kumiko.Scrolled += (_, e) =>
 
 - **Keep custom renderers and style resolvers allocation-free.** They run for every visible cell on every frame; create paints, fonts and styles once and reuse them.
 - **Batch changes.** Wrap several sort, filter or grouping changes, or a loop of collection changes under an active sort or grouping, in `using (DataSource.BeginUpdate()) { ... }` to rebuild once.
-- **Expect a full rebuild for sort, filter and grouping changes.** These rebuild the whole view on the UI thread; with hundreds of thousands of rows, measure on your target devices.
+- **Know when a change rebuilds the view.** A sort, filter or grouping change rebuilds the whole view. From 10,000 rows up the rebuild runs on a worker and the UI thread only swaps the result in ([Threading](#threading)); below that it runs on the UI thread, and is short. Measure on your target devices with your own data.
 - **Make collection and property changes on the UI thread.** The grid throws for a change raised on any other thread ([Threading](#threading)).
 - **Implement `INotifyPropertyChanged`** so the grid re-reads only the changed cells, or call `DataSource.Refresh()` after changing items that don't.
 - **Use generated accessors** (`[KumikoGridItem]`) or column delegates for large data; see [Native AOT and Trimming](#native-aot-and-trimming).
 
 ### Measured numbers
 
-Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14, Release build, 2026-11-10 (filter, grouping and live-update rows 2026-11-13). Frame figures are the managed render loop into a no-op drawing context, so they leave out SkiaSharp's own drawing time; the 100,000-row figures are one view rebuild, except the live-update row.
+Measured with BenchmarkDotNet (`bench/KumikoUI.Benchmarks`) on an Apple M4 Max, macOS 27.2, .NET 10.0.14, Release build, 2026-11-10 (sort, filter, grouping and live-update rows 2026-11-13). Frame figures are the managed render loop into a no-op drawing context, so they leave out SkiaSharp's own drawing time; the 100,000-row figures are one view rebuild, measured on the calling thread, except the live-update row. In a grid that rebuild runs on a worker (from 10,000 rows), so what the UI thread pays is the call, a copy of the item references and the swap, about 1 ms even for a sort of a million rows (`BackgroundRebuildTests`, `bench/README.md`).
 
 | Operation | Time | Allocated |
 |---|---:|---:|
 | Render a 30 × 10 visible grid (steady state) | 2.9 µs | 0 B |
 | Same, with sort, filter, grouping, summaries, a frozen column and the drag handle | 6.3 µs | 0 B |
 | Render while scrolling (one new row per frame) | 3.7 µs | 501 B |
-| Sort 100K rows (int / string / date column) | 54 / 72 / 211 ms | 86 MB / 1.1 KB / 94 MB |
-| Filter 100K rows (text contains / numeric) | 2.4 / 1.5 ms | 0.5 KB / 2.4 MB |
-| Group 100K rows by 1 / 2 levels, with summaries | 19 / 42 ms | 9.1 / 10.5 MB |
+| Sort 100K rows (int / string / date column) | 24 / 57 / 173 ms | 3.4 / 1.1 / 3.4 MB |
+| Filter 100K rows (text contains / numeric) | 2.2 / 1.4 ms | 1.3 KB / 2.3 MB |
+| Group 100K rows by 1 / 2 levels, with summaries | 21 / 42 ms | 10.3 / 10.4 MB |
 | Add or remove one item of an `ObservableCollection` of 100K rows | 128 µs | 432 B |
 | 100 `PropertyChanged` of a summed property, 100K rows with a Sum summary | 24 µs | 100 KB |
 
@@ -1771,7 +1778,7 @@ public sealed class MyGridSurface : IDisposable
 
     public void Paint(SKCanvas canvas, Action<IDrawingContext> draw)
     {
-        using var ctx = new SkiaDrawingContext(canvas, _resources); // disposing ends the frame and keeps the cache
+        using var ctx = _resources.CreateContext(canvas); // reused every frame; disposing ends the frame and keeps the cache
         draw(ctx);
     }
 
@@ -1844,6 +1851,8 @@ _ = Task.Run(() =>
 
 For many changes at once, post one callback that makes them inside `using (kumiko.DataSource.BeginUpdate()) { ... }`, or build a new collection in the background and assign it to `ItemsSource` on the UI thread.
 
+**Large sources rebuild in the background.** From `DataSource.BackgroundRebuildThreshold` items up (10,000 in the MAUI and Uno grids; a `KumikoSource` you create stays synchronous), sorting, filtering, grouping and summaries run on a worker. Requests made in one UI turn start one rebuild, and a newer one cancels a running one. The grid keeps drawing the current rows until the new view is swapped in on the UI thread (`ViewChanged`, then `ViewUpdated`); selection, the current cell and an open edit follow their items. `DataSource.IsViewUpdatePending` tells whether a rebuild is under way, and `await DataSource.WhenViewUpdatedAsync()` waits for the new order. While a rebuild runs, the worker reads item properties and calls your comparers, filter predicate, group selectors and custom aggregates, so these must only read.
+
 ---
 
 ## Native AOT and Trimming
@@ -1899,7 +1908,7 @@ This is the current state, not the goal. The 1.0 target and the plan are in [doc
 
 - **Screen readers see one element.** Cells, headers, editors and popups are drawn on a canvas and are not exposed to assistive technology individually, so a screen reader can't read or navigate cell contents. A per-cell accessibility tree is planned for 1.x.
   - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default: the localizable `KumikoStrings.AccessibleGridName`, "Data grid") as its semantic description and `GridHint` (default: a hint with the row and column counts and the current cell) as its hint.
-  - **Uno:** the grid has a UI Automation peer with the DataGrid control type. Its name comes from `GridDescription` or `KumikoStrings.AccessibleGridName`, and its help text from `GridHint` or a computed description of the rows and columns.
+  - **Uno:** the grid has a UI Automation peer with the DataGrid control type. Its name comes from `GridDescription` or `KumikoStrings.AccessibleGridName`, and its help text from `GridHint` or a computed description of the rows and columns. The peer shows up in the accessibility trees of WebAssembly (as a `role="grid"` element) and Android; on the macOS desktop head VoiceOver cannot reach the grid yet ([docs/uno/verification.md](docs/uno/verification.md)). The device verification passes inspected these accessibility trees but did not drive a screen reader on either host, so test with VoiceOver, TalkBack or Narrator before relying on it.
   - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, and validation errors to a running screen reader. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
 - **Keyboard.** The grid can be used without a pointer on Uno and on MAUI for every platform, and never traps Tab. See [Keys per platform](#keys-per-platform).
 - **Hidden input fields.** Most hosts keep an invisible native view to receive keyboard input: on MAUI, a `KeyInputResponder` on Apple platforms and an input view on Android (on Windows the grid itself takes the keyboard focus); on Uno, a `TextBox`. It is kept out of the accessibility tree and takes no pointer input.
@@ -1983,17 +1992,19 @@ All drawing goes through the `IDrawingContext` abstraction, so Core has no depen
 | `CellEditorFactory` | Creates the drawn editor for a column type |
 | `PaintCache` | The paints the grid draws with, rebuilt only when the style changes |
 | `InertialScroller` | Fling deceleration (`ScrollSettings`) |
-| `PopupManager` | Popup z-order and input priority (filter popup, combo box, date picker) |
+| `PopupManager` (internal) | Popup z-order and input priority (filter popup, combo box, date picker) |
 | `SkiaDrawingContext`, `SkiaResourceCache` | The SkiaSharp drawing context and its per-control cache |
 | `KumikoDataGrid` (MAUI, Uno) | The host controls |
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/RENDERING.md](docs/RENDERING.md) for contributor detail, and [docs/uno/](docs/uno/README.md) for the Uno port's design notes.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/RENDERING.md](docs/RENDERING.md) for contributor detail, and the [Uno user guide](docs/uno/README.md) for the Uno host.
+
+Every interaction timing and threshold (double tap, long press, drag and pan thresholds, touch target sizes, momentum presets, transition durations) is listed in [docs/INTERACTION.md](docs/INTERACTION.md).
 
 ---
 
 ## Sample Applications
 
-Both samples have the same six pages:
+Both samples have the same pages (`samples/README.md` has the run commands and a map from each feature to its page):
 
 | Page | What it shows |
 |---|---|
@@ -2003,6 +2014,9 @@ Both samples have the same six pages:
 | **Theming** | Light, Dark and HighContrast, and custom colors |
 | **MVVM Actions** | Action button columns bound to view model commands, per-column `EditTriggers`, MVVM selection |
 | **Custom Fonts** | Japanese headers with Noto Sans JP, and icon columns with Material Icons |
+| **Images** | Image columns from app assets, `ImageSource`s or `BitmapImage`s and web URLs over 10,000 rows, with the bounded `ImageCache` |
+| **Styling** | An image column, switching the icon set (`KumikoStyle.IconProvider`), per-cell and per-row styles (`CellStyleResolver`, `RowStyleResolver`) and `AlternateRowBackground` |
+| **Events** | `CellTapped`, `HeaderTapped`, `ContextMenuRequested` and the other events in a log, the selection modes, a `CellValidator`, and saving and restoring the layout |
 
 - `samples/SampleApp.Maui`: .NET MAUI (iOS, Mac Catalyst, Android, Windows).
 - `samples/SampleApp.Uno`: Uno Platform (desktop, WebAssembly, iOS, Android, Windows App SDK).

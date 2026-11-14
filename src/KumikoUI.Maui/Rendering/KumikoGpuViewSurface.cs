@@ -5,7 +5,7 @@ using SkiaSharp.Views.Maui.Controls;
 namespace KumikoUI.Maui.Rendering;
 
 /// <summary>
-/// The <see cref="KumikoRenderMode.Gpu"/> surface: SkiaSharp's <see cref="SKGLView"/>, rasterized on the GPU. Its
+/// The <see cref="KumikoRenderMode.Hardware"/> surface: SkiaSharp's <see cref="SKGLView"/>, rasterized on the GPU. Its
 /// platform view is an OpenGL ES <c>TextureView</c> on Android, a GLKit view on iOS, a Metal view on Mac Catalyst and
 /// an ANGLE swap chain panel on Windows.
 /// </summary>
@@ -46,7 +46,7 @@ internal sealed class KumikoGpuViewSurface : KumikoSurface
     public override View View => _view;
 
     /// <inheritdoc />
-    public override KumikoRenderMode Mode => KumikoRenderMode.Gpu;
+    public override KumikoRenderMode Mode => KumikoRenderMode.Hardware;
 
     /// <inheritdoc />
     public override bool PaintsOnInvalidate =>
@@ -112,6 +112,7 @@ internal sealed class KumikoGpuViewSurface : KumikoSurface
         }
         _recorder?.Dispose();
         _recorder = null;
+        base.Dispose();
     }
 
     /// <summary>Records the grid's current frame on the UI thread and publishes it to the GL thread.</summary>

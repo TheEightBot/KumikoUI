@@ -35,7 +35,7 @@ public class DrawnComboBoxTests
     {
         var combo = Combo();
         int opened = 0;
-        combo.DropdownOpened += () => opened++;
+        combo.DropdownOpened += (_, _) => opened++;
 
         Assert.True(combo.Down(100, 15));
 
@@ -49,7 +49,7 @@ public class DrawnComboBoxTests
         var combo = Combo();
         combo.OpenDropdown();
         int closed = 0;
-        combo.DropdownClosed += () => closed++;
+        combo.DropdownClosed += (_, _) => closed++;
 
         Assert.True(combo.Down(500, 500));
 
@@ -103,8 +103,8 @@ public class DrawnComboBoxTests
         int completed = 0, closed = 0;
         combo.SelectionChanged += (_, e) => selections.Add(e);
         combo.ValueChanged += (_, e) => values.Add(e);
-        combo.EditCompleted += () => completed++;
-        combo.DropdownClosed += () => closed++;
+        combo.EditCompleted += (_, _) => completed++;
+        combo.DropdownClosed += (_, _) => closed++;
         combo.Down(100, 15);
 
         combo.Down(100, ItemY(2));
@@ -144,7 +144,7 @@ public class DrawnComboBoxTests
         var combo = Combo();
         combo.OpenDropdown();
         int completed = 0;
-        combo.EditCompleted += () => completed++;
+        combo.EditCompleted += (_, _) => completed++;
 
         combo.Down(100, ItemY(1));
         bool handled = combo.Up(100, ItemY(2));
@@ -334,7 +334,7 @@ public class DrawnComboBoxTests
     {
         var combo = Combo();
         int completed = 0;
-        combo.EditCompleted += () => completed++;
+        combo.EditCompleted += (_, _) => completed++;
         combo.OpenDropdown();
         combo.Key(KumikoKey.Down);
 
@@ -515,7 +515,7 @@ public class DrawnComboBoxTests
     {
         var combo = Fifty();
         int completed = 0;
-        combo.EditCompleted += () => completed++;
+        combo.EditCompleted += (_, _) => completed++;
 
         combo.Down(100, ItemY(5));
         combo.Move(100, ItemY(5) - 3); // within the threshold: still a press on the item

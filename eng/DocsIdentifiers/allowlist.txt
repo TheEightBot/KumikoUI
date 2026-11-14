@@ -1,0 +1,10 @@
+UITextInput    # UIKit protocol that KeyInputResponder adopts (external, not in this repository)
+AdjustNothing      # Android WindowSoftInputMode value (platform API)
+TabIndex           # WinUI UIElement property (platform API)
+Photos             # an example folder name in a sample path
+WriteableBitmap    # WinUI image source type (platform API)
+SvgImageSource     # WinUI image source type (platform API)
+KumikoSourceSortingExampleTests       # the example test class in testing.instructions.md
+StarRatingRenderer    # example renderer in rendering.instructions.md
+RatingEditor          # example editor in components-and-editing.instructions.md
+RatingEditorDescriptor # example descriptor in components-and-editing.instructions.md

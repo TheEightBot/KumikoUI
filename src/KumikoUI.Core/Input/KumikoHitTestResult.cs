@@ -5,8 +5,15 @@ namespace KumikoUI.Core.Input;
 /// <summary>
 /// Result of a hit test — identifies the grid region, row/column, and exact position.
 /// </summary>
-public class KumikoHitTestResult
+/// <remarks>
+/// A value, so a hit test allocates nothing. Use <see cref="Empty"/> (or <c>new KumikoHitTestResult()</c>) for
+/// "nothing hit": <c>default</c> has row and column index 0 rather than -1.
+/// </remarks>
+public readonly record struct KumikoHitTestResult
 {
+    /// <summary>Creates a result that hit nothing: <see cref="HitRegion.None"/> with every index -1.</summary>
+    public KumikoHitTestResult() { }
+
     /// <summary>Region of the grid that was hit.</summary>
     public HitRegion Region { get; init; }
     /// <summary>Zero-based visible row index, or -1 when the hit is not on a row.</summary>

@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Editing;
 /// <summary>
 /// Event args for CellValueChanged.
 /// </summary>
-public class CellValueChangedEventArgs : EventArgs
+public sealed class CellValueChangedEventArgs : EventArgs
 {
     /// <summary>Zero-based row index of the changed cell.</summary>
     public int RowIndex { get; }
@@ -24,16 +24,16 @@ public class CellValueChangedEventArgs : EventArgs
     public object? NewValue { get; }
 
     /// <summary>Initializes the event data.</summary>
-    /// <param name="row">Zero-based row index of the changed cell.</param>
-    /// <param name="col">Zero-based column index of the changed cell.</param>
+    /// <param name="rowIndex">Zero-based row index of the changed cell.</param>
+    /// <param name="columnIndex">Zero-based column index of the changed cell.</param>
     /// <param name="column">Column definition for the changed cell.</param>
     /// <param name="oldValue">Previous cell value.</param>
     /// <param name="newValue">New cell value.</param>
-    public CellValueChangedEventArgs(int row, int col, KumikoColumn column,
+    public CellValueChangedEventArgs(int rowIndex, int columnIndex, KumikoColumn column,
         object? oldValue, object? newValue)
     {
-        RowIndex = row;
-        ColumnIndex = col;
+        RowIndex = rowIndex;
+        ColumnIndex = columnIndex;
         Column = column;
         OldValue = oldValue;
         NewValue = newValue;

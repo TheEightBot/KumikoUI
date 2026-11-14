@@ -14,6 +14,7 @@
     <PackageReference Include="xunit" />
     <!-- Native Skia on a Linux CI host (Windows and macOS get theirs with SkiaSharp). -->
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
@@ -29,6 +30,10 @@
                       LogicalName="KumikoUI.SkiaSharp.Tests.OpenSans-Regular.ttf" Link="Fonts/OpenSans-Regular.ttf" />
     <EmbeddedResource Include="../../samples/Shared/Fonts/NotoSansJP-Regular.ttf"
                       LogicalName="KumikoUI.SkiaSharp.Tests.NotoSansJP-Regular.ttf" Link="Fonts/NotoSansJP-Regular.ttf" />
+    <!-- A tiny generated font (Fonts/generate-test-emoji-font.py, CC0) whose emoji sequences have ligature glyphs, so the
+         emoji tests need no emoji font installed. -->
+    <EmbeddedResource Include="Fonts/KumikoTestEmoji.ttf"
+                      LogicalName="KumikoUI.SkiaSharp.Tests.KumikoTestEmoji.ttf" />
     <!-- The committed golden images, copied next to the test assembly. -->
     <None Include="Goldens/*.png" CopyToOutputDirectory="PreserveNewest" LinkBase="Goldens" />
   </ItemGroup>

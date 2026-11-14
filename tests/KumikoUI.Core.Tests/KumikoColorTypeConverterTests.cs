@@ -44,6 +44,42 @@ public class KumikoColorTypeConverterTests
         Assert.Equal(new KumikoColor(r, g, b, a), Convert(name));
     }
 
+    [Theory]
+    [InlineData("Orange", 255, 165, 0)]
+    [InlineData("CornflowerBlue", 100, 149, 237)]
+    [InlineData("rebeccapurple", 102, 51, 153)]
+    [InlineData("SlateGrey", 112, 128, 144)]
+    [InlineData("slategray", 112, 128, 144)]
+    [InlineData("chartreuse", 127, 255, 0)]
+    [InlineData("Lime", 0, 255, 0)]
+    [InlineData("YellowGreen", 154, 205, 50)]
+    public void StandardColorNames_AreTheCssKeywords(string name, byte r, byte g, byte b)
+    {
+        Assert.Equal(new KumikoColor(r, g, b), Convert(name));
+    }
+
+    [Fact]
+    public void EveryBuiltInColor_IsReachableByItsName()
+    {
+        Assert.Equal(KumikoColor.LightGray, Convert("LightGray"));
+        Assert.Equal(KumikoColor.WhiteSmoke, Convert("WhiteSmoke"));
+        Assert.Equal(KumikoColor.DodgerBlue, Convert("DodgerBlue"));
+        Assert.Equal(KumikoColor.LightBlue, Convert("LightBlue"));
+        Assert.Equal(KumikoColor.DarkBlue, Convert("DarkBlue"));
+        Assert.Equal(KumikoColor.CornflowerBlue, Convert("CornflowerBlue"));
+    }
+
+    [Theory]
+    [InlineData("#FFF", 255, 255, 255, 255)]
+    [InlineData("#fa0", 255, 170, 0, 255)]
+    [InlineData("#000", 0, 0, 0, 255)]
+    [InlineData("#8FA0", 255, 170, 0, 136)]
+    [InlineData("#0000", 0, 0, 0, 0)]
+    public void ShortHex_DoublesEachDigit(string text, byte r, byte g, byte b, byte a)
+    {
+        Assert.Equal(new KumikoColor(r, g, b, a), Convert(text));
+    }
+
     [Fact]
     public void NamedColors_Green_MatchesTheBuiltInGreen()
     {
@@ -107,7 +143,9 @@ public class KumikoColorTypeConverterTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("chartreuse")]
+    [InlineData("not-a-color")]
+    [InlineData("#12")]
+    [InlineData("#123456789")]
     [InlineData("1,2")]
     [InlineData("1,2,3,4,5")]
     [InlineData("256,0,0")]
@@ -127,9 +165,12 @@ public class KumikoColorTypeConverterTests
     [Theory]
     [InlineData("#GGGGGG")]
     [InlineData("#12XY56")]
-    public void HexWithNonHexDigits_Throws(string text)
+    [InlineData("#GGG")]
+    public void HexWithNonHexDigits_ThrowsAFormatExceptionNamingTheText(string text)
     {
-        Assert.ThrowsAny<Exception>(() => Converter.ConvertFrom(null, CultureInfo.InvariantCulture, text));
+        var ex = Assert.Throws<FormatException>(() => Converter.ConvertFrom(null, CultureInfo.InvariantCulture, text));
+
+        Assert.Contains(text, ex.Message);
     }
 
     [Fact]

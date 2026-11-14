@@ -6,13 +6,15 @@ description: Scaffold a new custom ICellRenderer for KumikoUI
 # Add a Custom Cell Renderer
 
 Create a new `ICellRenderer` implementation in `src/KumikoUI.Core/Rendering/` to display cell
-values in a custom visual style.
+values in a custom visual style. Read `.github/instructions/rendering.instructions.md` first: a renderer runs inside the
+zero-allocation render loop.
 
 ## What to ask the user before generating code
 
-1. What is the **class name** for the renderer? (e.g. `StarRatingCellRenderer`)
+1. What is the **class name** for the renderer? (for example a star rating renderer)
 2. What **column type** will it be used with, or is it a `Template` column renderer?
 3. What **configurable properties** does it expose? (min/max, colors, sizes, etc.)
+4. Is it **interactive** (reacts to the pointer or animates)? Then it also implements `IInteractiveCellRenderer`.
 
 ---
 
@@ -21,8 +23,20 @@ values in a custom visual style.
 | Action | File |
 |---|---|
 | **Create** | `src/KumikoUI.Core/Rendering/{ClassName}.cs` |
-| **Modify** (optional, if new column type) | `src/KumikoUI.Core/Models/KumikoColumn.cs` — add enum value |
-| **Create** | `tests/KumikoUI.Core.Tests/{ClassName}Tests.cs` |
+| **Modify** (only to make it a built-in for a column type) | the `KumikoRenderer` constructor, which registers a renderer per `KumikoColumnType` |
+| **Create** | `tests/KumikoUI.Core.Tests/Rendering/{ClassName}Tests.cs` |
+
+A renderer an app writes for its own column needs only the class and `KumikoColumn.CustomCellRenderer`.
+
+---
+
+## What the grid has already done
+
+`KumikoRenderer` fills the row and cell backgrounds (selection, alternate rows, per-cell `BackgroundColor`) and draws the
+grid lines and the current cell border **before** it calls the renderer, so a renderer draws only the cell's content. It
+passes everything through one `CellRenderContext`: `Bounds` (the padded cell area, stay inside it), `Value`,
+`DisplayText` (already formatted and cached), `Column`, `Style`, `CellStyle`, `IsSelected`, `Paints` (the frame's
+`PaintCache`), `TextPaint` (the resolved text paint for this cell), `TextAlignment` and `ImageResolver`.
 
 ---
 
@@ -30,67 +44,59 @@ values in a custom visual style.
 
 ```csharp
 // src/KumikoUI.Core/Rendering/{ClassName}.cs
-using KumikoUI.Core.Models;
-
 namespace KumikoUI.Core.Rendering;
 
 /// <summary>
 /// Renders {description of what it displays} in a data-grid cell.
 /// </summary>
-public class {ClassName} : ICellRenderer
+public sealed class {ClassName} : ICellRenderer
 {
     // --- Configurable properties --------------------------------------------------
 
     /// <summary>Minimum value for the range. Default 0.</summary>
-    public float Minimum { get; set; } = 0f;
+    public double Minimum { get; set; }
 
     /// <summary>Maximum value for the range. Default 100.</summary>
-    public float Maximum { get; set; } = 100f;
+    public double Maximum { get; set; } = 100;
+
+    // Reused for every cell: only the color varies, so drawing allocates nothing.
+    private readonly KumikoPaint _paint = new();
 
     // --- ICellRenderer ------------------------------------------------------------
 
     /// <inheritdoc />
-    public void Render(
-        IDrawingContext ctx,
-        KumikoRect cellRect,
-        object? value,
-        string displayText,
-        KumikoColumn column,
-        KumikoStyle style,
-        bool isSelected,
-        KumikoCellStyle? cellStyle = null)
+    public void Render(IDrawingContext ctx, in CellRenderContext cell)
     {
-        // ── Background ────────────────────────────────────────────────────────────
-        var bg = cellStyle?.BackgroundColor
-            ?? (isSelected ? style.SelectionColor : style.CellBackgroundColor);
-
-        ctx.FillRect(cellRect, new KumikoPaint { Color = bg, Style = PaintStyle.Fill });
-
-        // ── Value parsing ─────────────────────────────────────────────────────────
-        float numericValue = value switch
+        double number = cell.Value switch
         {
-            float f  => f,
-            double d => (float)d,
-            int i    => i,
-            _        => float.TryParse(displayText, out float parsed) ? parsed : 0f
+            double d => d,
+            float f => f,
+            int i => i,
+            long l => l,
+            decimal m => (double)m,
+            _ => 0,
         };
-
         float fraction = Maximum > Minimum
-            ? Math.Clamp((numericValue - Minimum) / (Maximum - Minimum), 0f, 1f)
+            ? (float)Math.Clamp((number - Minimum) / (Maximum - Minimum), 0, 1)
             : 0f;
 
         // ── Custom drawing ────────────────────────────────────────────────────────
-        // TODO: implement visual representation using ctx.DrawRect / ctx.FillRect /
-        // ctx.DrawText / ctx.DrawRoundRect etc.
+        // TODO: draw with ctx.FillRect / DrawRect / FillRoundRect / DrawText / FillPolygon ...
         //
         // RULES:
-        //  • Use only IDrawingContext methods — no SkiaSharp APIs.
-        //  • Use KumikoColor, KumikoPaint, KumikoFont from KumikoUI.Core.Rendering.
-        //  • Never hardcode colors; fall back to KumikoStyle properties.
-        //  • Stay within cellRect bounds.
+        //  • Use only IDrawingContext members: no SkiaSharp APIs.
+        //  • Use KumikoColor, KumikoPaint and KumikoFont from KumikoUI.Core.Rendering.
+        //  • Take colors from cell.Style or cell.Paints; never hardcode a color the theme should decide.
+        //  • No allocation per call: no new KumikoPaint, no LINQ, no string building (use cell.DisplayText).
+        //  • Stay within cell.Bounds; wrap a ClipRect in Save() / Restore().
+        _paint.Color = cell.Style.AccentColor;
+        ctx.FillRect(new KumikoRect(cell.Bounds.X, cell.Bounds.Y, cell.Bounds.Width * fraction, cell.Bounds.Height), _paint);
     }
 }
 ```
+
+Make a public renderer `sealed` and document every public member (doc warnings are errors). Look at `ProgressBarCellRenderer`
+for a finished example, and at `IInteractiveCellRenderer` (`RedrawRequested`) for pointer-reactive ones.
 
 ---
 
@@ -125,40 +131,48 @@ var column = new KumikoColumn
 
 ## Unit test skeleton
 
+The test helpers are in `tests/KumikoUI.Core.Tests/TestHelpers/`: `RecordingDrawingContext` records every draw call, and the
+`Render` extension on `ICellRenderer` (`CellRendererExtensions`) builds the `CellRenderContext` the grid would.
+
 ```csharp
-// tests/KumikoUI.Core.Tests/{ClassName}Tests.cs
+// tests/KumikoUI.Core.Tests/Rendering/{ClassName}Tests.cs
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
+using KumikoUI.Core.Tests.TestHelpers;
+
+namespace KumikoUI.Core.Tests.Rendering;
 
 public class {ClassName}Tests
 {
-    private static KumikoColumn MakeColumn() =>
-        new KumikoColumn { PropertyName = "Value", ColumnType = KumikoColumnType.Template };
+    private static readonly KumikoRect Cell = new(10, 20, 100, 30);
+
+    private static RecordingDrawingContext Render({ClassName} renderer, object? value)
+    {
+        var ctx = new RecordingDrawingContext();
+        renderer.Render(ctx, Cell, value, value?.ToString() ?? "", new KumikoColumn(), new KumikoStyle(), isSelected: false);
+        return ctx;
+    }
 
     [Fact]
     public void Render_WithNullValue_DoesNotThrow()
     {
-        var renderer = new {ClassName}();
-        var style    = KumikoTheme.Create(KumikoThemeMode.Light);
-        var ctx      = new FakeDrawingContext();
-        renderer.Render(ctx, new KumikoRect(0, 0, 100, 30), null, "", MakeColumn(), style, false);
-        // No assertion needed — simply must not throw.
+        var exception = Record.Exception(() => Render(new {ClassName}(), null));
+
+        Assert.Null(exception);
     }
 
     [Theory]
-    [InlineData(0f,   0f)]
-    [InlineData(50f,  0.5f)]
-    [InlineData(100f, 1f)]
-    public void Fraction_CalculatesCorrectly(float value, float expected)
+    [InlineData(0, 0)]
+    [InlineData(50, 50)]
+    [InlineData(100, 100)]
+    public void Render_FillsTheShareOfTheCellThatTheValueIs(double value, float expectedWidth)
     {
-        // Unit test the fraction math independently of drawing.
-        float min = 0f, max = 100f;
-        float fraction = max > min ? Math.Clamp((value - min) / (max - min), 0f, 1f) : 0f;
-        Assert.Equal(expected, fraction, precision: 4);
+        var ctx = Render(new {ClassName}(), value);
+
+        Assert.Equal(expectedWidth, ctx.Fills.Last().Rect.Width, precision: 3);
     }
 }
 ```
 
-> `FakeDrawingContext` is a no-op `IDrawingContext` test double. If it does not yet exist,
-> create `tests/KumikoUI.Core.Tests/TestHelpers/FakeDrawingContext.cs` implementing all
-> interface members as empty stubs.
+`RecordingDrawingContext` records each `DrawOp` with its `Rect`, `Color`, `Text` and clip, in call order. A renderer's
+allocation behavior is covered by `RenderAllocationTests`: if the renderer is part of the default grid, extend it.

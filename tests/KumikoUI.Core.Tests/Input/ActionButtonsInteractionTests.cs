@@ -269,7 +269,7 @@ public class ActionButtonsInteractionTests
         var details = new TestCommand(canExecute: _ => allowed);
         var f = new Fixture(details);
         int redraws = 0;
-        f.Grid.Renderer.RedrawRequested += () => redraws++;
+        f.Grid.Renderer.RedrawRequested += (_, _) => redraws++;
 
         allowed = true;
         details.RaiseCanExecuteChanged();
@@ -293,7 +293,7 @@ public class ActionButtonsInteractionTests
         Assert.Equal(0, details.Subscribers);
         Assert.Equal(0, delete.Subscribers);
         int redraws = 0;
-        f.Grid.Renderer.RedrawRequested += () => redraws++;
+        f.Grid.Renderer.RedrawRequested += (_, _) => redraws++;
         details.RaiseCanExecuteChanged();
         Assert.Equal(0, redraws);
     }
@@ -316,7 +316,7 @@ public class ActionButtonsInteractionTests
         var details = new TestCommand();
         var f = new Fixture(details);
         int redraws = 0;
-        f.Grid.Renderer.RedrawRequested += () => redraws++;
+        f.Grid.Renderer.RedrawRequested += (_, _) => redraws++;
 
         f.Grid.Renderer.Dispose();
         details.RaiseCanExecuteChanged();
@@ -456,7 +456,7 @@ public class ActionButtonsInteractionTests
             Buttons = new List<IActionButtonDefinition> { new ActionButtonDefinition { Label = "Go", Command = command } },
         };
         int completed = 0;
-        bar.EditCompleted += () => completed++;
+        bar.EditCompleted += (_, _) => completed++;
 
         bar.Tap(100, 15);
 

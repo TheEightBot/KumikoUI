@@ -14,7 +14,9 @@
                Grid.Row="0" />
 
         <!-- Built-in theme buttons -->
-        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+        <!-- One scrolling row: on a phone it takes one line, leaving the room above the soft keyboard to the grid -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+        <FlexLayout Wrap="NoWrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4">
             <Button Text="Light" Clicked="OnLightThemeClicked" Margin="4,0,0,4" />
             <Button Text="Dark" Clicked="OnDarkThemeClicked" Margin="4,0,0,4" />
             <Button Text="High Contrast" Clicked="OnHighContrastThemeClicked" Margin="4,0,0,4" />
@@ -22,6 +24,7 @@
             <Button Text="Forest Green" Clicked="OnForestGreenClicked" Margin="4,0,0,4" />
             <Button Text="Sunset" Clicked="OnSunsetClicked" Margin="4,0,0,4" />
         </FlexLayout>
+        </ScrollView>
 
         <!-- Custom color sliders -->
         <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*" Padding="16,4" Grid.Row="2">

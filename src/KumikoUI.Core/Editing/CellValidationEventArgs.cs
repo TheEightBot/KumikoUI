@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Editing;
 /// (<see cref="System.ComponentModel.IDataErrorInfo"/>, <see cref="System.ComponentModel.INotifyDataErrorInfo"/>),
 /// a setter that threw, or a warning.
 /// </summary>
-public class CellValidationEventArgs : EventArgs
+public sealed class CellValidationEventArgs : EventArgs
 {
     /// <summary>Creates the args.</summary>
     public CellValidationEventArgs(int rowIndex, int columnIndex, KumikoColumn column, object item,

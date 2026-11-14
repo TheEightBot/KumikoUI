@@ -3,7 +3,7 @@ using KumikoUI.Core.Models;
 namespace KumikoUI.Core.Input;
 
 /// <summary>Provides data for the <see cref="KumikoInputController.CellTapped"/> event.</summary>
-public class KumikoCellTappedEventArgs : EventArgs
+public sealed class KumikoCellTappedEventArgs : EventArgs
 {
     /// <summary>Initializes a new instance of the <see cref="KumikoCellTappedEventArgs"/> class.</summary>
     /// <param name="rowIndex">The tapped visible row.</param>

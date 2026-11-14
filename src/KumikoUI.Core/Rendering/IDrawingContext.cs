@@ -5,6 +5,11 @@ namespace KumikoUI.Core.Rendering;
 /// Implementations map these calls to concrete rendering APIs
 /// (SkiaSharp SKCanvas, HTML Canvas 2D, etc.).
 /// </summary>
+/// <remarks>
+/// The method decides how a shape is painted, not the <see cref="KumikoPaint"/>: <c>Fill*</c> methods fill the
+/// interior with the paint's color, <c>Draw*</c> methods stroke the outline with its color and
+/// <see cref="KumikoPaint.StrokeWidth"/>, and the text methods draw glyphs with its color and font.
+/// </remarks>
 public interface IDrawingContext
 {
     // ── Rectangles ───────────────────────────────────────────────
@@ -92,19 +97,22 @@ public interface IDrawingContext
     void DrawText(string text, float x, float y, KumikoPaint paint);
 
     /// <summary>
-    /// Draws a text string inside the specified rectangle, with alignment and optional clipping.
+    /// Draws a text string on one line inside the specified rectangle, with alignment and optional clipping.
     /// Text that exceeds the rectangle width may be truncated with an ellipsis.
     /// </summary>
+    /// <remarks>
+    /// This is the single-line primitive an implementation provides. Callers usually call the overload with the
+    /// <see cref="KumikoTextWrap"/> parameter, whose parameters after <c>paint</c> are optional (left, centered
+    /// vertically, clipped, no wrapping); with <see cref="KumikoTextWrap.None"/> it forwards here.
+    /// </remarks>
     /// <param name="text">The text to draw.</param>
     /// <param name="rect">The bounding rectangle for the text.</param>
     /// <param name="paint">The paint describing font, color, and anti-alias settings.</param>
-    /// <param name="hAlign">Horizontal text alignment within the rectangle.</param>
-    /// <param name="vAlign">Vertical text alignment within the rectangle.</param>
+    /// <param name="horizontalAlignment">Horizontal text alignment within the rectangle.</param>
+    /// <param name="verticalAlignment">Vertical text alignment within the rectangle.</param>
     /// <param name="clip">Whether to clip rendering to the rectangle bounds.</param>
     void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
-        KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
-        KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center,
-        bool clip = true);
+        KumikoTextAlignment horizontalAlignment, KumikoVerticalAlignment verticalAlignment, bool clip);
 
     /// <summary>
     /// Draws a text string inside the specified rectangle on one line or wrapped onto several, with alignment and
@@ -126,16 +134,18 @@ public interface IDrawingContext
     /// <param name="text">The text to draw.</param>
     /// <param name="rect">The bounding rectangle for the text.</param>
     /// <param name="paint">The paint describing font, color, and anti-alias settings.</param>
-    /// <param name="hAlign">Horizontal alignment of each line within the rectangle.</param>
-    /// <param name="vAlign">Vertical alignment of the block of lines within the rectangle.</param>
+    /// <param name="horizontalAlignment">Horizontal alignment of each line within the rectangle.</param>
+    /// <param name="verticalAlignment">Vertical alignment of the block of lines within the rectangle.</param>
     /// <param name="clip">Whether to clip rendering to the rectangle bounds.</param>
     /// <param name="wrap">Whether and where long lines are wrapped.</param>
     void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
-        KumikoTextAlignment hAlign, KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap)
+        KumikoTextAlignment horizontalAlignment = KumikoTextAlignment.Left,
+        KumikoVerticalAlignment verticalAlignment = KumikoVerticalAlignment.Center,
+        bool clip = true, KumikoTextWrap wrap = KumikoTextWrap.None)
     {
         if (wrap == KumikoTextWrap.None)
         {
-            DrawTextInRect(text, rect, paint, hAlign, vAlign, clip);
+            DrawTextInRect(text, rect, paint, horizontalAlignment, verticalAlignment, clip);
             return;
         }
         if (string.IsNullOrEmpty(text)) return;
@@ -146,7 +156,7 @@ public interface IDrawingContext
         if (lines.Count == 0) return;
 
         float height = lines.GetHeight(metrics);
-        float top = vAlign switch
+        float top = verticalAlignment switch
         {
             KumikoVerticalAlignment.Top => rect.Y,
             KumikoVerticalAlignment.Bottom => rect.Bottom - height,
@@ -161,7 +171,7 @@ public interface IDrawingContext
         for (int i = 0; i < lines.Count; i++)
         {
             var lineRect = new KumikoRect(rect.X, top + i * metrics.LineHeight, rect.Width, metrics.TextHeight);
-            DrawTextInRect(lines.GetLine(i), lineRect, paint, hAlign, KumikoVerticalAlignment.Top, clip: false);
+            DrawTextInRect(lines.GetLine(i), lineRect, paint, horizontalAlignment, KumikoVerticalAlignment.Top, clip: false);
         }
         if (clip)
             Restore();

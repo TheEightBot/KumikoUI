@@ -3,8 +3,8 @@
 Goal: extend the existing pipelines so `KumikoUI.Uno` is built on PRs and published to NuGet.org with
 the other packages — without disturbing the Core/SkiaSharp/Maui flows.
 
-Existing pipelines: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (build + test) and
-[`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) (tag-driven pack + push).
+Existing pipelines: [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) (build + test) and
+[`.github/workflows/publish.yml`](../../../.github/workflows/publish.yml) (tag-driven pack + push).
 
 ---
 
@@ -23,7 +23,7 @@ runner**, exactly like the existing `build-maui` / `pack-maui` jobs.
 
 ## 2. CI — add a `build-uno` job
 
-Mirror the `build-maui` job in [`ci.yml`](../../.github/workflows/ci.yml).
+Mirror the `build-maui` job in [`ci.yml`](../../../.github/workflows/ci.yml).
 
 - [x] New job, `needs: build-core`, `runs-on: windows-latest`. *(job `build-uno`)*
 - [x] Set up .NET `9.x` + `10.x` (same as `build-maui`).
@@ -53,7 +53,7 @@ Mirror the `build-maui` job in [`ci.yml`](../../.github/workflows/ci.yml).
 
 ## 3. Publish — add a `pack-uno` job
 
-Mirror `pack-maui` in [`publish.yml`](../../.github/workflows/publish.yml).
+Mirror `pack-maui` in [`publish.yml`](../../../.github/workflows/publish.yml).
 
 - [x] New job `pack-uno`, `needs: resolve-version`, `runs-on: windows-latest`; sets up .NET 9 + 10;
   restores Uno workloads (with cache, gated on cache-miss) as in §2.
@@ -83,7 +83,7 @@ Mirror `pack-maui` in [`publish.yml`](../../.github/workflows/publish.yml).
 
 - [x] `KumikoUI.Uno` follows the same tag-driven versioning (`v1.2.3` → `-p:Version=1.2.3`) — the
   `pack-uno` job consumes `needs.resolve-version.outputs.version` exactly like `pack-maui`/`pack-core` —
-  and inherits Authors/License/SourceLink from [`Directory.Build.props`](../../Directory.Build.props).
+  and inherits Authors/License/SourceLink from [`Directory.Build.props`](../../../Directory.Build.props).
 - [x] Keep its `<Version>` in lockstep with the other packages, or bump together on release. *(The
   release `-p:Version` flag overrides the csproj `<Version>` on tagged builds.)*
 - [x] `PackageId`/`Description`/`PackageTags` are set in the csproj
@@ -93,7 +93,7 @@ Mirror `pack-maui` in [`publish.yml`](../../.github/workflows/publish.yml).
 ## 5. Notes & caveats
 
 - [x] **Docs-only changes skip CI:** this documentation PR is ignored by the `paths-ignore` (`**.md`,
-  `docs/**`) filters in [`ci.yml`](../../.github/workflows/ci.yml) — intended; no build runs for docs.
+  `docs/**`) filters in [`ci.yml`](../../../.github/workflows/ci.yml) — intended; no build runs for docs.
 - [ ] **MSIX / library assets:** if the library ever ships assets ([05 §5](05-fonts-and-assets.md#5-shipping-assets-inside-the-library-only-if-needed)),
   document the unpackaged-mode requirement for the WinAppSDK head. *(Not applicable yet — library ships no assets today.)*
 - [x] **SkiaSharp native bits:** `SkiaSharp*` is pinned to `3.119.2` across all packages (via
@@ -103,7 +103,7 @@ Mirror `pack-maui` in [`publish.yml`](../../.github/workflows/publish.yml).
   the library no longer sets `GenerateLibraryLayout` (it ships no assets), and the package holds only `lib/`,
   the README and the icon. The Uno SDK's implicit `Uno.WinUI.Lottie` and `Uno.WinUI.Graphics2DSK` are
   `PrivateAssets="all"`, so the dependency groups carry only Core, SkiaSharp, SkiaSharp.*, `Uno.WinUI` and
-  `Microsoft.Extensions.Hosting.Abstractions`. [`eng/check-uno-package.sh`](../../eng/check-uno-package.sh)
+  `Microsoft.Extensions.Hosting.Abstractions`. [`eng/check-uno-package.sh`](../../../eng/check-uno-package.sh)
   asserts this in CI after the pack.
 - [x] **`Uno0001` not-implemented analyzer warnings:** the non-desktop heads emit `Uno0001` warnings for
   APIs not implemented on that head (e.g. `UIElement.IsHoldingEnabled`, `UIElement.CharacterReceived` on

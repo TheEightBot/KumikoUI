@@ -19,6 +19,7 @@ All use `[MemoryDiagnoser]` and deterministic data (row `i` is a pure function o
 - `RenderBenchmarks` (#68, #70): one `KumikoRenderer.Render` frame of a 30-row × 10-column visible grid into a no-op `IDrawingContext`. `Plain` is a bare grid, `Featured` adds multi-column sort, a filter, grouping, group, caption and table summaries, a frozen column and the drag handle. `Scrolling` moves the plain grid a row and 7 px further each frame (200 offsets, then wraps), so each frame reveals a row the display text cache hasn't seen. `Plain_FrameStatsOn` draws the frame-time overlay too. The first two and `FrameStatsOn` measure the steady state after warm-up frames.
 - `DataBenchmarks` (#70): the data pipeline on 100 000 rows, each benchmark one view rebuild: sort by int, string and date columns and by two columns; text-contains and numeric-greater-than filters; one- and two-level grouping with group and table summaries; sort, filter and group together; and `KumikoLayoutEngine.ComputeColumnWidths` for 10 columns.
 - `IncrementalBenchmarks` (#70): adding and removing one item at the end and in the middle of an `ObservableCollection` of 100 000 items with no sort, filter or grouping active (handled without rebuilding the view).
+- `BackgroundRebuildBenchmarks` (#254): sorting 1 000 000 rows synchronously on the calling thread (`Synchronous`, `BackgroundRebuildThreshold` off) versus in the background (`Background_EndToEnd`: from the request until the sorted view is published). The UI thread's share of a background sort (the call, copying the item references, swapping the view in) is asserted by `BackgroundRebuildTests.ToggleSort_On1MRows_NeverBlocksTheUiThreadLongerThanAFrame` (`Category=Performance`): about 1 ms on the reference machine.
 - `LiveUpdateBenchmarks` (#69): 100 items of a 100 000-row source raise `PropertyChanged` for a summarized property, as a live feed does. `HundredChanges_Sum` has a Sum summary, which follows each change in constant time; `HundredChanges_Max_Batched` has a Max summary and makes the changes inside one `BeginUpdate` scope, so the table summaries are recomputed once over the visible rows (nothing is re-sorted, re-filtered or regrouped). Before #69 each change rebuilt the whole view.
 
 ## Measured numbers
@@ -32,15 +33,15 @@ Apple M4 Max (16 cores), macOS 27.2, .NET SDK 10.0.403 / runtime 10.0.14, Arm64 
 | Render 30×10 while scrolling (one new row per frame) | 3.7 µs | 501 B |
 | Render 30×10, plain, frame-time overlay on | 3.2 µs (median) | 0 B |
 | `ComputeColumnWidths`, 10 columns | 0.1 µs | 0 B |
-| Sort 100K rows, int column | 54 ms | 86 MB |
-| Sort 100K rows, string column | 72 ms | 1.1 KB |
-| Sort 100K rows, date column | 211 ms | 94 MB |
-| Sort 100K rows, two columns | 51 ms | 84 MB |
-| Filter 100K rows, text contains | 2.4 ms | 0.5 KB |
-| Filter 100K rows, numeric greater than | 1.5 ms | 2.4 MB |
-| Group 100K rows, one level, with summaries | 19 ms | 9.1 MB |
-| Group 100K rows, two levels, with summaries | 42 ms | 10.5 MB |
-| Sort + filter + group together | 83 ms | 96 MB |
+| Sort 100K rows, int column | 24 ms | 3.4 MB |
+| Sort 100K rows, string column | 57 ms | 1.1 MB |
+| Sort 100K rows, date column | 173 ms | 3.4 MB |
+| Sort 100K rows, two columns | 25 ms | 4.2 MB |
+| Filter 100K rows, text contains | 2.2 ms | 1.3 KB |
+| Filter 100K rows, numeric greater than | 1.4 ms | 2.3 MB |
+| Group 100K rows, one level, with summaries | 21 ms | 10.3 MB |
+| Group 100K rows, two levels, with summaries | 42 ms | 10.4 MB |
+| Sort + filter + group together | 55 ms | 14.8 MB |
 | `ObservableCollection` add and remove one item, 100K rows | 128 µs | 432 B |
 | `ObservableCollection` insert and remove in the middle, 100K rows | 178 µs | 432 B |
 | 100 `PropertyChanged` of a summed property, 100K rows (Sum summary) | 24 µs | 100 KB |
@@ -48,7 +49,7 @@ Apple M4 Max (16 cores), macOS 27.2, .NET SDK 10.0.403 / runtime 10.0.14, Arm64 
 
 At 60 fps a frame has 16.7 ms; the render loop itself uses well under 1% of that for a 30 × 10 viewport. What a user sees also includes the drawing backend (SkiaSharp), which these benchmarks leave out by drawing into a no-op context, so per-device frame rates must be measured on the device with the frame-time overlay (below).
 
-Two numbers stand out and are the next targets rather than something to hide: sorting an int or date column allocates about 900 bytes per row (the string column sorts in place and allocates almost nothing, so the cost is in the int and date key handling; not yet investigated), and every sort, filter or grouping change rebuilds the whole 100K-row view on the UI thread. The filter, grouping and live-update rows were remeasured for #69 on 2026-11-13 on the same machine (macOS 27.2.1, `--job short`).
+Since #254 a sort reads each row's sort value once instead of twice per comparison, so sorting an int or date column allocates about 35 bytes per row (one boxed value) instead of about 900, and the grids rebuild sources of 10,000 rows or more on a worker, so a sort, filter or grouping change no longer blocks the UI thread for the rebuild (see `BackgroundRebuildBenchmarks`). The sort, filter and grouping rows were remeasured for #254 on 2026-11-13 on the same machine (`--job short`, while other builds ran). The date column is still the slowest sort: its comparisons, not its reads, are the cost.
 
 ## Performance budgets
 
@@ -59,9 +60,9 @@ A budget is a number a change must not break. The first column is the intent, th
 | Render a 30×10 frame, steady state | ≤ 20 µs | exactly 0 B | `RenderAllocationTests` (0 B, every CI run); time by benchmark |
 | Render with the frame-time overlay on, between text updates | ≤ 20 µs | exactly 0 B | `PerformanceBudgetTests` (0 B); time by benchmark |
 | Scrolling frame (one new row) | ≤ 20 µs | ≤ 2 KB | by benchmark |
-| Sort 100K rows | ≤ 300 ms | ≤ 160 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
+| Sort 100K rows | ≤ 300 ms | ≤ 8 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
 | Filter 100K rows (text or numeric) | ≤ 10 ms | ≤ 5 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
-| Group 100K rows, 1–2 levels, with summaries | ≤ 100 ms | ≤ 20 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
+| Group 100K rows, 1–2 levels, with summaries | ≤ 100 ms | ≤ 12 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
 | Add or remove one item (`ObservableCollection`, no transforms) | ≤ 1 ms | ≤ 4 KB | `PerformanceBudgetTests` (allocation); time by benchmark |
 | 100 `PropertyChanged` of a summed property, 100K rows | ≤ 16 ms in total on the calling thread | — | `ViewPipelineTests` (time, `Category=Performance`); benchmark |
 

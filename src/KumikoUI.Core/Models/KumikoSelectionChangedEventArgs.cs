@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Event arguments raised when items are added to or removed from the grid selection.
 /// </summary>
-public class KumikoSelectionChangedEventArgs : EventArgs
+public sealed class KumikoSelectionChangedEventArgs : EventArgs
 {
     /// <summary>Creates the args.</summary>
     public KumikoSelectionChangedEventArgs(IReadOnlyList<object> addedItems, IReadOnlyList<object> removedItems,

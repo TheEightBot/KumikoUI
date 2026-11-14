@@ -77,7 +77,8 @@ public class KumikoDataGridSelectionBindingTests
         {
             try { action(); }
             catch (Exception ex) { error = ex; }
-        }) { IsBackground = true };
+        })
+        { IsBackground = true };
         thread.Start();
 
         Assert.True(thread.Join(LoopTimeout), "The selection binding did not settle (feedback loop).");

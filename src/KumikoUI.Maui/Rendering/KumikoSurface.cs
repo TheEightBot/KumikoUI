@@ -19,7 +19,7 @@ internal delegate void KumikoFrameRenderer(SKCanvas canvas, float width, float h
 /// <summary>
 /// The view a <see cref="KumikoDataGrid"/> draws on (#71): <see cref="KumikoCanvasViewSurface"/> (SkiaSharp's
 /// <c>SKCanvasView</c>, <see cref="KumikoRenderMode.Software"/>) or <see cref="KumikoGpuViewSurface"/>
-/// (<c>SKGLView</c>, <see cref="KumikoRenderMode.Gpu"/>). <see cref="KumikoSurfaceFactory"/> picks one.
+/// (<c>SKGLView</c>, <see cref="KumikoRenderMode.Hardware"/>). <see cref="KumikoSurfaceFactory"/> picks one.
 /// </summary>
 /// <remarks>
 /// Neither view can redraw a sub-rectangle: every paint covers the whole surface. The grid's caret blink therefore
@@ -30,7 +30,7 @@ internal abstract class KumikoSurface : IDisposable
     /// <summary>The MAUI view to add to the grid's layout; it fills the grid and raises the touch events.</summary>
     public abstract View View { get; }
 
-    /// <summary>The resolved mode: <see cref="KumikoRenderMode.Software"/> or <see cref="KumikoRenderMode.Gpu"/>.</summary>
+    /// <summary>The resolved mode: <see cref="KumikoRenderMode.Software"/> or <see cref="KumikoRenderMode.Hardware"/>.</summary>
     public abstract KumikoRenderMode Mode { get; }
 
     /// <summary>

@@ -22,6 +22,8 @@
             <NavigationViewItem Content="MVVM Actions" Tag="MvvmActions" />
             <NavigationViewItem Content="Custom Fonts" Tag="CustomFonts" />
             <NavigationViewItem Content="Images" Tag="Images" />
+            <NavigationViewItem Content="Styling" Tag="Styling" />
+            <NavigationViewItem Content="Events" Tag="Events" />
         </NavigationView.MenuItems>
 
         <Frame x:Name="ContentFrame" />

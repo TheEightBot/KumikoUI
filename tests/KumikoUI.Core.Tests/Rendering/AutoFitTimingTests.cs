@@ -102,7 +102,8 @@ public class AutoFitTimingTests(Xunit.Abstractions.ITestOutputHelper output)
         public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
             KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
             KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center,
-            bool clip = true) { }
+            bool clip = true)
+        { }
         public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) => _inner.GetFontMetrics(paint);
         public void ClipRect(KumikoRect rect) { }
         public void Save() { }

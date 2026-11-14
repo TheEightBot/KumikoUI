@@ -2,13 +2,15 @@
 
 # KumikoUI.Maui
 
-[![NuGet](https://img.shields.io/nuget/v/KumikoUI.Maui.svg)](https://www.nuget.org/packages/KumikoUI.Maui)
+[![NuGet](https://img.shields.io/nuget/vpre/KumikoUI.Maui.svg)](https://www.nuget.org/packages/KumikoUI.Maui)
 [![Downloads](https://img.shields.io/nuget/dt/KumikoUI.Maui.svg)](https://www.nuget.org/packages/KumikoUI.Maui)
 [![License: MIT](https://img.shields.io/github/license/TheEightBot/KumikoUI.svg)](https://github.com/TheEightBot/KumikoUI/blob/main/LICENSE)
 
 KumikoUI.Maui is a high-performance data grid control for .NET MAUI. The whole grid is drawn with SkiaSharp on one canvas, with no native cell controls, so it looks and behaves the same on every platform. It includes virtual scrolling, sorting, filtering, grouping, summaries, cell editing, frozen columns and rows, row drag and drop, theming and localization.
 
-It targets .NET 10 on Android, iOS, Mac Catalyst and Windows.
+It targets .NET 10 on Android, iOS, Mac Catalyst and Windows. An automated device suite passes on an Android emulator, iPhone and iPad simulators and Mac Catalyst; the Windows head is built in CI but has not been run on a device yet ([MAUI verification notes](https://github.com/TheEightBot/KumikoUI/blob/main/docs/maui-verification.md)).
+
+> **Preview.** This is `1.0.0-preview.1`, the first 1.0 prerelease of all four KumikoUI packages. The API may still change before 1.0.0. Install a prerelease with `--prerelease` or an explicit version (`dotnet add package KumikoUI.Maui --version 1.0.0-preview.1`), and use the same version for every KumikoUI package. Release notes: [CHANGELOG](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md).
 
 ![KumikoUI data grid](https://raw.githubusercontent.com/TheEightBot/KumikoUI/main/images/main.png)
 
@@ -30,10 +32,10 @@ Installing KumikoUI.Maui brings in KumikoUI.Core and KumikoUI.SkiaSharp. All fou
 Install the package in your MAUI app project:
 
 ```
-dotnet add package KumikoUI.Maui
+dotnet add package KumikoUI.Maui --prerelease
 ```
 
-Register the grid in `MauiProgram.cs`. `UseSkiaKumikoUI()` also registers SkiaSharp.
+Register the grid in `MauiProgram.cs`. `UseKumikoUI()` also registers SkiaSharp.
 
 ```csharp
 using KumikoUI.Maui;
@@ -43,7 +45,7 @@ public static MauiApp CreateMauiApp()
     var builder = MauiApp.CreateBuilder();
     builder
         .UseMauiApp<App>()
-        .UseSkiaKumikoUI();
+        .UseKumikoUI();
 
     return builder.Build();
 }
@@ -108,6 +110,7 @@ On iOS and Mac Catalyst, current OS versions require apps to adopt the UIScene l
 
 - [Project README](https://github.com/TheEightBot/KumikoUI#readme): column types, editing, validation, theming, fonts and more.
 - [MAUI sample app](https://github.com/TheEightBot/KumikoUI/tree/main/samples/SampleApp.Maui).
+- [MAUI verification notes](https://github.com/TheEightBot/KumikoUI/blob/main/docs/maui-verification.md): the device results.
 - [Architecture](https://github.com/TheEightBot/KumikoUI/blob/main/docs/ARCHITECTURE.md) and [rendering](https://github.com/TheEightBot/KumikoUI/blob/main/docs/RENDERING.md).
 - [Changelog](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md) and [versioning policy](https://github.com/TheEightBot/KumikoUI/blob/main/docs/VERSIONING.md).
 - [Report an issue](https://github.com/TheEightBot/KumikoUI/issues).

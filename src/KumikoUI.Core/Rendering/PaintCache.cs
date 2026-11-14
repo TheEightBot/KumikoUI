@@ -11,7 +11,7 @@ namespace KumikoUI.Core.Rendering;
 /// <para>The paints are shared: draw with them, but do not modify them. A rebuild creates new instances, so a
 /// paint obtained earlier keeps the values it had.</para>
 /// </summary>
-public class PaintCache
+public sealed class PaintCache
 {
     // ── Backgrounds ──────────────────────────────────────────────
     /// <summary>Paint for the default grid background.</summary>
@@ -116,6 +116,18 @@ public class PaintCache
     /// <summary>Fill paint for the dash of an indeterminate (null) value in a three-state Boolean cell.</summary>
     public KumikoPaint CheckIndeterminate { get; private set; } = new();
 
+    /// <summary>
+    /// Fill laid over a control the mouse hovers (<see cref="KumikoStyle.HoverOverlayColor"/>): a check box, an action
+    /// button, a header. A cell renderer draws it over a control at <see cref="CellRenderContext.PointerPosition"/>.
+    /// </summary>
+    public KumikoPaint HoverOverlay { get; private set; } = new();
+
+    /// <summary>
+    /// Fill laid over a control while a press on it is held (<see cref="KumikoStyle.PressedOverlayColor"/>); see
+    /// <see cref="CellRenderContext.IsPointerPressed"/>.
+    /// </summary>
+    public KumikoPaint PressedOverlay { get; private set; } = new();
+
     // ── Grid chrome (drawn by KumikoRenderer only) ───────────────
     internal KumikoPaint SortOrderBadge { get; private set; } = new();
     internal KumikoPaint GroupPanelLabel { get; private set; } = new();
@@ -149,11 +161,8 @@ public class PaintCache
     private KumikoStyle? _builtStyle;
     private int _builtVersion;
 
-    // The header font the sort-order badge font was derived from, with its family and size then: a font is
-    // mutable, and changing one does not change the style's version.
+    // The header font the sort-order badge font was derived from.
     private KumikoFont? _badgeSourceFont;
-    private string? _badgeSourceFamily;
-    private float _badgeSourceSize;
 
     // Reused by CellTextPaint for cells whose style overrides the text color or font.
     private readonly KumikoPaint _cellTextOverride = new() { IsAntiAlias = true };
@@ -215,14 +224,12 @@ public class PaintCache
         {
             Color = style.GridLineColor,
             StrokeWidth = style.GridLineWidth,
-            Style = PaintStyle.Stroke,
             IsAntiAlias = false
         };
         HeaderBorder = new KumikoPaint
         {
             Color = style.HeaderBorderColor,
-            StrokeWidth = style.GridLineWidth,
-            Style = PaintStyle.Stroke
+            StrokeWidth = style.GridLineWidth
         };
 
         // Dividers
@@ -230,21 +237,18 @@ public class PaintCache
         {
             Color = style.FrozenColumnDividerColor,
             StrokeWidth = style.FrozenColumnDividerWidth,
-            Style = PaintStyle.Stroke,
             IsAntiAlias = false
         };
         RightFrozenColumnDivider = new KumikoPaint
         {
             Color = style.RightFrozenColumnDividerColor,
             StrokeWidth = style.RightFrozenColumnDividerWidth,
-            Style = PaintStyle.Stroke,
             IsAntiAlias = false
         };
         FrozenRowDivider = new KumikoPaint
         {
             Color = style.FrozenRowDividerColor,
             StrokeWidth = style.FrozenRowDividerWidth,
-            Style = PaintStyle.Stroke,
             IsAntiAlias = false
         };
 
@@ -253,13 +257,11 @@ public class PaintCache
         {
             Color = style.CurrentCellBorderColor,
             StrokeWidth = style.CurrentCellBorderWidth,
-            Style = PaintStyle.Stroke,
             IsAntiAlias = true
         };
         AccentStroke = new KumikoPaint
         {
             Color = style.AccentColor,
-            Style = PaintStyle.Stroke,
             StrokeWidth = 2f,
             IsAntiAlias = true
         };
@@ -268,19 +270,16 @@ public class PaintCache
         SortIndicator = new KumikoPaint
         {
             Color = style.SortIndicatorColor,
-            Style = PaintStyle.Fill,
             IsAntiAlias = true
         };
         FilterIcon = new KumikoPaint
         {
             Color = style.FilterIconColor,
-            Style = PaintStyle.Fill,
             IsAntiAlias = true
         };
         FilterActiveIcon = new KumikoPaint
         {
             Color = style.FilterActiveIconColor,
-            Style = PaintStyle.Fill,
             IsAntiAlias = true
         };
 
@@ -290,7 +289,6 @@ public class PaintCache
         {
             Color = style.RowDragHandleColor,
             StrokeWidth = 1.5f,
-            Style = PaintStyle.Stroke,
             IsAntiAlias = true
         };
 
@@ -306,7 +304,6 @@ public class PaintCache
         GroupChipBorder = new KumikoPaint
         {
             Color = style.GroupPanelChipBorderColor,
-            Style = PaintStyle.Stroke,
             StrokeWidth = 1f,
             IsAntiAlias = true
         };
@@ -337,7 +334,9 @@ public class PaintCache
         // Cell content
         CheckBoxBorder = Stroke(style.CheckBoxBorderColor ?? style.GridLineColor, 1.5f);
         CheckMark = Stroke(style.AccentColor, 2f);
-        CheckIndeterminate = new KumikoPaint { Color = style.AccentColor, Style = PaintStyle.Fill, IsAntiAlias = true };
+        CheckIndeterminate = new KumikoPaint { Color = style.AccentColor, IsAntiAlias = true };
+        HoverOverlay = new KumikoPaint { Color = style.HoverOverlayColor, IsAntiAlias = true };
+        PressedOverlay = new KumikoPaint { Color = style.PressedOverlayColor, IsAntiAlias = true };
 
         // Multi-sort order badge; its font is derived from the header font in UpdateSortOrderBadgeFont
         SortOrderBadge = new KumikoPaint { Color = style.SortIndicatorColor, IsAntiAlias = true };
@@ -357,7 +356,7 @@ public class PaintCache
             IsAntiAlias = true
         };
         GroupChipAccent = new KumikoPaint { Color = style.GroupPanelChipAccentColor };
-        GroupChipArrow = new KumikoPaint { Color = style.GroupPanelChipAccentColor, Style = PaintStyle.Fill, IsAntiAlias = true };
+        GroupChipArrow = new KumikoPaint { Color = style.GroupPanelChipAccentColor, IsAntiAlias = true };
         GroupChipRemoveBackground = new KumikoPaint { Color = style.GroupPanelChipRemoveColor.WithAlpha(40) };
         GroupChipRemove = Stroke(style.GroupPanelChipRemoveColor, 1.5f);
         GroupChipSeparator = Stroke(style.GroupPanelLabelColor, 1.5f);
@@ -365,7 +364,7 @@ public class PaintCache
         // Group header rows
         GroupHeaderBackground = new KumikoPaint { Color = style.GroupHeaderBackgroundColor };
         GroupChevronBackground = new KumikoPaint { Color = style.GroupChevronBackgroundColor, IsAntiAlias = true };
-        GroupChevron = new KumikoPaint { Color = style.GroupChevronColor, Style = PaintStyle.Fill, IsAntiAlias = true };
+        GroupChevron = new KumikoPaint { Color = style.GroupChevronColor, IsAntiAlias = true };
         GroupHeaderText = new KumikoPaint
         {
             Color = style.GroupHeaderTextColor,
@@ -390,21 +389,18 @@ public class PaintCache
         DragHandleDivider = new KumikoPaint
         {
             Color = style.GridLineColor,
-            StrokeWidth = 1f,
-            Style = PaintStyle.Stroke
+            StrokeWidth = 1f
         };
         ColumnDragGhost = new KumikoPaint { Color = style.HeaderBackgroundColor.WithAlpha(180) };
         ColumnDragBorder = new KumikoPaint
         {
             Color = style.CurrentCellBorderColor,
-            Style = PaintStyle.Stroke,
             StrokeWidth = 2f
         };
         RowDragGhost = new KumikoPaint { Color = style.RowDragOverlayColor };
         RowDragBorder = new KumikoPaint
         {
             Color = style.RowDragBorderColor,
-            Style = PaintStyle.Stroke,
             StrokeWidth = 2f
         };
         RowDragText = new KumikoPaint
@@ -416,15 +412,13 @@ public class PaintCache
         RowDropIndicator = new KumikoPaint
         {
             Color = style.RowDropIndicatorColor,
-            StrokeWidth = style.RowDropIndicatorWidth,
-            Style = PaintStyle.Stroke
+            StrokeWidth = style.RowDropIndicatorWidth
         };
     }
 
     private static KumikoPaint Stroke(KumikoColor color, float width, bool antiAlias = true) => new()
     {
         Color = color,
-        Style = PaintStyle.Stroke,
         StrokeWidth = width,
         IsAntiAlias = antiAlias
     };
@@ -435,21 +429,17 @@ public class PaintCache
     /// </summary>
     private void UpdateSortOrderBadgeFont(KumikoFont headerFont)
     {
-        if (ReferenceEquals(headerFont, _badgeSourceFont)
-            && ReferenceEquals(headerFont.Family, _badgeSourceFamily)
-            && headerFont.Size.Equals(_badgeSourceSize)) // exact: cache change detection, not a numeric tolerance
+        if (_badgeSourceFont == headerFont) // value equality: exact family, size, weight and slant
             return;
 
         _badgeSourceFont = headerFont;
-        _badgeSourceFamily = headerFont.Family;
-        _badgeSourceSize = headerFont.Size;
         SortOrderBadge.Font = new KumikoFont(headerFont.Family, headerFont.Size * 0.65f);
     }
 
     /// <summary>
     /// Create a paint for a specific background color (for row backgrounds that vary per row).
     /// </summary>
-    public static KumikoPaint BackgroundPaint(KumikoColor color) => new() { Color = color };
+    internal static KumikoPaint BackgroundPaint(KumikoColor color) => new() { Color = color };
 
     /// <summary>
     /// The paint for cell text under a cell's style overrides: the shared <see cref="CellText"/> when

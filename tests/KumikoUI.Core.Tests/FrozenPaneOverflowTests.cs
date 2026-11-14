@@ -322,7 +322,7 @@ public class FrozenPaneOverflowTests
         Assert.Same(g.Column("City"), g.Hit(270, RowY).Column);
         Assert.Same(g.Column("Name"), g.Hit(262, RowY).Column);
 
-        var bounds = g.Input.GetCellScreenBounds(0, g.Index("City"), g.Scroll, g.Style, g.Source.Columns, dataSource: g.Source);
+        var bounds = KumikoInputController.GetCellScreenBounds(0, g.Index("City"), g.Scroll, g.Style, g.Source.Columns, dataSource: g.Source);
         Assert.Equal(x, bounds.X);
     }
 

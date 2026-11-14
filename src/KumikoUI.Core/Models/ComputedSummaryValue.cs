@@ -4,7 +4,7 @@ namespace KumikoUI.Core.Models;
 /// One computed aggregate of a summary row: a single <see cref="SummaryColumnDescription"/> evaluated.
 /// Several of these can share one property (for example a Sum and an Average of the same column).
 /// </summary>
-public class ComputedSummaryValue
+public sealed class ComputedSummaryValue
 {
     /// <summary>The property that was aggregated.</summary>
     public string PropertyName { get; init; } = "";

@@ -1,0 +1,217 @@
+KumikoUI.Maui.KumikoDataGrid
+KumikoUI.Maui.KumikoDataGrid.ActiveRenderMode.get -> KumikoUI.Maui.KumikoRenderMode
+KumikoUI.Maui.KumikoDataGrid.AllowFiltering.get -> bool
+KumikoUI.Maui.KumikoDataGrid.AllowFiltering.set -> void
+KumikoUI.Maui.KumikoDataGrid.AllowRowDragDrop.get -> bool?
+KumikoUI.Maui.KumikoDataGrid.AllowRowDragDrop.set -> void
+KumikoUI.Maui.KumikoDataGrid.AllowSorting.get -> bool
+KumikoUI.Maui.KumikoDataGrid.AllowSorting.set -> void
+KumikoUI.Maui.KumikoDataGrid.AlternateRowBackground.get -> Microsoft.Maui.Graphics.Color?
+KumikoUI.Maui.KumikoDataGrid.AlternateRowBackground.set -> void
+KumikoUI.Maui.KumikoDataGrid.AnnounceChanges.get -> bool
+KumikoUI.Maui.KumikoDataGrid.AnnounceChanges.set -> void
+KumikoUI.Maui.KumikoDataGrid.ApplyLayoutState(KumikoUI.Core.Models.KumikoLayoutState! state) -> void
+KumikoUI.Maui.KumikoDataGrid.BackgroundRebuildThreshold.get -> int
+KumikoUI.Maui.KumikoDataGrid.BackgroundRebuildThreshold.set -> void
+KumikoUI.Maui.KumikoDataGrid.CellBeginEdit -> System.EventHandler<KumikoUI.Core.Editing.CellBeginEditEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.CellEndEdit -> System.EventHandler<KumikoUI.Core.Editing.CellEndEditEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.CellTapped -> System.EventHandler<KumikoUI.Core.Input.KumikoCellTappedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.CellTappedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.KumikoDataGrid.CellTappedCommand.set -> void
+KumikoUI.Maui.KumikoDataGrid.CellValidator.get -> System.Func<int, int, object?, KumikoUI.Core.Editing.CellValidationResult!>?
+KumikoUI.Maui.KumikoDataGrid.CellValidator.set -> void
+KumikoUI.Maui.KumikoDataGrid.CellValueChanged -> System.EventHandler<KumikoUI.Core.Editing.CellValueChangedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.CellValueChangedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.KumikoDataGrid.CellValueChangedCommand.set -> void
+KumikoUI.Maui.KumikoDataGrid.ClearSelectionOnEmptyAreaTap.get -> bool
+KumikoUI.Maui.KumikoDataGrid.ClearSelectionOnEmptyAreaTap.set -> void
+KumikoUI.Maui.KumikoDataGrid.Clipboard.get -> KumikoUI.Core.Input.IKumikoClipboard?
+KumikoUI.Maui.KumikoDataGrid.Clipboard.set -> void
+KumikoUI.Maui.KumikoDataGrid.ClipboardCopyIncludesHeaders.get -> bool
+KumikoUI.Maui.KumikoDataGrid.ClipboardCopyIncludesHeaders.set -> void
+KumikoUI.Maui.KumikoDataGrid.ColumnReordered -> System.EventHandler<KumikoUI.Core.Input.KumikoColumnReorderedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.ColumnResized -> System.EventHandler<KumikoUI.Core.Input.ColumnResizedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.Columns.get -> System.Collections.ObjectModel.ObservableCollection<KumikoUI.Core.Models.KumikoColumn!>!
+KumikoUI.Maui.KumikoDataGrid.Columns.set -> void
+KumikoUI.Maui.KumikoDataGrid.ContextMenuRequested -> System.EventHandler<KumikoUI.Core.Input.KumikoContextRequestedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.ContextMenuRequestedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.KumikoDataGrid.ContextMenuRequestedCommand.set -> void
+KumikoUI.Maui.KumikoDataGrid.CurrentCell.get -> KumikoUI.Core.Models.CellPosition
+KumikoUI.Maui.KumikoDataGrid.CurrentCell.set -> void
+KumikoUI.Maui.KumikoDataGrid.DataSource.get -> KumikoUI.Core.Models.KumikoSource!
+KumikoUI.Maui.KumikoDataGrid.DismissKeyboardOnEnter.get -> bool
+KumikoUI.Maui.KumikoDataGrid.DismissKeyboardOnEnter.set -> void
+KumikoUI.Maui.KumikoDataGrid.EditSession.get -> KumikoUI.Core.Editing.EditSession!
+KumikoUI.Maui.KumikoDataGrid.EditTextSelectionMode.get -> KumikoUI.Core.Editing.EditTextSelectionMode
+KumikoUI.Maui.KumikoDataGrid.EditTextSelectionMode.set -> void
+KumikoUI.Maui.KumikoDataGrid.EditTriggers.get -> KumikoUI.Core.Editing.EditTrigger
+KumikoUI.Maui.KumikoDataGrid.EditTriggers.set -> void
+KumikoUI.Maui.KumikoDataGrid.EnableHaptics.get -> bool
+KumikoUI.Maui.KumikoDataGrid.EnableHaptics.set -> void
+KumikoUI.Maui.KumikoDataGrid.FilterChanged -> System.EventHandler<KumikoUI.Core.Models.FilterChangedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.FilterChanging -> System.EventHandler<KumikoUI.Core.Models.FilterChangingEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.FollowSystemTheme.get -> bool
+KumikoUI.Maui.KumikoDataGrid.FollowSystemTheme.set -> void
+KumikoUI.Maui.KumikoDataGrid.FrozenRowCount.get -> int
+KumikoUI.Maui.KumikoDataGrid.FrozenRowCount.set -> void
+KumikoUI.Maui.KumikoDataGrid.GetLayoutState() -> KumikoUI.Core.Models.KumikoLayoutState!
+KumikoUI.Maui.KumikoDataGrid.GridDescription.get -> string?
+KumikoUI.Maui.KumikoDataGrid.GridDescription.set -> void
+KumikoUI.Maui.KumikoDataGrid.GridHint.get -> string?
+KumikoUI.Maui.KumikoDataGrid.GridHint.set -> void
+KumikoUI.Maui.KumikoDataGrid.GridSelectionMode.get -> KumikoUI.Core.Models.KumikoSelectionMode
+KumikoUI.Maui.KumikoDataGrid.GridSelectionMode.set -> void
+KumikoUI.Maui.KumikoDataGrid.GridStyle.get -> KumikoUI.Core.Models.KumikoStyle!
+KumikoUI.Maui.KumikoDataGrid.GridStyle.set -> void
+KumikoUI.Maui.KumikoDataGrid.GroupDescriptions.get -> System.Collections.ObjectModel.ObservableCollection<KumikoUI.Core.Models.GroupDescription!>!
+KumikoUI.Maui.KumikoDataGrid.GroupDescriptions.set -> void
+KumikoUI.Maui.KumikoDataGrid.GroupExpandedChanged -> System.EventHandler<KumikoUI.Core.Models.GroupExpandedChangedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.GroupExpanding -> System.EventHandler<KumikoUI.Core.Models.GroupExpandingEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.GroupSummaryRows.get -> System.Collections.ObjectModel.ObservableCollection<KumikoUI.Core.Models.GroupSummaryRow!>!
+KumikoUI.Maui.KumikoDataGrid.GroupSummaryRows.set -> void
+KumikoUI.Maui.KumikoDataGrid.HeaderHeight.get -> double
+KumikoUI.Maui.KumikoDataGrid.HeaderHeight.set -> void
+KumikoUI.Maui.KumikoDataGrid.HeaderTapped -> System.EventHandler<KumikoUI.Core.Input.KumikoHeaderTappedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.HeaderTappedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.KumikoDataGrid.HeaderTappedCommand.set -> void
+KumikoUI.Maui.KumikoDataGrid.HorizontalOffset.get -> double
+KumikoUI.Maui.KumikoDataGrid.HorizontalOffset.set -> void
+KumikoUI.Maui.KumikoDataGrid.ImageCache.get -> KumikoUI.SkiaSharp.KumikoImageCache!
+KumikoUI.Maui.KumikoDataGrid.InputController.get -> KumikoUI.Core.Input.KumikoInputController!
+KumikoUI.Maui.KumikoDataGrid.Invalidate() -> void
+KumikoUI.Maui.KumikoDataGrid.IsReadOnly.get -> bool
+KumikoUI.Maui.KumikoDataGrid.IsReadOnly.set -> void
+KumikoUI.Maui.KumikoDataGrid.ItemsSource.get -> System.Collections.IEnumerable?
+KumikoUI.Maui.KumikoDataGrid.ItemsSource.set -> void
+KumikoUI.Maui.KumikoDataGrid.KumikoDataGrid() -> void
+KumikoUI.Maui.KumikoDataGrid.RenderMode.get -> KumikoUI.Maui.KumikoRenderMode
+KumikoUI.Maui.KumikoDataGrid.RenderMode.set -> void
+KumikoUI.Maui.KumikoDataGrid.RowDoubleTapped -> System.EventHandler<KumikoUI.Core.Input.RowTappedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.RowHeight.get -> double
+KumikoUI.Maui.KumikoDataGrid.RowHeight.set -> void
+KumikoUI.Maui.KumikoDataGrid.RowReorderRejected -> System.EventHandler<KumikoUI.Core.Input.RowReorderedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.RowReordered -> System.EventHandler<KumikoUI.Core.Input.RowReorderedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.RowTapped -> System.EventHandler<KumikoUI.Core.Input.RowTappedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.RowTappedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.KumikoDataGrid.RowTappedCommand.set -> void
+KumikoUI.Maui.KumikoDataGrid.ScrollSettings.get -> KumikoUI.Core.Input.ScrollSettings!
+KumikoUI.Maui.KumikoDataGrid.ScrollSettings.set -> void
+KumikoUI.Maui.KumikoDataGrid.ScrollToColumn(KumikoUI.Core.Models.KumikoColumn! column) -> bool
+KumikoUI.Maui.KumikoDataGrid.ScrollToColumn(KumikoUI.Core.Models.KumikoColumn! column, KumikoUI.Core.Models.KumikoScrollPosition position) -> bool
+KumikoUI.Maui.KumikoDataGrid.ScrollToColumn(int columnIndex) -> bool
+KumikoUI.Maui.KumikoDataGrid.ScrollToColumn(int columnIndex, KumikoUI.Core.Models.KumikoScrollPosition position) -> bool
+KumikoUI.Maui.KumikoDataGrid.ScrollToItem(object! item, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest, bool expandGroups = true) -> bool
+KumikoUI.Maui.KumikoDataGrid.ScrollToRow(int row, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest) -> bool
+KumikoUI.Maui.KumikoDataGrid.Scrolled -> System.EventHandler<KumikoUI.Core.Models.KumikoScrolledEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.SelectedIndex.get -> int
+KumikoUI.Maui.KumikoDataGrid.SelectedIndex.set -> void
+KumikoUI.Maui.KumikoDataGrid.SelectedItem.get -> object?
+KumikoUI.Maui.KumikoDataGrid.SelectedItem.set -> void
+KumikoUI.Maui.KumikoDataGrid.SelectedItems.get -> System.Collections.IList?
+KumikoUI.Maui.KumikoDataGrid.SelectedItems.set -> void
+KumikoUI.Maui.KumikoDataGrid.Selection.get -> KumikoUI.Core.Models.KumikoSelectionModel!
+KumikoUI.Maui.KumikoDataGrid.SelectionChanged -> System.EventHandler<KumikoUI.Core.Models.KumikoSelectionChangedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.SelectionChangedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.KumikoDataGrid.SelectionChangedCommand.set -> void
+KumikoUI.Maui.KumikoDataGrid.SelectionChangedCommandParameter.get -> object?
+KumikoUI.Maui.KumikoDataGrid.SelectionChangedCommandParameter.set -> void
+KumikoUI.Maui.KumikoDataGrid.SetCellRenderer(KumikoUI.Core.Models.KumikoColumnType columnType, KumikoUI.Core.Rendering.ICellRenderer! renderer) -> void
+KumikoUI.Maui.KumikoDataGrid.ShowFrameStats.get -> bool
+KumikoUI.Maui.KumikoDataGrid.ShowFrameStats.set -> void
+KumikoUI.Maui.KumikoDataGrid.ShowHorizontalGridLines.get -> bool?
+KumikoUI.Maui.KumikoDataGrid.ShowHorizontalGridLines.set -> void
+KumikoUI.Maui.KumikoDataGrid.ShowRowDragHandle.get -> bool?
+KumikoUI.Maui.KumikoDataGrid.ShowRowDragHandle.set -> void
+KumikoUI.Maui.KumikoDataGrid.ShowVerticalGridLines.get -> bool?
+KumikoUI.Maui.KumikoDataGrid.ShowVerticalGridLines.set -> void
+KumikoUI.Maui.KumikoDataGrid.SortChanged -> System.EventHandler<KumikoUI.Core.Models.SortColumnsChangedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.SortChangedCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.KumikoDataGrid.SortChangedCommand.set -> void
+KumikoUI.Maui.KumikoDataGrid.SortChanging -> System.EventHandler<KumikoUI.Core.Models.SortColumnsChangingEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.TableSummaryRows.get -> System.Collections.ObjectModel.ObservableCollection<KumikoUI.Core.Models.TableSummaryRow!>!
+KumikoUI.Maui.KumikoDataGrid.TableSummaryRows.set -> void
+KumikoUI.Maui.KumikoDataGrid.Theme.get -> KumikoUI.Core.Models.KumikoThemeMode
+KumikoUI.Maui.KumikoDataGrid.Theme.set -> void
+KumikoUI.Maui.KumikoDataGrid.ValidationFailed -> System.EventHandler<KumikoUI.Core.Editing.CellValidationEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.VerticalOffset.get -> double
+KumikoUI.Maui.KumikoDataGrid.VerticalOffset.set -> void
+KumikoUI.Maui.KumikoDataGrid.ViewChanged -> System.EventHandler<KumikoUI.Core.Models.KumikoViewChangedEventArgs!>?
+KumikoUI.Maui.KumikoFonts
+KumikoUI.Maui.KumikoRenderMode
+KumikoUI.Maui.KumikoRenderMode.Auto = 0 -> KumikoUI.Maui.KumikoRenderMode
+KumikoUI.Maui.KumikoRenderMode.Hardware = 2 -> KumikoUI.Maui.KumikoRenderMode
+KumikoUI.Maui.KumikoRenderMode.Software = 1 -> KumikoUI.Maui.KumikoRenderMode
+KumikoUI.Maui.KumikoUIHostingExtensions
+KumikoUI.Maui.MauiActionButtonDefinition
+KumikoUI.Maui.MauiActionButtonDefinition.Action.get -> System.Action?
+KumikoUI.Maui.MauiActionButtonDefinition.Action.set -> void
+KumikoUI.Maui.MauiActionButtonDefinition.BackgroundColor.get -> Microsoft.Maui.Graphics.Color!
+KumikoUI.Maui.MauiActionButtonDefinition.BackgroundColor.set -> void
+KumikoUI.Maui.MauiActionButtonDefinition.Command.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.MauiActionButtonDefinition.Command.set -> void
+KumikoUI.Maui.MauiActionButtonDefinition.CommandParameter.get -> object?
+KumikoUI.Maui.MauiActionButtonDefinition.CommandParameter.set -> void
+KumikoUI.Maui.MauiActionButtonDefinition.Label.get -> string!
+KumikoUI.Maui.MauiActionButtonDefinition.Label.set -> void
+KumikoUI.Maui.MauiActionButtonDefinition.MauiActionButtonDefinition() -> void
+KumikoUI.Maui.MauiActionButtonDefinition.TextColor.get -> Microsoft.Maui.Graphics.Color!
+KumikoUI.Maui.MauiActionButtonDefinition.TextColor.set -> void
+override KumikoUI.Maui.KumikoDataGrid.OnHandlerChanged() -> void
+override KumikoUI.Maui.KumikoDataGrid.OnHandlerChanging(Microsoft.Maui.Controls.HandlerChangingEventArgs! args) -> void
+override KumikoUI.Maui.KumikoDataGrid.OnPropertyChanged(string? propertyName = null) -> void
+static KumikoUI.Maui.KumikoFonts.RegisterFromAppPackageAsync(System.Collections.Generic.IEnumerable<(string! Family, string! FileName)>! fonts) -> System.Threading.Tasks.Task!
+static KumikoUI.Maui.KumikoFonts.RegisterFromAppPackageAsync(string! family, string! fileName) -> System.Threading.Tasks.Task!
+static KumikoUI.Maui.KumikoFonts.RegisterFromStream(string! family, System.IO.Stream! stream) -> void
+static KumikoUI.Maui.KumikoUIHostingExtensions.UseKumikoUI(this Microsoft.Maui.Hosting.MauiAppBuilder! builder) -> Microsoft.Maui.Hosting.MauiAppBuilder!
+static readonly KumikoUI.Maui.KumikoDataGrid.AllowFilteringProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.AllowRowDragDropProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.AllowSortingProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.AlternateRowBackgroundProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.AnnounceChangesProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.BackgroundRebuildThresholdProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.CellTappedCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.CellValidatorProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.CellValueChangedCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ClearSelectionOnEmptyAreaTapProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ColumnsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ContextMenuRequestedCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.CurrentCellProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.DismissKeyboardOnEnterProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.EditTextSelectionModeProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.EditTriggersProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.EnableHapticsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.FollowSystemThemeProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.FrozenRowCountProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.GridDescriptionProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.GridHintProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.GridSelectionModeProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.GridStyleProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.GroupDescriptionsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.GroupSummaryRowsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.HeaderHeightProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.HeaderTappedCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.HorizontalOffsetProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.IsReadOnlyProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ItemsSourceProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.RenderModeProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.RowHeightProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.RowTappedCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ScrollSettingsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SelectedIndexProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SelectedItemProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SelectedItemsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SelectionChangedCommandParameterProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SelectionChangedCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ShowFrameStatsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ShowHorizontalGridLinesProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ShowRowDragHandleProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ShowVerticalGridLinesProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SortChangedCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.TableSummaryRowsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ThemeProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.VerticalOffsetProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.MauiActionButtonDefinition.BackgroundColorProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.MauiActionButtonDefinition.CommandParameterProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.MauiActionButtonDefinition.CommandProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.MauiActionButtonDefinition.LabelProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.MauiActionButtonDefinition.TextColorProperty -> Microsoft.Maui.Controls.BindableProperty!

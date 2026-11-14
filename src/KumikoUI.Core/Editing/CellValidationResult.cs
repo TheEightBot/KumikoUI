@@ -7,7 +7,7 @@ namespace KumikoUI.Core.Editing;
 /// <summary>
 /// Validation result for a cell edit.
 /// </summary>
-public class CellValidationResult
+public sealed class CellValidationResult
 {
     /// <summary>Whether the cell value is valid.</summary>
     public bool IsValid { get; set; } = true;

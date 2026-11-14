@@ -146,13 +146,13 @@ public class ProgressBarCellRendererTests
         var style = new KumikoStyle { CellFont = new KumikoFont("Mono", 14) };
         var ctx = new RecordingDrawingContext();
         new ProgressBarCellRenderer().Render(ctx, Cell, 10, "10", new KumikoColumn(), style, false);
-        Assert.Equal(13, ctx.Texts.Single().Font!.Size);
-        Assert.Equal("Mono", ctx.Texts.Single().Font!.Family);
+        Assert.Equal(13, ctx.Texts.Single().Font!.Value.Size);
+        Assert.Equal("Mono", ctx.Texts.Single().Font!.Value.Family);
 
         style.CellFont = new KumikoFont("Mono", 8);
         ctx = new RecordingDrawingContext();
         new ProgressBarCellRenderer().Render(ctx, Cell, 10, "10", new KumikoColumn(), style, false);
-        Assert.Equal(9, ctx.Texts.Single().Font!.Size);
+        Assert.Equal(9, ctx.Texts.Single().Font!.Value.Size);
     }
 
     [Fact]

@@ -254,7 +254,7 @@ public class KumikoRendererPaneTests
         var rowText = new KumikoColor(10, 200, 10);
         var warn = new KumikoColor(250, 120, 0);
         var tint = new KumikoColor(9, 99, 199);
-        h.Selection.HandleRowSelection(0, shift: false, ctrl: false);
+        h.Selection.HandleRowSelection(0, shift: false, control: false);
         h.Selection.CurrentCell = new CellPosition(1, 0);
         h.Style.RowStyleResolver = item => ((RenderHarness.Person)item!).Name == "P02"
             ? new KumikoRowStyle { BackgroundColor = highlight, TextColor = rowText }

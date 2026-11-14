@@ -4,7 +4,7 @@ namespace KumikoUI.Core.Models;
 /// Describes a caption summary that appears inline within a group header row.
 /// Useful for showing aggregates (e.g., "Sum: $1,234") right in the group header.
 /// </summary>
-public class CaptionSummaryDescription
+public sealed class CaptionSummaryDescription
 {
     /// <summary>
     /// Column-level aggregates to display in the group header.

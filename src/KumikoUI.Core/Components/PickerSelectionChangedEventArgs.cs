@@ -4,7 +4,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Picker selection changed event args.</summary>
-public class PickerSelectionChangedEventArgs : EventArgs
+public sealed class PickerSelectionChangedEventArgs : EventArgs
 {
     /// <summary>Index of the currently selected item.</summary>
     public int SelectedIndex { get; }

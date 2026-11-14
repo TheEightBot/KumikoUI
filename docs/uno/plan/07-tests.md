@@ -8,7 +8,7 @@ Uno host.
 ## 1. Core tests — unchanged, must stay green
 
 Because `KumikoUI.Core` and `KumikoUI.SkiaSharp` are **byte-for-byte unchanged**, the existing
-[`tests/KumikoUI.Core.Tests`](../../tests/KumikoUI.Core.Tests) (xUnit) still fully covers layout, input
+[`tests/KumikoUI.Core.Tests`](../../../tests/KumikoUI.Core.Tests) (xUnit) still fully covers layout, input
 dispatch, models, selection, filtering, scrolling, etc.
 
 - [x] Run them and confirm green — this is the regression gate for "Core wasn't touched":

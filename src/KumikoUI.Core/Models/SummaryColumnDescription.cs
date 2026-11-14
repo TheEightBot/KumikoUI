@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Describes a single summary (aggregate) for a specific column.
 /// </summary>
-public class SummaryColumnDescription
+public sealed class SummaryColumnDescription
 {
     /// <summary>The column property name to aggregate.</summary>
     public string PropertyName { get; set; } = "";

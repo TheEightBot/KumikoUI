@@ -73,10 +73,10 @@ public class PaintCacheTests
 
         var c = Built(s);
 
-        Assert.Same(s.CellFont, c.CellText.Font);
-        Assert.Same(s.HeaderFont, c.HeaderText.Font);
-        Assert.Same(s.GroupPanelFont, c.GroupPanelText.Font);
-        Assert.Same(s.SummaryRowFont, c.SummaryText.Font);
+        Assert.Equal(s.CellFont, c.CellText.Font);
+        Assert.Equal(s.HeaderFont, c.HeaderText.Font);
+        Assert.Equal(s.GroupPanelFont, c.GroupPanelText.Font);
+        Assert.Equal(s.SummaryRowFont, c.SummaryText.Font);
         Assert.Equal(2.5f, c.GridLine.StrokeWidth);
         Assert.Equal(2.5f, c.HeaderBorder.StrokeWidth);
         Assert.Equal(3.5f, c.FrozenColumnDivider.StrokeWidth);
@@ -86,16 +86,10 @@ public class PaintCacheTests
     }
 
     [Fact]
-    public void Update_LinePaintsStrokeAndAreaPaintsFill()
+    public void Update_TakesTheAntiAliasFlagsFromThePaintKind()
     {
         var c = Built(DistinctStyle());
 
-        Assert.All(new[] { c.GridLine, c.HeaderBorder, c.FrozenColumnDivider, c.RightFrozenColumnDivider,
-            c.FrozenRowDivider, c.CurrentCellBorder, c.AccentStroke, c.DragHandleIcon, c.GroupChipBorder },
-            p => Assert.Equal(PaintStyle.Stroke, p.Style));
-        Assert.All(new[] { c.Background, c.HeaderBackground, c.SelectionBackground, c.CellText, c.SortIndicator,
-            c.FilterIcon, c.FilterActiveIcon, c.SummaryBackground },
-            p => Assert.Equal(PaintStyle.Fill, p.Style));
         Assert.False(c.GridLine.IsAntiAlias);
         Assert.True(c.CellText.IsAntiAlias);
         Assert.Equal(2f, c.AccentStroke.StrokeWidth);
@@ -160,7 +154,7 @@ public class PaintCacheTests
 
         Assert.NotSame(cache.CellText, paint);
         Assert.Equal(new KumikoColor(10, 20, 30), paint.Color);
-        Assert.Same(s.CellFont, paint.Font);
+        Assert.Equal(s.CellFont, paint.Font);
         Assert.True(paint.IsAntiAlias);
     }
 
@@ -174,7 +168,7 @@ public class PaintCacheTests
         var paint = cache.CellTextPaint(new KumikoCellStyle { Font = font }, s);
 
         Assert.Equal(s.CellTextColor, paint.Color);
-        Assert.Same(font, paint.Font);
+        Assert.Equal(font, paint.Font);
     }
 
     [Fact]
@@ -187,9 +181,9 @@ public class PaintCacheTests
         var paint = cache.CellTextPaint(new KumikoCellStyle { TextColor = new KumikoColor(1, 2, 3), Font = font }, s);
 
         Assert.Equal(new KumikoColor(1, 2, 3), paint.Color);
-        Assert.Same(font, paint.Font);
+        Assert.Equal(font, paint.Font);
         Assert.Equal(s.CellTextColor, cache.CellText.Color);
-        Assert.Same(s.CellFont, cache.CellText.Font);
+        Assert.Equal(s.CellFont, cache.CellText.Font);
     }
 
     [Fact]
@@ -201,7 +195,7 @@ public class PaintCacheTests
 
         var paint = cache.CellTextPaint(new KumikoCellStyle { TextColor = new KumikoColor(1, 1, 1) }, other);
 
-        Assert.Same(other.CellFont, paint.Font);
+        Assert.Equal(other.CellFont, paint.Font);
     }
 
     [Fact]
@@ -211,7 +205,6 @@ public class PaintCacheTests
         var b = PaintCache.BackgroundPaint(new KumikoColor(3, 4, 5));
 
         Assert.Equal(new KumikoColor(3, 4, 5), a.Color);
-        Assert.Equal(PaintStyle.Fill, a.Style);
         Assert.NotSame(a, b);
     }
 
@@ -274,16 +267,16 @@ public class PaintCacheTests
     }
 
     [Fact]
-    public void HeaderFontResizedInPlace_ResizesTheMultiSortBadges()
+    public void ReplacingTheHeaderFont_ResizesTheMultiSortBadges()
     {
         var h = RenderHarness.Create();
         h.Source.SetSort(h.Column("City"), KumikoSortDirection.Ascending, 1);
         h.Source.SetSort(h.Column("Age"), KumikoSortDirection.Descending, 2);
         static float BadgeSize(RenderHarness h, RecordingDrawingContext ctx) =>
-            ctx.Ops.First(o => o.Kind == DrawOpKind.Text && o.Color == h.Style.SortIndicatorColor).Font!.Size;
+            ctx.Ops.First(o => o.Kind == DrawOpKind.Text && o.Color == h.Style.SortIndicatorColor).Font!.Value.Size;
         Assert.Equal(h.Style.HeaderFont.Size * 0.65f, BadgeSize(h, h.Render()), 3);
 
-        h.Style.HeaderFont.Size = 20; // a font is mutable, and changing it does not change the style's version
+        h.Style.HeaderFont = h.Style.HeaderFont with { Size = 20 }; // a font is a value: the style sees a new one
 
         Assert.Equal(13f, BadgeSize(h, h.Render()), 3);
     }
@@ -295,7 +288,6 @@ public class PaintCacheTests
         var c = Built(s);
 
         Assert.Equal(s.GridLineColor, c.CheckBoxBorder.Color);
-        Assert.Equal(PaintStyle.Stroke, c.CheckBoxBorder.Style);
         Assert.Equal(1.5f, c.CheckBoxBorder.StrokeWidth);
         Assert.Equal(s.AccentColor, c.CheckMark.Color);
         Assert.Equal(2f, c.CheckMark.StrokeWidth);

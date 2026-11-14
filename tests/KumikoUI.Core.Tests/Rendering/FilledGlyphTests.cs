@@ -30,7 +30,6 @@ public class FilledGlyphTests
         Assert.DoesNotContain(ctx.Lines, l => l.Color == h.Style.GroupChevronColor);
         foreach (var poly in polygons)
         {
-            Assert.Equal(PaintStyle.Fill, poly.Style);
             var pts = poly.Points!;
             Assert.Equal(3, pts.Length);
             // Two vertices share the top edge; the apex is alone below it.
@@ -53,7 +52,6 @@ public class FilledGlyphTests
             .ToList();
         var poly = Assert.Single(collapsed);
 
-        Assert.Equal(PaintStyle.Fill, poly.Style);
         var pts = poly.Points!;
         float maxX = pts.Max(p => p.X);
         Assert.Single(pts, p => Near(p.X, maxX));
@@ -71,7 +69,6 @@ public class FilledGlyphTests
         var ctx = h.Render();
         var arrow = Assert.Single(ctx.Polygons, o => o.Color == h.Style.GroupPanelChipAccentColor);
 
-        Assert.Equal(PaintStyle.Fill, arrow.Style);
         Assert.DoesNotContain(ctx.Lines, l => l.Color == h.Style.GroupPanelChipAccentColor);
         var pts = arrow.Points!;
         Assert.Equal(3, pts.Length);
@@ -121,7 +118,8 @@ public class FilledGlyphTests
         public void DrawText(string text, float x, float y, KumikoPaint paint) { }
         public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
             KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
-            KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true) { }
+            KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true)
+        { }
         public KumikoSize MeasureText(string text, KumikoPaint paint) => new(0, 0);
         public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) => new(0, 0, 0);
         public void ClipRect(KumikoRect rect) { }

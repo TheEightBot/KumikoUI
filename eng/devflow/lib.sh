@@ -8,7 +8,8 @@ EXT=com.kumikoui.sample
 
 # df <args...>: maui devflow against the selected agent. Prints stdout; returns the CLI's exit code.
 df() {
-	"$MAUI" devflow "$@" --agent-port "$AGENT_PORT"
+	# --device names the adb serial for commands that call adb themselves (theme set), which fail with several devices.
+	"$MAUI" devflow "$@" --agent-port "$AGENT_PORT" ${ANDROID_SERIAL_ARG:+--device "$ANDROID_SERIAL_ARG"}
 }
 
 # dfm <args...>: a mutating maui devflow command (tap, gesture, navigate, a POST extension tool).
@@ -75,10 +76,38 @@ surface_id() {
 	echo "$id"
 }
 
+# ── Android input ──
+# DevFlow refuses a tap or drag at a point on Android ("covered by PlatformGraphicsView"), so on Android the points
+# go through adb input events at screen pixels. A grid-relative DIP maps to a pixel through the grid's place on screen,
+# which uiautomator reports as the bounds of the view as wide and as high as the grid.
+
+# android_px <x> <y>: "px py", the screen pixel of a grid-relative point.
+android_px() {
+	local w h density box
+	w=$(state '.grid.width'); h=$(state '.grid.height')
+	density=$(adb -s "$ANDROID_SERIAL_ARG" shell wm density | tail -1 | awk '{ print $NF }')
+	# uiautomator dump now and then fails on a busy emulator ("could not get idle state"): try a few times.
+	local attempt
+	for attempt in 1 2 3 4 5; do
+		adb -s "$ANDROID_SERIAL_ARG" shell uiautomator dump /sdcard/kumiko-ui.xml >/dev/null 2>&1
+		box=$(adb -s "$ANDROID_SERIAL_ARG" shell cat /sdcard/kumiko-ui.xml | tr '>' '\n' \
+			| sed -nE 's/.*bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]".*/\1 \2 \3 \4/p' \
+			| awk -v w="$w" -v h="$h" -v d="$density" 'function abs(v) { return v < 0 ? -v : v }
+				abs(($3 - $1) - w * d / 160) <= 2 && abs(($4 - $2) - h * d / 160) <= 2 { print $1, $2; exit }')
+		[ -n "$box" ] && break
+		sleep 1
+	done
+	[ -n "$box" ] || { echo "(the grid's bounds were not found in the uiautomator dump)" >&2; return 1; }
+	echo "$box $1 $2 $density" | awk '{ printf "%d %d\n", $1 + $3 * $5 / 160, $2 + $4 * $5 / 160 }'
+}
+
 # ── Input ──
 
 # tap_at <x> <y>: tap the grid at a point (grid-relative DIPs).
 tap_at() {
+	if [ "${PLATFORM:-}" = android ] && [ -n "${2:-}" ] && [ "$2" != null ]; then
+		adb -s "$ANDROID_SERIAL_ARG" shell input tap $(android_px "$1" "$2") && return
+	fi
 	if [ -z "${2:-}" ] || [ "$2" = null ]; then
 		echo "  (no point to tap: '${1:-}' '${2:-}')"
 		return 1
@@ -90,6 +119,12 @@ tap_at() {
 # (DevFlow's own "ui gesture doubletap" did not register on the canvas on Mac Catalyst, and two separate CLI
 # processes are too far apart to count as a double tap.)
 double_tap_at() {
+	if [ "${PLATFORM:-}" = android ]; then
+		local px
+		px=$(android_px "$1" "$2")
+		adb -s "$ANDROID_SERIAL_ARG" shell "input tap $px; input tap $px"
+		return
+	fi
 	local id
 	id=$(surface_id)
 	free_lease
@@ -99,6 +134,12 @@ double_tap_at() {
 
 # drag <x> <y> <to-x> <to-y> [hold-ms]: press at a grid point, move, release (a real touch drag).
 drag() {
+	if [ "${PLATFORM:-}" = android ]; then
+		local from to
+		from=$(android_px "$1" "$2"); to=$(android_px "$3" "$4")
+		adb -s "$ANDROID_SERIAL_ARG" shell input swipe $from $to "${5:-400}"
+		return
+	fi
 	local hold=()
 	[ -n "${5:-}" ] && hold=(--hold "$5")
 	dfm ui gesture drag --element "$(grid_id)" --x "$1" --y "$2" --to-x "$3" --to-y "$4" --duration 400 --steps 16 \
@@ -127,6 +168,15 @@ header_point() {
 	json=$(ext header "{\"grid\":${GRID_INDEX:-0},\"column\":\"$1\"}")
 	if [ "$(echo "$json" | jq -r .onScreen)" != "true" ]; then
 		extm scroll "{\"grid\":${GRID_INDEX:-0},\"column\":\"$1\"}" >/dev/null
+		settle
+		json=$(ext header "{\"grid\":${GRID_INDEX:-0},\"column\":\"$1\"}")
+	fi
+	# A column wider than the room beside the frozen columns (a phone) has its funnel or grip past the grid's right
+	# edge when it is scrolled to the start: scroll on until the point is 24 DIPs inside it.
+	local over
+	over=$(echo "$json" | jq -r --argjson w "$(state '.grid.width')" ".$2.x + 24 - \$w | if . > 0 then . else 0 end")
+	if [ "$over" != 0 ]; then
+		extm scroll "{\"grid\":${GRID_INDEX:-0},\"horizontal\":$(state ".grid.scroll.horizontal + $over")}" >/dev/null
 		settle
 		json=$(ext header "{\"grid\":${GRID_INDEX:-0},\"column\":\"$1\"}")
 	fi
@@ -161,6 +211,12 @@ shot() {
 	SHOT_INDEX=$((SHOT_INDEX + 1))
 	local file
 	file=$(printf '%s/%02d-%s.png' "$OUT" "$SHOT_INDEX" "$1")
+	if [ "${PLATFORM:-}" = android ]; then
+		# DevFlow's capture draws the view tree, and leaves out the GPU surface (an Android TextureView): the grid comes
+		# out blank. The device's own screen capture shows what the user sees.
+		adb -s "$ANDROID_SERIAL_ARG" exec-out screencap -p >"$file" 2>/dev/null || echo "  (screenshot $1 failed)"
+		return
+	fi
 	df ui screenshot --output "$file" --overwrite >/dev/null 2>&1 || echo "  (screenshot $1 failed)"
 }
 

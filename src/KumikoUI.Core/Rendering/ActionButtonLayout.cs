@@ -7,7 +7,7 @@ namespace KumikoUI.Core.Rendering;
 /// <see cref="ActionButtonsCellRenderer"/> (display) and
 /// <see cref="KumikoUI.Core.Components.DrawnActionButtons"/> (interactive editor).
 /// </summary>
-public static class ActionButtonLayout
+internal static class ActionButtonLayout
 {
     /// <summary>
     /// Computes equal-width button rects for <paramref name="count"/> buttons

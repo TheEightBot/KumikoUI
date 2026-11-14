@@ -2,97 +2,109 @@
 
 ## What This Project Is
 
-**KumikoUI DataGrid** is a high-performance, fully canvas-drawn DataGrid for .NET MAUI. Every visual
-element — cells, headers, editors, popups, scrollbars — is rendered directly on a SkiaSharp
-`SKCanvas`. There are **zero native UIKit / AppKit / WinUI controls**; everything is drawn
-in software, giving pixel-perfect, identical output across iOS, Android, macOS Catalyst, and
-Windows.
+**KumikoUI DataGrid** is a high-performance, fully canvas-drawn DataGrid for **.NET MAUI** and the **Uno Platform**.
+Every visual element (cells, headers, editors, popups, scrollbars) is rendered directly on a SkiaSharp `SKCanvas`.
+There are **zero native UIKit / AppKit / WinUI controls**: everything is drawn in software or on the GPU through Skia,
+giving the same output on iOS, Android, Mac Catalyst, Windows, desktop (Skia) and WebAssembly.
+
+Four packages: `KumikoUI.Core` (engine) ← `KumikoUI.SkiaSharp` (drawing) ← `KumikoUI.Maui` and `KumikoUI.Uno` (hosts); the
+`[KumikoGridItem]` source generator ships inside `KumikoUI.Core`.
+
+These files are checked by `dotnet run --project eng/DocsIdentifiers -c Release`: every backticked type, member and file
+name must exist in the code. Run it after you rename or remove something they mention.
 
 ---
 
 ## Scoped Instruction Files
 
-Detailed instructions live in [`.github/instructions/`](.github/instructions/) and are
+Detailed instructions live in [`.github/instructions/`](instructions/) and are
 automatically injected based on which files are open. When a task spans multiple areas,
-read the relevant files directly — each is self-contained.
+read the relevant files directly; each is self-contained.
 
 ---
 
-### [architecture.instructions.md](.github/instructions/architecture.instructions.md)
+### [architecture.instructions.md](instructions/architecture.instructions.md)
 **Applies to:** all files (`**`)
 
-Always-active baseline. Covers: three-layer project structure (`Core` → `SkiaSharp` → `Maui`),
-strict dependency rules, full namespace map, and repo-wide C# code style rules (nullable,
-`readonly struct`, no LINQ in hot paths, `KumikoColor` usage, `float` for coordinates).
+Always-active baseline. Covers: the four packages and three layers (`Core` → `SkiaSharp` → `Maui` and `Uno`), strict
+dependency rules, project paths, the namespace map, and repo-wide C# code style rules (nullable, sealed leaf types,
+`readonly struct`, no LINQ or allocation in hot paths, `KumikoColor` usage, `float` for coordinates, public type names).
 
 ---
 
-### [rendering.instructions.md](.github/instructions/rendering.instructions.md)
-**Applies to:** `src/KumikoUI.Core/Rendering/**`, `src/KumikoUI.SkiaSharp/**`, `src/KumikoUI.Core/KumikoRenderer.cs`
+### [rendering.instructions.md](instructions/rendering.instructions.md)
+**Applies to:** `src/KumikoUI.Core/Rendering/**`, `src/KumikoUI.SkiaSharp/**`, `src/KumikoUI.Core/KumikoRenderer.cs`, `src/KumikoUI.Core/Layout/**`
 
-Everything about drawing. Covers: all `IDrawingContext` methods, `KumikoPaint`/`KumikoColor`/`KumikoRect`
-usage, `ICellRenderer` interface + how to attach custom renderers to columns, `KumikoRenderer`
-render-loop structure and z-order, `PaintCache`, `SkiaDrawingContext` internals (long-lived
-`SkiaResourceCache` of paints/fonts/typefaces, SkiaSharp 3.x API), `KumikoLayoutEngine` layout methods, and performance rules
-(no allocation, no LINQ, virtual scrolling).
+Everything about drawing. Covers: all `IDrawingContext` members, `KumikoPaint`/`KumikoColor`/`KumikoRect` usage,
+`ICellRenderer` with `CellRenderContext` and how to attach custom renderers to columns, the `KumikoRenderer.RenderFrame`
+pass order and z-order, hit testing's mirror of the drawing, `PaintCache`, `SkiaDrawingContext` internals (the
+long-lived `SkiaResourceCache`, `CreateContext`, font fallback), `KumikoLayoutEngine` methods, and the performance rules
+(zero allocation per frame, no LINQ, virtual scrolling).
 
 ---
 
-### [components-and-editing.instructions.md](.github/instructions/components-and-editing.instructions.md)
+### [components-and-editing.instructions.md](instructions/components-and-editing.instructions.md)
 **Applies to:** `src/KumikoUI.Core/Components/**`, `src/KumikoUI.Core/Editing/**`
 
-Everything about canvas-drawn editors. Covers: `DrawnComponent` lifecycle overrides, the three
-signals (`InvalidateVisual`, `RaiseValueChanged`, `RaiseEditCompleted`), the `ApplyTheme` pattern,
-`CellEditorFactory` wiring (three required cases per editor type), `EditorDescriptor` for XAML-
-declarable editor config, `EditSession` pipeline (begin → draw → commit/cancel), validation via
-`IDataErrorInfo` or delegate, and `InertialScroller` physics.
+Everything about canvas-drawn editors. Covers: `DrawnComponent` lifecycle overrides, the signals (`InvalidateVisual`,
+`RaiseValueChanged`, `RaiseEditCompleted`), `IValueEditor`, the `ApplyTheme` pattern, `CellEditorFactory` wiring,
+`EditorDescriptor` for XAML-declarable editor config, the `EditSession` pipeline (begin → draw → commit/cancel),
+validation via `IDataErrorInfo` or `CellValidator`, and `InertialScroller` physics.
 
 ---
 
-### [models-and-data.instructions.md](.github/instructions/models-and-data.instructions.md)
+### [models-and-data.instructions.md](instructions/models-and-data.instructions.md)
 **Applies to:** `src/KumikoUI.Core/Models/**`
 
-Everything about the data layer. Covers: all `KumikoColumn` properties and column types,
-`KumikoSource` API (get/set values, bulk updates, sorting, filtering, grouping, summaries),
-`KumikoStyle` theming (built-in themes, `CellStyleResolver`, `RowStyleResolver`), `KumikoCellStyle`/
-`KumikoRowStyle` nullable merge semantics, and step-by-step recipes for adding a new style property
+Everything about the data layer. Covers: all `KumikoColumn` properties and column types, the `KumikoSource` API
+(get/set values, `BeginUpdate` batches, `SetSort`/`ToggleSort`, `SetColumnFilter`, `AddGroupDescription`, summaries,
+background view rebuilds), `KumikoStyle` theming (built-in themes, `CellStyleResolver`, `RowStyleResolver`),
+`KumikoCellStyle`/`KumikoRowStyle` nullable merge semantics, and step-by-step recipes for adding a new style property
 or column type.
 
 ---
 
-### [maui-control.instructions.md](.github/instructions/maui-control.instructions.md)
+### [maui-control.instructions.md](instructions/maui-control.instructions.md)
 **Applies to:** `src/KumikoUI.Maui/**`, `samples/**`
 
-Everything about consuming the control. Covers: `MauiProgram.UseKumikoUI()` bootstrap,
-required XAML namespaces, all `KumikoDataGrid` bindable properties, XAML examples for every column
-type (Numeric, Text, ComboBox, Picker, Date, Boolean, Template with renderer, Template with
-`EditorDescriptor`), summary row XAML, and `KumikoDataGrid` internals (keyboard proxy, platform-
-specific gesture/IME handling, timer setup).
+Everything about the MAUI host. Covers: `MauiProgram.UseKumikoUI()` bootstrap, required XAML namespaces, the
+`KumikoDataGrid` bindable properties, XAML examples for every column type and summary rows, and `KumikoDataGrid`
+internals (surfaces and the frame loop, platform keyboard and text-input handling, gesture timings).
 
 ---
 
-### [testing.instructions.md](.github/instructions/testing.instructions.md)
+### [uno-control.instructions.md](instructions/uno-control.instructions.md)
+**Applies to:** `src/KumikoUI.Uno/**`, `samples/SampleApp.Uno/**`, `tests/KumikoUI.Uno.Tests/**`, `docs/uno/**`
+
+Everything about the Uno host. Covers: the rules that keep it in parity with the MAUI host, the app setup (Skia renderer,
+no startup call, `KumikoFonts`), XAML namespaces and properties, and `KumikoDataGrid` internals (the `SKCanvasElement` and
+`SKXamlCanvas` surfaces, the frame loop, the hidden `TextBox` proxy and `KumikoTextInputAdapter`, keyboard avoidance,
+lifecycle).
+
+---
+
+### [testing.instructions.md](instructions/testing.instructions.md)
 **Applies to:** `tests/**`
 
-Everything about writing tests. Covers: xUnit-only rules (no NUnit/MSTest), file/class naming
-convention, `[Fact]` and `[Theory]+[InlineData]` templates, a concrete `KumikoSource` sorting
-example, and the `FakeDrawingContext` no-op test double needed to test renderers and components
-without SkiaSharp.
+Everything about writing tests. Covers: the test projects and what each runs, xUnit-only rules (no NUnit/MSTest),
+file/class naming convention, `[Fact]` and `[Theory]` + `[InlineData]` templates, a concrete `KumikoSource` sorting
+example, the rendering test doubles (`RecordingDrawingContext`, `NoOpDrawingContext`, `RenderHarness`), the
+`Performance` category, allocation tests and golden images.
 
 ---
 
 ## Skill Prompts
 
-Reusable task prompts live in [`.github/prompts/`](.github/prompts/):
+Reusable task prompts live in [`.github/prompts/`](prompts/):
 
 | Prompt | Use when... |
 |---|---|
-| [`add-cell-renderer.prompt.md`](.github/prompts/add-cell-renderer.prompt.md) | Creating a new `ICellRenderer` |
-| [`add-drawn-component.prompt.md`](.github/prompts/add-drawn-component.prompt.md) | Creating a new canvas-drawn inline editor |
-| [`add-column-type.prompt.md`](.github/prompts/add-column-type.prompt.md) | Adding a new `KumikoColumnType` end-to-end |
-| [`add-theme-property.prompt.md`](.github/prompts/add-theme-property.prompt.md) | Adding a new `KumikoStyle` visual property |
-| [`add-unit-test.prompt.md`](.github/prompts/add-unit-test.prompt.md) | Writing xUnit tests for Core classes |
-| [`configure-datagrid-features.prompt.md`](.github/prompts/configure-datagrid-features.prompt.md) | Wiring sorting, filtering, grouping, or summaries |
-| [`rendering-pipeline.prompt.md`](.github/prompts/rendering-pipeline.prompt.md) | Debugging or extending the render pipeline |
+| [`add-cell-renderer.prompt.md`](prompts/add-cell-renderer.prompt.md) | Creating a new `ICellRenderer` |
+| [`add-drawn-component.prompt.md`](prompts/add-drawn-component.prompt.md) | Creating a new canvas-drawn inline editor |
+| [`add-column-type.prompt.md`](prompts/add-column-type.prompt.md) | Adding a new `KumikoColumnType` end-to-end |
+| [`add-theme-property.prompt.md`](prompts/add-theme-property.prompt.md) | Adding a new `KumikoStyle` visual property |
+| [`add-unit-test.prompt.md`](prompts/add-unit-test.prompt.md) | Writing xUnit tests for Core classes |
+| [`configure-datagrid-features.prompt.md`](prompts/configure-datagrid-features.prompt.md) | Wiring sorting, filtering, grouping, or summaries |
+| [`rendering-pipeline.prompt.md`](prompts/rendering-pipeline.prompt.md) | Debugging or extending the render pipeline |
 
 ---

@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Event args for FilterChanged.
 /// </summary>
-public class FilterChangedEventArgs : EventArgs
+public sealed class FilterChangedEventArgs : EventArgs
 {
     /// <summary>Column whose filter changed.</summary>
     public KumikoColumn Column { get; }

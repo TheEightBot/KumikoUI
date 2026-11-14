@@ -61,7 +61,7 @@ public class DrawnActionButtonsTests
             new ActionButtonDefinition { Label = "Delete", Action = () => order.Add("delete-action"), Command = command });
         bar.RowItem = row;
         int completed = 0;
-        bar.EditCompleted += () => completed++;
+        bar.EditCompleted += (_, _) => completed++;
 
         bar.Tap(Right, Y);
 
@@ -124,7 +124,7 @@ public class DrawnActionButtonsTests
             new ActionButtonDefinition { Action = () => fired++ },
             new ActionButtonDefinition { Action = () => fired++ });
         int completed = 0;
-        bar.EditCompleted += () => completed++;
+        bar.EditCompleted += (_, _) => completed++;
 
         bar.Down(Left, Y);
         Assert.False(bar.Up(Right, Y));
@@ -190,7 +190,7 @@ public class DrawnActionButtonsTests
         var edit = ctx.SingleText("Edit");
         Assert.Equal(fills[0].Rect, edit.Rect);
         Assert.Equal(KumikoTextAlignment.Center, edit.HAlign);
-        Assert.True(edit.Font!.IsBold);
+        Assert.True(edit.Font!.Value.IsBold);
         Assert.Equal(KumikoColor.White, edit.Color);
     }
 

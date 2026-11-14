@@ -127,8 +127,8 @@ public class SkiaFontFallbackTests : IDisposable
         cache.MeasureTextWidth("Hello world, José … 123", font, out _, out var runs);
         cache.GetTextLayout("A long value that is cut with an ellipsis", font, 60, KumikoTextWrap.None, 1, out var lineRuns);
 
-        Assert.Same(FontRuns.Primary, runs);
-        Assert.Same(FontRuns.Primary, lineRuns[0]);
+        Assert.True(runs.IsPrimaryOnly);
+        Assert.True(lineRuns[0].IsPrimaryOnly);
         Assert.Equal(0, asked);
         Assert.Equal(0, cache.FallbackFaceCount);
     }
@@ -142,7 +142,7 @@ public class SkiaFontFallbackTests : IDisposable
 
         float width = cache.MeasureTextWidth("A東B", font, out _, out var runs);
 
-        Assert.Same(FontRuns.Primary, runs);
+        Assert.True(runs.IsPrimaryOnly);
         using var openSans = new SKFont(cache.GetTypeface(Family, false, false), 16);
         Assert.Equal(openSans.MeasureText("A東B"), width, 3);
     }

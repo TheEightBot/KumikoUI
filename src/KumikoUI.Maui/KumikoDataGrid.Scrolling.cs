@@ -137,16 +137,32 @@ public partial class KumikoDataGrid
     /// like the others.
     /// </summary>
     /// <param name="columnIndex">The index in the column list.</param>
-    /// <param name="position">Where the column lands; <see cref="KumikoScrollPosition.Nearest"/> by default.</param>
+    /// <param name="position">Where the column lands.</param>
     /// <returns>False, scrolling nothing, when the index is out of range or the column is hidden.</returns>
-    public bool ScrollToColumn(int columnIndex, KumikoScrollPosition position = KumikoScrollPosition.Nearest) =>
+    public bool ScrollToColumn(int columnIndex, KumikoScrollPosition position) =>
         FinishScroll(KumikoScroller.ScrollToColumn(_scroll, _dataSource, _style, columnIndex, position));
+
+    /// <summary>
+    /// Scrolls the column at <paramref name="columnIndex"/> into view by the shortest distance
+    /// (<see cref="KumikoScrollPosition.Nearest"/>); see <see cref="ScrollToColumn(int, KumikoScrollPosition)"/>.
+    /// </summary>
+    /// <param name="columnIndex">The index in the column list.</param>
+    /// <returns>False, scrolling nothing, when the index is out of range or the column is hidden.</returns>
+    public bool ScrollToColumn(int columnIndex) => ScrollToColumn(columnIndex, KumikoScrollPosition.Nearest);
+
+    /// <summary>
+    /// Scrolls <paramref name="column"/> into view by the shortest distance (<see cref="KumikoScrollPosition.Nearest"/>);
+    /// see <see cref="ScrollToColumn(int, KumikoScrollPosition)"/>.
+    /// </summary>
+    /// <param name="column">A column of this grid.</param>
+    /// <returns>False, scrolling nothing, when the column is not in this grid or is hidden.</returns>
+    public bool ScrollToColumn(KumikoColumn column) => ScrollToColumn(column, KumikoScrollPosition.Nearest);
 
     /// <summary>Scrolls so <paramref name="column"/> lands at <paramref name="position"/>; see <see cref="ScrollToColumn(int, KumikoScrollPosition)"/>.</summary>
     /// <param name="column">A column of this grid.</param>
-    /// <param name="position">Where the column lands; <see cref="KumikoScrollPosition.Nearest"/> by default.</param>
+    /// <param name="position">Where the column lands.</param>
     /// <returns>False, scrolling nothing, when the column is not in this grid or is hidden.</returns>
-    public bool ScrollToColumn(KumikoColumn column, KumikoScrollPosition position = KumikoScrollPosition.Nearest)
+    public bool ScrollToColumn(KumikoColumn column, KumikoScrollPosition position)
     {
         ArgumentNullException.ThrowIfNull(column);
         var columns = _dataSource.Columns;

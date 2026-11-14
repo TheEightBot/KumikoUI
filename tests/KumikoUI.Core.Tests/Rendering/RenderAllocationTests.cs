@@ -81,6 +81,54 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_HoverAndPressedFeedback_AllocateNothing()
+    {
+        // A connected controller with a hovered header and a pressed check box (#101): the overlays and the pointer
+        // passed to the cell renderer draw from values captured per frame.
+        var grid = CreateGrid(featured: true);
+        var input = new KumikoUI.Core.Input.KumikoInputController();
+        grid.Renderer.InputController = input;
+        grid.Render(new NoOpDrawingContext());
+        void Pointer(KumikoUI.Core.Input.InputAction action, float x, float y) =>
+            input.HandlePointer(new KumikoUI.Core.Input.KumikoPointerEventArgs { Action = action, X = x, Y = y },
+                grid.Scroll, grid.Selection, grid.Style, grid.Source);
+        Pointer(KumikoUI.Core.Input.InputAction.Hover, 60, grid.Style.GroupPanelHeight + 10);
+        Assert.False(input.Feedback.Hover.IsNone);
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
+    public void Transitions_GroupSlideAndSelectionFade_AllocateNothingPerFrame()
+    {
+        // A group sliding open and the current row's highlight fading in (#101),
+        // stepped by the frame loop between frames: neither the steps nor the frames allocate.
+        var grid = CreateGrid(featured: true);
+        var input = new KumikoUI.Core.Input.KumikoInputController { AnimationsEnabled = true };
+        grid.Renderer.InputController = input;
+        grid.Render(new NoOpDrawingContext());
+        void Pointer(KumikoUI.Core.Input.InputAction action, float x, float y) =>
+            input.HandlePointer(new KumikoUI.Core.Input.KumikoPointerEventArgs { Action = action, X = x, Y = y, TimestampMs = 1 },
+                grid.Scroll, grid.Selection, grid.Style, grid.Source);
+
+        float firstRowY = grid.Style.GroupPanelHeight + grid.Style.HeaderHeight + grid.Style.SummaryRowHeight + 10;
+        Pointer(KumikoUI.Core.Input.InputAction.Pressed, 400, firstRowY); // the first group header: collapse it
+        Pointer(KumikoUI.Core.Input.InputAction.Released, 400, firstRowY);
+        Pointer(KumikoUI.Core.Input.InputAction.Pressed, 400, firstRowY); // and expand it again
+        Pointer(KumikoUI.Core.Input.InputAction.Released, 400, firstRowY);
+        grid.Selection.CurrentCell = new CellPosition(2, 1);
+        Assert.True(input.Animations.IsGroupSliding);
+
+        // The clock is held (0 ms steps), so every measured frame draws the transitions in progress
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+        {
+            input.UpdateAnimations(0);
+            grid.Render(ctx);
+        }));
+        Assert.True(input.Animations.IsGroupSliding && input.Animations.IsSelectionFading);
+    }
+
+    [Fact]
     public void SteadyState_GridUsingEveryPerFrameFeature_WithAFontIconProvider_AllocatesNothing()
     {
         // Every glyph of the featured grid drawn as an icon font glyph (#119): the glyph strings are built once.
@@ -208,6 +256,29 @@ public class RenderAllocationTests
         Assert.Equal(15, cache.Count);
         Assert.True(drawn >= 3 * VisibleRows, $"every visible image cell draws its image ({drawn})");
         Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
+    public void SteadyState_AnOpenEditorAndFilterPopup_WithAPopupManager_AllocatesNothing()
+    {
+        // The hosts pass the popup manager and the edit session to every frame: the popup shadow, the popup's rows,
+        // its search box and the editor's frame draw without allocating once warm.
+        var grid = CreateGrid(featured: true);
+        var input = new KumikoUI.Core.Input.KumikoInputController();
+        var edit = new KumikoUI.Core.Editing.EditSession();
+        grid.Render(new NoOpDrawingContext());
+
+        float x = grid.Style.RowDragHandleWidth + grid.Source.Columns[0].Width + ColumnWidth - 18;   // the funnel at the right of the second header
+        float y = grid.Style.GroupPanelHeight + grid.Style.HeaderHeight / 2;
+        foreach (var action in new[] { KumikoUI.Core.Input.InputAction.Pressed, KumikoUI.Core.Input.InputAction.Released })
+            input.HandlePointer(new KumikoUI.Core.Input.KumikoPointerEventArgs { X = x, Y = y, Action = action },
+                grid.Scroll, grid.Selection, grid.Style, grid.Source);
+        Assert.True(input.PopupManager.HasActivePopups, "the filter popup is open");
+        Assert.True(edit.BeginEdit(2, 0, grid.Source.Columns[0], grid.Source, new KumikoRect(0, 200, 110, 36)));
+
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+            grid.Renderer.RenderFrame(ctx, grid.Source, grid.Scroll, grid.Selection, grid.Style, -1, 0, -1, 0,
+                edit, input.PopupManager)));
     }
 
     [Fact]
@@ -511,7 +582,7 @@ public class RenderAllocationTests
                 + (featured ? style.GroupPanelHeight + 2 * style.SummaryRowHeight : 0),
         };
         var selection = new KumikoSelectionModel(source);
-        selection.HandleRowSelection(featured ? 4 : 3, shift: false, ctrl: false);
+        selection.HandleRowSelection(featured ? 4 : 3, shift: false, control: false);
         selection.SetCurrentCell(featured ? 4 : 3, 1);
         return new Grid(new KumikoRenderer(), source, scroll, selection, style);
     }

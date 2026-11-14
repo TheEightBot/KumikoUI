@@ -3,7 +3,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Event args for component value changes.</summary>
-public class ComponentValueChangedEventArgs : EventArgs
+public sealed class ComponentValueChangedEventArgs : EventArgs
 {
     /// <summary>Value before the change.</summary>
     public object? OldValue { get; }

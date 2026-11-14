@@ -1,0 +1,86 @@
+KumikoUI.SkiaSharp.IKumikoImageLoader
+KumikoUI.SkiaSharp.IKumikoImageLoader.OpenAsync(object! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.IO.Stream?>!
+KumikoUI.SkiaSharp.IKumikoImageLoader.TryGetCacheKey(object! source, out object? key) -> bool
+KumikoUI.SkiaSharp.KumikoImageCache
+KumikoUI.SkiaSharp.KumikoImageCache.Bytes.get -> long
+KumikoUI.SkiaSharp.KumikoImageCache.Clear() -> void
+KumikoUI.SkiaSharp.KumikoImageCache.Count.get -> int
+KumikoUI.SkiaSharp.KumikoImageCache.Dispose() -> void
+KumikoUI.SkiaSharp.KumikoImageCache.ImagesLoaded -> System.EventHandler?
+KumikoUI.SkiaSharp.KumikoImageCache.IsDisposed.get -> bool
+KumikoUI.SkiaSharp.KumikoImageCache.KumikoImageCache() -> void
+KumikoUI.SkiaSharp.KumikoImageCache.KumikoImageCache(int maxCount, long maxBytes) -> void
+KumikoUI.SkiaSharp.KumikoImageCache.Loaders.get -> System.Collections.Generic.IList<KumikoUI.SkiaSharp.IKumikoImageLoader!>!
+KumikoUI.SkiaSharp.KumikoImageCache.MaxBytes.get -> long
+KumikoUI.SkiaSharp.KumikoImageCache.MaxBytes.set -> void
+KumikoUI.SkiaSharp.KumikoImageCache.MaxCount.get -> int
+KumikoUI.SkiaSharp.KumikoImageCache.MaxCount.set -> void
+KumikoUI.SkiaSharp.KumikoImageCache.MaxDecodedSize.get -> int
+KumikoUI.SkiaSharp.KumikoImageCache.MaxDecodedSize.set -> void
+KumikoUI.SkiaSharp.KumikoImageCache.Resolve(object! source, out object? image) -> KumikoUI.Core.Rendering.KumikoImageStatus
+KumikoUI.SkiaSharp.KumikoImageLoader
+KumikoUI.SkiaSharp.KumikoImageLoader.KumikoImageLoader() -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext
+KumikoUI.SkiaSharp.SkiaDrawingContext.ClipRect(KumikoUI.Core.Rendering.KumikoRect rect) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.Dispose() -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.DrawImage(object! image, KumikoUI.Core.Rendering.KumikoRect destRect) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.DrawLine(float x1, float y1, float x2, float y2, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.DrawPolyline(System.ReadOnlySpan<KumikoUI.Core.Rendering.KumikoPoint> points, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.DrawRect(KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.DrawRoundRect(KumikoUI.Core.Rendering.KumikoRect rect, float cornerRadius, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.DrawText(string! text, float x, float y, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.DrawTextInRect(string! text, KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint, KumikoUI.Core.Rendering.KumikoTextAlignment horizontalAlignment = KumikoUI.Core.Rendering.KumikoTextAlignment.Left, KumikoUI.Core.Rendering.KumikoVerticalAlignment verticalAlignment = KumikoUI.Core.Rendering.KumikoVerticalAlignment.Center, bool clip = true, KumikoUI.Core.Rendering.KumikoTextWrap wrap = KumikoUI.Core.Rendering.KumikoTextWrap.None) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.DrawTextInRect(string! text, KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint, KumikoUI.Core.Rendering.KumikoTextAlignment horizontalAlignment, KumikoUI.Core.Rendering.KumikoVerticalAlignment verticalAlignment, bool clip) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.FillPolygon(System.ReadOnlySpan<KumikoUI.Core.Rendering.KumikoPoint> points, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.FillRect(KumikoUI.Core.Rendering.KumikoRect rect, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.FillRoundRect(KumikoUI.Core.Rendering.KumikoRect rect, float cornerRadius, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.GetFontMetrics(KumikoUI.Core.Rendering.KumikoPaint! paint) -> KumikoUI.Core.Rendering.KumikoFontMetrics
+KumikoUI.SkiaSharp.SkiaDrawingContext.MeasureText(string! text, KumikoUI.Core.Rendering.KumikoPaint! paint) -> KumikoUI.Core.Rendering.KumikoSize
+KumikoUI.SkiaSharp.SkiaDrawingContext.MeasureText(string! text, KumikoUI.Core.Rendering.KumikoPaint! paint, float maxWidth, KumikoUI.Core.Rendering.KumikoTextWrap wrap) -> KumikoUI.Core.Rendering.KumikoSize
+KumikoUI.SkiaSharp.SkiaDrawingContext.ResourceCache.get -> KumikoUI.SkiaSharp.SkiaResourceCache!
+KumikoUI.SkiaSharp.SkiaDrawingContext.Restore() -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.Save() -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.SkiaDrawingContext(SkiaSharp.SKCanvas! canvas) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.SkiaDrawingContext(SkiaSharp.SKCanvas! canvas, KumikoUI.SkiaSharp.SkiaResourceCache! resourceCache) -> void
+KumikoUI.SkiaSharp.SkiaDrawingContext.Translate(float dx, float dy) -> void
+KumikoUI.SkiaSharp.SkiaFontRegistrar
+KumikoUI.SkiaSharp.SkiaResourceCache
+KumikoUI.SkiaSharp.SkiaResourceCache.Clear() -> void
+KumikoUI.SkiaSharp.SkiaResourceCache.CreateContext(SkiaSharp.SKCanvas! canvas) -> KumikoUI.SkiaSharp.SkiaDrawingContext!
+KumikoUI.SkiaSharp.SkiaResourceCache.Dispose() -> void
+KumikoUI.SkiaSharp.SkiaResourceCache.FontCount.get -> int
+KumikoUI.SkiaSharp.SkiaResourceCache.IsDisposed.get -> bool
+KumikoUI.SkiaSharp.SkiaResourceCache.MaxFonts.get -> int
+KumikoUI.SkiaSharp.SkiaResourceCache.MaxPaints.get -> int
+KumikoUI.SkiaSharp.SkiaResourceCache.MaxTextMeasurements.get -> int
+KumikoUI.SkiaSharp.SkiaResourceCache.MaxTypefaces.get -> int
+KumikoUI.SkiaSharp.SkiaResourceCache.PaintCount.get -> int
+KumikoUI.SkiaSharp.SkiaResourceCache.SkiaResourceCache() -> void
+KumikoUI.SkiaSharp.SkiaResourceCache.SkiaResourceCache(int maxPaints, int maxFonts, int maxTypefaces) -> void
+KumikoUI.SkiaSharp.SkiaResourceCache.SkiaResourceCache(int maxPaints, int maxFonts, int maxTypefaces, int maxTextMeasurements) -> void
+KumikoUI.SkiaSharp.SkiaResourceCache.TextMeasurementCount.get -> int
+KumikoUI.SkiaSharp.SkiaResourceCache.TypefaceCount.get -> int
+const KumikoUI.SkiaSharp.KumikoImageCache.DefaultMaxBytes = 67108864 -> long
+const KumikoUI.SkiaSharp.KumikoImageCache.DefaultMaxCount = 256 -> int
+const KumikoUI.SkiaSharp.KumikoImageCache.DefaultMaxDecodedSize = 256 -> int
+const KumikoUI.SkiaSharp.SkiaResourceCache.DefaultMaxFonts = 128 -> int
+const KumikoUI.SkiaSharp.SkiaResourceCache.DefaultMaxPaints = 512 -> int
+const KumikoUI.SkiaSharp.SkiaResourceCache.DefaultMaxTextMeasurements = 4096 -> int
+const KumikoUI.SkiaSharp.SkiaResourceCache.DefaultMaxTypefaces = 32 -> int
+static KumikoUI.SkiaSharp.KumikoImageLoader.Default.get -> KumikoUI.SkiaSharp.KumikoImageLoader!
+static KumikoUI.SkiaSharp.KumikoImageLoader.OpenUriAsync(System.Uri! uri, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.IO.Stream?>!
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.Clear() -> void
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.FallbackFamilies.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.IsRegistered(SkiaSharp.SKTypeface! typeface) -> bool
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.RegisterTypeface(string! family, SkiaSharp.SKTypeface! typeface) -> void
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.RegisterTypeface(string! family, SkiaSharp.SKTypeface! typeface, SkiaSharp.SKFontStyle! style) -> void
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.RegisterTypefaceFamiliesFromStream(System.IO.Stream! stream, System.Collections.Generic.IEnumerable<string?>! families) -> void
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.RegisterTypefaceFromStream(string! family, System.IO.Stream! stream) -> void
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.RegisterTypefaceFromStream(string! family, System.IO.Stream! stream, SkiaSharp.SKFontStyle! style) -> void
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.SetFallbackFamilies(params string![]! families) -> void
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.TryGetTypeface(string! family, SkiaSharp.SKFontStyle! style, out SkiaSharp.SKTypeface? typeface) -> bool
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.TryGetTypeface(string! family, out SkiaSharp.SKTypeface? typeface) -> bool
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.Unregister(string! family) -> bool
+static KumikoUI.SkiaSharp.SkiaFontRegistrar.Version.get -> long
+virtual KumikoUI.SkiaSharp.KumikoImageLoader.OpenAsync(object! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.IO.Stream?>!
+virtual KumikoUI.SkiaSharp.KumikoImageLoader.TryGetCacheKey(object! source, out object? key) -> bool

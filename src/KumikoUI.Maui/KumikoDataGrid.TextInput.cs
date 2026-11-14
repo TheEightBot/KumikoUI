@@ -43,6 +43,7 @@ public partial class KumikoDataGrid
     partial void SyncNativeTextInput()
     {
         if (_nativeKeyInput != null) _textInputBridge?.Sync();
+        ReleaseKeyboardInsetAfterEdit(); // KumikoDataGrid.Keyboard.Apple.cs
     }
 #endif
 }
