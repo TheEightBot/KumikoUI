@@ -227,9 +227,11 @@ public static class KumikoDevFlowExtension
 		float y = source.IsGroupingActive ? style.GroupPanelHeight : 0;
 		var c = source.Columns[column];
 		float middle = y + style.HeaderHeight / 2;
-		// The filter funnel sits 20 DIPs left of the right edge; the resize grip straddles the edge. Each point
+		// The filter funnel is drawn 10 DIPs wide, the cell padding inside the right edge, and left of the 12 DIP sort
+		// arrow when the column is sorted: the point is its middle. The resize grip straddles the edge. Each point
 		// comes with the region Core's hit tester reports for it, so a caller can tell a stale layout from a bug.
-		float filterX = x + c.Width - 20, gripX = x + c.Width - 2;
+		float sortSpace = c.SortDirection != KumikoSortDirection.None ? 12 : 0;
+		float filterX = x + c.Width - style.CellPadding - sortSpace - 5, gripX = x + c.Width - 2;
 		return new
 		{
 			column,

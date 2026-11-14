@@ -87,6 +87,13 @@
     <!-- The same for WebAssembly, where the library is linked into dotnet.native.wasm. -->
     <PackageReference Include="HarfBuzzSharp.NativeAssets.WebAssembly" />
   </ItemGroup>
+  <!--
+    The WebAssembly head reads CSS media queries (prefers-reduced-motion, pointer: coarse) through a [JSImport]
+    (Input/BrowserMedia.cs, #101); the JSImport source generator emits unsafe marshalling code.
+  -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-browserwasm'))">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
 
   <!--
     Core and SkiaSharp are plain Microsoft.NET.Sdk libraries that target only `net10.0`, while this is

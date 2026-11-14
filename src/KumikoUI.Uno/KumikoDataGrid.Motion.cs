@@ -6,8 +6,9 @@ namespace KumikoUI.Uno;
 /// asks for reduced motion. <see cref="Core.Models.KumikoStyle.EnableAnimations"/> turns them off per style.
 /// </summary>
 /// <remarks>
-/// The reduced-motion setting is read on each load from <c>UISettings.AnimationsEnabled</c> (the Windows "Animation
-/// effects" setting; Uno reports its platform's setting where it implements it, and true elsewhere).
+/// The reduced-motion setting is read on each load: in the browser from the CSS <c>prefers-reduced-motion</c> media
+/// query, and on every head from <c>UISettings.AnimationsEnabled</c> (the Windows "Animation effects" setting; Uno
+/// reports its platform's setting where it implements it, and true elsewhere).
 /// </remarks>
 public partial class KumikoDataGrid
 {
@@ -18,6 +19,7 @@ public partial class KumikoDataGrid
     {
         try
         {
+            if (KumikoUI.Uno.Input.BrowserMedia.PrefersReducedMotion) return true; // the browser's prefers-reduced-motion
             return !new Windows.UI.ViewManagement.UISettings().AnimationsEnabled;
         }
         catch (Exception)

@@ -787,11 +787,18 @@ public sealed class KumikoRenderer : IDisposable
             return;
         }
 
+        // The rows up to the header end at its bottom edge (and its grid line), so their vertical grid lines stop there.
+        // The rows after it start at their slid position: while a group closes, the gap between them is left empty.
+        float bandTop = _slideTop + Math.Max(0f, _slideShift);
         ctx.Save();
         ctx.ClipRect(dataClip);
+        ctx.ClipRect(new KumikoRect(0, dataClip.Y, scroll.ViewportWidth, Math.Max(0, _slideTop + 1 - dataClip.Y)));
         DrawRowBand(ctx, dataSource, cols, firstRow, _slideAnchor, scroll, selection, style, mode, frozenWidth, editSession,
             topSummaryHeight, frozenRowCount, rightFrozenLeft, rightFrozenWidth);
-        ctx.ClipRect(new KumikoRect(0, _slideTop, scroll.ViewportWidth, Math.Max(0, dataClip.Bottom - _slideTop)));
+        ctx.Restore();
+        ctx.Save();
+        ctx.ClipRect(dataClip);
+        ctx.ClipRect(new KumikoRect(0, bandTop, scroll.ViewportWidth, Math.Max(0, dataClip.Bottom - bandTop)));
         DrawRowBand(ctx, dataSource, cols, _slideAnchor + 1, lastRow, scroll, selection, style, mode, frozenWidth, editSession,
             topSummaryHeight, frozenRowCount, rightFrozenLeft, rightFrozenWidth);
         ctx.Restore();

@@ -115,11 +115,12 @@ public partial class KumikoDataGrid
 
     /// <summary>
     /// The momentum preset of the head the grid runs on (#101): iOS, Android, or desktop (Windows, macOS, Linux and
-    /// the browser).
+    /// the browser); in a browser whose main pointer is a finger (CSS <c>pointer: coarse</c>), the Android preset.
     /// </summary>
     private static KumikoMomentumPreset PlatformMomentumPreset =>
         OperatingSystem.IsIOS() ? KumikoMomentumPreset.Ios
         : OperatingSystem.IsAndroid() ? KumikoMomentumPreset.Android
+        : KumikoUI.Uno.Input.BrowserMedia.HasCoarsePointer ? KumikoMomentumPreset.Android // a phone or tablet browser
         : KumikoMomentumPreset.Desktop;
 
     /// <summary>Identifies the <see cref="ScrollSettings"/> dependency property.</summary>

@@ -65,6 +65,20 @@ public class TransitionTests
     }
 
     [Fact]
+    public void Collapsing_LeavesTheClosingGapEmpty_NoGridLinesThroughIt()
+    {
+        var g = Grouped();
+
+        g.Tap(300, OsloHeaderY);
+        var frame = g.RenderRecorded();
+
+        // The gap: from the Oslo header's bottom (116) to where the Rome header is drawn (224)
+        float gapTop = RowsTop + 36 + 1, gapBottom = RowsTop + 4 * 36 - 1;
+        Assert.DoesNotContain(frame.Lines, o => Math.Abs(o.X1 - o.X2) < 0.01f && o.Visible is { } v && v.Height > 0
+            && v.Y < gapBottom && v.Bottom > gapTop);
+    }
+
+    [Fact]
     public void ASlidingGroup_KeepsSaveAndRestoreBalanced()
     {
         var g = Grouped();
