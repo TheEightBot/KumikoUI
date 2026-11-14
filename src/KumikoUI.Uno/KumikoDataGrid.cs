@@ -109,6 +109,7 @@ public partial class KumikoDataGrid : UserControl
 
         // Wire edit session to input controller and style (mirrors MAUI).
         _inputController.EditSession = _editSession;
+        _inputController.ScrollSettings = ScrollSettings.FromPreset(PlatformMomentumPreset); // KumikoDataGrid.Theming.cs
 
         // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester, and draws
         // the controller's hover and pressed feedback (#101).
