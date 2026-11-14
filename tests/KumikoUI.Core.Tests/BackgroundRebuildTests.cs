@@ -286,15 +286,16 @@ public class BackgroundRebuildTests(ITestOutputHelper output)
         var picked = items[1234];
         var other = items[42];
 
-        ui.Invoke(() =>
+        int rowBeforeSwap = ui.Invoke(() =>
         {
             selection.Select(picked);
             selection.Select(other);
             selection.SetCurrentCell(source.IndexOfItem(picked), 2);
             source.ToggleSort(source.Columns[1]);
+            return selection.CurrentCell.Row;
         });
         // Before the swap nothing moved.
-        Assert.Equal(1234, ui.Invoke(() => selection.CurrentCell.Row));
+        Assert.Equal(1234, rowBeforeSwap);
         await Updated(ui, source);
 
         var (current, currentItem, rows, selected) = ui.Invoke(() =>
@@ -509,11 +510,16 @@ public class BackgroundRebuildTests(ITestOutputHelper output)
     public async Task Dispose_WhileABuildIsPending_CompletesTheAwaiters()
     {
         using var ui = new TestUiThread();
-        var source = ui.Invoke(() => NewSource(NewItems(2000), threshold: 1000, out _));
-        var waiting = ui.Invoke(source.WhenViewUpdatedAsync);
-        Assert.False(waiting.IsCompleted);
-
-        ui.Invoke(source.Dispose);
+        // In one UI turn, so the build cannot start (let alone finish) before Dispose.
+        var (source, waiting, pending) = ui.Invoke(() =>
+        {
+            var s = NewSource(NewItems(2000), threshold: 1000, out _);
+            var task = s.WhenViewUpdatedAsync();
+            bool wasPending = !task.IsCompleted;
+            s.Dispose();
+            return (s, task, wasPending);
+        });
+        Assert.True(pending);
 
         await waiting.WaitAsync(Timeout);
         Assert.Equal(0, ui.Invoke(() => source.RowCount));
