@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Globalization;
+using KumikoUI.Core;
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Layout;
@@ -18,8 +19,8 @@ namespace SampleApp.Maui;
 /// agent extension. KumikoUI draws the grid on one canvas, so DevFlow's visual tree stops at the
 /// <see cref="KumikoDataGrid"/>; the extension reports what the canvas holds (rows, columns, sort, filters, groups,
 /// selection, current cell, edit state, scroll offsets, summaries, colors) and where cells and headers are drawn,
-/// so a script can tap them with <c>maui devflow ui tap --x --y</c> and check the result. Only the grid's public
-/// API is used.
+/// so a script can tap them with <c>maui devflow ui tap --x --y</c> and check the result. It uses the grid's public
+/// API (the one exception, the frame-time counters of the <c>render</c> tool, is noted there).
 /// </summary>
 /// <remarks>
 /// Call the tools with <c>maui devflow extensions call com.kumikoui.sample &lt;tool&gt; '{"grid":0,...}'</c>.
@@ -44,7 +45,7 @@ public static class KumikoDevFlowExtension
 				Namespace,
 				"KumikoUI sample: grid state and cell geometry for canvas-drawn KumikoDataGrid instances",
 				"1.0.0",
-				["page", "state", "cell", "header", "hit-test", "rows", "find", "group-row", "popup", "scroll", "edit"]);
+				["page", "state", "cell", "header", "hit-test", "rows", "find", "group-row", "popup", "scroll", "edit", "render"]);
 
 			var readOnly = new ExtensionToolAnnotations { ReadOnly = true, Idempotent = true, Category = "kumikoui" };
 
@@ -100,6 +101,14 @@ public static class KumikoDevFlowExtension
 				"(type: replace the editor text with 'text'; set: set a date, number or list editor to 'value'; commit; cancel).",
 				"POST", "edit", request => OnMainThread(request, Edit),
 				annotations: new ExtensionToolAnnotations { Category = "kumikoui" });
+
+			extension.MapTool("render",
+				"The grid's drawing surface and frame times, and a way to change them. Params: grid, and any of renderMode " +
+				"(Auto, Software, Hardware), showFrameStats and enableHaptics (true, false). Returns the requested and active render mode, the " +
+				"overlay's switch and its counters (frame time in ms, frames per second, bytes allocated per frame, which " +
+				"update only while showFrameStats is on).",
+				"POST", "render", request => OnMainThread(request, Render),
+				annotations: new ExtensionToolAnnotations { Idempotent = true, Category = "kumikoui" });
 		});
 
 	// ── Tools ──
@@ -183,6 +192,9 @@ public static class KumikoDevFlowExtension
 					editor = edit.ActiveEditor?.GetType().Name,
 				},
 				["scroll"] = new { vertical = grid.VerticalOffset, horizontal = grid.HorizontalOffset },
+				["renderMode"] = grid.RenderMode.ToString(),
+				["activeRenderMode"] = grid.ActiveRenderMode.ToString(),
+				["frozenPanes"] = DescribeFrozenPanes(grid),
 				["popupOpen"] = grid.InputController.ActivePopup != null,
 				["summaries"] = new
 				{
@@ -190,6 +202,33 @@ public static class KumikoDevFlowExtension
 					bottom = source.ComputedBottomSummaries.Select(DescribeSummary).ToArray(),
 				},
 			},
+		};
+	}
+
+	/// <summary>
+	/// What decides whether frozen columns stay pinned (#268): on a grid too narrow for them (the frozen columns
+	/// are wider than <c>MaxFrozenColumnsWidthRatio</c> of the column area while the columns overflow it) Core
+	/// unpins some, and they scroll with the others. A script checks "stays put" only where <c>mayUnpin</c> is false.
+	/// </summary>
+	private static object DescribeFrozenPanes(KumikoDataGrid grid)
+	{
+		var style = grid.GridStyle;
+		float total = 0, frozen = 0;
+		foreach (var c in grid.DataSource.Columns)
+		{
+			if (!c.IsVisible) continue;
+			total += c.Width;
+			if (c.FreezeMode != ColumnFreezeMode.None) frozen += c.Width;
+		}
+		float area = (float)grid.Width - (style.ShowRowDragHandle ? style.RowDragHandleWidth : 0);
+		float ratio = float.IsNaN(style.MaxFrozenColumnsWidthRatio) ? 0 : Math.Clamp(style.MaxFrozenColumnsWidthRatio, 0f, 1f);
+		return new
+		{
+			columnArea = area,
+			columnsWidth = total,
+			frozenWidth = frozen,
+			maxFrozenWidth = area * ratio,
+			mayUnpin = grid.Width > 0 && total > area && frozen > area * ratio,
 		};
 	}
 
@@ -333,6 +372,34 @@ public static class KumikoDevFlowExtension
 		if (args.Double("vertical") is { } vertical) { grid.VerticalOffset = vertical; scrolled = true; }
 		if (args.Double("horizontal") is { } horizontal) { grid.HorizontalOffset = horizontal; scrolled = true; }
 		return new { scrolled, vertical = grid.VerticalOffset, horizontal = grid.HorizontalOffset };
+	}
+
+	private static object Render(KumikoDataGrid grid, Page? page, IReadOnlyList<KumikoDataGrid> grids, Args args)
+	{
+		if (args.Text("renderMode") is { } mode)
+			grid.RenderMode = Enum.Parse<KumikoRenderMode>(mode, ignoreCase: true);
+		if (args.Text("showFrameStats") is { } stats)
+			grid.ShowFrameStats = bool.Parse(stats);
+		if (args.Text("enableHaptics") is { } haptics)
+			grid.EnableHaptics = bool.Parse(haptics);
+
+		// The grid keeps its renderer private; the counters behind the overlay are read from it by reflection, which
+		// is acceptable in this Debug-only test hook.
+		var renderer = typeof(KumikoDataGrid)
+			.GetField("_renderer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+			?.GetValue(grid) as KumikoRenderer;
+		var frame = renderer?.FrameStats;
+		return new
+		{
+			renderMode = grid.RenderMode.ToString(),
+			activeRenderMode = grid.ActiveRenderMode.ToString(),
+			showFrameStats = grid.ShowFrameStats,
+			enableHaptics = grid.EnableHaptics,
+			frameTimeMs = frame?.FrameTimeMs,
+			framesPerSecond = frame?.FramesPerSecond,
+			allocatedBytesPerFrame = frame?.AllocatedBytesPerFrame,
+			text = frame?.Text,
+		};
 	}
 
 	private static object ReadPopup(KumikoDataGrid grid, Page? page, IReadOnlyList<KumikoDataGrid> grids, Args args)

@@ -148,6 +148,9 @@
                     return item => item, so the renderer receives the full Employee
                     object as its value (the command parameter).
 
+                    A Star column shrinks to its MinWidth (40 by default) when the other columns fill the grid, as they
+                    do on a phone; MinWidth="180" keeps both buttons wide enough to tap there.
+
                     MauiActionButtonDefinition is NOT in the visual tree so BindingContext
                     is not inherited — use Source={x:Reference actionsGrid} to resolve the VM.
                 -->
@@ -156,6 +159,7 @@
                                      PropertyName=""
                                      ColumnType="Template"
                                      Width="200"
+                                     MinWidth="180"
                                      AllowSorting="False"
                                      AllowFiltering="False"
                                      SizeMode="Star"

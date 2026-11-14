@@ -39,6 +39,7 @@ and tells a script where things are drawn. Every tool takes an optional `grid` (
 | `popup` | GET | The open drawn popup; for the filter panel also its buttons and list items. |
 | `scroll` | POST | `ScrollToRow`, `ScrollToColumn`, or the offsets. |
 | `edit` | POST | Types into, sets, commits or cancels the open editor (see the limits below). |
+| `render` | POST | The requested and active render mode (`Auto`, `Software`, `Hardware`) and the frame-stats counters (frame time, frames per second, bytes allocated per frame); sets `renderMode` and `showFrameStats`. |
 
 ```bash
 maui devflow extensions describe com.kumikoui.sample
@@ -65,6 +66,7 @@ maui devflow ui tap <grid element id> --x 464 --y 20      # the Salary header: s
 eng/devflow/verify.sh                       # Mac Catalyst: build, launch, verify, quit
 eng/devflow/verify.sh --platform ios        # iOS Simulator (a dedicated "KumikoUI-DevFlow-iPad" simulator)
 eng/devflow/verify.sh --platform ios --device "iPhone 17 Pro"
+eng/devflow/verify.sh --platform android --device emulator-5554   # an Android emulator or device, by adb serial
 eng/devflow/verify.sh --no-build            # reuse the last Debug build
 eng/devflow/verify.sh --agent-port 10224    # attach to a sample that is already running
 ```
@@ -72,10 +74,20 @@ eng/devflow/verify.sh --agent-port 10224    # attach to a sample that is already
 The suite builds the Debug sample, launches it, waits for its agent (matched by process id, so other DevFlow apps on
 the machine are left alone), and on Mac Catalyst resizes the window to 1000 × 800 so the grid scrolls sideways. On iOS it
 creates and boots an 11-inch iPad Pro simulator named `KumikoUI-DevFlow-iPad` unless `--device` names one, so it never
-replaces an app another project installed on a shared simulator. An iPad, because on a phone in portrait the All
-Components grid's frozen columns are wider than the screen and hide the scrolling ones
-([#268](https://github.com/TheEightBot/KumikoUI/issues/268)), which fails most of the column checks; `--device` runs it
-on a phone anyway.
+replaces an app another project installed on a shared simulator. `--device` runs it on any other simulator, a phone
+included: where the grid is too narrow for its frozen columns Core unpins some of them
+([#268](https://github.com/TheEightBot/KumikoUI/issues/268)), and the suite adapts. It reads `frozenPanes.mayUnpin`
+from the extension and accepts a frozen column that scrolled only where it is true, scrolls the grid sideways to
+bring the resize grip, the filter funnel and the reorder drop target on screen where a column is wider than the room
+beside the frozen panes, and presses the visible part of a header that is half off screen. On a wide grid the same
+checks keep their strict form.
+
+On Android (`--platform android --device <adb serial>`; the serial is optional when exactly one device is connected)
+the suite installs the Debug sample with `-t:Install`, starts it, forwards the agent's port 9223 to a free local port
+(the broker does not list agents on a device) and waits for the extension. DevFlow refuses taps and drags at a point on
+Android ("covered by PlatformGraphicsView"), so the suite sends those through `adb input` at screen pixels (the grid's
+place on screen comes from `uiautomator dump`), and takes screenshots with `adb screencap`, because DevFlow's own
+capture leaves out the GPU surface (the grid comes out blank).
 
 It prints `PASS`/`FAIL`/`SKIP` per check and a summary of the failures, and exits 0 when everything passed, 1 when a
 check failed and 2 when the app could not be built or reached.
@@ -111,10 +123,10 @@ Pages are reached by Shell route and buttons by their text, so the suite keeps w
   `/api/v1/agent/lease` endpoint before each mutating command.
 - **Mac Catalyst screenshots** come out at twice the window's height with the lower half black (a DevFlow capture
   issue with Catalyst's 77 % scaling); the app content in the upper half is correct.
-- **Android and Windows** agents are still "in progress" in DevFlow. Android needs `adb reverse` for the agent port;
-  the suite does not launch Android yet. With an emulator, deploy the Debug sample yourself
-  (`dotnet build samples/SampleApp.Maui -f net10.0-android -t:Run`) and run `verify.sh --agent-port <port>` with
-  the port `maui devflow list` shows.
+- **Windows** agents are still "in progress" in DevFlow, and the suite does not launch Windows.
+- **Android** works through the forwarded port, with the workarounds above. Every drag is an `adb input swipe`, a
+  quick flick the grid may carry on with as a fling; coordinates round to whole pixels, so the resize check allows a
+  DIP of difference.
 
 ## AI agents
 

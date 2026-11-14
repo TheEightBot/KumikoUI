@@ -4,7 +4,7 @@
 # taps and drags at computed cell coordinates, asserting the grid's state through the sample's
 # com.kumikoui.sample agent extension and saving a screenshot per step. See eng/devflow/README.md.
 #
-#   eng/devflow/verify.sh [--platform maccatalyst|ios] [--device <udid or name>] [--no-build]
+#   eng/devflow/verify.sh [--platform maccatalyst|ios|android] [--device <udid or name>] [--no-build]
 #                         [--agent-port <port>] [--out <dir>] [--keep-running]
 #
 # Exit code: 0 when every check passed, 1 when one failed, 2 when the app could not be built or reached.
@@ -109,6 +109,39 @@ launch_ios() {
 	APP_PID=$(xcrun simctl launch "$SIM_UDID" "$BUNDLE_ID" | awk '{ print $NF }')
 }
 
+# An Android device or emulator (--device <adb serial>, optional when exactly one is connected). The Debug build is
+# installed with -t:Install (a Fast Deployment APK has no assemblies in it), launched, and the agent's port (9223 in
+# the app) is forwarded to a free local port: the broker does not see an agent on a device.
+ANDROID_SERIAL_ARG=""
+launch_android() {
+	command -v adb >/dev/null || { echo "adb is required for --platform android" >&2; exit 2; }
+	if [ -z "$DEVICE" ]; then
+		DEVICE=$(adb devices | awk 'NR > 1 && $2 == "device" { print $1 }')
+		[ "$(echo "$DEVICE" | grep -c .)" = 1 ] || { echo "pass --device <adb serial>: $(echo $DEVICE | tr '\n' ' ')" >&2; exit 2; }
+	fi
+	ANDROID_SERIAL_ARG=$DEVICE
+	adb -s "$DEVICE" wait-for-device
+	if [ $BUILD = 1 ]; then
+		echo "Building and installing the sample on $DEVICE (Debug)..."
+		dotnet build "$PROJECT" -f net10.0-android -c Debug -t:Install "-p:AdbTarget=-s $DEVICE" -v:q -nologo \
+			>"$OUT/build.log" 2>&1 || { tail -20 "$OUT/build.log"; echo "build failed: $OUT/build.log" >&2; exit 2; }
+	fi
+	adb -s "$DEVICE" shell am force-stop "$BUNDLE_ID"
+	adb -s "$DEVICE" logcat -c
+	adb -s "$DEVICE" shell am start -n "$(adb -s "$DEVICE" shell cmd package resolve-activity --brief "$BUNDLE_ID" | tail -1 | tr -d '\r')" >/dev/null
+	APP_PID=android
+	AGENT_PORT=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
+	adb -s "$DEVICE" forward "tcp:$AGENT_PORT" tcp:9223 >/dev/null
+	# A Debug app on an emulator takes a while to start (JIT).
+	local i
+	for i in $(seq 1 120); do
+		[ -n "$(ext page 2>/dev/null | jq -r '.type // empty' 2>/dev/null)" ] && return 0
+		sleep 1
+	done
+	echo "the app's DevFlow agent did not answer on $DEVICE (forwarded to port $AGENT_PORT)" >&2
+	exit 2
+}
+
 # Waits for the agent of the app we launched (by process id) to register with the DevFlow broker.
 connect() {
 	local i port
@@ -130,6 +163,9 @@ cleanup() {
 	[ -n "$APP_PID" ] || return
 	if [ "$PLATFORM" = ios ]; then
 		xcrun simctl terminate "$SIM_UDID" "$BUNDLE_ID" 2>/dev/null
+	elif [ "$PLATFORM" = android ]; then
+		adb -s "$ANDROID_SERIAL_ARG" shell am force-stop "$BUNDLE_ID"
+		adb -s "$ANDROID_SERIAL_ARG" forward --remove "tcp:$AGENT_PORT" 2>/dev/null
 	else
 		kill "$APP_PID" 2>/dev/null
 	fi
@@ -139,10 +175,11 @@ if [ -z "$AGENT_PORT" ]; then
 	case "$PLATFORM" in
 		maccatalyst) launch_maccatalyst ;;
 		ios) launch_ios ;;
-		*) echo "unsupported platform: $PLATFORM (use maccatalyst or ios)" >&2; exit 2 ;;
+		android) launch_android ;;
+		*) echo "unsupported platform: $PLATFORM (use maccatalyst, ios or android)" >&2; exit 2 ;;
 	esac
 	trap cleanup EXIT
-	connect
+	[ "$PLATFORM" = android ] || connect
 fi
 echo "Connected to the DevFlow agent on port $AGENT_PORT; screenshots in $OUT"
 df ui status >"$OUT/status.json" 2>&1
@@ -200,6 +237,21 @@ test_navigation() {
 		[ "$route" != LargeDataPage ] && check_true "$route: grid has rows" '.grid.rowCount > 0' "$json"
 		shot "page-$route"
 	done
+}
+
+# frozen_stays_put <column> <x before the scroll> <mayUnpin>: a frozen column keeps its x while the grid scrolls sideways.
+# Where the grid is too narrow for the frozen panes (mayUnpin, from the extension) Core unpins columns (#268) and a
+# column that moved is then expected; anywhere else it must not move.
+frozen_stays_put() {
+	local now
+	now=$(header_x "$1")
+	if [ "$now" = "$2" ]; then
+		pass "frozen $1 stays put"
+	elif [ "$3" = true ]; then
+		pass "frozen $1 scrolled with the columns: the frozen panes are wider than the grid allows, so Core unpinned it (x $2 -> $now)"
+	else
+		fail "frozen $1 stays put" "expected '$2', got '$now'"
+	fi
 }
 
 test_main_page() {
@@ -271,33 +323,70 @@ test_main_page() {
 	check_true "no editor left open" '.grid.edit.isEditing | not'
 
 	section "All Components: columns"
-	local width grip y
+	# The header's resize grip and drop targets are read straight from the header geometry (not header_point, which
+	# scrolls a column to its start when its center is under a frozen pane): on a phone the scrolling pane is narrower
+	# than a column plus the room a drag needs, so the grid is scrolled sideways until the points are on screen.
+	local width grip y grid_width need gripx
 	width=$(state '.grid.columns[] | select(.header == "Department") | .width')
+	grid_width=$(state '.grid.width')
 	grip=$(header_point Department resizeGrip)
+	gripx=${grip% *}
+	# The drag ends 60 to the right of the grip; keep 20 more clear of the grid's right edge.
+	need=$(awk -v x="$gripx" -v w="$grid_width" 'BEGIN { n = x + 60 + 20 - w; print (n > 0 ? n : 0) }')
+	if [ "$need" != 0 ]; then
+		extm scroll "{\"horizontal\":$(awk -v h="$(state '.grid.scroll.horizontal')" -v n="$need" 'BEGIN { print h + n }')}" >/dev/null; settle
+		grip=$(ext header '{"column":"Department"}' | jq -r '.resizeGrip | "\(.x) \(.y)"')
+	fi
 	check "the resize grip is where the hit tester expects it" \
 		"$(ext header '{"column":"Department"}' | jq -r .resizeGrip.region)" "HeaderResizeGrip"
 	drag ${grip% *} ${grip#* } "$(awk -v x="${grip% *}" 'BEGIN { print x + 60 }')" ${grip#* }; settle
-	check "dragging the grip widens Department by 60" "$(state '.grid.columns[] | select(.header == "Department") | .width')" "$(awk -v w="$width" 'BEGIN { print w + 60 }')"
+	# Within a DIP, or on Android within the touch slop (8 DIPs plus a pixel): adb input events land on whole pixels, which
+	# are not whole DIPs at Android's densities, and a swipe starts moving the column only once it is past the slop.
+	local tolerance=1
+	[ "$PLATFORM" = android ] && tolerance=10
+	check_true "dragging the grip widens Department by 60 (within $tolerance DIP)" \
+		"(.grid.columns[] | select(.header == \"Department\") | .width) - $width - 60 | fabs <= $tolerance"
 	shot main-resized
+	extm scroll '{"horizontal":0}' >/dev/null; settle
 
-	p=$(header_point "Hire Date" center)
-	y=${p#* }
-	drag ${p% *} $y "$(awk -v x="$(header_x Salary)" 'BEGIN { print x + 10 }')" $y; settle
+	# Reorder: press Hire Date's header and release on the left half of Salary's. A drop only picks a slot among the
+	# columns of the pane (the pointer is kept within it), so Salary may be partly under the frozen pane. Where Hire
+	# Date's center is off screen (a phone: the scrolling pane is narrower than two columns) scroll until Salary's
+	# left edge is 40 under the pane, press Hire Date's visible part and release just inside the pane.
+	local salary_x hire_x frozen_edge start_x drop_x
+	if awk -v c="$(ext header '{"column":"Hire Date"}' | jq -r '.center.x')" -v w="$grid_width" 'BEGIN { exit !(c > w - 20) }'; then
+		y=$(ext header '{"column":"Hire Date"}' | jq -r '.center.y')
+		frozen_edge=$(ext header '{"column":"Name"}' | jq -r '.bounds.x + .bounds.width')
+		salary_x=$(header_x Salary)
+		extm scroll "{\"horizontal\":$(awk -v h="$(state '.grid.scroll.horizontal')" -v s="$salary_x" -v f="$frozen_edge" 'BEGIN { print h + s - f + 40 }')}" >/dev/null; settle
+		hire_x=$(header_x "Hire Date")
+		start_x=$(awk -v x="$hire_x" 'BEGIN { print x + 28 }')
+		drop_x=$(awk -v f="$frozen_edge" 'BEGIN { print f + 6 }')
+	else
+		p=$(header_point "Hire Date" center)
+		y=${p#* }
+		start_x=${p% *}
+		drop_x=$(awk -v x="$(header_x Salary)" 'BEGIN { print x + 10 }')
+	fi
+	drag $start_x $y $drop_x $y; settle
 	check_true "dragging Hire Date onto Salary's left edge moves it before Salary" \
 		'(.grid.columns[] | select(.header == "Hire Date") | .displayIndex) < (.grid.columns[] | select(.header == "Salary") | .displayIndex)'
 	shot main-reordered
+	extm scroll '{"horizontal":0}' >/dev/null; settle
 
 	section "All Components: scrolling and frozen panes"
-	local id_x name_x city_x level_x row0_y row5_y
+	local id_x name_x city_x level_x row0_y row5_y may_unpin
 	id_x=$(header_x Id); name_x=$(header_x Name); city_x=$(header_x City); level_x=$(header_x Level)
+	# On a grid too narrow for its frozen columns (a phone, #268) Core unpins some, and they scroll with the others.
+	may_unpin=$(state '.grid.frozenPanes.mayUnpin')
 	if [ "$(state '.grid.scroll.horizontal')" != "0" ]; then extm scroll '{"horizontal":0}' >/dev/null; settle; level_x=$(header_x Level); fi
 	p=$(cell_point 6 Level)
 	drag ${p% *} ${p#* } "$(awk -v x="${p% *}" 'BEGIN { print x - 250 }')" ${p#* }; settle 1
 	if [ "$(state '.grid.scroll.horizontal > 0')" = "true" ]; then
 		pass "a sideways drag scrolls horizontally ($(state '.grid.scroll.horizontal'))"
-		check "frozen Id stays put" "$(header_x Id)" "$id_x"
-		check "frozen Name stays put" "$(header_x Name)" "$name_x"
-		check "right-frozen City stays put" "$(header_x City)" "$city_x"
+		frozen_stays_put Id "$id_x" "$may_unpin"
+		frozen_stays_put Name "$name_x" "$may_unpin"
+		frozen_stays_put City "$city_x" "$may_unpin"
 		if awk -v a="$(header_x Level)" -v b="$level_x" 'BEGIN { exit !(a < b) }'; then pass "scrolling column Level moved left"; else fail "scrolling column Level moved left" "x $level_x -> $(header_x Level)"; fi
 	else
 		fail "a sideways drag scrolls horizontally" "offset $(state '.grid.scroll.horizontal'), max may be 0 at this window size"
