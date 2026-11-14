@@ -250,7 +250,7 @@ public partial class KumikoDataGrid
         _scroll.ViewportWidth = width;
         _scroll.ViewportHeight = height;
 
-        using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
+        using var drawingContext = ResourceCache.CreateContext(canvas);
 
         _renderer.RenderFrame(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,

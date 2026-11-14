@@ -71,9 +71,22 @@ public sealed class SkiaResourceCache : IDisposable
     private readonly LruMap<CharFaceKey, int> _charFaces = new(MaxCharacterFaces);
     private readonly LruMap<FallbackFontKey, SKFont> _fallbackFonts;
 
+    // HarfBuzz shapers of the typefaces that draw emoji sequences, created on first use.
+    private readonly Dictionary<SKTypeface, GlyphShaper> _shapers = new(ReferenceEqualityComparer.Instance);
+
     // Incremented whenever the text entries are dropped, so a measurement taken across a drop is not stored.
     private long _textGeneration;
     private long _nativeTextMeasureCount;
+
+    // What SkiaDrawingContext draws polygons and polylines with, and the context a host reuses every frame:
+    // all created on first use, so a steady-state frame allocates none of them.
+    private SKPath? _scratchPath;
+    private readonly PolygonEntry[] _polygons = new PolygonEntry[MaxPolygons];
+    private int _polygonCount;
+    private int _nextPolygon;
+    private SKPaint? _polylinePaint;
+    private SkiaDrawingContext? _pooledContext;
+    private bool _pooledContextInUse;
 
     // Objects retired while a frame is being drawn; released when the outermost frame ends.
     private readonly List<object> _retired = new();
@@ -172,6 +185,145 @@ public sealed class SkiaResourceCache : IDisposable
     }
 
     // ── Frames ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Starts a frame on <paramref name="canvas"/> and returns the context to draw it with; dispose it at the end of
+    /// the frame. Unlike <c>new</c> <see cref="SkiaDrawingContext(SKCanvas, SkiaResourceCache)"/>, which allocates a
+    /// context object every time, this reuses one context for every frame, so a host that draws a frame after frame
+    /// (both hosts do) allocates no managed memory at all in the steady state.
+    /// </summary>
+    /// <remarks>
+    /// Only one frame at a time can use the shared context: a call made while the previous context is not disposed
+    /// yet (a nested or a concurrent frame) returns a new one, as the constructor does. Do not use a context after
+    /// disposing it: the next frame rebinds it to its own canvas.
+    /// </remarks>
+    /// <param name="canvas">The canvas to draw on. Must not be <c>null</c>.</param>
+    /// <returns>A context for one frame.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="canvas"/> is <c>null</c>.</exception>
+    /// <exception cref="ObjectDisposedException">The cache is disposed.</exception>
+    public SkiaDrawingContext CreateContext(SKCanvas canvas)
+    {
+        ArgumentNullException.ThrowIfNull(canvas);
+        SkiaDrawingContext? shared = null;
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            if (!_pooledContextInUse)
+            {
+                _pooledContextInUse = true;
+                shared = _pooledContext ??= new SkiaDrawingContext(this);
+            }
+        }
+
+        if (shared is null)
+            return new SkiaDrawingContext(canvas, this);
+
+        try
+        {
+            shared.Bind(canvas);
+        }
+        catch
+        {
+            ReleasePooledContext();
+            throw;
+        }
+        return shared;
+    }
+
+    /// <summary>Called when the shared context is disposed: it can start the next frame.</summary>
+    internal void ReleasePooledContext()
+    {
+        lock (_gate)
+            _pooledContextInUse = false;
+    }
+
+    /// <summary>The path <see cref="SkiaDrawingContext"/> rewinds and redraws for every polygon and polyline.</summary>
+    internal SKPath GetScratchPath()
+    {
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            return _scratchPath ??= new SKPath();
+        }
+    }
+
+    /// <summary>Most polygon shapes kept (see <see cref="GetPolygonPath"/>).</summary>
+    internal const int MaxPolygons = 64;
+
+    // Polygon coordinates are matched to 1/64 of a unit, so the same shape at another position (or with the
+    // rounding noise of a subtraction) finds its cached path.
+    private const float PolygonResolution = 64f;
+
+    /// <summary>
+    /// The path of a polygon or polyline (<paramref name="close"/>: the last point connects to the first), with
+    /// its first point at the origin; the caller translates the canvas to that point. Built once per shape: an
+    /// <see cref="SKPath"/> that is changed and drawn again makes SkiaSharp allocate a new native snapshot for
+    /// every draw, so a shape that is drawn every frame (an arrow, a chevron, a check mark) must not be rebuilt.
+    /// <c>null</c> when a coordinate is not a finite number (the caller builds the path itself).
+    /// </summary>
+    internal SKPath? GetPolygonPath(ReadOnlySpan<KumikoPoint> points, bool close)
+    {
+        var origin = points[0];
+        var hash = new HashCode();
+        hash.Add(points.Length);
+        hash.Add(close);
+        for (int i = 1; i < points.Length; i++)
+        {
+            float dx = (points[i].X - origin.X) * PolygonResolution;
+            float dy = (points[i].Y - origin.Y) * PolygonResolution;
+            if (!float.IsFinite(dx) || !float.IsFinite(dy) || Math.Abs(dx) > 1e9f || Math.Abs(dy) > 1e9f)
+                return null;
+            hash.Add((long)MathF.Round(dx) << 32 ^ (long)MathF.Round(dy));
+        }
+        int code = hash.ToHashCode();
+
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            for (int e = 0; e < _polygonCount; e++)
+            {
+                ref var entry = ref _polygons[e];
+                if (entry.Hash == code && entry.Close == close && entry.Matches(points))
+                    return entry.Path;
+            }
+
+            var path = new SKPath();
+#pragma warning disable CS0618 // SKPath's mutators: the path is built once and never changed again
+            path.MoveTo(0f, 0f);
+            for (int i = 1; i < points.Length; i++)
+                path.LineTo(points[i].X - origin.X, points[i].Y - origin.Y);
+            if (close) path.Close();
+#pragma warning restore CS0618
+
+            var shape = new float[(points.Length - 1) * 2];
+            for (int i = 1; i < points.Length; i++)
+            {
+                shape[(i - 1) * 2] = MathF.Round((points[i].X - origin.X) * PolygonResolution);
+                shape[(i - 1) * 2 + 1] = MathF.Round((points[i].Y - origin.Y) * PolygonResolution);
+            }
+
+            int slot = _polygonCount < MaxPolygons ? _polygonCount++ : _nextPolygon++ % MaxPolygons;
+            if (_polygons[slot].Path is { } evicted)
+                Retire(evicted);
+            _polygons[slot] = new PolygonEntry(code, close, shape, path);
+            return path;
+        }
+    }
+
+    /// <summary>The stroke paint of polylines: joins and caps are not part of the shared paint key.</summary>
+    internal SKPaint GetPolylinePaint()
+    {
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            return _polylinePaint ??= new SKPaint
+            {
+                Style = SKPaintStyle.Stroke,
+                StrokeJoin = SKStrokeJoin.Round,
+                StrokeCap = SKStrokeCap.Round
+            };
+        }
+    }
 
     /// <summary>Called by <see cref="SkiaDrawingContext"/> when it starts drawing with this cache.</summary>
     internal void BeginFrame()
@@ -278,7 +430,7 @@ public sealed class SkiaResourceCache : IDisposable
 
     /// <summary>
     /// <see cref="MeasureTextWidth(string, KumikoFont?, out bool)"/>, and the typeface runs
-    /// <paramref name="text"/> is drawn in (<see cref="FontRuns.Primary"/> when the requested typeface has every
+    /// <paramref name="text"/> is drawn in (<see cref="FontRuns.IsPrimaryOnly"/> when the requested typeface has every
     /// glyph), cached with the width.
     /// </summary>
     internal float MeasureTextWidth(string text, KumikoFont? font, out bool hasControlCharacters, out FontRuns runs)
@@ -303,7 +455,10 @@ public sealed class SkiaResourceCache : IDisposable
         lock (_gate)
         {
             if (generation == _textGeneration && !_textWidths.TryGet(key, out _))
-                _textWidths.Add(key, new TextMeasurement(width, hasControlCharacters, runs), out _);
+            {
+                if (_textWidths.Add(key, new TextMeasurement(width, hasControlCharacters, runs), out var evicted))
+                    Retire(evicted.Value.Runs);
+            }
         }
         return width;
     }
@@ -348,7 +503,10 @@ public sealed class SkiaResourceCache : IDisposable
         lock (_gate)
         {
             if (generation == _textGeneration && !_textLayouts.TryGet(key, out _))
-                _textLayouts.Add(key, new TextLayoutEntry(lines, lineRuns), out _);
+            {
+                if (_textLayouts.Add(key, new TextLayoutEntry(lines, lineRuns), out var evicted))
+                    RetireRuns(evicted.Value.Runs);
+            }
         }
         return lines;
     }
@@ -361,6 +519,54 @@ public sealed class SkiaResourceCache : IDisposable
     /// <summary>The number of times the cache has measured text with Skia (tests and diagnostics).</summary>
     internal long NativeTextMeasureCount => Interlocked.Read(ref _nativeTextMeasureCount);
 
+    /// <summary>The width of one run: shaped when it holds an emoji sequence and HarfBuzz is available, else measured by Skia.</summary>
+    private float MeasureRun(SKFont font, ReadOnlySpan<char> text, bool shaped)
+    {
+        if (shaped)
+        {
+            lock (_gate)
+            {
+                if (GetShaperLocked(font.Typeface) is { } shaper)
+                    return shaper.Measure(text, font);
+            }
+        }
+        return MeasureNative(font, text);
+    }
+
+    /// <summary>
+    /// The text blob of a shaped run (see <see cref="FontRuns.IsShaped"/>), or <c>null</c> when HarfBuzz is not
+    /// available and the caller builds the blob glyph by glyph.
+    /// </summary>
+    internal SKTextBlob? CreateShapedBlob(ReadOnlySpan<char> text, SKFont font)
+    {
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            return GetShaperLocked(font.Typeface) is { } shaper ? shaper.CreateBlob(text, font) : null;
+        }
+    }
+
+    private GlyphShaper? GetShaperLocked(SKTypeface typeface)
+    {
+        if (_shapers.TryGetValue(typeface, out var shaper))
+            return shaper;
+
+        shaper = GlyphShaper.TryCreate(typeface);
+        if (shaper is null)
+            return null;
+        if (_shapers.Count >= MaxFallbackFaces + DefaultMaxTypefaces)
+            RetireShapersLocked();
+        _shapers.Add(typeface, shaper);
+        return shaper;
+    }
+
+    private void RetireShapersLocked()
+    {
+        foreach (var shaper in _shapers.Values)
+            Retire(shaper);
+        _shapers.Clear();
+    }
+
     private float MeasureNative(SKFont font, ReadOnlySpan<char> text)
     {
         Interlocked.Increment(ref _nativeTextMeasureCount);
@@ -370,8 +576,15 @@ public sealed class SkiaResourceCache : IDisposable
     private void ClearTextLocked()
     {
         _textGeneration++;
-        _textWidths.Clear();
-        _textLayouts.Clear();
+        var measurements = new List<TextMeasurement>();
+        _textWidths.Clear(measurements);
+        foreach (var measurement in measurements)
+            Retire(measurement.Runs);
+        var layouts = new List<TextLayoutEntry>();
+        _textLayouts.Clear(layouts);
+        foreach (var layout in layouts)
+            RetireRuns(layout.Runs);
+        RetireShapersLocked();
         ClearFallbackLocked();
     }
 
@@ -389,16 +602,17 @@ public sealed class SkiaResourceCache : IDisposable
         if (text.IsEmpty || primary.ContainsGlyphs(text))
         {
             if (measure) width = MeasureNative(primary, text);
-            return FontRuns.Primary;
+            return FontRuns.CreatePrimary(generation);
         }
 
         var ends = new List<int>();
         var faces = new List<int>();
-        Segment(text, ToFontKey(font), primary, ends, faces);
+        var shaped = new List<bool>();
+        Segment(text, ToFontKey(font), primary, ends, faces, shaped);
         if (faces.Count == 1 && faces[0] == FontRuns.PrimaryFace)
         {
             if (measure) width = MeasureNative(primary, text);
-            return FontRuns.Primary;
+            return FontRuns.CreatePrimary(generation);
         }
 
         var widths = new float[faces.Count];
@@ -406,11 +620,11 @@ public sealed class SkiaResourceCache : IDisposable
         for (int i = 0; i < widths.Length; i++)
         {
             var runFont = faces[i] == FontRuns.PrimaryFace ? primary : GetFallbackFont(faces[i], generation, font);
-            widths[i] = MeasureNative(runFont, text[start..ends[i]]);
+            widths[i] = MeasureRun(runFont, text[start..ends[i]], shaped[i]);
             width += widths[i];
             start = ends[i];
         }
-        return new FontRuns([.. ends], [.. faces], widths, generation);
+        return new FontRuns([.. ends], [.. faces], widths, [.. shaped], generation);
     }
 
     /// <summary>The width of <paramref name="text"/> drawn run by run, for <see cref="KumikoTextLayout"/>.</summary>
@@ -421,13 +635,14 @@ public sealed class SkiaResourceCache : IDisposable
 
         var ends = new List<int>();
         var faces = new List<int>();
-        Segment(text, ToFontKey(font), primary, ends, faces);
+        var shaped = new List<bool>();
+        Segment(text, ToFontKey(font), primary, ends, faces, shaped);
         float width = 0f;
         int start = 0;
         for (int i = 0; i < faces.Count; i++)
         {
             var runFont = faces[i] == FontRuns.PrimaryFace ? primary : GetFallbackFont(faces[i], generation, font);
-            width += MeasureNative(runFont, text[start..ends[i]]);
+            width += MeasureRun(runFont, text[start..ends[i]], shaped[i]);
             start = ends[i];
         }
         return width;
@@ -435,9 +650,11 @@ public sealed class SkiaResourceCache : IDisposable
 
     /// <summary>
     /// Splits <paramref name="text"/> into runs of whole text elements drawn with the same face: adds the end of
-    /// each run to <paramref name="ends"/> and its face to <paramref name="faces"/>.
+    /// each run to <paramref name="ends"/>, its face to <paramref name="faces"/> and to <paramref name="shaped"/>
+    /// whether it holds an emoji sequence (a modifier, a joiner, a flag) that must be shaped to draw as one glyph.
     /// </summary>
-    private void Segment(ReadOnlySpan<char> text, FontKey font, SKFont primary, List<int> ends, List<int> faces)
+    private void Segment(ReadOnlySpan<char> text, FontKey font, SKFont primary, List<int> ends, List<int> faces,
+        List<bool> shaped)
     {
         lock (_gate)
         {
@@ -452,8 +669,11 @@ public sealed class SkiaResourceCache : IDisposable
                 {
                     if (current != int.MinValue) ends.Add(pos);
                     faces.Add(face);
+                    shaped.Add(false);
                     current = face;
                 }
+                if (GlyphShaper.IsAvailable && GlyphShaper.NeedsShaping(text.Slice(pos, length)))
+                    shaped[^1] = true;
                 pos += length;
             }
             ends.Add(text.Length);
@@ -822,6 +1042,18 @@ public sealed class SkiaResourceCache : IDisposable
     {
         ClearTextLocked();
 
+        for (int i = 0; i < _polygonCount; i++)
+        {
+            Retire(_polygons[i].Path!);
+            _polygons[i] = default;
+        }
+        _polygonCount = 0;
+        _nextPolygon = 0;
+        if (_scratchPath is not null) Retire(_scratchPath);
+        if (_polylinePaint is not null) Retire(_polylinePaint);
+        _scratchPath = null;
+        _polylinePaint = null;
+
         var fonts = new List<FontEntry>();
         _fonts.Clear(fonts);
         foreach (var font in fonts)
@@ -856,8 +1088,21 @@ public sealed class SkiaResourceCache : IDisposable
         _retired.Clear();
     }
 
+    private void RetireRuns(FontRuns[] runs)
+    {
+        foreach (var line in runs)
+            Retire(line);
+    }
+
     private void Release(object resource)
     {
+        // Text blobs of cached runs: not one of the native objects the seam reports.
+        if (resource is FontRuns runs)
+        {
+            runs.Dispose();
+            return;
+        }
+
         ResourceReleased?.Invoke(resource);
         if (resource is SKTypeface typeface)
             SystemTypefacePool.Release(typeface);
@@ -910,6 +1155,27 @@ public sealed class SkiaResourceCache : IDisposable
     /// <summary>A fallback typeface, where it came from, a font for glyph checks, and its weight and slant.</summary>
     private readonly record struct FallbackFace(SKTypeface Typeface, TypefaceSource Source, SKFont Probe, int Weight,
         SKFontStyleSlant Slant);
+
+    /// <summary>A cached polygon: the shape's coordinates (relative to its first point, in 1/64 units) and its path.</summary>
+    private struct PolygonEntry(int hash, bool close, float[] shape, SKPath path)
+    {
+        public readonly int Hash = hash;
+        public readonly bool Close = close;
+        public readonly SKPath? Path = path;
+        private readonly float[]? _shape = shape;
+
+        public readonly bool Matches(ReadOnlySpan<KumikoPoint> points)
+        {
+            if (_shape is null || _shape.Length != (points.Length - 1) * 2) return false;
+            for (int i = 1; i < points.Length; i++)
+            {
+                if (_shape[(i - 1) * 2] != MathF.Round((points[i].X - points[0].X) * PolygonResolution)
+                    || _shape[(i - 1) * 2 + 1] != MathF.Round((points[i].Y - points[0].Y) * PolygonResolution))
+                    return false;
+            }
+            return true;
+        }
+    }
 
     private enum TypefaceSource
     {

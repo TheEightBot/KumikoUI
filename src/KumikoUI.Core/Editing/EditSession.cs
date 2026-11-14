@@ -12,6 +12,8 @@ namespace KumikoUI.Core.Editing;
 /// </summary>
 public sealed class EditSession
 {
+    private readonly PaintMemo _paints = new();
+
     private readonly DrawnFocusManager _focusManager = new();
 
     // Edit state. The edit belongs to an item and a column; _editCell is where they are shown now, kept
@@ -576,13 +578,10 @@ public sealed class EditSession
 
         // Draw subtle drop shadow for depth effect
         var shadowBounds = bounds.Offset(1, 1).Inflate(1, 1);
-        ctx.FillRect(shadowBounds, new KumikoPaint
-        {
-            Color = shadowColor
-        });
+        ctx.FillRect(shadowBounds, _paints.Get(color: shadowColor));
 
         // Background to cover cell content underneath
-        ctx.FillRect(bounds, new KumikoPaint { Color = bgColor });
+        ctx.FillRect(bounds, _paints.Get(color: bgColor));
         _activeEditor.OnDraw(ctx);
 
         // Validation state: an outline, an icon, and the message under the editor
@@ -597,25 +596,20 @@ public sealed class EditSession
             ? new KumikoColor(220, 50, 50)    // red
             : new KumikoColor(255, 165, 0);   // orange
 
-        ctx.DrawRect(bounds, new KumikoPaint
-        {
-            Color = color,
-            StrokeWidth = 2f,
-            IsAntiAlias = true
-        });
+        ctx.DrawRect(bounds, _paints.Get(color: color, strokeWidth: 2f, isAntiAlias: true));
 
         const float iconRadius = 6f;
         var icon = new KumikoRect(bounds.Right - iconRadius * 2 - 4, bounds.Y + bounds.Height / 2 - iconRadius,
             iconRadius * 2, iconRadius * 2);
-        ctx.FillRoundRect(icon, iconRadius, new KumikoPaint { Color = color, IsAntiAlias = true });
-        var onColor = new KumikoPaint { Color = KumikoColor.White, Font = new KumikoFont("Default", 10, bold: true), IsAntiAlias = true };
+        ctx.FillRoundRect(icon, iconRadius, _paints.Get(color: color, isAntiAlias: true));
+        var onColor = _paints.Get(color: KumikoColor.White, font: new KumikoFont("Default", 10, bold: true), isAntiAlias: true);
         ctx.DrawTextInRect("!", icon, onColor, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
 
         if (string.IsNullOrEmpty(validation.ErrorMessage)) return;
-        var messagePaint = new KumikoPaint { Color = KumikoColor.White, Font = new KumikoFont("Default", 12), IsAntiAlias = true };
+        var messagePaint = _paints.Get(color: KumikoColor.White, font: new KumikoFont("Default", 12), isAntiAlias: true);
         float width = Math.Max(bounds.Width, ctx.MeasureText(validation.ErrorMessage, messagePaint).Width + 12);
         var message = new KumikoRect(bounds.X, bounds.Bottom + 2, width, 22);
-        ctx.FillRoundRect(message, 3, new KumikoPaint { Color = color, IsAntiAlias = true });
+        ctx.FillRoundRect(message, 3, _paints.Get(color: color, isAntiAlias: true));
         ctx.DrawTextInRect(validation.ErrorMessage, new KumikoRect(message.X + 6, message.Y, message.Width - 12, message.Height),
             messagePaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
     }

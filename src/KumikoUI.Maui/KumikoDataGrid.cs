@@ -903,7 +903,7 @@ public partial class KumikoDataGrid : ContentView
         // Use a temporary SKBitmap/Canvas for text measurement
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
-        using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
+        using var measureCtx = ResourceCache.CreateContext(canvas);
 
         // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
         // Auto column becomes Fixed at the fitted width so it keeps it.

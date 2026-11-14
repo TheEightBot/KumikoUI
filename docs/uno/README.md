@@ -94,7 +94,7 @@ template — confirm after scaffolding):
 |---|---|---|
 | Render surface | `SKCanvasView` | `SKCanvasElement` on the Skia heads, `SKXamlCanvas` elsewhere (`RenderMode`, #65) |
 | Paint event | `PaintSurface` → `e.Surface.Canvas` | `SKCanvasElement.RenderOverride(canvas, area)` (logical units) / `SKXamlCanvas.PaintSurface` (device pixels, scaled to logical) |
-| Drawing bridge | `new SkiaDrawingContext(canvas, cache)` | `new SkiaDrawingContext(canvas, cache)` (**reused**; one `SkiaResourceCache` per control) |
+| Drawing bridge | `cache.CreateContext(canvas)` | `cache.CreateContext(canvas)` (**reused**; one `SkiaResourceCache` per control) |
 | Render call | `KumikoRenderer.Render(ctx, …)` | `KumikoRenderer.Render(ctx, …)` (**reused**) |
 | Request redraw | `InvalidateSurface()` | coalesced to one paint per frame (`KumikoDataGrid.Rendering.cs`) |
 | Pointer input | `SKCanvasView.Touch` | `UIElement.PointerPressed/Moved/Released`, `PointerWheelChanged` |

@@ -79,6 +79,13 @@
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-desktop'))">
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+    <!-- Uno's runtime pulls HarfBuzzSharp's Linux library at 8.3.x, while SkiaSharp.HarfBuzz (emoji sequences) brings
+         the managed HarfBuzzSharp 14.x: one version for both, as for SkiaSharp above. -->
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-browserwasm'))">
+    <!-- The same for WebAssembly, where the library is linked into dotnet.native.wasm. -->
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.WebAssembly" />
   </ItemGroup>
 
   <!--

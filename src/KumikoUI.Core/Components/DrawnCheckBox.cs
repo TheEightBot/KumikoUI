@@ -75,32 +75,19 @@ internal class DrawnCheckBox : DrawnComponent
 
         // Draw box background
         var fillColor = _state == DrawnCheckState.Checked ? CheckedBoxFillColor : BoxFillColor;
-        ctx.FillRoundRect(boxRect, CornerRadius, new KumikoPaint { Color = fillColor });
+        ctx.FillRoundRect(boxRect, CornerRadius, Paints.Get(color: fillColor));
 
         // Draw box border
-        ctx.DrawRoundRect(boxRect, CornerRadius, new KumikoPaint
-        {
-            Color = IsFocused ? new KumikoColor(0, 120, 215) : BoxBorderColor,
-            StrokeWidth = StrokeWidth
-        });
+        ctx.DrawRoundRect(boxRect, CornerRadius, Paints.Get(color: IsFocused ? new KumikoColor(0, 120, 215) : BoxBorderColor, strokeWidth: StrokeWidth));
 
         // Check mark or indeterminate mark
         switch (_state)
         {
             case DrawnCheckState.Checked:
-                IconProvider.DrawIcon(ctx, KumikoIcon.Check, boxRect, new KumikoPaint
-                {
-                    Color = CheckMarkColor,
-                    StrokeWidth = CheckStrokeWidth,
-                    IsAntiAlias = true
-                });
+                IconProvider.DrawIcon(ctx, KumikoIcon.Check, boxRect, Paints.Get(color: CheckMarkColor, strokeWidth: CheckStrokeWidth, isAntiAlias: true));
                 break;
             case DrawnCheckState.Indeterminate:
-                IconProvider.DrawIcon(ctx, KumikoIcon.Indeterminate, boxRect, new KumikoPaint
-                {
-                    Color = IndeterminateColor,
-                    IsAntiAlias = true
-                });
+                IconProvider.DrawIcon(ctx, KumikoIcon.Indeterminate, boxRect, Paints.Get(color: IndeterminateColor, isAntiAlias: true));
                 break;
         }
     }

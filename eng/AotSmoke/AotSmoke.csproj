@@ -31,9 +31,10 @@
     <PackageReference Remove="MinVer" />
   </ItemGroup>
 
-  <!-- SkiaSharp's native library for a Linux host (macOS and Windows get it from the SkiaSharp package itself). -->
+  <!-- SkiaSharp's and HarfBuzzSharp's native libraries for a Linux host (macOS and Windows get them from the packages themselves). -->
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
   </ItemGroup>
 
   <ItemGroup>
