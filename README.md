@@ -1993,7 +1993,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/RENDERING.md](docs/RE
 
 ## Sample Applications
 
-Both samples have the same six pages:
+Both samples have the same pages (`samples/README.md` has the run commands and a map from each feature to its page):
 
 | Page | What it shows |
 |---|---|
@@ -2003,6 +2003,9 @@ Both samples have the same six pages:
 | **Theming** | Light, Dark and HighContrast, and custom colors |
 | **MVVM Actions** | Action button columns bound to view model commands, per-column `EditTriggers`, MVVM selection |
 | **Custom Fonts** | Japanese headers with Noto Sans JP, and icon columns with Material Icons |
+| **Images** | Image columns from app assets, `ImageSource`s or `BitmapImage`s and web URLs over 10,000 rows, with the bounded `ImageCache` |
+| **Styling** | An image column, switching the icon set (`KumikoStyle.IconProvider`), per-cell and per-row styles (`CellStyleResolver`, `RowStyleResolver`) and `AlternateRowBackground` |
+| **Events** | `CellTapped`, `HeaderTapped`, `ContextMenuRequested` and the other events in a log, the selection modes, a `CellValidator`, and saving and restoring the layout |
 
 - `samples/SampleApp.Maui`: .NET MAUI (iOS, Mac Catalyst, Android, Windows).
 - `samples/SampleApp.Uno`: Uno Platform (desktop, WebAssembly, iOS, Android, Windows App SDK).

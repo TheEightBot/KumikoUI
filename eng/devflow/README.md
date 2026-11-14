@@ -87,7 +87,7 @@ Screenshots go to `artifacts/devflow/<platform>-<timestamp>/` (git-ignored) with
 
 | Page | Checks |
 | --- | --- |
-| Every page | Navigates by Shell route; the route, a sized grid and its rows. |
+| Every page | Navigates by Shell route (the Styling and Events pages included); the route, a sized grid and its rows. |
 | All Components | Summary rows; header-tap sort ascending and descending (row order checked); tap selection and current cell; double tap opens the text, numeric and date editors, commits (`$123,456`, `2020-01-15`) and the salary total follows; tap toggles a check box; resize by dragging the header grip; reorder by dragging a header; a sideways drag scrolls while the left- and right-frozen columns stay put; an upward drag scrolls while the frozen rows stay put; the filter funnel opens the panel, Deselect All, check one value, OK filters, Clear restores. |
 | Grouping | Group by a column; tap a group header to collapse and expand it (row counts checked); Collapse All, Expand All; two-level grouping; Clear Groups; Toggle Filtering. |
 | Large Data | Load 100K rows; scroll to the end; tap a row there. |

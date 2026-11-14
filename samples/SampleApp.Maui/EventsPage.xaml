@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.EventsPage"
+             Title="Events &amp; Selection">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="0">
+        <Label Text="Events and selection: tap, right-click or long-press, edit a salary above 200,000"
+               FontSize="16"
+               FontAttributes="Bold"
+               Padding="16,12,16,4"
+               Grid.Row="0" />
+
+        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+            <!-- KumikoDataGrid.GridSelectionMode: None, Single, Multiple, Extended -->
+            <Button x:Name="modeToggle" Text="Selection: Extended" Clicked="OnToggleModeClicked" Margin="4,0,0,4" />
+            <!-- KumikoLayoutState: GetLayoutState().ToJson() and ApplyLayoutState(FromJson(...)) -->
+            <Button x:Name="saveLayoutButton" Text="Save Layout" Clicked="OnSaveLayoutClicked" Margin="4,0,0,4" />
+            <Button x:Name="restoreLayoutButton" Text="Restore Layout" Clicked="OnRestoreLayoutClicked" Margin="4,0,0,4" />
+            <!-- KumikoSource.Culture and Strings: the language of numbers, dates and the grid's own text -->
+            <Button x:Name="languageToggle" Text="Language: English" Clicked="OnToggleLanguageClicked" Margin="4,0,0,4" />
+            <!-- KumikoDataGrid.ScrollSettings -->
+            <Button x:Name="scrollToggle" Text="Scrolling: Default" Clicked="OnToggleScrollClicked" Margin="4,0,0,4" />
+            <Button Text="Clear Log" Clicked="OnClearLogClicked" Margin="4,0,0,4" />
+        </FlexLayout>
+
+        <Label x:Name="selectionLabel" Text="Selected: none (0 selected)" FontSize="13" TextColor="Gray"
+               Padding="16,0,16,6" Grid.Row="2" />
+
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="3"
+                           RowHeight="40"
+                           HeaderHeight="40"
+                           GridSelectionMode="Extended"
+                           ClipboardCopyIncludesHeaders="True"
+                           GridDescription="Events and selection sample grid"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill">
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="#" PropertyName="Id" Width="70"
+                                   ColumnType="Numeric" TextAlignment="Right" IsReadOnly="True" />
+                <core:KumikoColumn Header="Name" PropertyName="Name" Width="160" />
+                <core:KumikoColumn Header="Department" PropertyName="Department" Width="130" />
+                <core:KumikoColumn Header="Salary" PropertyName="Salary" Width="120"
+                                   Format="C0" ColumnType="Numeric" TextAlignment="Right" />
+                <core:KumikoColumn Header="Score" PropertyName="Score" Width="100"
+                                   Format="N1" ColumnType="Numeric" TextAlignment="Right" />
+                <core:KumikoColumn Header="Active" PropertyName="IsActive" Width="90" ColumnType="Boolean" />
+            </dg:KumikoDataGrid.Columns>
+        </dg:KumikoDataGrid>
+
+        <!-- The newest event first -->
+        <Editor x:Name="logEditor" Grid.Row="4" IsReadOnly="True" HeightRequest="150" FontSize="12"
+                AutomationId="EventLog" Placeholder="Events appear here" />
+    </Grid>
+
+</ContentPage>

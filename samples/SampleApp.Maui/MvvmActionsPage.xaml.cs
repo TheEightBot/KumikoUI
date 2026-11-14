@@ -24,7 +24,7 @@ public partial class MvvmActionsPage : ContentPage
 
     private async void OnDeleteRequested(object? sender, Employee employee)
     {
-        bool confirmed = await DisplayAlert(
+        bool confirmed = await DisplayAlertAsync(
             "Delete Employee",
             $"Are you sure you want to delete {employee.Name}?",
             "Delete",
@@ -34,9 +34,21 @@ public partial class MvvmActionsPage : ContentPage
             _viewModel.Employees.Remove(employee);
     }
 
+    // A double tap on the Details button raises the command twice; only the first may push the page.
+    private bool _navigating;
+
     private async void OnViewDetailsRequested(object? sender, Employee employee)
     {
-        await Navigation.PushModalAsync(new EmployeeDetailsPage(employee));
+        if (_navigating) return;
+        _navigating = true;
+        try
+        {
+            await Navigation.PushModalAsync(new EmployeeDetailsPage(employee));
+        }
+        finally
+        {
+            _navigating = false;
+        }
     }
 }
 
@@ -53,6 +65,20 @@ public class MvvmActionsViewModel : INotifyPropertyChanged
 {
     private Employee? _selectedEmployee;
     private string _lastChange = "No selection change yet";
+
+    /// <summary>Creates the commands once; the grid reads them on every binding refresh.</summary>
+    public MvvmActionsViewModel()
+    {
+        SelectionChangedCommand = new Command<KumikoSelectionChangedEventArgs>(e =>
+        {
+            LastChange = $"Last change: +{e.AddedItems.Count} / -{e.RemovedItems.Count}";
+            OnPropertyChanged(nameof(SelectionSummary));
+        });
+        SelectFirstCommand = new Command(() => SelectedEmployee = Employees.FirstOrDefault());
+        ClearSelectionCommand = new Command(() => SelectedEmployee = null);
+        DeleteCommand = new Command<Employee>(e => DeleteRequested?.Invoke(this, e));
+        ViewDetailsCommand = new Command<Employee>(e => ViewDetailsRequested?.Invoke(this, e));
+    }
 
     /// <summary>The collection bound to the KumikoDataGrid.</summary>
     public ObservableCollection<Employee> Employees { get; } = new();
@@ -85,17 +111,13 @@ public class MvvmActionsViewModel : INotifyPropertyChanged
     }
 
     /// <summary>Bound to the grid's <c>SelectionChangedCommand</c>; receives the added and removed items.</summary>
-    public ICommand SelectionChangedCommand => new Command<KumikoSelectionChangedEventArgs>(e =>
-    {
-        LastChange = $"Last change: +{e.AddedItems.Count} / -{e.RemovedItems.Count}";
-        OnPropertyChanged(nameof(SelectionSummary));
-    });
+    public ICommand SelectionChangedCommand { get; }
 
     /// <summary>Selects the first employee from code; the grid follows, even after a sort or filter.</summary>
-    public ICommand SelectFirstCommand => new Command(() => SelectedEmployee = Employees.FirstOrDefault());
+    public ICommand SelectFirstCommand { get; }
 
     /// <summary>Clears the selection from code.</summary>
-    public ICommand ClearSelectionCommand => new Command(() => SelectedEmployee = null);
+    public ICommand ClearSelectionCommand { get; }
 
     /// <inheritdoc />
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -110,12 +132,10 @@ public class MvvmActionsViewModel : INotifyPropertyChanged
     public event EventHandler<Employee>? ViewDetailsRequested;
 
     /// <summary>Fires <see cref="DeleteRequested"/> with the target employee.</summary>
-    public ICommand DeleteCommand => new Command<Employee>(e =>
-        DeleteRequested?.Invoke(this, e));
+    public ICommand DeleteCommand { get; }
 
     /// <summary>Fires <see cref="ViewDetailsRequested"/> with the target employee.</summary>
-    public ICommand ViewDetailsCommand => new Command<Employee>(e =>
-        ViewDetailsRequested?.Invoke(this, e));
+    public ICommand ViewDetailsCommand { get; }
 
     /// <summary>Populates <see cref="Employees"/> with deterministic sample data.</summary>
     public void LoadData()
