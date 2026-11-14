@@ -7,7 +7,7 @@ using KumikoUI.Core.Rendering;
 /// Computes column widths (star sizing), total content dimensions,
 /// and determines visible row/column ranges for virtualized rendering.
 /// </summary>
-public class KumikoLayoutEngine
+public sealed class KumikoLayoutEngine
 {
     // Header room for the glyphs a header can show beside its text: the sort arrow (8) and its gap (4), and the
     // filter icon (10) and its gap (4). The renderer reserves the same space while it draws them.
@@ -502,16 +502,6 @@ public class KumikoLayoutEngine
     }
 
     /// <summary>
-    /// Determine the visible row range given the scroll state.
-    /// Returns (firstVisibleRow, lastVisibleRow) inclusive.
-    /// </summary>
-    public (int First, int Last) GetVisibleRowRange(
-        ScrollState scroll, KumikoStyle style, int totalRows)
-    {
-        return GetVisibleRowRangeWithOffset(scroll, style, totalRows, 0, 0);
-    }
-
-    /// <summary>
     /// Determine the visible row range given the scroll state and an additional offset
     /// (such as top summary row height) between the header and the data area.
     /// frozenRowCount rows are excluded from the scrollable range (they are drawn separately).
@@ -538,78 +528,6 @@ public class KumikoLayoutEngine
 
         // Map back to absolute row indices (offset by frozen row count)
         return (first + effectiveFrozen, last + effectiveFrozen);
-    }
-
-    /// <summary>
-    /// Determine visible columns given horizontal scroll offset and viewport width.
-    /// Returns list of (column, xOffset) pairs.
-    /// </summary>
-    public List<(KumikoColumn Column, float X)> GetVisibleColumns(
-        IReadOnlyList<KumikoColumn> columns, ScrollState scroll)
-    {
-        var result = new List<(KumikoColumn, float)>();
-        float x = 0;
-
-        foreach (var col in columns)
-        {
-            if (!col.IsVisible)
-                continue;
-
-            float colRight = x + col.Width;
-
-            // Column is at least partially visible
-            if (colRight > scroll.OffsetX && x < scroll.OffsetX + scroll.ViewportWidth)
-                result.Add((col, x));
-
-            x += col.Width;
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Get the column at a given X position (in content coordinates, not viewport).
-    /// </summary>
-    public (KumikoColumn? Column, int Index) HitTestColumn(
-        IReadOnlyList<KumikoColumn> columns, float contentX)
-    {
-        float x = 0;
-        for (int i = 0; i < columns.Count; i++)
-        {
-            var col = columns[i];
-            if (!col.IsVisible) continue;
-
-            if (contentX >= x && contentX < x + col.Width)
-                return (col, i);
-
-            x += col.Width;
-        }
-        return (null, -1);
-    }
-
-    /// <summary>
-    /// Get the row index under a given Y position (in content coordinates).
-    /// Returns -1 for the header area, -2 for out of bounds.
-    /// </summary>
-    public int HitTestRow(float contentY, KumikoStyle style, int totalRows)
-    {
-        if (contentY < style.HeaderHeight) return -1;
-        int row = (int)((contentY - style.HeaderHeight) / style.RowHeight);
-        return row < totalRows ? row : -2;
-    }
-
-    /// <summary>
-    /// Get the X position of a column's left edge.
-    /// </summary>
-    public float GetColumnX(IReadOnlyList<KumikoColumn> columns, int columnIndex)
-    {
-        float x = 0;
-        for (int i = 0; i < columnIndex && i < columns.Count; i++)
-        {
-            if (columns[i].IsVisible)
-                x += columns[i].Width;
-        }
-        return x;
     }
 
     /// <summary>

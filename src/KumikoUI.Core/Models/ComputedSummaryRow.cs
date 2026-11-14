@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Holds the computed summary values for a single summary row.
 /// </summary>
-public class ComputedSummaryRow
+public sealed class ComputedSummaryRow
 {
     /// <summary>The summary row definition this was computed from.</summary>
     public string Name { get; init; } = "";

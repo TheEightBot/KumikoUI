@@ -3,7 +3,7 @@ using KumikoUI.Core.Models;
 namespace KumikoUI.Core.Input;
 
 /// <summary>Provides data for the <see cref="KumikoInputController.HeaderTapped"/> event.</summary>
-public class KumikoHeaderTappedEventArgs : EventArgs
+public sealed class KumikoHeaderTappedEventArgs : EventArgs
 {
     /// <summary>Initializes a new instance of the <see cref="KumikoHeaderTappedEventArgs"/> class.</summary>
     /// <param name="columnIndex">The tapped column index.</param>

@@ -281,7 +281,7 @@ public class KumikoLayoutEngineTests
         var engine = new KumikoLayoutEngine();
         var scroll = new ScrollState { OffsetY = 0, ViewportHeight = 400 };
         var style = new KumikoStyle { HeaderHeight = 40f, RowHeight = 36f };
-        var (first, last) = engine.GetVisibleRowRange(scroll, style, 100);
+        var (first, last) = engine.GetVisibleRowRangeWithOffset(scroll, style, 100, 0);
         Assert.Equal(0, first);
         Assert.True(last > 0);
     }
@@ -292,7 +292,7 @@ public class KumikoLayoutEngineTests
         var engine = new KumikoLayoutEngine();
         var scroll = new ScrollState { OffsetY = 0, ViewportHeight = 400 };
         var style = new KumikoStyle { HeaderHeight = 40f, RowHeight = 36f };
-        var (first, last) = engine.GetVisibleRowRange(scroll, style, 0);
+        var (first, last) = engine.GetVisibleRowRangeWithOffset(scroll, style, 0, 0);
         Assert.True(first > last);
     }
 
@@ -303,97 +303,8 @@ public class KumikoLayoutEngineTests
         var style = new KumikoStyle { HeaderHeight = 40f, RowHeight = 36f };
         // Scroll past header + 5 full rows = 40 + 5*36 = 220px
         var scroll = new ScrollState { OffsetY = 220f, ViewportHeight = 200 };
-        var (first, last) = engine.GetVisibleRowRange(scroll, style, 100);
+        var (first, last) = engine.GetVisibleRowRangeWithOffset(scroll, style, 100, 0);
         Assert.True(first >= 5); // Should skip the first 5 rows
-    }
-
-    // ── HitTestColumn ─────────────────────────────────────────────
-
-    [Fact]
-    public void HitTestColumn_PointInFirstColumn_ReturnsFirstColumn()
-    {
-        var engine = new KumikoLayoutEngine();
-        var cols = MakeColumns((100f, ColumnSizeMode.Fixed, 1f), (200f, ColumnSizeMode.Fixed, 1f));
-        var (col, idx) = engine.HitTestColumn(cols, 50f);
-        Assert.Same(cols[0], col);
-        Assert.Equal(0, idx);
-    }
-
-    [Fact]
-    public void HitTestColumn_PointInSecondColumn_ReturnsSecondColumn()
-    {
-        var engine = new KumikoLayoutEngine();
-        var cols = MakeColumns((100f, ColumnSizeMode.Fixed, 1f), (200f, ColumnSizeMode.Fixed, 1f));
-        var (col, idx) = engine.HitTestColumn(cols, 150f);
-        Assert.Same(cols[1], col);
-        Assert.Equal(1, idx);
-    }
-
-    [Fact]
-    public void HitTestColumn_PointBeyondAllColumns_ReturnsNull()
-    {
-        var engine = new KumikoLayoutEngine();
-        var cols = MakeColumns((100f, ColumnSizeMode.Fixed, 1f));
-        var (col, idx) = engine.HitTestColumn(cols, 500f);
-        Assert.Null(col);
-        Assert.Equal(-1, idx);
-    }
-
-    // ── HitTestRow ────────────────────────────────────────────────
-
-    [Fact]
-    public void HitTestRow_InHeader_ReturnsNegativeOne()
-    {
-        var engine = new KumikoLayoutEngine();
-        var style = new KumikoStyle { HeaderHeight = 40f, RowHeight = 36f };
-        Assert.Equal(-1, engine.HitTestRow(20f, style, 10));
-    }
-
-    [Fact]
-    public void HitTestRow_InFirstDataRow_ReturnsZero()
-    {
-        var engine = new KumikoLayoutEngine();
-        var style = new KumikoStyle { HeaderHeight = 40f, RowHeight = 36f };
-        // 40 (header) + 10 (into first row) = 50
-        Assert.Equal(0, engine.HitTestRow(50f, style, 10));
-    }
-
-    [Fact]
-    public void HitTestRow_BeyondLastRow_ReturnsNegativeTwo()
-    {
-        var engine = new KumikoLayoutEngine();
-        var style = new KumikoStyle { HeaderHeight = 40f, RowHeight = 36f };
-        // beyond 5 rows (header + 5*36 = 220)
-        Assert.Equal(-2, engine.HitTestRow(500f, style, 5));
-    }
-
-    // ── GetColumnX ────────────────────────────────────────────────
-
-    [Fact]
-    public void GetColumnX_FirstColumn_IsZero()
-    {
-        var engine = new KumikoLayoutEngine();
-        var cols = MakeColumns((100f, ColumnSizeMode.Fixed, 1f), (150f, ColumnSizeMode.Fixed, 1f));
-        Assert.Equal(0f, engine.GetColumnX(cols, 0));
-    }
-
-    [Fact]
-    public void GetColumnX_SecondColumn_IsFirstColumnWidth()
-    {
-        var engine = new KumikoLayoutEngine();
-        var cols = MakeColumns((100f, ColumnSizeMode.Fixed, 1f), (150f, ColumnSizeMode.Fixed, 1f));
-        Assert.Equal(100f, engine.GetColumnX(cols, 1));
-    }
-
-    [Fact]
-    public void GetColumnX_ThirdColumn_IsSumOfFirstTwo()
-    {
-        var engine = new KumikoLayoutEngine();
-        var cols = MakeColumns(
-            (100f, ColumnSizeMode.Fixed, 1f),
-            (150f, ColumnSizeMode.Fixed, 1f),
-            (80f, ColumnSizeMode.Fixed, 1f));
-        Assert.Equal(250f, engine.GetColumnX(cols, 2));
     }
 
     // ── GetVisibleScrollableColumns ───────────────────────────────

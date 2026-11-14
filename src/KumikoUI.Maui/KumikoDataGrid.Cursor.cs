@@ -32,7 +32,7 @@ namespace KumikoUI.Maui;
 /// </remarks>
 public partial class KumikoDataGrid
 {
-    private void OnInputControllerCursorChanged(KumikoCursor cursor) => ApplyPlatformCursor(cursor);
+    private void OnInputControllerCursorChanged(object? sender, KumikoCursor cursor) => ApplyPlatformCursor(cursor);
 
 #if MACCATALYST
     private UIHoverGestureRecognizer? _nativeHoverGesture;

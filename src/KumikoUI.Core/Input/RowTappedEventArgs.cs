@@ -6,7 +6,7 @@ using KumikoUI.Core.Components;
 namespace KumikoUI.Core.Input;
 
 /// <summary>Provides data for the <see cref="KumikoInputController.RowTapped"/> and <see cref="KumikoInputController.RowDoubleTapped"/> events.</summary>
-public class RowTappedEventArgs : EventArgs
+public sealed class RowTappedEventArgs : EventArgs
 {
     /// <summary>Zero-based index of the tapped row.</summary>
     public int RowIndex { get; }

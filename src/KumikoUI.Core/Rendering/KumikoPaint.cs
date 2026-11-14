@@ -1,18 +1,16 @@
 namespace KumikoUI.Core.Rendering;
 
 /// <summary>
-/// Platform-independent paint/style definition for drawing operations.
+/// Platform-independent paint definition for drawing operations. Whether a shape is filled or stroked is decided by
+/// the <see cref="IDrawingContext"/> method (<c>FillRect</c> fills, <c>DrawRect</c> strokes), not by the paint.
 /// </summary>
-public class KumikoPaint
+public sealed class KumikoPaint
 {
     /// <summary>Fill or stroke color.</summary>
     public KumikoColor Color { get; set; } = KumikoColor.Black;
 
-    /// <summary>Stroke width in pixels (used when Style is Stroke or FillAndStroke).</summary>
+    /// <summary>Stroke width in pixels, used by the methods that stroke (<c>DrawRect</c>, <c>DrawLine</c>, ...).</summary>
     public float StrokeWidth { get; set; } = 1f;
-
-    /// <summary>Paint style: fill, stroke, or both.</summary>
-    public PaintStyle Style { get; set; } = PaintStyle.Fill;
 
     /// <summary>Whether anti-aliasing is enabled.</summary>
     public bool IsAntiAlias { get; set; } = true;

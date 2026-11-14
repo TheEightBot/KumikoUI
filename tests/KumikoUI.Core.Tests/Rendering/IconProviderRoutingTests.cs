@@ -254,12 +254,12 @@ public class IconProviderRoutingTests
     }
 
     [Theory]
-    [InlineData(DrawnCheckState.Checked, KumikoIcon.Check)]
-    [InlineData(DrawnCheckState.Indeterminate, KumikoIcon.Indeterminate)]
-    public void CheckBox_AsksForTheStatesGlyph_InItsBox(DrawnCheckState state, KumikoIcon expected)
+    [InlineData("Checked", KumikoIcon.Check)]
+    [InlineData("Indeterminate", KumikoIcon.Indeterminate)]
+    public void CheckBox_AsksForTheStatesGlyph_InItsBox(string stateName, KumikoIcon expected)
     {
         var icons = new RecordingIconProvider();
-        var box = new DrawnCheckBox { Bounds = new KumikoRect(0, 0, 40, 40), State = state, IconProvider = icons };
+        var box = new DrawnCheckBox { Bounds = new KumikoRect(0, 0, 40, 40), State = Enum.Parse<DrawnCheckState>(stateName), IconProvider = icons };
 
         var ctx = ComponentInput.Draw(box);
 
@@ -349,7 +349,7 @@ public class IconProviderRoutingTests
 
         var box = new DrawnCheckBox();
         int redraws = 0;
-        box.RedrawRequested += () => redraws++;
+        box.RedrawRequested += (_, _) => redraws++;
         box.IconProvider = new RecordingIconProvider();
         Assert.Equal(1, redraws);
     }

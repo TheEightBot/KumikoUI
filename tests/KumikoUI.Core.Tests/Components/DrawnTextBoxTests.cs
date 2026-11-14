@@ -142,8 +142,8 @@ public class DrawnTextBoxTests
     {
         var box = Box("a");
         int committed = 0, canceled = 0;
-        box.Committed += () => committed++;
-        box.Cancelled += () => canceled++;
+        box.Committed += (_, _) => committed++;
+        box.Cancelled += (_, _) => canceled++;
 
         Session(box).SetComposition("b", 1);
         Key(box, KumikoKey.Enter);

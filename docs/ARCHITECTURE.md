@@ -56,8 +56,8 @@ KumikoUI.Maui (net10.0-ios/android/maccatalyst → MAUI + SkiaSharp.Views.Maui.C
 |-------|---------------|
 | `KumikoInputController` | Routes pointer and keyboard events to appropriate handlers |
 | `KumikoSelectionModel` | Row/cell selection state, Single/Multiple/Extended modes, navigation |
-| `DrawnFocusManager` | Single-component focus model with Tab cycling |
-| `PopupManager` | Popup lifecycle, z-order, input priority routing |
+| `DrawnFocusManager` (internal) | Single-component focus model with Tab cycling |
+| `PopupManager` (internal) | Popup lifecycle, z-order, input priority routing |
 | `InertialScroller` | Physics-based scroll deceleration |
 
 ### Editing
@@ -92,11 +92,11 @@ Every visual control inside the grid is custom-drawn on the SkiaSharp canvas —
 | Component | Purpose |
 |-----------|---------|
 | `DrawnTextBox` | Single-line text editor with cursor, selection, copy/paste |
-| `DrawnCheckBox` | Three-state checkbox (checked/unchecked/indeterminate) |
+| `DrawnCheckBox` (internal) | Three-state checkbox (checked/unchecked/indeterminate) |
 | `DrawnComboBox` | Filterable dropdown with keyboard navigation |
 | `DrawnDatePicker` | Calendar popup with month navigation and optional time picker |
 | `DrawnNumericUpDown` | [−] value [+] with auto-repeat and keyboard shortcuts |
-| `DrawnProgressBar` | Read-only bar or interactive slider with drag thumb |
+| `DrawnProgressBar` (internal) | Read-only bar or interactive slider with drag thumb |
 | `DrawnScrollPicker` | Mobile-style scroll wheel with physics-based snapping |
 | `DrawnFilterPopup` | Excel-style filter with search, checkboxes, and sort options |
 
