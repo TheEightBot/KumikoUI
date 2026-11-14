@@ -107,8 +107,8 @@ public class SkiaAllocationTests : IDisposable
         public bool DrawPopups { get; set; }
 
         public void Render(IDrawingContext ctx) =>
-            Renderer.Render(ctx, Source, Scroll, Selection, Style, editSession: Edit,
-                popupManager: DrawPopups ? Input.PopupManager : null);
+            Renderer.RenderFrame(ctx, Source, Scroll, Selection, Style, -1, 0, -1, 0, Edit,
+                DrawPopups ? Input.PopupManager : null);
     }
 
     private static readonly string[] Cities = { "Oslo", "Rome", "Lima", "Kyiv" };
@@ -119,36 +119,22 @@ public class SkiaAllocationTests : IDisposable
     private const int FramesPerRun = 20;
     private const int Runs = 5;
 
-    /// <summary>
-    /// The fewest bytes <see cref="FramesPerRun"/> frames allocated over several runs after warm-up, in the whole
-    /// frame or (<paramref name="insideContextCallsOnly"/>) only inside calls on the drawing context.
-    /// </summary>
-    private static long Allocated(SKCanvas canvas, SkiaResourceCache cache, Scene scene, bool insideContextCallsOnly = false)
+    /// <summary>The fewest bytes <see cref="FramesPerRun"/> frames allocated over several runs after warm-up.</summary>
+    private static long Allocated(SKCanvas canvas, SkiaResourceCache cache, Scene scene)
     {
-        var counting = new AllocationCountingContext();
         void Frame()
         {
             using var ctx = cache.CreateContext(canvas);
-            if (insideContextCallsOnly)
-            {
-                counting.Inner = ctx;
-                scene.Render(counting);
-            }
-            else
-            {
-                scene.Render(ctx);
-            }
+            scene.Render(ctx);
         }
 
         for (int i = 0; i < WarmUpFrames; i++) Frame();
         long fewest = long.MaxValue;
         for (int run = 0; run < Runs && fewest > 0; run++)
         {
-            counting.Bytes = 0;
             long before = GC.GetAllocatedBytesForCurrentThread();
             for (int i = 0; i < FramesPerRun; i++) Frame();
-            long total = GC.GetAllocatedBytesForCurrentThread() - before;
-            fewest = Math.Min(fewest, insideContextCallsOnly ? counting.Bytes : total);
+            fewest = Math.Min(fewest, GC.GetAllocatedBytesForCurrentThread() - before);
         }
         return fewest;
     }
@@ -167,11 +153,8 @@ public class SkiaAllocationTests : IDisposable
     }
 
     [Fact]
-    public void An_open_editor_and_filter_popup_cost_the_drawing_context_no_allocation()
+    public void A_grid_with_an_open_editor_and_filter_popup_allocates_nothing()
     {
-        // The editor and the popup draw themselves in Core, which still builds a few paints per frame for their chrome
-        // (EditSession, PopupManager, DrawnFilterPopup); that is not the drawing context's cost, so only the bytes
-        // allocated inside calls on the context are counted here.
         var scene = new Scene(Cities, Notes);
         using var surface = SKSurface.Create(new SKImageInfo(Width, Height));
         using var cache = new SkiaResourceCache();
@@ -187,9 +170,9 @@ public class SkiaAllocationTests : IDisposable
         Assert.True(scene.Edit.BeginEdit(2, 0, scene.Columns[0], scene.Source, new KumikoRect(0, 200, 150, 36)));
         scene.DrawPopups = true;
 
-        long bytes = Allocated(surface.Canvas, cache, scene, insideContextCallsOnly: true);
+        long bytes = Allocated(surface.Canvas, cache, scene);
 
-        _output.WriteLine($"{bytes} B inside context calls per {FramesPerRun} frames");
+        _output.WriteLine($"{bytes} B per {FramesPerRun} frames");
         Assert.Equal(0, bytes);
     }
 
@@ -229,36 +212,5 @@ public class SkiaAllocationTests : IDisposable
         Assert.Same(first, again);
         again.Dispose();
         Assert.Throws<ArgumentNullException>(() => cache.CreateContext(null!));
-    }
-
-    /// <summary>Forwards to a drawing context and adds up the bytes allocated inside its methods.</summary>
-    private sealed class AllocationCountingContext : IDrawingContext
-    {
-        public IDrawingContext Inner { get; set; } = null!;
-        public long Bytes { get; set; }
-
-        private long Begin() => GC.GetAllocatedBytesForCurrentThread();
-        private void End(long start) => Bytes += GC.GetAllocatedBytesForCurrentThread() - start;
-
-        public void DrawRect(KumikoRect rect, KumikoPaint paint) { long s = Begin(); Inner.DrawRect(rect, paint); End(s); }
-        public void FillRect(KumikoRect rect, KumikoPaint paint) { long s = Begin(); Inner.FillRect(rect, paint); End(s); }
-        public void DrawRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint) { long s = Begin(); Inner.DrawRoundRect(rect, cornerRadius, paint); End(s); }
-        public void FillRoundRect(KumikoRect rect, float cornerRadius, KumikoPaint paint) { long s = Begin(); Inner.FillRoundRect(rect, cornerRadius, paint); End(s); }
-        public void DrawLine(float x1, float y1, float x2, float y2, KumikoPaint paint) { long s = Begin(); Inner.DrawLine(x1, y1, x2, y2, paint); End(s); }
-        public void FillPolygon(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint) { long s = Begin(); Inner.FillPolygon(points, paint); End(s); }
-        public void DrawPolyline(ReadOnlySpan<KumikoPoint> points, KumikoPaint paint) { long s = Begin(); Inner.DrawPolyline(points, paint); End(s); }
-        public void DrawText(string text, float x, float y, KumikoPaint paint) { long s = Begin(); Inner.DrawText(text, x, y, paint); End(s); }
-        public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint, KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
-            KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true) { long s = Begin(); Inner.DrawTextInRect(text, rect, paint, hAlign, vAlign, clip); End(s); }
-        public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint, KumikoTextAlignment hAlign,
-            KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap) { long s = Begin(); Inner.DrawTextInRect(text, rect, paint, hAlign, vAlign, clip, wrap); End(s); }
-        public KumikoSize MeasureText(string text, KumikoPaint paint) { long s = Begin(); var r = Inner.MeasureText(text, paint); End(s); return r; }
-        public KumikoSize MeasureText(string text, KumikoPaint paint, float maxWidth, KumikoTextWrap wrap) { long s = Begin(); var r = Inner.MeasureText(text, paint, maxWidth, wrap); End(s); return r; }
-        public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) { long s = Begin(); var r = Inner.GetFontMetrics(paint); End(s); return r; }
-        public void ClipRect(KumikoRect rect) { long s = Begin(); Inner.ClipRect(rect); End(s); }
-        public void Save() { long s = Begin(); Inner.Save(); End(s); }
-        public void Restore() { long s = Begin(); Inner.Restore(); End(s); }
-        public void Translate(float dx, float dy) { long s = Begin(); Inner.Translate(dx, dy); End(s); }
-        public void DrawImage(object image, KumikoRect destRect) { long s = Begin(); Inner.DrawImage(image, destRect); End(s); }
     }
 }

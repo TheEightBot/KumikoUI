@@ -37,6 +37,7 @@
   <ItemGroup>
     <!-- Lets the test project check internal editing state, such as the editor the focus manager holds. -->
     <InternalsVisibleTo Include="KumikoUI.Core.Tests" />
+    <InternalsVisibleTo Include="KumikoUI.SkiaSharp.Tests" />
     <!-- The hosts hand the input controller's popup manager to the renderer; neither is public API (#37). -->
     <InternalsVisibleTo Include="KumikoUI.Maui" />
     <InternalsVisibleTo Include="KumikoUI.Uno" />

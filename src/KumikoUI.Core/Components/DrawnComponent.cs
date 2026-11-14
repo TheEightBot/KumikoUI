@@ -9,6 +9,11 @@ namespace KumikoUI.Core.Components;
 /// </summary>
 public abstract class DrawnComponent
 {
+    private PaintMemo? _paints;
+
+    /// <summary>The paints this component draws with: the same values give the same instance, so drawing allocates nothing once warm.</summary>
+    internal PaintMemo Paints => _paints ??= new PaintMemo();
+
     private KumikoRect _bounds;
     private KumikoRect _popupViewport;
     private bool _isFocused;

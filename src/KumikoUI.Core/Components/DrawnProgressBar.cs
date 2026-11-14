@@ -68,7 +68,7 @@ internal class DrawnProgressBar : DrawnComponent
         var trackRect = new KumikoRect(b.X, trackTop, b.Width, TrackHeight);
 
         // Track background
-        ctx.FillRoundRect(trackRect, CornerRadius, new KumikoPaint { Color = TrackColor });
+        ctx.FillRoundRect(trackRect, CornerRadius, Paints.Get(color: TrackColor));
 
         // Fill
         double range = Maximum - Minimum;
@@ -77,7 +77,7 @@ internal class DrawnProgressBar : DrawnComponent
         if (fillWidth > 0)
         {
             var fillRect = new KumikoRect(b.X, trackTop, fillWidth, TrackHeight);
-            ctx.FillRoundRect(fillRect, CornerRadius, new KumikoPaint { Color = FillColor });
+            ctx.FillRoundRect(fillRect, CornerRadius, Paints.Get(color: FillColor));
         }
 
         // Thumb
@@ -87,15 +87,11 @@ internal class DrawnProgressBar : DrawnComponent
             float thumbY = b.Y + b.Height / 2;
             // Draw thumb as a filled circle approximated with a round rect
             var thumbRect = new KumikoRect(thumbX - ThumbRadius, thumbY - ThumbRadius, ThumbRadius * 2, ThumbRadius * 2);
-            ctx.FillRoundRect(thumbRect, ThumbRadius, new KumikoPaint { Color = ThumbColor });
+            ctx.FillRoundRect(thumbRect, ThumbRadius, Paints.Get(color: ThumbColor));
 
             if (IsFocused)
             {
-                ctx.DrawRoundRect(thumbRect, ThumbRadius, new KumikoPaint
-                {
-                    Color = new KumikoColor(0, 120, 215),
-                    StrokeWidth = 2
-                });
+                ctx.DrawRoundRect(thumbRect, ThumbRadius, Paints.Get(color: new KumikoColor(0, 120, 215), strokeWidth: 2));
             }
         }
     }

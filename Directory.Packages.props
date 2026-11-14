@@ -68,6 +68,7 @@
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="$(SkiaSharpVersion)" />
     <!-- The HarfBuzzSharp version SkiaSharp.HarfBuzz depends on; its Linux native library is a separate package. -->
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.301" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.2.1.301" />
   </ItemGroup>
 
   <ItemGroup Label="Hosts">

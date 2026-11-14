@@ -263,6 +263,13 @@ public sealed class DrawnFilterPopup : DrawnComponent
         string text = _search.Text;
         if (text == _appliedSearch) return;
 
+        ApplySearch(text);
+    }
+
+    // Separate from EnsureSearchApplied: a lambda's closure is allocated when the method that captures into it is
+    // entered, so a lambda there would allocate on every frame, not only when the search text changes.
+    private void ApplySearch(string text)
+    {
         var comparer = _dataSource.Comparer;
         IEnumerable<int> candidates = _appliedSearch.Length > 0 && comparer.TextStartsWith(text, _appliedSearch)
             ? _visible
@@ -346,12 +353,12 @@ public sealed class DrawnFilterPopup : DrawnComponent
         var popupRect = layout.Popup;
 
         // Background and border (the popup manager draws the shadow)
-        ctx.FillRect(popupRect, new KumikoPaint { Color = BackgroundColor });
-        ctx.DrawRect(popupRect, new KumikoPaint { Color = BorderColor, StrokeWidth = 1 });
+        ctx.FillRect(popupRect, Paints.Get(color: BackgroundColor));
+        ctx.DrawRect(popupRect, Paints.Get(color: BorderColor, strokeWidth: 1));
 
         float x = layout.Search.X;
         float contentWidth = layout.Search.Width;
-        var separatorPaint = new KumikoPaint { Color = SeparatorColor, StrokeWidth = 1 };
+        var separatorPaint = Paints.Get(color: SeparatorColor, strokeWidth: 1);
 
         DrawSortRow(ctx, layout);
         ctx.DrawLine(x, layout.TopSeparatorY, x + contentWidth, layout.TopSeparatorY, separatorPaint);
@@ -364,8 +371,8 @@ public sealed class DrawnFilterPopup : DrawnComponent
 
     private void DrawSortRow(IDrawingContext ctx, PopupLayout layout)
     {
-        var textPaint = new KumikoPaint { Color = AccentColor, Font = SmallFont, IsAntiAlias = true };
-        var iconPaint = new KumikoPaint { Color = AccentColor, IsAntiAlias = true };
+        var textPaint = Paints.Get(color: AccentColor, font: SmallFont, isAntiAlias: true);
+        var iconPaint = Paints.Get(color: AccentColor, isAntiAlias: true);
 
         // The first row sorts in the column's first header-tap direction, the second row in the opposite one.
         var firstDir = _column.FirstSortDirection;
@@ -373,14 +380,14 @@ public sealed class DrawnFilterPopup : DrawnComponent
 
         var firstRect = layout.FirstSortRow;
         if (_hoveredItemIndex == -1000)
-            ctx.FillRect(firstRect, new KumikoPaint { Color = HoverColor });
+            ctx.FillRect(firstRect, Paints.Get(color: HoverColor));
         DrawSortArrow(ctx, firstRect.X + 8, firstRect.Y + SortRowHeight / 2, firstDir, iconPaint);
         ctx.DrawTextInRect(_dataSource.Strings.SortLabel(_column.ColumnType, firstDir), new KumikoRect(firstRect.X + 18, firstRect.Y, firstRect.Width - 18, SortRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
 
         var secondRect = layout.SecondSortRow;
         if (_hoveredItemIndex == -1001)
-            ctx.FillRect(secondRect, new KumikoPaint { Color = HoverColor });
+            ctx.FillRect(secondRect, Paints.Get(color: HoverColor));
         DrawSortArrow(ctx, secondRect.X + 8, secondRect.Y + SortRowHeight / 2, secondDir, iconPaint);
         ctx.DrawTextInRect(_dataSource.Strings.SortLabel(_column.ColumnType, secondDir), new KumikoRect(secondRect.X + 18, secondRect.Y, secondRect.Width - 18, SortRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
@@ -411,36 +418,36 @@ public sealed class DrawnFilterPopup : DrawnComponent
         if (_search.Text.Length == 0)
         {
             ctx.DrawTextInRect(_dataSource.Strings.FilterSearchPlaceholder, new KumikoRect(searchRect.X + 8, searchRect.Y, searchRect.Width - 12, searchRect.Height),
-                new KumikoPaint { Color = PlaceholderColor, Font = SmallFont, IsAntiAlias = true },
+                Paints.Get(color: PlaceholderColor, font: SmallFont, isAntiAlias: true),
                 KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
         }
     }
 
     private void DrawSelectAllRow(IDrawingContext ctx, PopupLayout layout)
     {
-        var textPaint = new KumikoPaint { Color = AccentColor, Font = SmallFont, IsAntiAlias = true };
+        var textPaint = Paints.Get(color: AccentColor, font: SmallFont, isAntiAlias: true);
 
         // Select All
         var selectAllRect = layout.SelectAll;
         if (_hoveredItemIndex == -2000)
-            ctx.FillRect(selectAllRect, new KumikoPaint { Color = HoverColor });
+            ctx.FillRect(selectAllRect, Paints.Get(color: HoverColor));
         // Draw checked checkbox icon
         float cbIX = selectAllRect.X + 8;
         float cbIY = selectAllRect.Y + (ButtonRowHeight - 12) / 2;
-        ctx.DrawRect(new KumikoRect(cbIX, cbIY, 12, 12), new KumikoPaint { Color = AccentColor, StrokeWidth = 1.5f, IsAntiAlias = true });
-        ctx.FillRect(new KumikoRect(cbIX + 2, cbIY + 2, 8, 8), new KumikoPaint { Color = AccentColor });
+        ctx.DrawRect(new KumikoRect(cbIX, cbIY, 12, 12), Paints.Get(color: AccentColor, strokeWidth: 1.5f, isAntiAlias: true));
+        ctx.FillRect(new KumikoRect(cbIX + 2, cbIY + 2, 8, 8), Paints.Get(color: AccentColor));
         IconProvider.DrawIcon(ctx, KumikoIcon.Check, new KumikoRect(cbIX, cbIY, 12, 12),
-            new KumikoPaint { Color = ButtonTextColor, StrokeWidth = 1.5f, IsAntiAlias = true });
+            Paints.Get(color: ButtonTextColor, strokeWidth: 1.5f, isAntiAlias: true));
         ctx.DrawTextInRect(_dataSource.Strings.FilterSelectAll, new KumikoRect(selectAllRect.X + 24, selectAllRect.Y, selectAllRect.Width - 24, ButtonRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
 
         // Deselect All
         var deselectAllRect = layout.DeselectAll;
         if (_hoveredItemIndex == -2001)
-            ctx.FillRect(deselectAllRect, new KumikoPaint { Color = HoverColor });
+            ctx.FillRect(deselectAllRect, Paints.Get(color: HoverColor));
         // Draw empty checkbox icon
         float cbIX2 = deselectAllRect.X + 8;
-        ctx.DrawRect(new KumikoRect(cbIX2, cbIY, 12, 12), new KumikoPaint { Color = AccentColor, StrokeWidth = 1.5f, IsAntiAlias = true });
+        ctx.DrawRect(new KumikoRect(cbIX2, cbIY, 12, 12), Paints.Get(color: AccentColor, strokeWidth: 1.5f, isAntiAlias: true));
         ctx.DrawTextInRect(_dataSource.Strings.FilterDeselectAll, new KumikoRect(deselectAllRect.X + 24, deselectAllRect.Y, deselectAllRect.Width - 24, ButtonRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
     }
@@ -452,10 +459,8 @@ public sealed class DrawnFilterPopup : DrawnComponent
         ctx.Save();
         ctx.ClipRect(new KumikoRect(list.X - 1, list.Y, list.Width + 2, list.Height));
 
-        var textPaint = new KumikoPaint { Color = TextColor, Font = SmallFont, IsAntiAlias = true };
-        var boxPaint = new KumikoPaint { StrokeWidth = 1.5f, IsAntiAlias = true };
-        var fillPaint = new KumikoPaint { Color = AccentColor };
-        var checkPaint = new KumikoPaint { Color = ButtonTextColor, StrokeWidth = 2f, IsAntiAlias = true };
+        var textPaint = Paints.Get(color: TextColor, font: SmallFont, isAntiAlias: true);
+        var checkPaint = Paints.Get(color: ButtonTextColor, strokeWidth: 2f, isAntiAlias: true);
         bool scrollable = MaxScrollOffset > 0;
         float textRight = scrollable ? ScrollbarHitWidth : 0;
 
@@ -469,20 +474,20 @@ public sealed class DrawnFilterPopup : DrawnComponent
             var itemRect = new KumikoRect(list.X, itemY, list.Width, CheckboxItemHeight);
 
             if (_hoveredItemIndex == i)
-                ctx.FillRect(itemRect, new KumikoPaint { Color = HoverColor });
+                ctx.FillRect(itemRect, Paints.Get(color: HoverColor));
             if (_focusIndex == i)
                 ctx.DrawRect(new KumikoRect(itemRect.X + 0.5f, itemRect.Y + 0.5f, itemRect.Width - 1, itemRect.Height - 1),
-                    new KumikoPaint { Color = KeyboardFocusColor, StrokeWidth = 1 });
+                    Paints.Get(color: KeyboardFocusColor, strokeWidth: 1));
 
             // Checkbox
             float cbX = list.X + 4;
             float cbY = itemY + (CheckboxItemHeight - CheckboxSize) / 2;
-            boxPaint.Color = item.IsChecked ? CheckmarkColor : BorderColor;
+            var boxPaint = Paints.Get(color: item.IsChecked ? CheckmarkColor : BorderColor, strokeWidth: 1.5f, isAntiAlias: true);
             ctx.DrawRect(new KumikoRect(cbX, cbY, CheckboxSize, CheckboxSize), boxPaint);
 
             if (item.IsChecked)
             {
-                fillPaint.Color = CheckmarkColor;
+                var fillPaint = Paints.Get(color: CheckmarkColor);
                 ctx.FillRect(new KumikoRect(cbX + 2, cbY + 2, CheckboxSize - 4, CheckboxSize - 4), fillPaint);
                 IconProvider.DrawIcon(ctx, KumikoIcon.Check, new KumikoRect(cbX, cbY, CheckboxSize, CheckboxSize), checkPaint);
             }
@@ -498,7 +503,7 @@ public sealed class DrawnFilterPopup : DrawnComponent
         {
             var thumb = ScrollbarThumb(list);
             ctx.FillRoundRect(new KumikoRect(list.Right - 5, thumb.Y, 4, thumb.Height), 2,
-                new KumikoPaint { Color = PlaceholderColor.WithAlpha(_pressTarget == Target.Scrollbar ? (byte)220 : (byte)150) });
+                Paints.Get(color: PlaceholderColor.WithAlpha(_pressTarget == Target.Scrollbar ? (byte)220 : (byte)150)));
         }
 
         ctx.Restore();
@@ -515,21 +520,21 @@ public sealed class DrawnFilterPopup : DrawnComponent
     private void DrawActionButtons(IDrawingContext ctx, PopupLayout layout)
     {
         // OK button
-        ctx.FillRoundRect(layout.Ok, 3, new KumikoPaint { Color = ButtonColor });
+        ctx.FillRoundRect(layout.Ok, 3, Paints.Get(color: ButtonColor));
         ctx.DrawTextInRect(_dataSource.Strings.FilterOk, layout.Ok,
-            new KumikoPaint { Color = ButtonTextColor, Font = SmallFont, IsAntiAlias = true },
+            Paints.Get(color: ButtonTextColor, font: SmallFont, isAntiAlias: true),
             KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
 
         // Cancel button
-        ctx.DrawRoundRect(layout.Cancel, 3, new KumikoPaint { Color = BorderColor, StrokeWidth = 1 });
+        ctx.DrawRoundRect(layout.Cancel, 3, Paints.Get(color: BorderColor, strokeWidth: 1));
         ctx.DrawTextInRect(_dataSource.Strings.FilterCancel, layout.Cancel,
-            new KumikoPaint { Color = TextColor, Font = SmallFont, IsAntiAlias = true },
+            Paints.Get(color: TextColor, font: SmallFont, isAntiAlias: true),
             KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
 
         // Clear button
-        ctx.DrawRoundRect(layout.Clear, 3, new KumikoPaint { Color = BorderColor, StrokeWidth = 1 });
+        ctx.DrawRoundRect(layout.Clear, 3, Paints.Get(color: BorderColor, strokeWidth: 1));
         ctx.DrawTextInRect(_dataSource.Strings.FilterClear, layout.Clear,
-            new KumikoPaint { Color = AccentColor, Font = SmallFont, IsAntiAlias = true },
+            Paints.Get(color: AccentColor, font: SmallFont, isAntiAlias: true),
             KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
     }
 

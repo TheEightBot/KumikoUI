@@ -200,7 +200,7 @@ public sealed class DrawnScrollPicker : DrawnComponent, IValueEditor
         var b = Bounds;
 
         // Background
-        ctx.FillRect(b, new KumikoPaint { Color = BackgroundColor });
+        ctx.FillRect(b, Paints.Get(color: BackgroundColor));
 
         ctx.Save();
         ctx.ClipRect(b);
@@ -211,10 +211,10 @@ public sealed class DrawnScrollPicker : DrawnComponent, IValueEditor
         // Selection band
         float bandY = centerY - ItemHeight / 2;
         ctx.FillRect(new KumikoRect(b.X, bandY, b.Width, ItemHeight),
-            new KumikoPaint { Color = SelectionBandColor });
+            Paints.Get(color: SelectionBandColor));
 
         // Separator lines
-        var sepPaint = new KumikoPaint { Color = SeparatorColor, StrokeWidth = 1 };
+        var sepPaint = Paints.Get(color: SeparatorColor, strokeWidth: 1);
         ctx.DrawLine(b.X, bandY, b.X + b.Width, bandY, sepPaint);
         ctx.DrawLine(b.X, bandY + ItemHeight, b.X + b.Width, bandY + ItemHeight, sepPaint);
 
@@ -242,7 +242,7 @@ public sealed class DrawnScrollPicker : DrawnComponent, IValueEditor
             color = new KumikoColor(color.R, color.G, color.B, (byte)(color.A * alpha));
 
             string text = _items[i];
-            var itemPaint = new KumikoPaint { Color = color, Font = font };
+            var itemPaint = Paints.Get(color: color, font: font);
             float tw = ctx.MeasureText(text, itemPaint).Width;
             float textX = b.X + (b.Width - tw) / 2;
             float textY2 = centerY + (i * ItemHeight - _scrollOffset);

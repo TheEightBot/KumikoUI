@@ -211,6 +211,29 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_AnOpenEditorAndFilterPopup_WithAPopupManager_AllocatesNothing()
+    {
+        // The hosts pass the popup manager and the edit session to every frame: the popup shadow, the popup's rows,
+        // its search box and the editor's frame draw without allocating once warm.
+        var grid = CreateGrid(featured: true);
+        var input = new KumikoUI.Core.Input.KumikoInputController();
+        var edit = new KumikoUI.Core.Editing.EditSession();
+        grid.Render(new NoOpDrawingContext());
+
+        float x = grid.Style.RowDragHandleWidth + grid.Source.Columns[0].Width + ColumnWidth - 18;   // the funnel at the right of the second header
+        float y = grid.Style.GroupPanelHeight + grid.Style.HeaderHeight / 2;
+        foreach (var action in new[] { KumikoUI.Core.Input.InputAction.Pressed, KumikoUI.Core.Input.InputAction.Released })
+            input.HandlePointer(new KumikoUI.Core.Input.KumikoPointerEventArgs { X = x, Y = y, Action = action },
+                grid.Scroll, grid.Selection, grid.Style, grid.Source);
+        Assert.True(input.PopupManager.HasActivePopups, "the filter popup is open");
+        Assert.True(edit.BeginEdit(2, 0, grid.Source.Columns[0], grid.Source, new KumikoRect(0, 200, 110, 36)));
+
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+            grid.Renderer.RenderFrame(ctx, grid.Source, grid.Scroll, grid.Selection, grid.Style, -1, 0, -1, 0,
+                edit, input.PopupManager)));
+    }
+
+    [Fact]
     public void AnOpenTextEditor_WithAVisibleCaretAndSelection_AllocatesNothing()
     {
         var box = new KumikoUI.Core.Components.DrawnTextBox
