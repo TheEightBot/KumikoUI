@@ -303,7 +303,7 @@ public class KumikoLayoutEngineTests
         var style = new KumikoStyle { HeaderHeight = 40f, RowHeight = 36f };
         // Scroll past header + 5 full rows = 40 + 5*36 = 220px
         var scroll = new ScrollState { OffsetY = 220f, ViewportHeight = 200 };
-        var (first, last) = engine.GetVisibleRowRangeWithOffset(scroll, style, 100, 0);
+        var (first, _) = engine.GetVisibleRowRangeWithOffset(scroll, style, 100, 0);
         Assert.True(first >= 5); // Should skip the first 5 rows
     }
 

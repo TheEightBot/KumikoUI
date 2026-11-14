@@ -77,7 +77,7 @@ public static class ShowcaseData
                 Name = $"{FirstNames[random.Next(FirstNames.Length)]} {LastNames[random.Next(LastNames.Length)]}",
                 Avatar = avatarPath(1 + (i - 1) % 8),
                 Department = Departments[random.Next(Departments.Length)],
-                Salary = random.Next(45, 160) * 1000,
+                Salary = random.Next(45, 160) * 1000m,
                 Score = Math.Round(random.NextDouble() * 100, 1),
                 IsActive = random.NextDouble() > 0.2,
             });

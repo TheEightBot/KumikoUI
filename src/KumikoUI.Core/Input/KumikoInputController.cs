@@ -386,7 +386,10 @@ public sealed partial class KumikoInputController
         if (_popupManager.HandlePointer(e))
         {
             if (action == InputAction.Hover) SetCursor(KumikoCursor.Default);
-            if (_feedback.ClearHover() | _feedback.EndPress()) Redraw(); // a popup over the grid takes the pointer
+            // A popup over the grid takes the pointer: clear both the hover and the press, then redraw if either changed.
+            bool hoverCleared = _feedback.ClearHover();
+            bool pressEnded = _feedback.EndPress();
+            if (hoverCleared || pressEnded) Redraw();
             return;
         }
 
