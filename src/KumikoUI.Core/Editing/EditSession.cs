@@ -106,9 +106,28 @@ public sealed class EditSession
 
     /// <summary>
     /// The current grid style. When set, newly created editors will have
-    /// their theme colors applied automatically.
+    /// their theme colors applied automatically; assigning a style while an editor is open re-themes it at
+    /// once (a theme switch), keeping its text, selection and focus.
     /// </summary>
-    public KumikoStyle? Style { get; set; }
+    public KumikoStyle? Style
+    {
+        get => _style;
+        set
+        {
+            _style = value;
+            if (_isEditing && _activeEditor != null && value != null)
+            {
+                CellEditorFactory.ApplyThemeToEditor(_activeEditor, value);
+                if (_editItem != null && _editColumn != null &&
+                    (value.CellStyleResolver?.Invoke(_editItem, _editColumn)?.Font ?? _editColumn.CellStyle?.Font) is { } font)
+                    CellEditorFactory.ApplyFontToEditor(_activeEditor, font);
+                _activeEditor.InvalidateVisual();
+                NeedsRedraw?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    private KumikoStyle? _style;
 
     /// <summary>
     /// The visible area of the grid, in the coordinates of the cell bounds passed to <see cref="BeginEdit"/>.
