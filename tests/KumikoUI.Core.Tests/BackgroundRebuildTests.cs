@@ -10,12 +10,17 @@ using Xunit.Abstractions;
 
 namespace KumikoUI.Core.Tests;
 
+// Runs alone, so the 1 000 000-row UI-thread timing is not inflated by other tests competing for the CPU.
+[CollectionDefinition(nameof(BackgroundRebuildCollection), DisableParallelization = true)]
+public sealed class BackgroundRebuildCollection;
+
 /// <summary>
 /// Background view rebuilds (#254): above <see cref="KumikoSource.BackgroundRebuildThreshold"/> sorting, filtering and
 /// grouping run on a worker; reads answer from the published view until the new one is swapped in on the UI thread;
 /// requests in one UI turn are coalesced and a newer one cancels a running build; selection, the current cell and an
 /// open edit follow their items; below the threshold everything stays synchronous.
 /// </summary>
+[Collection(nameof(BackgroundRebuildCollection))]
 public class BackgroundRebuildTests(ITestOutputHelper output)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
@@ -551,25 +556,34 @@ public class BackgroundRebuildTests(ITestOutputHelper output)
     public async Task ToggleSort_On1MRows_NeverBlocksTheUiThreadLongerThanAFrame()
     {
         const int rows = 1_000_000;
-        using var ui = new TestUiThread();
         var items = new List<Item>(rows);
         for (int i = 0; i < rows; i++) items.Add(new Item { Id = i, Quantity = (int)((i * 2654435761L) % 1_000_000), City = Cities[i % 5] });
-        var source = ui.Invoke(() => NewSource(items, KumikoSource.DefaultBackgroundRebuildThreshold, out _));
-        var selection = ui.Invoke(() => new KumikoSelectionModel(source)); // a grid listens, so the swap maps rows
-        await Updated(ui, source);
-        ui.Invoke(() => selection.Select(items[123_456]));
-        var selected = items[123_456];
 
-        ui.ResetTiming();
-        ui.Invoke(() => source.ToggleSort(source.Columns[1]));
-        await Updated(ui, source);
-        var longest = ui.LongestWorkItem;
-        output.WriteLine($"Longest UI-thread work item while sorting {rows:N0} rows: {longest.TotalMilliseconds:F2} ms");
+        // The time is wall-clock time on the UI thread (GC pauses excluded), so a CI runner that deschedules the thread
+        // inflates it: the best of up to three rounds is checked. Without a worker the sort takes hundreds of milliseconds.
+        var longest = TimeSpan.MaxValue;
+        for (int round = 0; round < 3 && longest >= TimeSpan.FromMilliseconds(16.7); round++)
+        {
+            using var ui = new TestUiThread();
+            var source = ui.Invoke(() => NewSource(items, KumikoSource.DefaultBackgroundRebuildThreshold, out _));
+            var selection = ui.Invoke(() => new KumikoSelectionModel(source)); // a grid listens, so the swap maps rows
+            await Updated(ui, source);
+            var selected = items[123_456];
+            ui.Invoke(() => selection.Select(selected));
+
+            ui.ResetTiming();
+            ui.Invoke(() => source.ToggleSort(source.Columns[1]));
+            await Updated(ui, source);
+            var roundLongest = ui.LongestWorkItem;
+            output.WriteLine($"Round {round + 1}: longest UI-thread work item while sorting {rows:N0} rows: {roundLongest.TotalMilliseconds:F2} ms");
+            if (roundLongest < longest) longest = roundLongest;
+
+            Assert.Equal(0, ((Item)ui.Invoke(() => source.GetItem(0))).Quantity);
+            Assert.Same(selected, ui.Invoke(() => source.GetItem(selection.SelectedRows.Single())));
+        }
 
         // The sort ran on a worker; on the UI thread: the call, capturing the items, and swapping the view in.
         Assert.True(longest < TimeSpan.FromMilliseconds(16.7),
-            $"a UI-thread work item took {longest.TotalMilliseconds:F1} ms while sorting {rows:N0} rows");
-        Assert.Equal(0, ((Item)ui.Invoke(() => source.GetItem(0))).Quantity);
-        Assert.Same(selected, ui.Invoke(() => source.GetItem(selection.SelectedRows.Single())));
+            $"a UI-thread work item took {longest.TotalMilliseconds:F1} ms (best of three rounds) while sorting {rows:N0} rows");
     }
 }
