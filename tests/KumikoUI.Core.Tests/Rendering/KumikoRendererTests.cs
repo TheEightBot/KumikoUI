@@ -427,6 +427,20 @@ public class KumikoRendererTests
         Assert.All(checkmarks, l => Assert.True(l.Rect.Y >= h.RowTop(0) && l.Rect.Bottom <= h.RowTop(1)));
     }
 
+    [Fact]
+    public void Rows_BooleanColumn_WithACheckBoxBorderColor_OutlinesTheBoxInIt()
+    {
+        var h = Create(rows: 2);
+        h.Source.SetColumns(new[] { new KumikoColumn { Header = "Active", PropertyName = "Active", Width = 100, ColumnType = KumikoColumnType.Boolean } });
+        var border = new KumikoColor(10, 20, 30);
+        h.Style.CheckBoxBorderColor = border;
+
+        var ctx = h.Render();
+
+        Assert.Equal(2, ctx.Ops.Count(o => o.Kind == DrawOpKind.DrawRect && o.Color == border));
+        Assert.DoesNotContain(ctx.Ops, o => o.Kind == DrawOpKind.DrawRect && o.Color == h.Style.GridLineColor);
+    }
+
     // ── Grid lines ────────────────────────────────────────────────
 
     [Fact]

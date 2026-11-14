@@ -335,7 +335,7 @@ public class PaintCache
         };
 
         // Cell content
-        CheckBoxBorder = Stroke(style.GridLineColor, 1.5f);
+        CheckBoxBorder = Stroke(style.CheckBoxBorderColor ?? style.GridLineColor, 1.5f);
         CheckMark = Stroke(style.AccentColor, 2f);
         CheckIndeterminate = new KumikoPaint { Color = style.AccentColor, Style = PaintStyle.Fill, IsAntiAlias = true };
 

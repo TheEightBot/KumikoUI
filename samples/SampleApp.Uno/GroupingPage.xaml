@@ -53,7 +53,7 @@
                 <core:KumikoColumn Header="Name" PropertyName="Name" Width="170" />
                 <core:KumikoColumn Header="Department" PropertyName="Department" Width="140" />
                 <core:KumikoColumn Header="Level" PropertyName="Level" Width="120" />
-                <core:KumikoColumn Header="Salary" PropertyName="Salary" Width="120"
+                <core:KumikoColumn Header="Salary" PropertyName="Salary" Width="150"
                                      Format="C0" ColumnType="Numeric" TextAlignment="Right" />
                 <core:KumikoColumn Header="Active" PropertyName="IsActive"
                                      ColumnType="Boolean" />
