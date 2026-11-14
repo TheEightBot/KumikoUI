@@ -51,13 +51,13 @@
 
         <ShellContent
             Title="Styling"
-            Icon="icon_theme.png"
+            Icon="icon_styling.png"
             ContentTemplate="{DataTemplate local:StylingPage}"
             Route="StylingPage" />
 
         <ShellContent
             Title="Events"
-            Icon="icon_actions.png"
+            Icon="icon_events.png"
             ContentTemplate="{DataTemplate local:EventsPage}"
             Route="EventsPage" />
     </TabBar>

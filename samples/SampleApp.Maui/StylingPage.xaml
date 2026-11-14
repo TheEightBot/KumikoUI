@@ -13,7 +13,9 @@
                Padding="16,12,16,4"
                Grid.Row="0" />
 
-        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+        <!-- One scrolling row: on a phone it takes one line, leaving the room above the soft keyboard to the grid -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+        <FlexLayout Wrap="NoWrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4">
             <!-- KumikoStyle.IconProvider: the built-in set or KumikoFontIconProvider over Material Icons -->
             <Button x:Name="iconsToggle" Text="Icons: Built-in" Clicked="OnToggleIconsClicked" Margin="4,0,0,4" />
             <!-- KumikoStyle.CellStyleResolver and RowStyleResolver -->
@@ -21,6 +23,7 @@
             <!-- KumikoDataGrid.AlternateRowBackground -->
             <Button x:Name="stripesToggle" Text="Striped rows: OFF" Clicked="OnToggleStripesClicked" Margin="4,0,0,4" />
         </FlexLayout>
+        </ScrollView>
 
         <dg:KumikoDataGrid x:Name="kumiko"
                            Grid.Row="2"

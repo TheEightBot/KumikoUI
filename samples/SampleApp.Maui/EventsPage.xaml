@@ -13,7 +13,9 @@
                Padding="16,12,16,4"
                Grid.Row="0" />
 
-        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+        <!-- One scrolling row: on a phone it takes one line, leaving the room above the soft keyboard to the grid -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+        <FlexLayout Wrap="NoWrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4">
             <!-- KumikoDataGrid.GridSelectionMode: None, Single, Multiple, Extended -->
             <Button x:Name="modeToggle" Text="Selection: Extended" Clicked="OnToggleModeClicked" Margin="4,0,0,4" />
             <!-- KumikoLayoutState: GetLayoutState().ToJson() and ApplyLayoutState(FromJson(...)) -->
@@ -25,6 +27,7 @@
             <Button x:Name="scrollToggle" Text="Scrolling: Default" Clicked="OnToggleScrollClicked" Margin="4,0,0,4" />
             <Button Text="Clear Log" Clicked="OnClearLogClicked" Margin="4,0,0,4" />
         </FlexLayout>
+        </ScrollView>
 
         <Label x:Name="selectionLabel" Text="Selected: none (0 selected)" FontSize="13" TextColor="Gray"
                Padding="16,0,16,6" Grid.Row="2" />
