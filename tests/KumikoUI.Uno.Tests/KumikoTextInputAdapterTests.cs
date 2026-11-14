@@ -169,6 +169,23 @@ public class KumikoTextInputAdapterTests
     }
 
     [Fact]
+    public void Sync_AfterThePlatformMovedTheCaret_PutsTheSelectionBack_SoTypingReplacesIt()
+    {
+        // Focusing the proxy puts its caret at the start on Uno's Android and iOS heads; the host syncs again
+        // after focusing, so typing over a selected cell value replaces it instead of going in front of it
+        var (box, proxy, adapter, _) = Editor("Bob Jones", b => b.InitialSelectionMode = EditTextSelectionMode.SelectAll);
+        Assert.Equal(9, proxy.SelectionLength);
+
+        proxy.MoveCaret(0);
+        adapter.Sync();
+        Assert.Equal(0, proxy.SelectionStart);
+        Assert.Equal(9, proxy.SelectionLength);
+
+        proxy.Type("X");
+        Assert.Equal("X", box.Text);
+    }
+
+    [Fact]
     public void AnEditorChangeFromAnotherRoute_UpdatesTheProxy()
     {
         var (box, proxy, _, _) = Editor("abc");

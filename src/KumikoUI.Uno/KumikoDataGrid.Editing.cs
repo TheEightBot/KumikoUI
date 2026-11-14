@@ -138,6 +138,11 @@ public partial class KumikoDataGrid
         _textInput.Sync();
         bool hadFocus = _inputProxy.FocusState != FocusState.Unfocused;
         _inputProxy.Focus(FocusState.Programmatic);
+        // Taking focus can move the text box's caret (the Android and iOS heads put it at the start), and the
+        // input method types where the text box says the selection is: typing over a selected cell value would
+        // insert before it. Put the editor's selection back now and again once the focus change has settled.
+        _textInput.Sync();
+        QueueTextInputSync();
         if (hadFocus && _lastPointerWasTouch)
             ShowSoftKeyboard();
     }

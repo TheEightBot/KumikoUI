@@ -85,6 +85,13 @@ internal sealed class FakeTextInputProxy : IKumikoTextInputProxy
         SelectionLength = 0;
     }
 
+    /// <summary>The platform moves the caret on its own (Uno's mobile heads put it at the start on focus).</summary>
+    public void MoveCaret(int position)
+    {
+        SelectionStart = position;
+        SelectionLength = 0;
+    }
+
     // ── Input method (mirrors Uno's TextBoxCore IME flow) ──
 
     public void StartComposition()
