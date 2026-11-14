@@ -8,7 +8,7 @@
 
 KumikoUI.Maui is a high-performance data grid control for .NET MAUI. The whole grid is drawn with SkiaSharp on one canvas, with no native cell controls, so it looks and behaves the same on every platform. It includes virtual scrolling, sorting, filtering, grouping, summaries, cell editing, frozen columns and rows, row drag and drop, theming and localization.
 
-It targets .NET 10 on Android, iOS, Mac Catalyst and Windows.
+It targets .NET 10 on Android, iOS, Mac Catalyst and Windows. An automated device suite passes on an Android emulator, iPhone and iPad simulators and Mac Catalyst; the Windows head is built in CI but has not been run on a device yet ([MAUI verification notes](https://github.com/TheEightBot/KumikoUI/blob/main/docs/maui-verification.md)).
 
 ![KumikoUI data grid](https://raw.githubusercontent.com/TheEightBot/KumikoUI/main/images/main.png)
 
@@ -108,6 +108,7 @@ On iOS and Mac Catalyst, current OS versions require apps to adopt the UIScene l
 
 - [Project README](https://github.com/TheEightBot/KumikoUI#readme): column types, editing, validation, theming, fonts and more.
 - [MAUI sample app](https://github.com/TheEightBot/KumikoUI/tree/main/samples/SampleApp.Maui).
+- [MAUI verification notes](https://github.com/TheEightBot/KumikoUI/blob/main/docs/maui-verification.md): the device results.
 - [Architecture](https://github.com/TheEightBot/KumikoUI/blob/main/docs/ARCHITECTURE.md) and [rendering](https://github.com/TheEightBot/KumikoUI/blob/main/docs/RENDERING.md).
 - [Changelog](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md) and [versioning policy](https://github.com/TheEightBot/KumikoUI/blob/main/docs/VERSIONING.md).
 - [Report an issue](https://github.com/TheEightBot/KumikoUI/issues).
