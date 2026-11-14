@@ -411,12 +411,12 @@ public sealed class SkiaResourceCache : IDisposable
     /// </summary>
     private static SKFont CreateFont(SKTypeface typeface, float size, bool isBold, bool isItalic, int weight,
         SKFontStyleSlant slant) => new(typeface, size)
-    {
-        Edging = SKFontEdging.SubpixelAntialias,
-        Subpixel = true,
-        Embolden = isBold && weight < (int)SKFontStyleWeight.SemiBold,
-        SkewX = isItalic && slant == SKFontStyleSlant.Upright ? SyntheticItalicSkew : 0f,
-    };
+        {
+            Edging = SKFontEdging.SubpixelAntialias,
+            Subpixel = true,
+            Embolden = isBold && weight < (int)SKFontStyleWeight.SemiBold,
+            SkewX = isItalic && slant == SKFontStyleSlant.Upright ? SyntheticItalicSkew : 0f,
+        };
 
     // ── Text ─────────────────────────────────────────────────────
 

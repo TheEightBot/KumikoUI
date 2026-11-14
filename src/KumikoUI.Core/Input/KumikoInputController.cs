@@ -1337,7 +1337,7 @@ public sealed partial class KumikoInputController
                 e.Handled = true;
                 return;
             }
-        if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
+            if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
             bool ctrl = (e.Modifiers & InputModifiers.Control) != 0;
             bool shift = (e.Modifiers & InputModifiers.Shift) != 0;
 
