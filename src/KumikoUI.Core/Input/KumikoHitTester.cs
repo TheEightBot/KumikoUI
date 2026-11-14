@@ -26,21 +26,10 @@ public sealed class KumikoHitTester
     private readonly List<PinnedGroupHeader> _pinnedGroupHeaders = new();
 
     /// <summary>
-    /// Resolve a viewport coordinate to a grid region, row, and column.
-    /// Properly handles left-frozen, right-frozen, and frozen rows.
-    /// </summary>
-    public KumikoHitTestResult HitTest(
-        float viewportX, float viewportY,
-        ScrollState scroll, KumikoStyle style,
-        IReadOnlyList<KumikoColumn> columns, int totalRows,
-        KumikoSource? dataSource = null)
-        => HitTestCore(viewportX, viewportY, scroll, style, columns, totalRows, dataSource).ToResult();
-
-    /// <summary>
-    /// Resolve a viewport coordinate to a grid region, row, and column for a pointer of type
-    /// <paramref name="deviceType"/>: a finger gets wider targets (the column resize grip is
-    /// <see cref="KumikoStyle.TouchColumnResizeGripWidth"/> wide, the filter icon, group chevrons and group chips take a
-    /// larger margin).
+    /// Resolve a viewport coordinate to a grid region, row, and column. Handles left-frozen, right-frozen and frozen
+    /// rows. For a pointer of type <see cref="KumikoPointerDeviceType.Touch"/> the targets are wider (the column resize
+    /// grip is <see cref="KumikoStyle.TouchColumnResizeGripWidth"/> wide, the filter icon, group chevrons and group chips
+    /// take a larger margin).
     /// </summary>
     /// <param name="viewportX">X in the grid's viewport, from its left edge.</param>
     /// <param name="viewportY">Y in the grid's viewport, from its top edge (grouping panel included).</param>
@@ -49,13 +38,13 @@ public sealed class KumikoHitTester
     /// <param name="columns">The columns, in display order.</param>
     /// <param name="totalRows">The number of rows in the view.</param>
     /// <param name="dataSource">The source, for the grouping panel, summary rows and group rows; null for none.</param>
-    /// <param name="deviceType">The kind of pointer the point comes from.</param>
+    /// <param name="deviceType">The kind of pointer the point comes from; a mouse when omitted.</param>
     /// <returns>What the point is on.</returns>
     public KumikoHitTestResult HitTest(
         float viewportX, float viewportY,
         ScrollState scroll, KumikoStyle style,
         IReadOnlyList<KumikoColumn> columns, int totalRows,
-        KumikoSource? dataSource, KumikoPointerDeviceType deviceType)
+        KumikoSource? dataSource = null, KumikoPointerDeviceType deviceType = KumikoPointerDeviceType.Mouse)
         => HitTestCore(viewportX, viewportY, scroll, style, columns, totalRows, dataSource, deviceType).ToResult();
 
     /// <summary>
@@ -484,7 +473,7 @@ public sealed class KumikoHitTester
     /// Hit test a data cell column, handling frozen, scrollable, and right-frozen columns.
     /// viewportX here is columnAreaViewportX (already offset by drag handle width).
     /// </summary>
-    private KumikoHitInfo HitTestColumn(
+    private static KumikoHitInfo HitTestColumn(
         float viewportX, float effectiveContentX, float contentY, int row,
         IReadOnlyList<KumikoColumn> columns, ScrollState scroll,
         float frozenWidth, float rightFrozenWidth, float rightFrozenLeft, float handleOffset)

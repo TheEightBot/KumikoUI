@@ -27,7 +27,7 @@ public class MomentumPresetTests
     [Fact]
     public void IosCoastsFurthest_ThenAndroid_ThenDesktop()
     {
-        float ios = Coast(KumikoMomentumPreset.Ios, 3000);
+        float ios = Coast(KumikoMomentumPreset.IOS, 3000);
         float android = Coast(KumikoMomentumPreset.Android, 3000);
         float desktop = Coast(KumikoMomentumPreset.Desktop, 3000);
 
@@ -39,12 +39,12 @@ public class MomentumPresetTests
     public void Desktop_IgnoresASlowFlick_ThatAPhoneCoastsOn()
     {
         Assert.Equal(0, Coast(KumikoMomentumPreset.Desktop, 80));
-        Assert.True(Coast(KumikoMomentumPreset.Ios, 80) > 0);
+        Assert.True(Coast(KumikoMomentumPreset.IOS, 80) > 0);
         Assert.True(Coast(KumikoMomentumPreset.Android, 80) > 0);
     }
 
     [Theory]
-    [InlineData(KumikoMomentumPreset.Ios)]
+    [InlineData(KumikoMomentumPreset.IOS)]
     [InlineData(KumikoMomentumPreset.Android)]
     [InlineData(KumikoMomentumPreset.Desktop)]
     public void APreset_TunesOnlyTheMomentum(KumikoMomentumPreset preset)

@@ -427,7 +427,7 @@ public class KeyboardNavigationTests
         int row = g.Selection.CurrentCell.Row;
         float groupPanel = g.Source.IsGroupingActive ? g.Style.GroupPanelHeight : 0;
         float topSummary = g.Source.TopSummaryCount * g.Style.SummaryRowHeight;
-        var bounds = g.Input.GetCellScreenBounds(row, 0, g.Scroll, g.Style, g.Source.Columns, groupPanel, topSummary, g.Source);
+        var bounds = KumikoInputController.GetCellScreenBounds(row, 0, g.Scroll, g.Style, g.Source.Columns, groupPanel, topSummary, g.Source);
 
         foreach (float y in new[] { bounds.Y + 1, bounds.Y + bounds.Height / 2, bounds.Bottom - 1 })
         {
@@ -567,7 +567,7 @@ public class KeyboardNavigationTests
 
         Assert.Equal(232, g.Scroll.OffsetX);
         Assert.Equal(g.Scroll.MaxOffsetX, g.Scroll.OffsetX);
-        var bounds = g.Input.GetCellScreenBounds(0, 4, g.Scroll, g.Style, g.Source.Columns, dataSource: g.Source);
+        var bounds = KumikoInputController.GetCellScreenBounds(0, 4, g.Scroll, g.Style, g.Source.Columns, dataSource: g.Source);
         Assert.Equal(4, g.Hit(bounds.Right - 1, g.RowY(0)).ColumnIndex);
         Assert.Equal(4, g.Hit(bounds.X + 1, g.RowY(0)).ColumnIndex);
     }
@@ -587,7 +587,7 @@ public class KeyboardNavigationTests
         g.Key(KumikoKey.Right);
 
         Assert.Equal(400 - 268, g.Scroll.OffsetX);
-        var bounds = g.Input.GetCellScreenBounds(0, 3, g.Scroll, g.Style, g.Source.Columns, dataSource: g.Source);
+        var bounds = KumikoInputController.GetCellScreenBounds(0, 3, g.Scroll, g.Style, g.Source.Columns, dataSource: g.Source);
         Assert.Equal(3, g.Hit(bounds.Right - 1, g.RowY(0)).ColumnIndex);
         Assert.Equal(3, g.Hit(bounds.X + 1, g.RowY(0)).ColumnIndex);
     }

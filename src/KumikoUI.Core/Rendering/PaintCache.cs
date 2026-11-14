@@ -439,7 +439,7 @@ public sealed class PaintCache
     /// <summary>
     /// Create a paint for a specific background color (for row backgrounds that vary per row).
     /// </summary>
-    public static KumikoPaint BackgroundPaint(KumikoColor color) => new() { Color = color };
+    internal static KumikoPaint BackgroundPaint(KumikoColor color) => new() { Color = color };
 
     /// <summary>
     /// The paint for cell text under a cell's style overrides: the shared <see cref="CellText"/> when

@@ -12,7 +12,7 @@ namespace KumikoUI.Uno.Tests;
 /// <see cref="InputMapping.GetLiveModifiers"/> is deliberately excluded (it reads thread keyboard
 /// state via <c>InputKeyboardSource</c>, which requires the runtime).
 ///
-/// The key/modifier table mirrors docs/uno/04-input-keyboard-focus.md §3.
+/// The key/modifier table mirrors docs/uno/plan/04-input-keyboard-focus.md §3.
 /// </summary>
 public class InputMappingTests
 {

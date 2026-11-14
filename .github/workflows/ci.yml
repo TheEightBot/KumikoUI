@@ -31,6 +31,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
       snippets: ${{ steps.filter.outputs.snippets }}
+      identifiers: ${{ steps.filter.outputs.identifiers }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -54,6 +55,16 @@ jobs:
               - 'README.md'
               - 'docs/nuget/**'
               - '.github/instructions/**'
+            # Documents whose backticked identifiers must exist in the code (eng/DocsIdentifiers): a change to one
+            # of them runs the identifier check; a code change runs it through `code`.
+            identifiers:
+              - '.github/copilot-instructions.md'
+              - '.github/instructions/**'
+              - '.github/prompts/**'
+              - 'docs/ARCHITECTURE.md'
+              - 'docs/RENDERING.md'
+              - 'docs/uno/README.md'
+              - 'eng/DocsIdentifiers/**'
 
   # ─── Documentation-only change: nothing to build ───
   docs-only:
@@ -104,6 +115,28 @@ jobs:
         run: dotnet build tests/KumikoUI.Docs.Snippets.Uno/KumikoUI.Docs.Snippets.Uno.csproj
           -f net10.0-desktop -c Release
 
+  # ─── Documentation identifiers: every backticked type, member and file name in the instruction files, prompts,
+  # ARCHITECTURE.md, RENDERING.md and the Uno user guide exists in the code (#96) ───
+  # eng/DocsIdentifiers reads text files only (no build of the library, no workload), so it runs on a Linux runner in
+  # about a second. Runs for documentation-only changes too (the `identifiers` filter above).
+  docs-identifiers:
+    name: Check documentation identifiers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.identifiers == 'true'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
+        with:
+          cache-nuget: 'true'
+
+      - name: Check documentation identifiers
+        run: dotnet run --project eng/DocsIdentifiers/DocsIdentifiers.csproj -c Release
+
   # ─── Build + test KumikoUI.Core and KumikoUI.SkiaSharp (platform-agnostic) ───
   build-core:
     name: Build & Test (Core + SkiaSharp)
@@ -121,6 +154,12 @@ jobs:
         uses: ./.github/actions/setup-dotnet
         with:
           cache-nuget: 'true'
+
+      # Whitespace and final-newline rules of .editorconfig for every C# file in the repository (#54). --folder reads the
+      # files directly, so it needs neither a restore nor the MAUI and Uno workloads. Fix a failure locally with
+      # `dotnet format whitespace --folder .` (see CONTRIBUTING.md).
+      - name: Check formatting (dotnet format)
+        run: dotnet format whitespace --folder . --verify-no-changes
 
       - name: Restore
         run: dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj

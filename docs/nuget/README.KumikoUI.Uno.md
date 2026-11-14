@@ -101,7 +101,7 @@ public class Person
 
 - [Project README](https://github.com/TheEightBot/KumikoUI#readme): column types, editing, validation, theming, fonts and more.
 - [Uno sample app](https://github.com/TheEightBot/KumikoUI/tree/main/samples/SampleApp.Uno).
-- [Uno host design notes](https://github.com/TheEightBot/KumikoUI/tree/main/docs/uno).
+- [Uno user guide](https://github.com/TheEightBot/KumikoUI/blob/main/docs/uno/README.md): setup per head, keyboard and input methods, theming, fonts, images and known limits.
 - [Changelog](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md) and [versioning policy](https://github.com/TheEightBot/KumikoUI/blob/main/docs/VERSIONING.md).
 - [Report an issue](https://github.com/TheEightBot/KumikoUI/issues).
 

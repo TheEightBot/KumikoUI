@@ -18,11 +18,11 @@ public class KumikoDataGridRenderingTests
     // ── Surface selection ─────────────────────────────────────────
 
     [Theory]
-    [InlineData(KumikoRenderMode.Auto, true, true, KumikoRenderMode.Gpu)]
+    [InlineData(KumikoRenderMode.Auto, true, true, KumikoRenderMode.Hardware)]
     [InlineData(KumikoRenderMode.Auto, true, false, KumikoRenderMode.Software)]  // iOS, Windows
     [InlineData(KumikoRenderMode.Auto, false, true, KumikoRenderMode.Software)]
-    [InlineData(KumikoRenderMode.Gpu, true, false, KumikoRenderMode.Gpu)]        // opt in where Auto does not
-    [InlineData(KumikoRenderMode.Gpu, false, false, KumikoRenderMode.Software)]  // no GPU view: falls back
+    [InlineData(KumikoRenderMode.Hardware, true, false, KumikoRenderMode.Hardware)]        // opt in where Auto does not
+    [InlineData(KumikoRenderMode.Hardware, false, false, KumikoRenderMode.Software)]  // no GPU view: falls back
     [InlineData(KumikoRenderMode.Software, true, true, KumikoRenderMode.Software)]
     public void Resolve_PicksTheSurface(KumikoRenderMode requested, bool gpuSupported, bool gpuDefault, KumikoRenderMode expected)
     {
@@ -32,10 +32,10 @@ public class KumikoDataGridRenderingTests
     [Fact]
     public void Create_GpuMode_IsAnSKGLView()
     {
-        var surface = KumikoSurfaceFactory.Create(KumikoRenderMode.Gpu);
+        var surface = KumikoSurfaceFactory.Create(KumikoRenderMode.Hardware);
 
         Assert.IsType<SKGLView>(surface.View);
-        Assert.Equal(KumikoRenderMode.Gpu, surface.Mode);
+        Assert.Equal(KumikoRenderMode.Hardware, surface.Mode);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class KumikoDataGridRenderingTests
     }
 
     [Theory]
-    [InlineData(KumikoRenderMode.Gpu)]
+    [InlineData(KumikoRenderMode.Hardware)]
     [InlineData(KumikoRenderMode.Software)]
     [InlineData(KumikoRenderMode.Auto)]
     public void RenderMode_Set_KeepsOneSurface(KumikoRenderMode mode)
@@ -90,14 +90,14 @@ public class KumikoDataGridRenderingTests
         var root = Assert.IsType<Grid>(grid.Content);
         Assert.IsAssignableFrom<View>(Assert.Single(root.Children));
         Assert.Equal(KumikoSurfaceFactory.Resolve(mode), grid.ActiveRenderMode);
-        Assert.Equal(grid.ActiveRenderMode == KumikoRenderMode.Gpu, root.Children[0] is SKGLView);
+        Assert.Equal(grid.ActiveRenderMode == KumikoRenderMode.Hardware, root.Children[0] is SKGLView);
     }
 
     [Fact]
     public void RenderMode_SwappedBackAndForth_StillPaints()
     {
         var grid = PaintableGrid();
-        grid.RenderMode = KumikoRenderMode.Gpu;
+        grid.RenderMode = KumikoRenderMode.Hardware;
         grid.RenderMode = KumikoRenderMode.Software;
 
         using var surface = NewSurface();

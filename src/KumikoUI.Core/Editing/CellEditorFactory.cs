@@ -145,7 +145,7 @@ public static class CellEditorFactory
         return textBox;
     }
 
-    private static DrawnComponent CreateNumericEditor(
+    private static DrawnTextBox CreateNumericEditor(
         KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter,
         EditTextSelectionMode selectionMode, CultureInfo culture)
     {

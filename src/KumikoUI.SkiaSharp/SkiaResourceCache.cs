@@ -351,7 +351,7 @@ public sealed class SkiaResourceCache : IDisposable
     /// <summary>Returns the cached <see cref="SKPaint"/> for <paramref name="paint"/> drawn with <paramref name="style"/>.</summary>
     internal SKPaint GetPaint(KumikoPaint paint, SKPaintStyle style)
     {
-        var key = new PaintKey(paint.Color.ToUint32(), paint.StrokeWidth, style, paint.IsAntiAlias);
+        var key = new PaintKey(paint.Color.ToUInt32(), paint.StrokeWidth, style, paint.IsAntiAlias);
         lock (_gate)
         {
             if (_paints.TryGet(key, out var skPaint))
@@ -411,12 +411,12 @@ public sealed class SkiaResourceCache : IDisposable
     /// </summary>
     private static SKFont CreateFont(SKTypeface typeface, float size, bool isBold, bool isItalic, int weight,
         SKFontStyleSlant slant) => new(typeface, size)
-    {
-        Edging = SKFontEdging.SubpixelAntialias,
-        Subpixel = true,
-        Embolden = isBold && weight < (int)SKFontStyleWeight.SemiBold,
-        SkewX = isItalic && slant == SKFontStyleSlant.Upright ? SyntheticItalicSkew : 0f,
-    };
+        {
+            Edging = SKFontEdging.SubpixelAntialias,
+            Subpixel = true,
+            Embolden = isBold && weight < (int)SKFontStyleWeight.SemiBold,
+            SkewX = isItalic && slant == SKFontStyleSlant.Upright ? SyntheticItalicSkew : 0f,
+        };
 
     // ── Text ─────────────────────────────────────────────────────
 

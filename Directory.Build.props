@@ -43,6 +43,22 @@
     <!-- NuGet package icon -->
     <PackageIcon>logo.png</PackageIcon>
 
+    <!--
+      Static analysis level (#54). `latest` is the compiler's default rule set, used by tests, samples and tools. The four
+      shipped libraries raise it to `latest-recommended` in their project files (#112) and build without warnings; the
+      exceptions are suppressed in source with a justification (CA1720 on KumikoSelectionMode.Single, CA1001/CA1010 on the
+      host controls) and CA1822 is checked on private and internal members only (.editorconfig).
+    -->
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <!--
+      Package validation (#54): EnablePackageValidation is on for the four shipped libraries (their project files) and
+      checks that a package's target frameworks are consistent. No stable release exists yet, so there is nothing to compare
+      against. For the first stable release (1.0.0), uncomment the next line (set it to the previously released stable
+      version, then keep it one release behind) so that ApiCompat fails the pack on a breaking change:
+    -->
+    <!-- <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion> -->
+
     <!-- Deterministic builds for reproducibility -->
     <Deterministic>true</Deterministic>
 

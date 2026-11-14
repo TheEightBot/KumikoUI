@@ -249,6 +249,13 @@ public sealed partial class KumikoInputController
     /// <summary>The popup manager the hosts draw overlays from.</summary>
     internal PopupManager PopupManager => _popupManager;
 
+    /// <summary>
+    /// The popup the grid has open on top of its cells, such as a column's <see cref="DrawnFilterPopup"/>, or null
+    /// when none is open. When several are open (a popup opened from another one) this is the topmost. It is meant for
+    /// reading state, for example in UI tests; the grid opens and closes its popups itself.
+    /// </summary>
+    public DrawnComponent? ActivePopup => _popupManager.TopPopup;
+
     /// <summary>Raised when a popup or component needs keyboard focus from the platform layer (e.g., to show the software keyboard).</summary>
     public event EventHandler? KeyboardFocusRequested;
 
@@ -507,7 +514,6 @@ public sealed partial class KumikoInputController
             return;
 
         int totalRows = dataSource.RowCount;
-        int totalCols = dataSource.Columns.Count;
         // One page = the number of scrollable rows that fit between the fixed bands (header, grouping
         // panel, top summaries, frozen rows, pinned footer), so PageUp/PageDown never skip unseen rows.
         int pageSize = Math.Max(1, (int)(KumikoScroller.GetScrollableRowsViewportHeight(scroll, style, dataSource) / style.RowHeight));
@@ -710,31 +716,31 @@ public sealed partial class KumikoInputController
                 e.Handled = true;
                 break;
             case KumikoKey.Left:
-                selection.NavigateLeft(totalCols, e.HasShift);
+                selection.NavigateLeft(e.HasShift);
                 EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case KumikoKey.Right:
-                selection.NavigateRight(totalCols, e.HasShift);
+                selection.NavigateRight(e.HasShift);
                 EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case KumikoKey.Home:
-                selection.NavigateHome(e.HasControl, totalRows, e.HasShift);
+                selection.NavigateHome(totalRows, e.HasShift, e.HasControl);
                 EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case KumikoKey.End:
-                selection.NavigateEnd(e.HasControl, totalRows, totalCols, e.HasShift);
+                selection.NavigateEnd(totalRows, e.HasShift, e.HasControl);
                 EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
                 break;
             case KumikoKey.PageUp:
-                selection.NavigatePageUp(pageSize, e.HasShift, totalRows);
+                selection.NavigatePageUp(pageSize, totalRows, e.HasShift);
                 EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
                 Redraw();
                 e.Handled = true;
@@ -1337,7 +1343,7 @@ public sealed partial class KumikoInputController
                 e.Handled = true;
                 return;
             }
-        if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
+            if (!CommitEditBeforeViewChange(dataSource, selection)) { e.Handled = true; return; }
             bool ctrl = (e.Modifiers & InputModifiers.Control) != 0;
             bool shift = (e.Modifiers & InputModifiers.Shift) != 0;
 
@@ -1840,7 +1846,7 @@ public sealed partial class KumikoInputController
     /// needs no scroll. Horizontally a scrollable column is kept between the left-frozen columns and the
     /// right-frozen columns, net of the row drag handle; a frozen column needs no scroll.
     /// </summary>
-    private void EnsureCurrentCellVisible(
+    private static void EnsureCurrentCellVisible(
         ScrollState scroll, KumikoSelectionModel selection,
         KumikoStyle style, IReadOnlyList<KumikoColumn> columns,
         KumikoSource? dataSource = null)
@@ -1986,7 +1992,7 @@ public sealed partial class KumikoInputController
             ? interactive
             : null;
 
-    private IInteractiveCellRenderer? InteractiveRendererAt(KumikoSource dataSource, CellPosition cell)
+    private static IInteractiveCellRenderer? InteractiveRendererAt(KumikoSource dataSource, CellPosition cell)
     {
         if (cell.Column < 0 || cell.Column >= dataSource.Columns.Count) return null;
         if (cell.Row < 0 || cell.Row >= dataSource.RowCount || dataSource.IsNonDataRow(cell.Row)) return null;
@@ -1994,7 +2000,7 @@ public sealed partial class KumikoInputController
     }
 
     /// <summary>The cell rectangle as the renderer drew it: the screen bounds inset by the cell padding.</summary>
-    private KumikoRect GetInteractiveCellBounds(
+    private static KumikoRect GetInteractiveCellBounds(
         int row, int col, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
     {
         float groupPanelOffset = dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
@@ -2088,7 +2094,7 @@ public sealed partial class KumikoInputController
     /// Calculate the screen bounds for a cell (viewport coordinates).
     /// Handles left-frozen, right-frozen, and frozen rows.
     /// </summary>
-    internal KumikoRect GetCellScreenBounds(
+    internal static KumikoRect GetCellScreenBounds(
         int row, int col,
         ScrollState scroll, KumikoStyle style,
         IReadOnlyList<KumikoColumn> columns,
@@ -2251,7 +2257,7 @@ public sealed partial class KumikoInputController
     }
 
     /// <summary>Whether viewport point (<paramref name="x"/>, <paramref name="y"/>) is on the check box of a Boolean cell.</summary>
-    private bool IsOnCheckBox(float x, float y, CellPosition cell, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    private static bool IsOnCheckBox(float x, float y, CellPosition cell, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
     {
         float groupPanelOffset = dataSource.IsGroupingActive ? style.GroupPanelHeight : 0;
         float topSummaryHeight = dataSource.TopSummaryCount * style.SummaryRowHeight;

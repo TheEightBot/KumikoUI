@@ -24,6 +24,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Public API is recorded in PublicAPI.*.txt files and checked by PublicApiAnalyzers (Directory.Build.targets, #54). -->
+    <KumikoTrackPublicApi>true</KumikoTrackPublicApi>
+    <!-- Package validation (#54); the baseline is described in Directory.Build.props. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <!-- The recommended code-analysis rules (#112); Directory.Build.props sets `latest` for tests and samples. -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
 
     <!--
       SkiaSharpVersion comes from the repo-root Directory.Packages.props (one version for every project).
@@ -52,6 +58,11 @@
     <Description>A high-performance, fully custom-drawn KumikoUI DataGrid control for the Uno Platform. Renders via SkiaSharp (SKXamlCanvas) on Windows (WinUI), desktop (Windows, macOS, Linux), WebAssembly, Android and iOS, reusing the same engine as KumikoUI.Maui.</Description>
     <PackageTags>uno;unoplatform;uno-platform;winui;datagrid;data-grid;grid;table;skiasharp;cross-platform;wasm;webassembly;desktop;android;ios</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!--
+      The library has no Android resources, so it needs no Resource designer class: without this the Android head adds a
+      public KumikoUI.Uno.Resource type to the package (#112).
+    -->
+    <AndroidGenerateResourceDesigner>false</AndroidGenerateResourceDesigner>
   </PropertyGroup>
 
   <!--

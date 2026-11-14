@@ -33,7 +33,7 @@ Install the package in your MAUI app project:
 dotnet add package KumikoUI.Maui
 ```
 
-Register the grid in `MauiProgram.cs`. `UseSkiaKumikoUI()` also registers SkiaSharp.
+Register the grid in `MauiProgram.cs`. `UseKumikoUI()` also registers SkiaSharp.
 
 ```csharp
 using KumikoUI.Maui;
@@ -43,7 +43,7 @@ public static MauiApp CreateMauiApp()
     var builder = MauiApp.CreateBuilder();
     builder
         .UseMauiApp<App>()
-        .UseSkiaKumikoUI();
+        .UseKumikoUI();
 
     return builder.Build();
 }

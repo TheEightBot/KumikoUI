@@ -24,16 +24,16 @@ public sealed class CellValueChangedEventArgs : EventArgs
     public object? NewValue { get; }
 
     /// <summary>Initializes the event data.</summary>
-    /// <param name="row">Zero-based row index of the changed cell.</param>
-    /// <param name="col">Zero-based column index of the changed cell.</param>
+    /// <param name="rowIndex">Zero-based row index of the changed cell.</param>
+    /// <param name="columnIndex">Zero-based column index of the changed cell.</param>
     /// <param name="column">Column definition for the changed cell.</param>
     /// <param name="oldValue">Previous cell value.</param>
     /// <param name="newValue">New cell value.</param>
-    public CellValueChangedEventArgs(int row, int col, KumikoColumn column,
+    public CellValueChangedEventArgs(int rowIndex, int columnIndex, KumikoColumn column,
         object? oldValue, object? newValue)
     {
-        RowIndex = row;
-        ColumnIndex = col;
+        RowIndex = rowIndex;
+        ColumnIndex = columnIndex;
         Column = column;
         OldValue = oldValue;
         NewValue = newValue;

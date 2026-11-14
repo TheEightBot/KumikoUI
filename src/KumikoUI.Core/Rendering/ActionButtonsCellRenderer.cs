@@ -178,11 +178,11 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider, IIn
     public DrawnComponent? CreateEditor(object? value, KumikoRect bounds)
         => new KumikoUI.Core.Components.DrawnActionButtons
         {
-            Bounds  = bounds,
+            Bounds = bounds,
             RowItem = value,
             Buttons = Buttons,
-            CornerRadius  = CornerRadius,
+            CornerRadius = CornerRadius,
             ButtonSpacing = ButtonSpacing,
-            CellPadding   = CellPadding
+            CellPadding = CellPadding
         };
 }

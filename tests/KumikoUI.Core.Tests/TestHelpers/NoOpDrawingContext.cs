@@ -18,9 +18,11 @@ internal sealed class NoOpDrawingContext : IDrawingContext
     public void DrawText(string text, float x, float y, KumikoPaint paint) { }
     public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
         KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
-        KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true) { }
+        KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true)
+    { }
     public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint, KumikoTextAlignment hAlign,
-        KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap) { }
+        KumikoVerticalAlignment vAlign, bool clip, KumikoTextWrap wrap)
+    { }
     public KumikoSize MeasureText(string text, KumikoPaint paint) => new(text.Length * 7f, 14f);
     public KumikoSize MeasureText(string text, KumikoPaint paint, float maxWidth, KumikoTextWrap wrap) =>
         new(Math.Min(text.Length * 7f, maxWidth), 14f);

@@ -390,7 +390,7 @@ public sealed class DrawnNumericUpDown : DrawnComponent, IValueEditor
 
         // A culture's own minus sign (U+2212 in some) and the ASCII hyphen both mean negative
         if (number.NegativeSign != "-" && text[0] == '-')
-            text = number.NegativeSign + text.Substring(1);
+            text = string.Concat(number.NegativeSign, text.AsSpan(1));
 
         var styles = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint;
         if (group.Length > 0 && text.Contains(group, StringComparison.Ordinal))

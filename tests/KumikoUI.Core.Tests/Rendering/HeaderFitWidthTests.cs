@@ -294,7 +294,8 @@ public class HeaderFitWidthTests
         public void DrawText(string text, float x, float y, KumikoPaint paint) { }
         public void DrawTextInRect(string text, KumikoRect rect, KumikoPaint paint,
             KumikoTextAlignment hAlign = KumikoTextAlignment.Left,
-            KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true) { }
+            KumikoVerticalAlignment vAlign = KumikoVerticalAlignment.Center, bool clip = true)
+        { }
         public KumikoFontMetrics GetFontMetrics(KumikoPaint paint) => new(-11, 3, 2);
         public void ClipRect(KumikoRect rect) { }
         public void Save() { }

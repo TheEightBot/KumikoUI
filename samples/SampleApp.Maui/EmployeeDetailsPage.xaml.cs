@@ -16,13 +16,13 @@ public partial class EmployeeDetailsPage : ContentPage
         avatarBorder.BackgroundColor = employee.Department switch
         {
             "Engineering" => Color.FromArgb("#0D6EFD"),
-            "Marketing"   => Color.FromArgb("#6F42C1"),
-            "Finance"     => Color.FromArgb("#20C997"),
-            "HR"          => Color.FromArgb("#FD7E14"),
-            "Design"      => Color.FromArgb("#E83E8C"),
-            "Product"     => Color.FromArgb("#6610F2"),
-            "Sales"       => Color.FromArgb("#28A745"),
-            _             => Color.FromArgb("#0D6EFD")
+            "Marketing" => Color.FromArgb("#6F42C1"),
+            "Finance" => Color.FromArgb("#20C997"),
+            "HR" => Color.FromArgb("#FD7E14"),
+            "Design" => Color.FromArgb("#E83E8C"),
+            "Product" => Color.FromArgb("#6610F2"),
+            "Sales" => Color.FromArgb("#28A745"),
+            _ => Color.FromArgb("#0D6EFD")
         };
 
         nameLabel.Text = employee.Name;

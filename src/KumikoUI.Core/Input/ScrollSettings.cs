@@ -53,7 +53,7 @@ public sealed class ScrollSettings
     /// <returns>The settings.</returns>
     public static ScrollSettings FromPreset(KumikoMomentumPreset preset) => preset switch
     {
-        KumikoMomentumPreset.Ios => new ScrollSettings
+        KumikoMomentumPreset.IOS => new ScrollSettings
         {
             Friction = 0.968f, MaxVelocity = 8000f, MinVelocity = 10f, FlingThresholdMultiplier = 5f,
         },

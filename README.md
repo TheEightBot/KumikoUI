@@ -175,7 +175,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
    }
    ```
 
-   A `KumikoDataGrid` attached to a handler without this call throws an exception that says so. `UseSkiaKumikoUI()` from earlier versions is obsolete and calls `UseKumikoUI()`.
+   A `KumikoDataGrid` attached to a handler without this call throws an exception that says so. `UseSkiaKumikoUI()` from earlier versions was removed in 1.0; call `UseKumikoUI()`.
 
 3. Declare the grid. The XAML is the same as on Uno once the `kumiko` and `core` prefixes are declared:
 
@@ -555,7 +555,7 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
 
 ### XAML with bound commands (.NET MAUI)
 
-`MauiActionButtonDefinition` is a `BindableObject`, so every property, including `Command`, can be bound. It is not in the visual tree and does not inherit `BindingContext`, so point bindings at a source with `x:Reference` or `RelativeSource`:
+`MauiActionButtonDefinition` is a `BindableObject`, so every property, including `Command`, can be bound. It is not in the visual tree and does not inherit `BindingContext`, so point bindings at a source with `x:Reference` or `RelativeSource`. Its colors are MAUI `Color` values, like the grid's other color properties:
 
 <!-- snippet: maui -->
 ```xml
@@ -567,11 +567,11 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
                 <render:ActionButtonsCellRenderer.Buttons>
                     <kumiko:MauiActionButtonDefinition
                         Label="Details"
-                        BackgroundColor="13,110,253"
+                        BackgroundColor="#0D6EFD"
                         Command="{Binding Path=BindingContext.ViewDetailsCommand, Source={x:Reference actionsGrid}}" />
                     <kumiko:MauiActionButtonDefinition
                         Label="Delete"
-                        BackgroundColor="220,53,69"
+                        BackgroundColor="#DC3545"
                         Command="{Binding Path=BindingContext.DeleteCommand, Source={x:Reference actionsGrid}}" />
                 </render:ActionButtonsCellRenderer.Buttons>
             </render:ActionButtonsCellRenderer>
@@ -1396,7 +1396,7 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `VerticalOffset`, `HorizontalOffset` | `double` | 0 | The scroll offsets; two-way ([Scrolling](#scrolling)). |
 | `Clipboard` | `IKumikoClipboard?` | the platform clipboard | Used for copy, cut and paste; null turns them off ([Copying rows](#copying-rows)). |
 | `ClipboardCopyIncludesHeaders` | `bool` | false | Ctrl/Cmd+C starts the copied text with the column headers. |
-| `RenderMode` | `KumikoRenderMode` | `Auto` | The drawing surface; `ActiveRenderMode` reports the one in use. MAUI: `Auto` rasterizes on the GPU (`SKGLView`) on Android and Mac Catalyst and on the CPU (`SKCanvasView`) on iOS and Windows; `Gpu` and `Software` ask for one. Uno: `Auto` draws through Uno's GPU-backed `SKCanvasElement` on the Skia-rendered heads and through `SKXamlCanvas` elsewhere; `Hardware` and `Software` ask for one. |
+| `RenderMode` | `KumikoRenderMode` | `Auto` | The drawing surface; `ActiveRenderMode` reports the one in use. MAUI: `Auto` rasterizes on the GPU (`SKGLView`) on Android and Mac Catalyst and on the CPU (`SKCanvasView`) on iOS and Windows; `Hardware` (the GPU view) and `Software` ask for one. Uno: `Auto` draws through Uno's GPU-backed `SKCanvasElement` on the Skia-rendered heads and through `SKXamlCanvas` elsewhere; `Hardware` and `Software` ask for one. |
 | `IsReadOnly` | `bool` | false | True refuses every edit, Boolean toggle and Tab stop; combines with `KumikoColumn.IsReadOnly`. |
 | `AllowSorting`, `AllowFiltering` | `bool` | true | False stops header-tap sorting, or hides and disables the header filter icons; a grid-level false wins over the column's setting. |
 
@@ -1989,7 +1989,7 @@ All drawing goes through the `IDrawingContext` abstraction, so Core has no depen
 | `SkiaDrawingContext`, `SkiaResourceCache` | The SkiaSharp drawing context and its per-control cache |
 | `KumikoDataGrid` (MAUI, Uno) | The host controls |
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/RENDERING.md](docs/RENDERING.md) for contributor detail, and [docs/uno/](docs/uno/README.md) for the Uno port's design notes.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/RENDERING.md](docs/RENDERING.md) for contributor detail, and the [Uno user guide](docs/uno/README.md) for the Uno host.
 
 Every interaction timing and threshold (double tap, long press, drag and pan thresholds, touch target sizes, momentum presets, transition durations) is listed in [docs/INTERACTION.md](docs/INTERACTION.md).
 

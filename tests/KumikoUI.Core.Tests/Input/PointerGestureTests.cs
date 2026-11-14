@@ -1,3 +1,4 @@
+using KumikoUI.Core.Components;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
@@ -517,6 +518,22 @@ public class PointerGestureTests
         Assert.True(e.Handled);
         Assert.Equal(1, closed);
         Assert.False(g.Input.PopupManager.HasActivePopups);
+    }
+
+    [Fact]
+    public void ActivePopup_IsTheOpenFilterPopup_AndNullOnceItCloses()
+    {
+        var g = new InputGrid();
+        Assert.Null(g.Input.ActivePopup);
+
+        g.Tap(180, InputGrid.HeaderY); // Age filter icon
+
+        var popup = Assert.IsType<DrawnFilterPopup>(g.Input.ActivePopup);
+        Assert.True(popup.IsVisible);
+
+        g.Key(KumikoKey.Escape);
+
+        Assert.Null(g.Input.ActivePopup);
     }
 
     [Fact]

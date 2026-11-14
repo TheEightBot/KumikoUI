@@ -258,7 +258,7 @@ internal static class SummaryText
             try
             {
                 // Format template uses {0}, {1}, etc. referencing formatted values
-                return string.Format(formatTemplate, summaryValues);
+                return string.Format(culture, formatTemplate, summaryValues);
             }
             catch
             {

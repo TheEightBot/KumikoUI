@@ -15,7 +15,7 @@ namespace KumikoUI.Uno.Input;
 /// unit-tested directly in Phase 07. The <see cref="KumikoDataGrid"/> control is the only caller;
 /// it owns event subscription and merely defers the enum mapping here.
 /// </remarks>
-public static class InputMapping
+internal static class InputMapping
 {
     /// <summary>
     /// Maps a WinUI <see cref="VirtualKey"/> to KumikoUI.Core's <see cref="KumikoKey"/>.

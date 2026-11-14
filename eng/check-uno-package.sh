@@ -64,7 +64,11 @@ for tfm in net10.0 net10.0-android36.0 net10.0-browserwasm1.0 net10.0-desktop1.0
     printf '%s\n' "$groups" | grep -qx "$tfm $id" || fail "$tfm: dependency $id missing"
   done
 done
-allowed='^(KumikoUI\.(Core|SkiaSharp)|SkiaSharp(\.Views(\.Uno\.WinUI|\.WinUI)?|\.Skottie|\.NativeAssets\.Linux)?|Uno\.WinUI|Microsoft\.Extensions\.Hosting\.Abstractions|Microsoft\.WindowsAppSDK|Microsoft\.Windows\.SDK\.BuildTools)$'
+# HarfBuzzSharp.NativeAssets.Linux (desktop) and .WebAssembly (browserwasm) are deliberate dependencies, like
+# SkiaSharp.NativeAssets.Linux: they make an app resolve the native HarfBuzz library at the version of the managed
+# HarfBuzzSharp that SkiaSharp.HarfBuzz (emoji shaping, KumikoUI.SkiaSharp) needs, instead of the older one Uno's runtime
+# references (#112).
+allowed='^(KumikoUI\.(Core|SkiaSharp)|SkiaSharp(\.Views(\.Uno\.WinUI|\.WinUI)?|\.Skottie|\.NativeAssets\.Linux)?|HarfBuzzSharp\.NativeAssets\.(Linux|WebAssembly)|Uno\.WinUI|Microsoft\.Extensions\.Hosting\.Abstractions|Microsoft\.WindowsAppSDK|Microsoft\.Windows\.SDK\.BuildTools)$'
 while read -r tfm id; do
   [ -z "${id:-}" ] && continue
   echo "  $tfm  $id"
