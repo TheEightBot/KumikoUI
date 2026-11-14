@@ -31,17 +31,17 @@ this work lists where.
 | Selection (click/tap, current cell) | ◻ ³ | ✅ | ✅ | ✅ | not run (no machine) |
 | Editing: text (begin with double click/tap, F2, typing; commit with Enter) | ◻ ³ | ✅ | ❌ ⁴ (typing over a selection) | ✅ after fix ⁴ | not run (no machine) |
 | Editing: IME / composition | ◻ ³ | ◻ ⁵ | ◻ ⁵ | ✅ after fix ⁴ (Gboard composing text, suggestions) | not run (no machine) |
-| Editing: combo box | ◻ ³ | ⚠️ ⁶ | ◻ | ◻ | not run (no machine) |
+| Editing: combo box | ◻ ³ | ✅ ⁶ | ◻ | ◻ | not run (no machine) |
 | Editing: date picker | ◻ ³ | ✅ | ◻ | ◻ | not run (no machine) |
 | Keyboard navigation (arrows, Tab between cells) | ◻ ³ | ✅ | n/a | n/a | not run (no machine) |
 | Tab out of the grid (no keyboard trap) | ◻ ³ | ✅ | n/a | n/a | not run (no machine) |
-| Filter popup (open, check list, search, OK) | ◻ ³ | ✅ ⁷ | ◻ | ⚠️ ⁸ | not run (no machine) |
+| Filter popup (open, check list, search, OK) | ◻ ³ | ✅ after fix ⁷ | ◻ | ⚠️ ⁸ | not run (no machine) |
 | Column resize (drag the header border) | ◻ ³ | ✅ | ◻ | ✅ | not run (no machine) |
 | Column reorder (drag a header) | ◻ ³ | ✅ | ◻ | ◻ ⁹ | not run (no machine) |
 | Row drag (handle) | ◻ ³ | ◻ ¹⁰ | ◻ ¹⁰ | ✅ (after the sample fix) | not run (no machine) |
 | Grouping (group buttons, chips, remove chip, expand/collapse) | ◻ ³ | ✅ | ◻ | ◻ | not run (no machine) |
 | Theme switch: sample button (Light → Dark → High Contrast) | ◻ ³ | ✅ | ◻ | ◻ | not run (no machine) |
-| Theme switch: follows the system light/dark change live | ✅ (dark at launch) | ✅ | ◻ | ⚠️ ¹¹ | not run (no machine) |
+| Theme switch: follows the system light/dark change live | ✅ (dark at launch) | ✅ | ◻ | ✅ after fix ¹¹ | not run (no machine) |
 | DPI / scale change | ◻ ¹² | ◻ ¹² | n/a | n/a | not run (no machine) |
 | Keyboard avoidance (edited bottom row stays above the soft keyboard) | n/a | n/a | ✅ | ✅ | n/a |
 | Hover feedback (headers, chips, chevrons) | ◻ ³ | ✅ | n/a | n/a | not run (no machine) |
@@ -74,20 +74,25 @@ this work lists where.
 5. **IME on WebAssembly and iOS:** no input method that composes could be driven by the automation (no Japanese
    keyboard is installed in the browser or the simulator). The composition path itself is covered by the unit
    tests of `KumikoTextInputAdapter`.
-6. **Combo box (WebAssembly):** picking an item works and Tab commits it. Enter on the closed combo box reopens the
-   list instead of committing the edit, and the last item of the open list is drawn over the row below the popup
-   (follow-up F5).
-7. **Filter popup search (WebAssembly):** the search narrows the list but OK applies the check marks of all values,
-   including the hidden ones, so search + OK does not filter. "Select All" stays checked after unchecking items.
-   Both are Core behavior, the same on every host (follow-up F6).
+6. **Combo box (WebAssembly):** picking an item works and Tab commits it. Picking an item with the mouse completes
+   and commits the edit at once, so the Enter that follows is not a second commit: on a cell that is not being
+   edited Enter opens the editor (like F2), and the new editor opens its list, which is what the run saw as the
+   list reopening (follow-up F5). With the list closed by Escape, Enter commits and opens nothing. The list is drawn on
+   top of the rows below it and every item stays inside its bounds at every scroll position; the Core tests in
+   `ComboBoxEditorFlowTests` pin this, and the overdraw seen in the run was not reproduced.
+7. **Filter popup search (WebAssembly):** the search narrows the list, and OK used to apply the check marks of all
+   values, including the hidden ones, so search plus OK did not filter; "Select All" stayed checked after
+   unchecking items. Both were Core behavior, the same on every host, and are fixed (see
+   [Fixed during the pass](#fixed-during-the-pass)).
 8. **Filter popup on Android:** opening it and the check list work, but tapping the search box never shows the soft
    keyboard, so the search cannot be typed into on a phone (follow-up F2).
 9. **Column reorder by touch (Android):** two slow header drags with `adb input swipe` started neither a column drag
    nor a pan; mouse reorder works on WebAssembly. Needs a check with a real finger (follow-up F3).
 10. **Row drag on WebAssembly and iOS:** not exercised; the sample had no page with row drag enabled until the sample
     fix in this pass, and the WebAssembly and iOS runs predate it. Android, run after the fix, works.
-11. **Theme follow on Android:** the grid follows a system dark-mode switch live, but an editor that is open keeps the
-    old theme's colors until the edit ends (follow-up F7).
+11. **Theme follow on Android:** the grid follows a system dark-mode switch live. An editor that was open kept the old
+    theme's colors until the edit ended; that is fixed in Core (the edit session re-themes its editor when the style
+    changes) and covered by unit tests, not re-run on the emulator.
 12. **DPI change:** not possible with the tools available (the browser pane cannot change the device pixel ratio,
     and the macOS desktop app could not be moved between displays). UNO-18 tracks the code path.
 13. **Pressed feedback and transitions:** the automation delivers press and release together, and screenshots cannot
@@ -108,6 +113,9 @@ this work lists where.
 | Typing at the end of a cell editor or the filter search box threw `ArgumentOutOfRangeException` from `TextBox.Select`: the grid wrote its hidden text box back while that text box was still raising `TextChanging`. Crashed the app on Android, logged on most WebAssembly keystrokes, lost characters on iOS. The grid now syncs the text box right after the change. | Android, iOS, WebAssembly (and desktop, same code path) | `fix(uno): do not write the proxy text box while it raises TextChanging` |
 | Typing over a selected value inserted in front of it on Android: focusing the hidden text box moved its caret to the start. The grid puts the editor's selection back after focusing it. (iOS has the same symptom from a different cause: F9.) | Android | `fix(uno): restore the editor's selection after focusing the proxy text box` |
 | The sample had no page with row drag; the All Components page now shows the drag handle and has the MAUI page's Row Drag button. Its theme button said Light while the grid followed a dark app theme. | all | `fix(samples): Uno main page can drag rows and its theme button starts from the shown theme` |
+
+| The filter popup applied every checked value on OK, including values a search had hidden, and its Select All box always showed a check mark. OK now keeps the checked values that match the search, and the box shows checked, empty or indeterminate. | all (Core) | `fix(core): filter popup OK applies the search and Select All shows a mixed state` |
+| An open cell editor kept the old theme after the style changed. `EditSession.Style` now re-themes the active editor. | all (Core) | `fix(core): re-theme the open cell editor when the style changes` |
 
 Both host fixes have unit tests in `tests/KumikoUI.Uno.Tests/KumikoTextInputAdapterTests.cs` (the fake text box now
 raises its changes the way Uno's does).
@@ -130,14 +138,12 @@ Each needs an issue; repro steps are against `samples/SampleApp.Uno`.
 - **F4. macOS desktop: the grid is missing from the accessibility tree.** Launch the desktop head, inspect with
   Accessibility Inspector or VoiceOver: buttons and navigation items are there, the grid is not. The same peer is
   exposed on WebAssembly and Android, so the gap is in how Uno's macOS host maps `KumikoDataGridAutomationPeer`.
-- **F5. Combo box keys and list drawing.** WebAssembly, All Components, click a Department cell, pick an item, press
-  Enter: the list opens again instead of the edit committing. With the list open, the last item ("Support") is drawn
-  over the row under the popup.
-- **F6. Filter popup search and Select All.** Type "Eng" in the Department filter's search and press OK: nothing is
-  filtered (the hidden values are still checked). Uncheck two values: "Select All" stays checked instead of showing
-  an indeterminate state. Core, all hosts.
-- **F7. An open editor keeps the old theme.** Android, edit a cell, switch the system to dark mode: the grid turns
-  dark, the open editor stays light until the edit ends.
+- **F5. Combo box keys and list drawing.** *Resolved, no code change.* Picking an item commits the edit, and Enter on
+  the cell then opens the editor again by design (Enter is an edit trigger like F2). The list overdraw was not
+  reproduced in Core; guard tests were added. Re-check on a device if it shows again, with a screenshot of the
+  popup edge.
+- **F6. Filter popup search and Select All.** *Fixed in Core* (see above).
+- **F7. An open editor keeps the old theme.** *Fixed in Core* (see above); re-check on the Android emulator.
 - **F8. Android Release cold start is slow.** About 15 to 20 seconds from launch to the first grid on the emulator;
   measure on a device.
 - **F9. iOS: typing over a selected cell value goes in front of it.** iOS simulator, All Components, double-tap

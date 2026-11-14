@@ -173,6 +173,23 @@ public sealed class DrawnFilterPopup : DrawnComponent
     /// <summary>The checked values (whether or not they match the search).</summary>
     public IReadOnlyList<string> CheckedValues => _allItems.Where(i => i.IsChecked).Select(i => i.Value).ToList();
 
+    /// <summary>
+    /// The state of the Select All box: checked when every value that matches the search is checked, unchecked when
+    /// none is, indeterminate when only some are.
+    /// </summary>
+    internal DrawnCheckState SelectAllState
+    {
+        get
+        {
+            EnsureSearchApplied();
+            int checkedCount = 0;
+            foreach (int i in _visible)
+                if (_allItems[i].IsChecked) checkedCount++;
+            if (checkedCount == 0) return _visible.Count == 0 ? DrawnCheckState.Checked : DrawnCheckState.Unchecked;
+            return checkedCount == _visible.Count ? DrawnCheckState.Checked : DrawnCheckState.Indeterminate;
+        }
+    }
+
     /// <summary>The vertical scroll offset of the value list, in pixels.</summary>
     public float ListScrollOffset => _scrollOffset;
 
@@ -431,13 +448,23 @@ public sealed class DrawnFilterPopup : DrawnComponent
         var selectAllRect = layout.SelectAll;
         if (_hoveredItemIndex == -2000)
             ctx.FillRect(selectAllRect, Paints.Get(color: HoverColor));
-        // Draw checked checkbox icon
+        // The box shows the state of the values on offer: checked, unchecked or mixed
         float cbIX = selectAllRect.X + 8;
         float cbIY = selectAllRect.Y + (ButtonRowHeight - 12) / 2;
-        ctx.DrawRect(new KumikoRect(cbIX, cbIY, 12, 12), Paints.Get(color: AccentColor, strokeWidth: 1.5f, isAntiAlias: true));
-        ctx.FillRect(new KumikoRect(cbIX + 2, cbIY + 2, 8, 8), Paints.Get(color: AccentColor));
-        IconProvider.DrawIcon(ctx, KumikoIcon.Check, new KumikoRect(cbIX, cbIY, 12, 12),
-            Paints.Get(color: ButtonTextColor, strokeWidth: 1.5f, isAntiAlias: true));
+        var allState = SelectAllState;
+        var allBox = new KumikoRect(cbIX, cbIY, 12, 12);
+        ctx.DrawRect(allBox, Paints.Get(color: AccentColor, strokeWidth: 1.5f, isAntiAlias: true));
+        if (allState == DrawnCheckState.Checked)
+        {
+            ctx.FillRect(new KumikoRect(cbIX + 2, cbIY + 2, 8, 8), Paints.Get(color: AccentColor));
+            IconProvider.DrawIcon(ctx, KumikoIcon.Check, allBox,
+                Paints.Get(color: ButtonTextColor, strokeWidth: 1.5f, isAntiAlias: true));
+        }
+        else if (allState == DrawnCheckState.Indeterminate)
+        {
+            IconProvider.DrawIcon(ctx, KumikoIcon.Indeterminate, allBox,
+                Paints.Get(color: AccentColor, strokeWidth: 1.5f, isAntiAlias: true));
+        }
         ctx.DrawTextInRect(_dataSource.Strings.FilterSelectAll, new KumikoRect(selectAllRect.X + 24, selectAllRect.Y, selectAllRect.Width - 24, ButtonRowHeight),
             textPaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
 
@@ -851,17 +878,29 @@ public sealed class DrawnFilterPopup : DrawnComponent
     private void ApplyFilter()
     {
         _search.CommitComposition();
+        EnsureSearchApplied();
 
-        // Collect selected values
+        // Collect selected values. With a search, OK filters to the checked values that match it (like Excel):
+        // the values the search hid are not part of the choice.
         var selectedValues = new HashSet<string>();
         bool allSelected = true;
 
-        foreach (var item in _allItems)
+        if (_appliedSearch.Length > 0)
         {
-            if (item.IsChecked)
-                selectedValues.Add(item.Value);
-            else
-                allSelected = false;
+            foreach (int i in _visible)
+                if (_allItems[i].IsChecked)
+                    selectedValues.Add(_allItems[i].Value);
+            allSelected = selectedValues.Count == _allItems.Count;
+        }
+        else
+        {
+            foreach (var item in _allItems)
+            {
+                if (item.IsChecked)
+                    selectedValues.Add(item.Value);
+                else
+                    allSelected = false;
+            }
         }
 
         if (allSelected)

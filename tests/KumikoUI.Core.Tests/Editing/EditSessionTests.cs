@@ -879,6 +879,45 @@ public class EditSessionTests
     }
 
     [Fact]
+    public void ChangingTheStyle_RethemesTheOpenEditor()
+    {
+        var f = new Fixture();
+        f.Session.Style = new KumikoStyle
+        {
+            CellTextColor = new KumikoColor(11, 22, 33),
+            BackgroundColor = new KumikoColor(44, 55, 66),
+        };
+        f.Begin(0, 0);
+        var editor = f.Box;
+
+        f.Session.Style = new KumikoStyle // a system theme switch assigns the dark preset
+        {
+            CellTextColor = new KumikoColor(200, 201, 202),
+            BackgroundColor = new KumikoColor(10, 11, 12),
+        };
+
+        Assert.Same(editor, f.Session.ActiveEditor);
+        Assert.Equal(new KumikoColor(200, 201, 202), f.Box.TextColor);
+        Assert.Equal(new KumikoColor(10, 11, 12), f.Box.BackgroundColor);
+        Assert.True(f.Redraws > 0);
+    }
+
+    [Fact]
+    public void ChangingTheStyle_KeepsTheTextAndSelectionOfTheOpenEditor()
+    {
+        var f = new Fixture();
+        f.Session.Style = new KumikoStyle();
+        f.Begin(0, 0, 'Z');
+        string text = f.Box.Text;
+        int caret = f.Box.CursorPosition;
+
+        f.Session.Style = new KumikoStyle { CellTextColor = new KumikoColor(9, 9, 9) };
+
+        Assert.Equal(text, f.Box.Text);
+        Assert.Equal(caret, f.Box.CursorPosition);
+    }
+
+    [Fact]
     public void WithoutAStyle_EditorsKeepTheirDefaultColors()
     {
         var f = new Fixture();
