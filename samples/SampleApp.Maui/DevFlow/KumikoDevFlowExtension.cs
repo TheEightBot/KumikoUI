@@ -132,6 +132,9 @@ public static class KumikoDevFlowExtension
 				["height"] = grid.Height,
 				["itemCount"] = grid.ItemsSource is ICollection items ? items.Count : (int?)null,
 				["rowCount"] = source.RowCount,
+				// A background rebuild (#254) is under way: rows still show the previous view until it is swapped in.
+				["isViewUpdatePending"] = source.IsViewUpdatePending,
+				["backgroundRebuildThreshold"] = grid.BackgroundRebuildThreshold,
 				["frozenRowCount"] = source.EffectiveFrozenRowCount,
 				["headerHeight"] = style.HeaderHeight,
 				["rowHeight"] = style.RowHeight,
