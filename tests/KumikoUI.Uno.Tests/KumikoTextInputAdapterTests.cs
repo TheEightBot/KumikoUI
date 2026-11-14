@@ -136,6 +136,39 @@ public class KumikoTextInputAdapterTests
     }
 
     [Fact]
+    public void TypingAtTheEnd_WhileTheTextBoxRaisesItsChange_LeavesTheProxyToTheSyncAfterIt()
+    {
+        // Uno's TextBox cannot take a selection while it raises TextChanging (typing at the end of a cell threw,
+        // which crashed the Android input connection): the adapter writes the proxy only in the sync after it
+        var (box, proxy, adapter, _) = Editor("ab");
+        proxy.RaisesChangesLikeUno = true;
+
+        proxy.Type("c");
+        proxy.Type("d");
+
+        Assert.Equal("abcd", box.Text);
+        Assert.Equal(4, box.CursorPosition);
+
+        adapter.Sync(); // what the host queues after each change
+        Assert.Equal("abcd", proxy.Text);
+        Assert.Equal(4, proxy.SelectionStart);
+    }
+
+    [Fact]
+    public void TextTheEditorRejects_WhileTheTextBoxRaisesItsChange_IsTakenBackByTheSync()
+    {
+        var (box, proxy, adapter, _) = Editor("12", b => b.NumericOnly = true);
+        proxy.RaisesChangesLikeUno = true;
+
+        proxy.Type("x");
+        adapter.Sync();
+
+        Assert.Equal("12", box.Text);
+        Assert.Equal("12", proxy.Text);
+        Assert.Equal(2, proxy.SelectionStart);
+    }
+
+    [Fact]
     public void AnEditorChangeFromAnotherRoute_UpdatesTheProxy()
     {
         var (box, proxy, _, _) = Editor("abc");
