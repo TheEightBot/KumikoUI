@@ -22,6 +22,33 @@
     <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1570;CS1571;CS1572;CS1573;CS1574;CS1580;CS1581;CS1584;CS1587;CS1589;CS1590;CS1592;CS1658;CS1710;CS1711;CS1712;CS1723;CS1734</WarningsAsErrors>
   </PropertyGroup>
   <!--
+    Public API tracking for the four shipped libraries (those that set KumikoTrackPublicApi, #54). The analyzer compares
+    the public surface with the PublicAPI.*.txt files next to the project:
+      - PublicAPI.Shipped.txt / PublicAPI.Unshipped.txt hold the members present in every target framework.
+      - PublicAPI/<TargetFramework>/PublicAPI.Shipped.txt and .Unshipped.txt (optional) hold members only that target
+        framework has, such as the platform-specific handlers of KumikoUI.Maui and KumikoUI.Uno. The analyzer merges the
+        files that apply to the target framework being built.
+    RS0016 (public API not recorded) and RS0017 (recorded API no longer exists) are errors, so an API change that is not
+    written down fails the build. Nothing has shipped as a stable release yet, so every Shipped file is empty and the whole
+    surface lives in the Unshipped files; at the first stable release, move the Unshipped content into Shipped (CONTRIBUTING.md).
+  -->
+  <ItemGroup Condition="'$(KumikoTrackPublicApi)' == 'true'">
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+    <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Shipped.txt" Condition="Exists('PublicAPI/$(TargetFramework)/PublicAPI.Shipped.txt')" />
+    <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt" Condition="Exists('PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt')" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(KumikoTrackPublicApi)' == 'true'">
+    <WarningsAsErrors>$(WarningsAsErrors);RS0016;RS0017;RS0025;RS0036;RS0037</WarningsAsErrors>
+    <!--
+      RS0026/RS0027 (optional parameters must be on the overload with the most parameters) flag the deliberate
+      KumikoHitTester.HitTest and IDrawingContext.DrawTextInRect overload sets. Reshaping them is an API change tracked as a
+      pre-1.0 follow-up, not part of recording the surface.
+    -->
+    <NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
+  </PropertyGroup>
+  <!--
     Apps in this repository (samples, eng/AotSmoke) reference KumikoUI.Core by project, so the targets the
     NuGet package delivers through buildTransitive are not applied to them. Import the same file so a
     PublishAot or TrimMode=full publish switches the reflection fallback off, as it does for package consumers (#76).

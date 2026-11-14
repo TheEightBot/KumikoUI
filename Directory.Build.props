@@ -43,6 +43,22 @@
     <!-- NuGet package icon -->
     <PackageIcon>logo.png</PackageIcon>
 
+    <!--
+      Static analysis level (#54). `latest` is the compiler's default rule set and builds clean. `latest-recommended`
+      would also turn on rules that need API or behavior changes before 1.0 (CA1711 on the *EventArgs type names,
+      CA1720 on KumikoSelectionMode.Single, CA1305 on string.Format in SummaryAggregates, and CA1822/CA1805/CA1845/CA1859
+      cleanups in Core). Raise it once those are done.
+    -->
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <!--
+      Package validation (#54): EnablePackageValidation is on for the four shipped libraries (their project files) and
+      checks that a package's target frameworks are consistent. No stable release exists yet, so there is nothing to compare
+      against. For the first stable release (1.0.0), uncomment the next line (set it to the previously released stable
+      version, then keep it one release behind) so that ApiCompat fails the pack on a breaking change:
+    -->
+    <!-- <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion> -->
+
     <!-- Deterministic builds for reproducibility -->
     <Deterministic>true</Deterministic>
 
