@@ -114,12 +114,18 @@ public partial class KumikoDataGrid : UserControl
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
+        _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested; // KumikoDataGrid.Haptics.cs
 
         // IsEnabled=false stops all input in Core (KumikoDataGrid.Input.cs). Own event: wired once, no leak.
         IsEnabledChanged += OnIsEnabledChanged;
 
         // Wire edit session to input controller and style (mirrors MAUI).
         _inputController.EditSession = _editSession;
+        _inputController.ScrollSettings = ScrollSettings.FromPreset(PlatformMomentumPreset); // KumikoDataGrid.Theming.cs
+
+        // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester, and draws
+        // the controller's hover and pressed feedback (#101).
+        _renderer.InputController = _inputController;
         InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;
         ConnectTheming();

@@ -64,6 +64,8 @@ internal sealed class InputGrid
         Source.SetItems(Items);
         Edit.Style = Style;
         if (withEditSession) Input.EditSession = Edit;
+        Renderer.InputController = Input; // as both hosts connect them
+        Tester.RenderedRegions = Input.HitTester.RenderedRegions; // Hit() sees the chips the controller sees
         Input.NeedsRedraw += (_, _) => Redraws++;
         Input.CursorChanged += (_, cursor) => Cursors.Add(cursor);
         configure?.Invoke(this);
@@ -74,6 +76,14 @@ internal sealed class InputGrid
     public void Render()
     {
         Renderer.Render(new RecordingDrawingContext(), Source, Scroll, Selection, Style, editSession: Edit);
+    }
+
+    /// <summary>Render a frame and return what it drew.</summary>
+    public RecordingDrawingContext RenderRecorded()
+    {
+        var ctx = new RecordingDrawingContext();
+        Renderer.Render(ctx, Source, Scroll, Selection, Style, editSession: Edit);
+        return ctx;
     }
 
     /// <summary>Viewport y of the vertical middle of row <paramref name="row"/> with no scroll, bands or grouping.</summary>

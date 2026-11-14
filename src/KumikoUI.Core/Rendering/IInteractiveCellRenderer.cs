@@ -40,6 +40,21 @@ public interface IInteractiveCellRenderer
     bool HasControlAt(KumikoRect cellRect, float x, float y, object? value) => false;
 
     /// <summary>
+    /// Which of the cell's controls a tap at (<paramref name="x"/>, <paramref name="y"/>) would act on, or -1 for
+    /// none: the grid draws hover and pressed feedback while this stays the same and redraws when it changes (for an
+    /// <see cref="ActionButtonsCellRenderer"/>, the index of the enabled button). The renderer draws the feedback
+    /// itself, from <see cref="CellRenderContext.PointerPosition"/>. Called on every hover move over the cell, so it
+    /// should not allocate. The default is 0 where <see cref="HasControlAt"/> is true, else -1.
+    /// </summary>
+    /// <param name="cellRect">The cell rectangle, as for <see cref="OnCellTap"/>.</param>
+    /// <param name="x">Pointer X, in the same coordinates as <paramref name="cellRect"/>.</param>
+    /// <param name="y">Pointer Y.</param>
+    /// <param name="value">The cell value, as for <see cref="OnCellTap"/>.</param>
+    /// <returns>The control's index, or -1.</returns>
+    int GetControlIndexAt(KumikoRect cellRect, float x, float y, object? value) =>
+        HasControlAt(cellRect, x, y, value) ? 0 : -1;
+
+    /// <summary>
     /// Raised when the cell's appearance changed without the grid knowing (for example a command's
     /// <c>CanExecuteChanged</c>). The grid redraws.
     /// </summary>

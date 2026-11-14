@@ -319,7 +319,7 @@ public class ContextRequestedTests
     public void RightClick_OutsideAnOpenPopup_ClosesIt_AndRaisesNothing()
     {
         var g = new InputGrid(viewportWidth: 900);
-        g.Tap(120 + 80 - 20 - 6, InputGrid.HeaderY); // the Age filter icon
+        g.Tap(120 + 80 - 8 - 5, InputGrid.HeaderY); // the Age filter icon
         Assert.True(g.Input.PopupManager.HasActivePopups);
         var requests = TrackContext(g);
 
@@ -334,7 +334,7 @@ public class ContextRequestedTests
     public void RightClick_InsideAnOpenPopup_DoesNothing()
     {
         var g = new InputGrid(viewportWidth: 900);
-        g.Tap(120 + 80 - 20 - 6, InputGrid.HeaderY);
+        g.Tap(120 + 80 - 8 - 5, InputGrid.HeaderY);
         var popup = g.Input.PopupManager.HitTest(122, g.Style.HeaderHeight + 2)!;
         var requests = TrackContext(g);
 

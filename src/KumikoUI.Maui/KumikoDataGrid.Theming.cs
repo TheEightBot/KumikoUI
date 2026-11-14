@@ -110,14 +110,30 @@ public partial class KumikoDataGrid
 
     // ── ScrollSettings ──
 
+    /// <summary>
+    /// The momentum preset of the platform the grid runs on (#101): iOS on iPhone and iPad, Android on Android, desktop
+    /// on Mac Catalyst and Windows.
+    /// </summary>
+    private static KumikoMomentumPreset PlatformMomentumPreset =>
+#if IOS
+        KumikoMomentumPreset.Ios;
+#elif ANDROID
+        KumikoMomentumPreset.Android;
+#elif MACCATALYST || WINDOWS
+        KumikoMomentumPreset.Desktop;
+#else
+        KumikoMomentumPreset.Default;
+#endif
+
     /// <summary>Identifies the <see cref="ScrollSettings"/> bindable property.</summary>
     public static readonly BindableProperty ScrollSettingsProperty = BindableProperty.Create(
         nameof(ScrollSettings), typeof(ScrollSettings), typeof(KumikoDataGrid), null,
         propertyChanged: (b, _, n) =>
-            ((KumikoDataGrid)b)._inputController.ScrollSettings = (ScrollSettings?)n ?? new ScrollSettings());
+            ((KumikoDataGrid)b)._inputController.ScrollSettings = (ScrollSettings?)n ?? ScrollSettings.FromPreset(PlatformMomentumPreset));
 
     /// <summary>
-    /// Gets or sets the scroll and inertia settings. Assigning null restores the defaults. Reading never
+    /// Gets or sets the scroll and inertia settings. Unset (or null), the grid uses its platform's momentum preset
+    /// (<see cref="ScrollSettings.FromPreset"/>: iOS, Android, or desktop on Mac Catalyst and Windows). Reading never
     /// returns null.
     /// </summary>
     public ScrollSettings ScrollSettings

@@ -113,16 +113,28 @@ public partial class KumikoDataGrid
 
     // ── ScrollSettings ──
 
+    /// <summary>
+    /// The momentum preset of the head the grid runs on (#101): iOS, Android, or desktop (Windows, macOS, Linux and
+    /// the browser); in a browser whose main pointer is a finger (CSS <c>pointer: coarse</c>), the Android preset.
+    /// </summary>
+    private static KumikoMomentumPreset PlatformMomentumPreset =>
+        OperatingSystem.IsIOS() ? KumikoMomentumPreset.Ios
+        : OperatingSystem.IsAndroid() ? KumikoMomentumPreset.Android
+        : KumikoUI.Uno.Input.BrowserMedia.HasCoarsePointer ? KumikoMomentumPreset.Android // a phone or tablet browser
+        : KumikoMomentumPreset.Desktop;
+
     /// <summary>Identifies the <see cref="ScrollSettings"/> dependency property.</summary>
     public static readonly DependencyProperty ScrollSettingsProperty =
         DependencyProperty.Register(
             nameof(ScrollSettings), typeof(ScrollSettings), typeof(KumikoDataGrid),
             new PropertyMetadata(null, (d, e) =>
-                ((KumikoDataGrid)d)._inputController.ScrollSettings = (ScrollSettings?)e.NewValue ?? new ScrollSettings()));
+                ((KumikoDataGrid)d)._inputController.ScrollSettings =
+                    (ScrollSettings?)e.NewValue ?? ScrollSettings.FromPreset(PlatformMomentumPreset)));
 
     /// <summary>
-    /// Gets or sets the scroll and inertia settings. Assigning null restores the defaults. Reading never
-    /// returns null.
+    /// Gets or sets the scroll and inertia settings. Unset (or null), the grid uses its head's momentum preset
+    /// (<see cref="ScrollSettings.FromPreset"/>: iOS, Android, or desktop on Windows, macOS, Linux and the browser).
+    /// Reading never returns null.
     /// </summary>
     public ScrollSettings ScrollSettings
     {

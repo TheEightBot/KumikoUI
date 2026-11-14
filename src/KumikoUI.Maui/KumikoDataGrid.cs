@@ -134,9 +134,15 @@ public partial class KumikoDataGrid : ContentView
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
+        _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested; // KumikoDataGrid.Haptics.cs
 
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
+        _inputController.ScrollSettings = ScrollSettings.FromPreset(PlatformMomentumPreset); // KumikoDataGrid.Theming.cs
+
+        // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester, and draws
+        // the controller's hover and pressed feedback (#101).
+        _renderer.InputController = _inputController;
         InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;
         ConnectTheming();
@@ -1046,6 +1052,7 @@ public partial class KumikoDataGrid : ContentView
         _inputController.KeyboardFocusRequested -= OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened -= OnFilterPopupOpened;
         _inputController.FilterPopupClosed -= OnFilterPopupClosed;
+        _inputController.HapticFeedbackRequested -= OnHapticFeedbackRequested;
         _inputController.CursorChanged -= OnInputControllerCursorChanged;
         _editSession.NeedsRedraw -= OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit -= OnEditSessionCellBeginEdit;
@@ -1095,9 +1102,7 @@ public partial class KumikoDataGrid : ContentView
                 platformView.RemoveGestureRecognizer(_nativeSecondaryClickGesture);
             _nativeSecondaryClickGesture = null;
         }
-#if MACCATALYST
         TeardownNativeHover(Handler?.PlatformView as UIView);
-#endif
 
         // Unsubscribe handler changed (prevent duplicate native setup on re-attach)
         this.HandlerChanged -= OnHandlerChanged_SetupNativeKeyboard;
@@ -1129,6 +1134,7 @@ public partial class KumikoDataGrid : ContentView
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
         _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
+        _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
@@ -1287,11 +1293,9 @@ public partial class KumikoDataGrid : ContentView
 
     private void OnHandlerChanged_SetupNativeScroll(object? sender, EventArgs e)
     {
-#if MACCATALYST
-        // Mouse hover (cursor feedback): SKCanvasView only reports touches on Catalyst
+        // Mouse and trackpad hover (hover highlights; the cursor on Catalyst): SKCanvasView only reports touches
         if (Handler?.PlatformView is UIView hoverView)
             SetupNativeHover(hoverView);
-#endif
 
         // Guard against duplicate setup
         if (_nativeScrollGesture != null) return;

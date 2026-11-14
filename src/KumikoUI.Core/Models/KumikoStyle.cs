@@ -273,6 +273,43 @@ public class KumikoStyle
     /// <summary>Background color of the drag handle header area.</summary>
     public KumikoColor RowDragHandleHeaderBackgroundColor { get; set => Set(ref field, value); } = new(235, 235, 235);
 
+    // ── Interaction ──────────────────────────────────────────────
+    /// <summary>
+    /// Width in pixels of a column's resize grip for a mouse or a pen: the band centered on the column's right header
+    /// edge where a press starts a resize and the resize cursor shows. Each half reaches at most a quarter of the
+    /// column on that side of the edge (at least 3 px), so the middle of a narrow header still sorts. Default: 12.
+    /// </summary>
+    public float ColumnResizeGripWidth { get; set => Set(ref field, value); } = 12f;
+
+    /// <summary>
+    /// Width in pixels of a column's resize grip for a finger (see <see cref="ColumnResizeGripWidth"/>), wider so a
+    /// touch can find the edge. Default: 32.
+    /// </summary>
+    public float TouchColumnResizeGripWidth { get; set => Set(ref field, value); } = 32f;
+
+    /// <summary>
+    /// Color laid over what the mouse or pen hovers when a click acts on it: a sortable column header, a filter
+    /// icon, a grouping panel chip or its remove button, a group header's chevron, a Boolean cell's check box and an
+    /// enabled action button. Translucent, so it darkens (or, in the Dark theme, lightens) whatever is under it.
+    /// A transparent color turns hover feedback off. Default: black at 6% opacity.
+    /// </summary>
+    public KumikoColor HoverOverlayColor { get; set => Set(ref field, value); } = new(0, 0, 0, 16);
+
+    /// <summary>
+    /// Color laid over the same targets as <see cref="HoverOverlayColor"/> while a press on them is held, with any
+    /// pointer (a finger too), as long as the pointer stays on the target. A transparent color turns pressed feedback
+    /// off. Default: black at 12% opacity.
+    /// </summary>
+    public KumikoColor PressedOverlayColor { get; set => Set(ref field, value); } = new(0, 0, 0, 31);
+
+    /// <summary>
+    /// Whether the grid plays its short transitions: a group's rows sliding open or shut, a dragged column header
+    /// lifting and settling into its slot, and the current row's highlight fading in. False shows every change at once.
+    /// The built-in hosts also skip them when the platform asks for reduced motion
+    /// (<see cref="Input.KumikoInputController.AnimationsEnabled"/>). Default: true.
+    /// </summary>
+    public bool EnableAnimations { get; set => Set(ref field, value); } = true;
+
     // ── Icons ────────────────────────────────────────────────────
     /// <summary>
     /// Draws every built-in glyph of the grid (group chevrons, sort arrows, filter buttons, grouping chip buttons,
