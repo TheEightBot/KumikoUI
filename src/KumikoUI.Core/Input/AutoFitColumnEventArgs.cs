@@ -6,7 +6,7 @@ using KumikoUI.Core.Components;
 namespace KumikoUI.Core.Input;
 
 /// <summary>Provides data when a column auto-fit is requested (e.g., double-click on a column resize handle).</summary>
-public class AutoFitColumnEventArgs : EventArgs
+public sealed class AutoFitColumnEventArgs : EventArgs
 {
     /// <summary>Zero-based index of the column to auto-fit.</summary>
     public int ColumnIndex { get; }

@@ -5,6 +5,11 @@ namespace KumikoUI.Core.Rendering;
 /// Implementations map these calls to concrete rendering APIs
 /// (SkiaSharp SKCanvas, HTML Canvas 2D, etc.).
 /// </summary>
+/// <remarks>
+/// The method decides how a shape is painted, not the <see cref="KumikoPaint"/>: <c>Fill*</c> methods fill the
+/// interior with the paint's color, <c>Draw*</c> methods stroke the outline with its color and
+/// <see cref="KumikoPaint.StrokeWidth"/>, and the text methods draw glyphs with its color and font.
+/// </remarks>
 public interface IDrawingContext
 {
     // ── Rectangles ───────────────────────────────────────────────

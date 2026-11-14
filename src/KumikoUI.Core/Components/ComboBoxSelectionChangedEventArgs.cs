@@ -4,7 +4,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Combo box selection changed event args.</summary>
-public class ComboBoxSelectionChangedEventArgs : EventArgs
+public sealed class ComboBoxSelectionChangedEventArgs : EventArgs
 {
     /// <summary>The previously selected item, or <see langword="null"/> if none was selected.</summary>
     public DrawnComboBoxItem? OldItem { get; }

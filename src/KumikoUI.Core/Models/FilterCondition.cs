@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Describes a single filter condition for a column.
 /// </summary>
-public class FilterCondition
+public sealed class FilterCondition
 {
     /// <summary>The text filter operator (for Text columns).</summary>
     public TextFilterOperator TextOperator { get; set; } = TextFilterOperator.Contains;

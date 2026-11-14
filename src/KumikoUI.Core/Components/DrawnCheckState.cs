@@ -3,7 +3,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Check state for a checkbox.</summary>
-public enum DrawnCheckState
+internal enum DrawnCheckState
 {
     /// <summary>The checkbox is unchecked.</summary>
     Unchecked,

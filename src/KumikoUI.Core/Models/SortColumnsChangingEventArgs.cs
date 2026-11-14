@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Event args for the SortColumnsChanging event. Set Cancel=true to prevent the sort.
 /// </summary>
-public class SortColumnsChangingEventArgs : EventArgs
+public sealed class SortColumnsChangingEventArgs : EventArgs
 {
     /// <summary>The column whose sort state is being toggled.</summary>
     public KumikoColumn Column { get; }

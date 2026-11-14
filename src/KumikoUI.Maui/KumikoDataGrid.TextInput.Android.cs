@@ -4,6 +4,7 @@ using Android.Views;
 using Android.Views.InputMethods;
 using AndroidX.Core.View;
 using KumikoUI.Core.Input;
+using KumikoUI.Core.Layout;
 using KumikoUI.Core.Rendering;
 using AView = Android.Views.View;
 
@@ -457,7 +458,7 @@ public partial class KumikoDataGrid
     private void CheckAndroidImeOverlap(bool force)
     {
         if (_androidInputHost is not { IsAttachedToWindow: true } host || !TryGetTouchScale(out float scale)) return;
-        if (_editSession is not { IsEditing: true, ActiveEditor: { IsVisible: true } editor }) return;
+        if (_editSession is not { IsEditing: true, ActiveEditor.IsVisible: true }) return;
 
         var insets = ViewCompat.GetRootWindowInsets(host);
         if (insets == null) return;
@@ -468,23 +469,19 @@ public partial class KumikoDataGrid
 
         PlaceAndroidInputView();
         if (imeBottom <= 0 || IsAdjustPan()) return;
-        // A frozen row does not scroll
-        if (_editSession.EditCell.Row < _dataSource.FrozenRowCount) return;
 
         var location = new int[2];
         host.GetLocationInWindow(location);
         int windowHeight = host.RootView?.Height ?? 0;
         if (windowHeight <= 0) return;
-        float visibleBottom = (Math.Min(location[1] + host.Height, windowHeight - imeBottom) - location[1]) / scale;
 
-        var bounds = editor.Bounds;
-        if (visibleBottom <= 0 || bounds.Bottom <= visibleBottom) return;
-
-        float before = _scroll.OffsetY;
-        _scroll.ScrollTo(_scroll.OffsetX, before + (bounds.Bottom - visibleBottom));
-        float moved = _scroll.OffsetY - before;
+        // The geometry is shared with the other hosts (KumikoKeyboardAvoidance). The window itself shrinks or insets
+        // for the keyboard here, so the grid adds no bottom inset of its own.
+        float obscured = KumikoKeyboardAvoidance.GetObscuredHeight(
+            location[1], location[1] + host.Height, windowHeight - imeBottom, float.PositiveInfinity) / scale;
+        float moved = KumikoKeyboardAvoidance.ScrollEditorIntoView(
+            _scroll, _dataSource, _style, _editSession, obscured, applyInset: false, margin: 0);
         if (moved <= 0) return;
-        editor.Bounds = new KumikoRect(bounds.X, bounds.Y - moved, bounds.Width, bounds.Height);
         PlaceAndroidInputView();
         InvalidateSurface();
     }

@@ -52,8 +52,7 @@ public class ProgressBarCellRenderer : ICellRenderer
 
     // The label font, derived from the style's cell font (one point smaller, at least 9) when that changes.
     private KumikoFont? _textFont;
-    private string? _textFontFamily;
-    private float _textFontSourceSize = float.NaN;
+    private KumikoFont _textFontSource;
 
     // Formatted labels by value, so a value shown again is not formatted again each frame. Built for one format
     // and culture; emptied when either changes, or when it holds more values than a screen shows.
@@ -155,13 +154,12 @@ public class ProgressBarCellRenderer : ICellRenderer
     /// <summary>The label font: one point smaller than <paramref name="cellFont"/>, but not below 9.</summary>
     private KumikoFont TextFont(KumikoFont cellFont)
     {
-        if (_textFont == null || !ReferenceEquals(cellFont.Family, _textFontFamily) || !cellFont.Size.Equals(_textFontSourceSize)) // exact: cache change detection
+        if (_textFont == null || _textFontSource != cellFont) // value equality: exact family, size, weight and slant
         {
             _textFont = new KumikoFont(cellFont.Family, Math.Max(9, cellFont.Size - 1));
-            _textFontFamily = cellFont.Family;
-            _textFontSourceSize = cellFont.Size;
+            _textFontSource = cellFont;
         }
-        return _textFont;
+        return _textFont.Value;
     }
 
     private static KumikoColor DefaultGradientColor(double pct)

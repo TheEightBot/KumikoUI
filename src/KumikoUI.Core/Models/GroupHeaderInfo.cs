@@ -4,7 +4,7 @@ namespace KumikoUI.Core.Models;
 /// Represents a group header entry in the flat view.
 /// Exposed by KumikoSource for rendering and interaction.
 /// </summary>
-public class GroupHeaderInfo
+public sealed class GroupHeaderInfo
 {
     /// <summary>Nesting depth (0-based). Level 0 is the outermost group.</summary>
     public int Level { get; init; }

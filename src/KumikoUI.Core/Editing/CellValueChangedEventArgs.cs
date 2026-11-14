@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Editing;
 /// <summary>
 /// Event args for CellValueChanged.
 /// </summary>
-public class CellValueChangedEventArgs : EventArgs
+public sealed class CellValueChangedEventArgs : EventArgs
 {
     /// <summary>Zero-based row index of the changed cell.</summary>
     public int RowIndex { get; }

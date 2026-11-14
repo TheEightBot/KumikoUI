@@ -15,7 +15,7 @@ namespace KumikoUI.SkiaSharp;
 /// canvas. Dispose the context at the end of each frame: that ends the frame on the cache but leaves the
 /// cached objects alive.</para>
 /// </summary>
-public class SkiaDrawingContext : IDrawingContext, IDisposable
+public sealed class SkiaDrawingContext : IDrawingContext, IDisposable
 {
     private readonly SKCanvas _canvas;
     private readonly SkiaResourceCache _cache;

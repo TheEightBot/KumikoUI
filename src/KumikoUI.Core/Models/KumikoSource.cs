@@ -22,7 +22,7 @@ namespace KumikoUI.Core.Models;
 /// Marshal background changes with the platform dispatcher.
 /// </para>
 /// </summary>
-public class KumikoSource : IDisposable
+public sealed class KumikoSource : IDisposable
 {
     private IList _sourceItems = Array.Empty<object>();
     private bool _sourceItemsAreCopy;                 // the items were not an IList: _sourceItems is a private copy
