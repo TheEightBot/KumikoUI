@@ -335,6 +335,18 @@ public sealed class KumikoHitTester
                 if (!col.IsVisible || FrozenPanes.ScrollPass(col) != k / n) continue;
                 float colRight = x + col.Width;
 
+                // The filter icon as drawn wins over a wide (touch) resize grip that reaches over it
+                if (AllowFiltering && col.AllowFiltering && scrollContentX >= x &&
+                    InteractionGeometry.IsOnDrawnFilterIcon(scrollContentX, x, col, style))
+                {
+                    return new KumikoHitInfo
+                    {
+                        Region = HitRegion.HeaderFilterIcon,
+                        ColumnIndex = i, Column = col,
+                        ContentX = scrollContentX, ContentY = contentY
+                    };
+                }
+
                 float grip = IsResizable(col) ? InteractionGeometry.ResizeGripHalfWidth(col, style, deviceType) : 0f;
                 if (grip > 0 &&
                     scrollContentX >= colRight - grip &&
@@ -415,6 +427,19 @@ public sealed class KumikoHitTester
         float testX, float effectiveContentX, float contentY, KumikoStyle style, KumikoPointerDeviceType deviceType)
     {
         var col = columns[index];
+
+        // The filter icon as drawn wins over a wide (touch) resize grip that reaches over it
+        if (AllowFiltering && col.AllowFiltering && testX >= colLeft &&
+            InteractionGeometry.IsOnDrawnFilterIcon(testX, colLeft, col, style))
+        {
+            return new KumikoHitInfo
+            {
+                Region = HitRegion.HeaderFilterIcon,
+                ColumnIndex = index, Column = col,
+                ContentX = effectiveContentX, ContentY = contentY
+            };
+        }
+
         float grip = IsResizable(col) ? InteractionGeometry.ResizeGripHalfWidth(col, style, deviceType) : 0f;
         if (grip > 0 &&
             testX >= colRight - grip &&

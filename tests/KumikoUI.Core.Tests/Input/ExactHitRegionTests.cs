@@ -137,7 +137,7 @@ public class ExactHitRegionTests
     [InlineData(217f, false)]
     public void ResizeGrip_ForAFinger_IsTheTouchWidth(float x, bool onGrip)
     {
-        var g = new InputGrid();
+        var g = new InputGrid(configure: x => x.Age.AllowFiltering = false); // the drawn filter icon wins over the grip
 
         Assert.Equal(onGrip, g.Tester.HitTest(x, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns,
             g.Source.RowCount, g.Source, KumikoPointerDeviceType.Touch).Region == HitRegion.HeaderResizeGrip);
@@ -146,7 +146,7 @@ public class ExactHitRegionTests
     [Fact]
     public void ResizeGrip_FollowsTheStyle()
     {
-        var g = new InputGrid(configure: x => x.Style.ColumnResizeGripWidth = 20);
+        var g = new InputGrid(configure: x => { x.Style.ColumnResizeGripWidth = 20; x.Age.AllowFiltering = false; });
 
         Assert.Equal(HitRegion.HeaderResizeGrip, g.Hit(191, InputGrid.HeaderY).Region);
         Assert.Equal(HitRegion.HeaderResizeGrip, g.Hit(210, InputGrid.HeaderY).Region);
@@ -170,7 +170,7 @@ public class ExactHitRegionTests
     [Fact]
     public void PressingWithAFinger_InsideTheTouchGrip_Resizes()
     {
-        var g = new InputGrid();
+        var g = new InputGrid(configure: x => x.Age.AllowFiltering = false);
 
         g.Pointer(InputAction.Pressed, 186, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
         g.Pointer(InputAction.Moved, 226, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
@@ -204,6 +204,20 @@ public class ExactHitRegionTests
 
         Assert.Equal(HitRegion.HeaderCell, mouse.Region);
         Assert.Equal(HitRegion.HeaderFilterIcon, touch.Region);
+    }
+
+    [Fact]
+    public void FilterIcon_AsDrawn_WinsOverAFingersWideResizeGrip()
+    {
+        var g = new InputGrid(); // Age's icon drawn at 182..192; a finger's grip reaches from 184
+
+        var onIcon = g.Tester.HitTest(190, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
+            g.Source, KumikoPointerDeviceType.Touch);
+        var pastIcon = g.Tester.HitTest(194, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
+            g.Source, KumikoPointerDeviceType.Touch);
+
+        Assert.Equal(HitRegion.HeaderFilterIcon, onIcon.Region);
+        Assert.Equal(HitRegion.HeaderResizeGrip, pastIcon.Region);
     }
 
     // ── Group chevron ──

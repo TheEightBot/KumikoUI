@@ -56,6 +56,17 @@ internal static class InteractionGeometry
     }
 
     /// <summary>
+    /// Whether <paramref name="x"/> (in the same coordinates as <paramref name="columnLeft"/>) is on the filter icon as
+    /// drawn. The drawn icon wins over a resize grip that reaches over it (a finger's grip is wider than the icon's
+    /// distance from the column edge).
+    /// </summary>
+    public static bool IsOnDrawnFilterIcon(float x, float columnLeft, KumikoColumn column, KumikoStyle style)
+    {
+        float iconLeft = columnLeft + FilterIconOffset(column, style);
+        return x >= iconLeft && x <= iconLeft + FilterIconSize;
+    }
+
+    /// <summary>
     /// Whether <paramref name="x"/> (in the same coordinates as <paramref name="columnLeft"/>) is on the filter icon's
     /// target: the icon plus a margin for the device, kept inside the column and left of its resize grip.
     /// </summary>

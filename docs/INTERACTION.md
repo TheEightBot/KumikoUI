@@ -21,7 +21,7 @@ Every timing, distance and target size the grid uses to read a gesture or play f
 | What | Mouse or pen | Finger | Notes |
 |---|---|---|---|
 | Column resize grip | 12 px (`KumikoStyle.ColumnResizeGripWidth`) | 32 px (`KumikoStyle.TouchColumnResizeGripWidth`) | Centered on the column's right header edge; each half reaches at most a quarter of the column on that side (at least 3 px). A double click on it auto-fits the column. |
-| Filter icon | 10 px icon + 5 px each side | + 11 px each side (32 px) | Never reaches the resize grip. Drawn left of the sort arrow on a sorted column. |
+| Filter icon | 10 px icon + 5 px each side | + 11 px each side (32 px) | The margin stops at the resize grip, but the icon itself wins over a finger's wide grip that reaches over it. Drawn left of the sort arrow on a sorted column. |
 | Group header chevron | its pill + `CellPadding` after it | + `CellPadding` before and twice after | The whole group header row toggles the group too; the chevron gets the hand cursor and the hover highlight. |
 | Grouping panel chip | the chip as drawn, + 2 px each side | as tall as the panel | Measured by the renderer while drawing (`KumikoRenderer.InputController`). Its right end (the remove button and its padding, about 25 px) removes the grouping. |
 | Check box | 16 px box + 8 px each side | same | Inside the cell. |
