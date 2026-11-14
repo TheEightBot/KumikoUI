@@ -416,10 +416,13 @@ internal sealed class KumikoTextInputAdapter
         WriteProxy(AttachSession());
     }
 
-    /// <summary>After a call into Core: mirror the result into the proxy, unless a composition is in progress.</summary>
+    /// <summary>
+    /// After a call into Core: mirror the result into the proxy, unless a composition is in progress or the text box
+    /// is still raising its own change (the host syncs the proxy right after it; <see cref="IKumikoTextInputProxy.IsChangingText"/>).
+    /// </summary>
     private void Finish()
     {
-        if (!_composing) WriteProxy(AttachSession());
+        if (!_composing && !_proxy.IsChangingText) WriteProxy(AttachSession());
     }
 
     private void WriteProxy(ITextInputSession? session)

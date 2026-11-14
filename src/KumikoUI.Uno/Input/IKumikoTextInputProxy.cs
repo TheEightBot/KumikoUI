@@ -19,6 +19,14 @@ internal interface IKumikoTextInputProxy
     int SelectionLength { get; }
 
     /// <summary>
+    /// Whether the text box is in the middle of a change of its own (typing, an input method), raising
+    /// <c>TextChanging</c>. Uno's text box cannot take a new selection then: its displayed text is still the old one,
+    /// and a selection past that text's end throws. The adapter leaves the proxy alone while this is true, and the
+    /// host syncs it once the change is done.
+    /// </summary>
+    bool IsChangingText { get; }
+
+    /// <summary>
     /// Replaces the text box's text and selection. The change notifications this raises come back to the adapter,
     /// which ignores them.
     /// </summary>

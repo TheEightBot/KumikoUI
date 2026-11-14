@@ -43,7 +43,7 @@ read the [README](../../README.md); this guide does not repeat them. For a worki
 | Windows App SDK | `net10.0-windows10.0.26100` | Windows | CI build |
 
 "CI build" means the head is compiled and packed in CI; it does not mean the head was exercised by hand. Interactive
-verification on devices and in browsers is tracked in #67. There is no Mac Catalyst head: Uno serves macOS through the
+verification on devices and in browsers is recorded per head in [verification.md](verification.md) (#67). There is no Mac Catalyst head: Uno serves macOS through the
 desktop head. Minimum OS versions are in the README's "Supported platforms" table.
 
 ---
