@@ -79,6 +79,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The Android heads of KumikoUI.Maui and KumikoUI.Uno no longer ship a generated public `Resource` class: the libraries have no Android resources, so the resource designer is switched off (#112).
 
 ### Fixed
+- Haptics on iOS 17.5 and later use `UIImpactFeedbackGenerator.GetFeedbackGenerator` (MAUI and Uno): the generator's constructor is obsolete there (CA1422). Earlier iOS versions still use the constructor.
 - Android (MAUI): a scroll picker, date picker or combo box no longer raises the soft keyboard. Only an editor that takes typed text (the editor's text session) or the filter popup's search box does; a hardware keyboard still operates the other editors. The Uno heads hide the soft keyboard their text box's focus raises for such an editor (not verified on a device). `docs/TEXT-INPUT.md` no longer says the keyboard is raised for them.
 - Dragging a column header to the edge of a narrow grid scrolls the scrolling columns sideways (edge autoscroll, like the row drag), so a column can be dropped at a position that is off screen. The bands are `ScrollSettings.AutoScrollEdgeSize` wide and sit inside the scrolling pane's left and right edges; the hosts' frame loops already step `UpdateAutoScroll`, and `IsAutoScrolling` now also covers a column drag.
 - The row drag-handle grip of a row that scrolls under a frozen row is no longer drawn over the frozen row's grip (visible on iOS and Android). The scrolling rows' grips are clipped to the scrolling area, like the cells.

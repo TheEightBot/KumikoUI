@@ -35,8 +35,20 @@ public partial class KumikoDataGrid
         {
 #if IOS
             var style = e.Kind == KumikoHapticKind.Drop ? UIKit.UIImpactFeedbackStyle.Light : UIKit.UIImpactFeedbackStyle.Medium;
-            using var generator = new UIKit.UIImpactFeedbackGenerator(style);
-            generator.ImpactOccurred();
+            if (OperatingSystem.IsIOSVersionAtLeast(17, 5))
+            {
+                // iOS 17.5 obsoleted the constructor: the generator belongs to a view (the one the haptic is for)
+                if (_canvasView.Handler?.PlatformView is UIKit.UIView view)
+                {
+                    using var generator = UIKit.UIImpactFeedbackGenerator.GetFeedbackGenerator(style, view);
+                    generator.ImpactOccurred();
+                }
+            }
+            else
+            {
+                using var generator = new UIKit.UIImpactFeedbackGenerator(style);
+                generator.ImpactOccurred();
+            }
 #elif ANDROID
             if (_canvasView.Handler?.PlatformView is Android.Views.View view)
             {
