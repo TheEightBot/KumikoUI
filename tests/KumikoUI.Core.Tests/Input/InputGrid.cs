@@ -66,8 +66,8 @@ internal sealed class InputGrid
         if (withEditSession) Input.EditSession = Edit;
         Renderer.InputController = Input; // as both hosts connect them
         Tester.RenderedRegions = Input.HitTester.RenderedRegions; // Hit() sees the chips the controller sees
-        Input.NeedsRedraw += () => Redraws++;
-        Input.CursorChanged += cursor => Cursors.Add(cursor);
+        Input.NeedsRedraw += (_, _) => Redraws++;
+        Input.CursorChanged += (_, cursor) => Cursors.Add(cursor);
         configure?.Invoke(this);
         Render();
     }

@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Input;
 /// <summary>
 /// Tracks inertial scrolling (fling) with deceleration.
 /// </summary>
-public class InertialScroller
+public sealed class InertialScroller
 {
     private float _velocityX;
     private float _velocityY;

@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Input;
 /// <summary>
 /// Configurable scroll/inertia settings for the grid.
 /// </summary>
-public class ScrollSettings
+public sealed class ScrollSettings
 {
     /// <summary>Deceleration factor per frame (0..1). Lower = more friction, stops faster. Default 0.92.</summary>
     public float Friction { get; set; } = 0.92f;

@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Models;
 /// cell stays on its item and column. Items that are no longer visible leave the selection. Only data rows can
 /// be selected; group header and group summary rows can hold the current cell but are never selected.
 /// </summary>
-public class KumikoSelectionModel
+public sealed class KumikoSelectionModel
 {
     private readonly HashSet<object> _items = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, int> _rowOfItem = new(ReferenceEqualityComparer.Instance);

@@ -4,7 +4,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Time changed event args.</summary>
-public class KumikoTimeChangedEventArgs : EventArgs
+public sealed class KumikoTimeChangedEventArgs : EventArgs
 {
     /// <summary>The hour value before the change (0–23).</summary>
     public int OldHour { get; }

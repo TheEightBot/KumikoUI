@@ -198,3 +198,11 @@ public class MainActivity : MauiAppCompatActivity { }
 ```
 
 In shared code, set it with `Application.Current.On<Microsoft.Maui.Controls.PlatformConfiguration.Android>().UseWindowSoftInputModeAdjust(WindowSoftInputModeAdjust.Resize)`. On Android 15 and later, apps are drawn edge to edge and `adjustResize` no longer shrinks the window. The grid's inset-based scrolling still keeps the cell above the keyboard.
+
+## Keeping the edited cell above the on-screen keyboard (iOS and Uno)
+
+On iOS the grid does what Android's inset check does (#258). While a cell editor is open, it follows `UIKeyboardWillChangeFrame` and `UIKeyboardWillHide`, works out how much of the grid's bottom the keyboard covers (the keyboard frame converted into the grid's own coordinates), scrolls the edited row above the keyboard's top edge, and sets `ScrollState.BottomInset` to the covered height. The inset extends the scroll range, so the last rows can scroll clear of the keyboard. It is set back to 0 when the keyboard hides or the edit ends. The Uno heads (iOS, Android, WebAssembly) do the same from `InputPane.Showing` and `Hiding`, reading `OccludedRect` and the grid's place in the window. Where the platform already shrinks the window for the keyboard, the grid's bottom is the keyboard's top, nothing is covered, and nothing changes. A keyboard that does not reach the grid's bottom edge (a floating iPad keyboard) is ignored.
+
+A newly edited cell is checked once per keyboard change, so a user who scrolls the cell away is not pulled back. A cell in a frozen row does not scroll, and a grid whose visible part above the keyboard is shorter than the header, summary and one row cannot show the cell; give the grid more room (for example by hiding the page's toolbar while editing). The filter popup is anchored under the header and does not scroll, so its search box is not moved. On Mac Catalyst no on-screen keyboard appears and nothing happens.
+
+The geometry (covered height, scroll distance, scroll with an inset) is `KumikoKeyboardAvoidance` in `KumikoUI.Core.Layout`, shared by every host and unit-tested; the Android code above uses it too, without an inset.

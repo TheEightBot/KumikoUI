@@ -53,7 +53,7 @@ public class DrawnScrollPickerTests
         int completed = 0;
         p.SelectionChanged += (_, e) => picks.Add(e);
         p.ValueChanged += (_, e) => values.Add(e);
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         DragUp(p, 85); // 2.125 items: nearest is 2
         Assert.Equal(0, p.SelectedIndex);
@@ -80,7 +80,7 @@ public class DrawnScrollPickerTests
         var p = Picker(selected: 3);
         int picks = 0, completed = 0;
         p.SelectionChanged += (_, _) => picks++;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         DragUp(p, 10);
         p.Up(50, 140);
@@ -113,7 +113,7 @@ public class DrawnScrollPickerTests
     {
         var p = Picker(selected: 3);
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         p.Tap(50, 104); // inside the selection band
 
@@ -128,7 +128,7 @@ public class DrawnScrollPickerTests
         var p = Picker();
         p.ClearSelection();
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         p.Tap(50, 100);
 
@@ -141,7 +141,7 @@ public class DrawnScrollPickerTests
     {
         var p = Picker(selected: 3);
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         p.Tap(50, 100 + 2 * 40); // two items below the center
 
@@ -160,7 +160,7 @@ public class DrawnScrollPickerTests
     {
         var p = Picker(count: 2);
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         p.Tap(50, 10); // above the first item: nothing there
 
@@ -173,7 +173,7 @@ public class DrawnScrollPickerTests
     {
         var p = Picker();
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
         DragUp(p, 85);
         p.Up(50, 65);
         p.UpdateAnimation(16);
@@ -190,7 +190,7 @@ public class DrawnScrollPickerTests
     {
         var p = Picker(count: 50);
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         p.OnPointerDown(Timed(InputAction.Pressed, 190, 1000));
         p.OnPointerMove(Timed(InputAction.Moved, 170, 1016));
@@ -269,7 +269,7 @@ public class DrawnScrollPickerTests
     {
         var p = Picker(count: 5, selected: 1);
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         Assert.True(p.OnScroll(new KumikoPointerEventArgs { X = 50, Y = 100, Action = InputAction.Scroll, ScrollDeltaY = -1 }));
         Assert.Equal(2, p.SelectedIndex);
@@ -289,7 +289,7 @@ public class DrawnScrollPickerTests
     {
         var p = Picker();
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
         DragUp(p, 85);
         p.Up(50, 65);
 
@@ -305,7 +305,7 @@ public class DrawnScrollPickerTests
     {
         var p = Picker();
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
 
         Assert.False(p.Key(KumikoKey.Left));
         Assert.True(p.Key(KumikoKey.Enter));
@@ -363,7 +363,7 @@ public class DrawnScrollPickerTests
     {
         var p = Picker();
         int completed = 0;
-        p.EditCompleted += () => completed++;
+        p.EditCompleted += (_, _) => completed++;
         DragUp(p, 30); // no timestamps: no velocity
         p.Up(50, 120);
 
@@ -411,12 +411,12 @@ public class DrawnScrollPickerTests
         var ctx = Draw(p);
 
         var selected = ctx.SingleText("Item 4");
-        Assert.True(selected.Font!.IsBold);
+        Assert.True(selected.Font!.Value.IsBold);
         Assert.Equal(p.SelectedTextColor.R, selected.Color.R);
         Assert.Equal(86, selected.Rect.Y, 2);
         var near = ctx.SingleText("Item 5");
         var far = ctx.SingleText("Item 6");
-        Assert.False(near.Font!.IsBold);
+        Assert.False(near.Font!.Value.IsBold);
         Assert.True(near.Color.A < 255);
         Assert.True(far.Color.A < near.Color.A);
         // Only the items near the center are drawn

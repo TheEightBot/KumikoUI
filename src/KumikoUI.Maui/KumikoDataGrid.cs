@@ -909,7 +909,7 @@ public partial class KumikoDataGrid : ContentView
         // Use a temporary SKBitmap/Canvas for text measurement
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
-        using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
+        using var measureCtx = ResourceCache.CreateContext(canvas);
 
         // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
         // Auto column becomes Fixed at the fitted width so it keeps it.
@@ -926,13 +926,13 @@ public partial class KumikoDataGrid : ContentView
             UpdateAccessibilityHint();
     }
 
-    private void OnInputControllerNeedsRedraw()
+    private void OnInputControllerNeedsRedraw(object? sender, EventArgs e)
     {
         RequestRedraw();
         SyncNativeTextInput(); // an editor or the filter search box may have opened or closed
     }
 
-    private void OnEditSessionNeedsRedraw()
+    private void OnEditSessionNeedsRedraw(object? sender, EventArgs e)
     {
         RequestRedraw();
         SyncNativeTextInput();
@@ -943,7 +943,7 @@ public partial class KumikoDataGrid : ContentView
     }
 
     // An action button's command raised CanExecuteChanged: that can happen on any thread.
-    private void OnRendererRedrawRequested()
+    private void OnRendererRedrawRequested(object? sender, EventArgs e)
     {
         if (Dispatcher.IsDispatchRequired)
             Dispatcher.Dispatch(RequestRedraw);
@@ -962,15 +962,15 @@ public partial class KumikoDataGrid : ContentView
         }
     }
 
-    private void OnKeyboardFocusRequested() => FocusKeyboardInput();
+    private void OnKeyboardFocusRequested(object? sender, EventArgs e) => FocusKeyboardInput();
 
-    private void OnFilterPopupOpened()
+    private void OnFilterPopupOpened(object? sender, EventArgs e)
     {
         _filterPopupActive = true;
         StartCursorBlinkTimer();
     }
 
-    private void OnFilterPopupClosed()
+    private void OnFilterPopupClosed(object? sender, EventArgs e)
     {
         _filterPopupActive = false;
         StopCursorBlinkTimer();
@@ -1043,6 +1043,8 @@ public partial class KumikoDataGrid : ContentView
         _selectionBinder.Detach(); // the app's SelectedItems list, when it supplied one
 
 #if MACCATALYST || IOS
+        StopObservingKeyboardFrame();
+
         // Remove native keyboard input
         if (_nativeKeyInput != null)
         {
@@ -1249,6 +1251,7 @@ public partial class KumikoDataGrid : ContentView
             _nativeKeyInput = CreateNativeTextInput(); // KumikoDataGrid.TextInput.cs
             platformView.AddSubview(_nativeKeyInput);
             _useNativeKeyInput = true;
+            ObserveKeyboardFrame(); // keeps the edited cell above the on-screen keyboard (#258)
         }
     }
 

@@ -62,7 +62,7 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider, IIn
     public float CellPadding { get; set; } = 4f;
 
     /// <inheritdoc />
-    public event Action? RedrawRequested;
+    public event EventHandler? RedrawRequested;
 
     // Reused for every button (only the colors vary), so drawing the buttons allocates nothing.
     private readonly KumikoPaint _buttonPaint = new() { IsAntiAlias = true };
@@ -146,7 +146,7 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider, IIn
         _listeners.Clear();
     }
 
-    private void OnCanExecuteChanged() => RedrawRequested?.Invoke();
+    private void OnCanExecuteChanged() => RedrawRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Weak link from a command to its renderer: the command never keeps the renderer alive.</summary>
     private sealed class CommandListener

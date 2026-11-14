@@ -11,7 +11,7 @@ namespace KumikoUI.Core;
 /// Renders the entire grid (header, rows, grid lines, selection, frozen columns)
 /// using the platform-independent IDrawingContext.
 /// </summary>
-public class KumikoRenderer : IDisposable
+public sealed class KumikoRenderer : IDisposable
 {
     private readonly KumikoLayoutEngine _layout = new();
     private readonly PaintCache _paintCache = new();
@@ -33,7 +33,7 @@ public class KumikoRenderer : IDisposable
     /// outside a draw, for example an action button's command raised <c>CanExecuteChanged</c>. The host
     /// redraws. It can be raised from any thread.
     /// </summary>
-    public event Action? RedrawRequested;
+    public event EventHandler? RedrawRequested;
 
     // Paints whose color varies per row, cell or column (resolver and per-column style overrides); set just
     // before each draw, so overrides allocate nothing. Drawing contexts read a paint during the call only.
@@ -162,7 +162,7 @@ public class KumikoRenderer : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private void OnInteractiveRedrawRequested() => RedrawRequested?.Invoke();
+    private void OnInteractiveRedrawRequested(object? sender, EventArgs e) => RedrawRequested?.Invoke(this, EventArgs.Empty);
 
     private void TrackInteractive(ICellRenderer renderer)
     {
@@ -228,8 +228,23 @@ public class KumikoRenderer : IDisposable
         float dragColumnScreenX = 0,
         int dragRowIndex = -1,
         float dragRowScreenY = 0,
-        EditSession? editSession = null,
-        PopupManager? popupManager = null)
+        EditSession? editSession = null)
+        => RenderFrame(ctx, dataSource, scroll, selection, style, dragColumnIndex, dragColumnScreenX, dragRowIndex,
+            dragRowScreenY, editSession, popupManager: null);
+
+    /// <summary>Render the full grid, then the popups the grid's input controller has open.</summary>
+    internal void RenderFrame(
+        IDrawingContext ctx,
+        KumikoSource dataSource,
+        ScrollState scroll,
+        KumikoSelectionModel selection,
+        KumikoStyle style,
+        int dragColumnIndex,
+        float dragColumnScreenX,
+        int dragRowIndex,
+        float dragRowScreenY,
+        EditSession? editSession,
+        PopupManager? popupManager)
     {
         var stats = ShowFrameStats ? FrameStats : null;
         stats?.BeginFrame();
@@ -625,7 +640,7 @@ public class KumikoRenderer : IDisposable
     {
         var columnStyle = col.CellStyle;
         var cellStyle = style.CellStyleResolver != null && dataItem != null ? style.CellStyleResolver(dataItem, col) : null;
-        bool rowOverrides = rowStyle != null && (rowStyle.TextColor != null || rowStyle.Font != null);
+        bool rowOverrides = rowStyle != null && (rowStyle.TextColor != null || rowStyle.Font.HasValue);
         if (cellStyle == null && !rowOverrides)
             return columnStyle;
 
@@ -634,8 +649,6 @@ public class KumikoRenderer : IDisposable
         effective.TextColor = cellStyle?.TextColor ?? columnStyle?.TextColor ?? rowStyle?.TextColor;
         effective.Font = cellStyle?.Font ?? columnStyle?.Font ?? rowStyle?.Font;
         effective.Padding = cellStyle?.Padding ?? columnStyle?.Padding;
-        effective.BorderColor = cellStyle?.BorderColor ?? columnStyle?.BorderColor;
-        effective.BorderWidth = cellStyle?.BorderWidth ?? columnStyle?.BorderWidth;
         effective.TextAlignment = cellStyle?.TextAlignment ?? columnStyle?.TextAlignment;
         return effective;
     }

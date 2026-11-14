@@ -180,7 +180,7 @@ public class DrawnFilterPopupTests
     {
         var (popup, manager, _, _) = Open(50);
         int canceled = 0;
-        popup.FilterCancelled += () => canceled++;
+        popup.FilterCancelled += (_, _) => canceled++;
         float buttonsY = ListTop + ListHeight + 9 + 3 + 10; // separator, then the OK/Cancel/Clear row
         float cancelX = 6 + (208 - 8) / 3f + 4 + 10;
 
@@ -307,7 +307,7 @@ public class DrawnFilterPopupTests
             Source.SetColumns(new[] { Name, Other });
             Source.SetItems(Enumerable.Range(0, 30).Select(i => new Row { Name = $"V{i:D5}" }).ToList());
             Selection = new KumikoSelectionModel(Source);
-            Input.FilterPopupClosed += () => Closed++;
+            Input.FilterPopupClosed += (_, _) => Closed++;
             new KumikoRenderer().Render(new RecordingDrawingContext(), Source, Scroll, Selection, Style);
         }
 

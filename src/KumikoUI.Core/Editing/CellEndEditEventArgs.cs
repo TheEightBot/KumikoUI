@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Editing;
 /// <summary>
 /// Event args for CellEndEdit.
 /// </summary>
-public class CellEndEditEventArgs : EventArgs
+public sealed class CellEndEditEventArgs : EventArgs
 {
     /// <summary>Zero-based row index of the cell.</summary>
     public int RowIndex { get; }

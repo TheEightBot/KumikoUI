@@ -4,7 +4,7 @@ using KumikoUI.Core.Models;
 
 namespace KumikoUI.Core.Input;
 
-public partial class KumikoInputController
+public sealed partial class KumikoInputController
 {
     /// <summary>
     /// The system clipboard, supplied by the host. Used by <see cref="CopySelection"/> (Ctrl/Cmd+C), by copy,

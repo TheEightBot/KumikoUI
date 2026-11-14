@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Components;
 /// <summary>
 /// Fully custom-drawn checkbox with checked, unchecked, and indeterminate states.
 /// </summary>
-public class DrawnCheckBox : DrawnComponent
+internal class DrawnCheckBox : DrawnComponent
 {
     private DrawnCheckState _state = DrawnCheckState.Unchecked;
 
@@ -75,35 +75,19 @@ public class DrawnCheckBox : DrawnComponent
 
         // Draw box background
         var fillColor = _state == DrawnCheckState.Checked ? CheckedBoxFillColor : BoxFillColor;
-        ctx.FillRoundRect(boxRect, CornerRadius, new KumikoPaint { Color = fillColor, Style = PaintStyle.Fill });
+        ctx.FillRoundRect(boxRect, CornerRadius, Paints.Get(color: fillColor));
 
         // Draw box border
-        ctx.DrawRoundRect(boxRect, CornerRadius, new KumikoPaint
-        {
-            Color = IsFocused ? new KumikoColor(0, 120, 215) : BoxBorderColor,
-            Style = PaintStyle.Stroke,
-            StrokeWidth = StrokeWidth
-        });
+        ctx.DrawRoundRect(boxRect, CornerRadius, Paints.Get(color: IsFocused ? new KumikoColor(0, 120, 215) : BoxBorderColor, strokeWidth: StrokeWidth));
 
         // Check mark or indeterminate mark
         switch (_state)
         {
             case DrawnCheckState.Checked:
-                IconProvider.DrawIcon(ctx, KumikoIcon.Check, boxRect, new KumikoPaint
-                {
-                    Color = CheckMarkColor,
-                    Style = PaintStyle.Stroke,
-                    StrokeWidth = CheckStrokeWidth,
-                    IsAntiAlias = true
-                });
+                IconProvider.DrawIcon(ctx, KumikoIcon.Check, boxRect, Paints.Get(color: CheckMarkColor, strokeWidth: CheckStrokeWidth, isAntiAlias: true));
                 break;
             case DrawnCheckState.Indeterminate:
-                IconProvider.DrawIcon(ctx, KumikoIcon.Indeterminate, boxRect, new KumikoPaint
-                {
-                    Color = IndeterminateColor,
-                    Style = PaintStyle.Fill,
-                    IsAntiAlias = true
-                });
+                IconProvider.DrawIcon(ctx, KumikoIcon.Indeterminate, boxRect, Paints.Get(color: IndeterminateColor, isAntiAlias: true));
                 break;
         }
     }

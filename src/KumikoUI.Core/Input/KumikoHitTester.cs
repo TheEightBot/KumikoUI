@@ -7,7 +7,7 @@ namespace KumikoUI.Core.Input;
 /// Performs hit testing against the grid layout.
 /// Determines what the user clicked/touched.
 /// </summary>
-public class KumikoHitTester
+public sealed class KumikoHitTester
 {
     /// <summary>
     /// The regions the renderer measured and drew in its last frame (the grouping panel's chips), set when a renderer

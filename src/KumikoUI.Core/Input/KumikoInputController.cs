@@ -11,7 +11,7 @@ namespace KumikoUI.Core.Input;
 /// pointer and keyboard events, dispatching to selection, sorting,
 /// column resize/reorder, and scrolling subsystems.
 /// </summary>
-public partial class KumikoInputController
+public sealed partial class KumikoInputController
 {
     private readonly KumikoHitTester _hitTester = new();
 
@@ -187,7 +187,7 @@ public partial class KumikoInputController
 
     // ── Events ──
     /// <summary>Raised when the grid surface needs to be redrawn.</summary>
-    public event Action? NeedsRedraw;
+    public event EventHandler? NeedsRedraw;
     /// <summary>
     /// The mouse cursor the grid wants over the pointer's position: <see cref="KumikoCursor.ResizeHorizontal"/>
     /// over a column resize grip and for the whole of a resize drag, <see cref="KumikoCursor.Hand"/> over
@@ -198,7 +198,7 @@ public partial class KumikoInputController
     public KumikoCursor Cursor { get; private set; }
 
     /// <summary>Raised when <see cref="Cursor"/> changes (only when it changes), with the new cursor.</summary>
-    public event Action<KumikoCursor>? CursorChanged;
+    public event EventHandler<KumikoCursor>? CursorChanged;
     /// <summary>
     /// Raised when the user finishes resizing a column by dragging its header edge. The drag makes the width
     /// explicit and switches a Star or Auto column to Fixed, so the width persists (see
@@ -246,20 +246,20 @@ public partial class KumikoInputController
     /// <summary>Raised on the second tap of a double-tap on a data cell.</summary>
     public event EventHandler<RowTappedEventArgs>? RowDoubleTapped;
 
-    /// <summary>Gets the popup manager for drawing overlays.</summary>
-    public PopupManager PopupManager => _popupManager;
+    /// <summary>The popup manager the hosts draw overlays from.</summary>
+    internal PopupManager PopupManager => _popupManager;
 
     /// <summary>Raised when a popup or component needs keyboard focus from the platform layer (e.g., to show the software keyboard).</summary>
-    public event Action? KeyboardFocusRequested;
+    public event EventHandler? KeyboardFocusRequested;
 
     /// <summary>Raised when a filter popup is opened (used to start cursor blink timer).</summary>
-    public event Action? FilterPopupOpened;
+    public event EventHandler? FilterPopupOpened;
 
     /// <summary>
     /// Raised when a filter popup closes, however it closes: OK, Cancel, Clear, a sort, Escape, or a press
     /// outside it (used to stop the cursor blink timer).
     /// </summary>
-    public event Action? FilterPopupClosed;
+    public event EventHandler? FilterPopupClosed;
 
     /// <summary>
     /// The text-input surface that has the keyboard, for a host's native text-input adapter: the open
@@ -1199,7 +1199,7 @@ public partial class KumikoInputController
     {
         if (Cursor == cursor) return;
         Cursor = cursor;
-        CursorChanged?.Invoke(cursor);
+        CursorChanged?.Invoke(this, cursor);
     }
 
     private void HandlePointerUp(
@@ -1857,7 +1857,7 @@ public partial class KumikoInputController
         scroll.ScrollTo(offsetX, offsetY);
     }
 
-    private void Redraw() => NeedsRedraw?.Invoke();
+    private void Redraw() => NeedsRedraw?.Invoke(this, EventArgs.Empty);
 
     private void EnsurePopupRedrawWired()
     {
@@ -1872,7 +1872,7 @@ public partial class KumikoInputController
         if (popup != _activeFilterPopup) return;
         _activeFilterPopup = null;
         popup.IsFocused = false;
-        FilterPopupClosed?.Invoke();
+        FilterPopupClosed?.Invoke(this, EventArgs.Empty);
     }
 
     // ── Filter popup ──────────────────────────────────────────────
@@ -1902,10 +1902,10 @@ public partial class KumikoInputController
         }
 
         // Wire events
-        popup.FilterApplied += () => { CloseFilterPopup(); Redraw(); };
-        popup.FilterCancelled += () => { CloseFilterPopup(); Redraw(); };
-        popup.FilterCleared += () => { CloseFilterPopup(); Redraw(); };
-        popup.SortRequested += dir =>
+        popup.FilterApplied += (_, _) => { CloseFilterPopup(); Redraw(); };
+        popup.FilterCancelled += (_, _) => { CloseFilterPopup(); Redraw(); };
+        popup.FilterCleared += (_, _) => { CloseFilterPopup(); Redraw(); };
+        popup.SortRequested += (_, dir) =>
         {
             // This column becomes the only sorted one
             dataSource.SetSort(column, dir);
@@ -1913,8 +1913,8 @@ public partial class KumikoInputController
             Redraw();
         };
 
-        popup.RedrawRequested += Redraw;
-        popup.KeyboardFocusRequested += () => KeyboardFocusRequested?.Invoke();
+        popup.RedrawRequested += (_, _) => Redraw();
+        popup.KeyboardFocusRequested += (_, _) => KeyboardFocusRequested?.Invoke(this, EventArgs.Empty);
         WireSearchClipboard(popup);
 
         _popupManager.Show(popup, Anchor, PopupPlacement.Below);
@@ -1926,10 +1926,10 @@ public partial class KumikoInputController
         // Request keyboard focus from the platform layer so that the search box
         // can receive text input (critical on mobile where the software keyboard
         // must be explicitly shown).
-        KeyboardFocusRequested?.Invoke();
+        KeyboardFocusRequested?.Invoke(this, EventArgs.Empty);
 
         // Notify platform layer to start cursor blink timer
-        FilterPopupOpened?.Invoke();
+        FilterPopupOpened?.Invoke(this, EventArgs.Empty);
 
         Redraw();
     }
@@ -2088,7 +2088,7 @@ public partial class KumikoInputController
     /// Calculate the screen bounds for a cell (viewport coordinates).
     /// Handles left-frozen, right-frozen, and frozen rows.
     /// </summary>
-    public KumikoRect GetCellScreenBounds(
+    internal KumikoRect GetCellScreenBounds(
         int row, int col,
         ScrollState scroll, KumikoStyle style,
         IReadOnlyList<KumikoColumn> columns,

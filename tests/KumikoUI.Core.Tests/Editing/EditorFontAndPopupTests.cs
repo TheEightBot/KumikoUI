@@ -34,7 +34,7 @@ public class EditorFontAndPopupTests
     {
         var ctx = new RecordingDrawingContext();
         g.Edit.DrawEditor(ctx);
-        return ctx.Texts.Select(o => o.Font!).ToArray();
+        return ctx.Texts.Select(o => o.Font!.Value).ToArray();
     }
 
     // ── Font ──
@@ -55,7 +55,7 @@ public class EditorFontAndPopupTests
             Assert.True(f.IsBold);
             Assert.True(f.IsItalic);
         });
-        Assert.Same(g.Style.CellFont, ((DrawnTextBox)editor).Font);
+        Assert.Equal(g.Style.CellFont, ((DrawnTextBox)editor).Font);
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class EditorFontAndPopupTests
         var ctx2 = new RecordingDrawingContext();
         box.OnDraw(ctx2);
 
-        Assert.Equal(30f, ctx2.Texts.First().Font!.Size);
+        Assert.Equal(30f, ctx2.Texts.First().Font!.Value.Size);
         Assert.True(small > 0);
     }
 
