@@ -13,7 +13,7 @@ public sealed class ColumnResizedEventArgs : EventArgs
     /// <summary>The column that was resized.</summary>
     public KumikoColumn Column { get; }
     /// <summary>Initializes a new instance of the <see cref="ColumnResizedEventArgs"/> class.</summary>
-    /// <param name="index">The zero-based column index.</param>
+    /// <param name="columnIndex">The zero-based column index.</param>
     /// <param name="column">The resized column.</param>
-    public ColumnResizedEventArgs(int index, KumikoColumn column) { ColumnIndex = index; Column = column; }
+    public ColumnResizedEventArgs(int columnIndex, KumikoColumn column) { ColumnIndex = columnIndex; Column = column; }
 }

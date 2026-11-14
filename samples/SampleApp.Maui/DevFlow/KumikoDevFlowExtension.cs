@@ -183,7 +183,7 @@ public static class KumikoDevFlowExtension
 					editor = edit.ActiveEditor?.GetType().Name,
 				},
 				["scroll"] = new { vertical = grid.VerticalOffset, horizontal = grid.HorizontalOffset },
-				["popupOpen"] = grid.InputController.PopupManager.HasActivePopups,
+				["popupOpen"] = grid.InputController.ActivePopup != null,
 				["summaries"] = new
 				{
 					top = source.ComputedTopSummaries.Select(DescribeSummary).ToArray(),
@@ -337,15 +337,8 @@ public static class KumikoDevFlowExtension
 
 	private static object ReadPopup(KumikoDataGrid grid, Page? page, IReadOnlyList<KumikoDataGrid> grids, Args args)
 	{
-		var popups = grid.InputController.PopupManager;
-		if (!popups.HasActivePopups) return new { open = false };
-
-		// The manager does not list its popups; find the top one by hit-testing the grid on a coarse lattice.
-		DrawnComponent? popup = null;
-		for (float y = 4; popup == null && y < grid.Height; y += 12)
-			for (float x = 4; popup == null && x < grid.Width; x += 12)
-				popup = popups.HitTest(x, y);
-		if (popup == null) return new { open = true, type = (string?)null };
+		var popup = grid.InputController.ActivePopup;
+		if (popup == null) return new { open = false };
 
 		var b = popup.Bounds;
 		if (popup is not DrawnFilterPopup filter)

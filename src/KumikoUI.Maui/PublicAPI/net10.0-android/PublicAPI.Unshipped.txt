@@ -1,2 +1,0 @@
-KumikoUI.Maui.Resource
-KumikoUI.Maui.Resource.Resource() -> void

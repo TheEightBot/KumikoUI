@@ -96,13 +96,13 @@ public class KumikoSelectionModelTests
     {
         var model = NewModel(KumikoSelectionMode.Extended);
         model.HandleRowSelection(2, false, false);
-        model.HandleRowSelection(5, false, ctrl: true);
+        model.HandleRowSelection(5, false, control: true);
         Assert.Equal(2, model.SelectedRows.Count);
         Assert.Contains(2, model.SelectedRows);
         Assert.Contains(5, model.SelectedRows);
 
         // Ctrl click on 5 again removes it
-        model.HandleRowSelection(5, false, ctrl: true);
+        model.HandleRowSelection(5, false, control: true);
         Assert.DoesNotContain(5, model.SelectedRows);
     }
 
@@ -257,7 +257,7 @@ public class KumikoSelectionModelTests
     {
         var model = NewModel(KumikoSelectionMode.Single);
         model.HandleRowSelection(2, false, false);
-        model.NavigateLeft(5, false);
+        model.NavigateLeft(false);
         // Initial column was 0, stays at 0
         Assert.Equal(0, model.CurrentCell.Column);
     }
@@ -267,7 +267,7 @@ public class KumikoSelectionModelTests
     {
         var model = NewModel(KumikoSelectionMode.Single);
         model.HandleRowSelection(2, false, false);
-        model.NavigateRight(5, false);
+        model.NavigateRight(false);
         Assert.Equal(1, model.CurrentCell.Column);
     }
 
@@ -276,7 +276,7 @@ public class KumikoSelectionModelTests
     {
         var model = NewModel(KumikoSelectionMode.Single);
         model.HandleRowSelection(0, false, false);
-        for (int i = 0; i < 5; i++) model.NavigateRight(1, false); // the source's three columns decide, not the argument
+        for (int i = 0; i < 5; i++) model.NavigateRight(false); // stops at the source's last column
         Assert.Equal(2, model.CurrentCell.Column);
     }
 
@@ -286,10 +286,10 @@ public class KumikoSelectionModelTests
         var model = NewModel(KumikoSelectionMode.Single);
         model.HandleRowSelection(3, false, false);
         // move to column 3 first
-        model.NavigateRight(10, false);
-        model.NavigateRight(10, false);
-        model.NavigateRight(10, false);
-        model.NavigateHome(false, 10, false);
+        model.NavigateRight(false);
+        model.NavigateRight(false);
+        model.NavigateRight(false);
+        model.NavigateHome(10, false, false);
         Assert.Equal(0, model.CurrentCell.Column);
         Assert.Equal(3, model.CurrentCell.Row);
     }
@@ -299,7 +299,7 @@ public class KumikoSelectionModelTests
     {
         var model = NewModel(KumikoSelectionMode.Single);
         model.HandleRowSelection(7, false, false);
-        model.NavigateHome(true, 10, false);
+        model.NavigateHome(10, false, true);
         Assert.Equal(0, model.CurrentCell.Row);
         Assert.Equal(0, model.CurrentCell.Column);
     }
@@ -309,7 +309,7 @@ public class KumikoSelectionModelTests
     {
         var model = NewModel(KumikoSelectionMode.Single);
         model.HandleRowSelection(3, false, false);
-        model.NavigateEnd(true, 10, 5, false);
+        model.NavigateEnd(10, false, true);
         Assert.Equal(9, model.CurrentCell.Row);
         Assert.Equal(2, model.CurrentCell.Column); // the last of the source's three visible columns
     }
@@ -337,7 +337,7 @@ public class KumikoSelectionModelTests
     {
         var model = NewModel(KumikoSelectionMode.Single);
         model.HandleRowSelection(10, false, false);
-        model.NavigatePageUp(5, false, 20);
+        model.NavigatePageUp(5, 20, false);
         Assert.Equal(5, model.CurrentCell.Row);
     }
 

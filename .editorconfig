@@ -62,6 +62,11 @@ csharp_style_namespace_declarations = file_scoped:suggestion
 csharp_using_directive_placement = outside_namespace:suggestion
 csharp_prefer_braces = true:silent
 
+# Code analysis (#112): the shipped libraries build with AnalysisLevel latest-recommended (their project files).
+# CA1822 (member can be static) is checked on private and internal members only: making a public instance member
+# static is a breaking change, and an instance member keeps the freedom to use instance state later.
+dotnet_code_quality.CA1822.api_surface = private, internal
+
 # Files of the MAUI sample app that keep the tab indentation of the .NET MAUI project template.
 [samples/SampleApp.Maui/{MauiProgram.cs,App.xaml.cs,AppShell.xaml.cs,MainPage.xaml.cs,DevFlow/KumikoDevFlowExtension.cs,Platforms/iOS/AppDelegate.cs,Platforms/iOS/Program.cs,Platforms/MacCatalyst/AppDelegate.cs,Platforms/MacCatalyst/Program.cs,Platforms/Android/MainApplication.cs,Platforms/Windows/App.xaml.cs}]
 indent_style = tab

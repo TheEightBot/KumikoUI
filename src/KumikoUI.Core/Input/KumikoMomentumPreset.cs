@@ -14,7 +14,7 @@ public enum KumikoMomentumPreset
     /// iOS: a long, gently decaying coast like <c>UIScrollView</c>'s normal deceleration (friction 0.968 per 16 ms),
     /// up to 8000 px/s, ending below 10 px/s.
     /// </summary>
-    Ios,
+    IOS,
 
     /// <summary>
     /// Android: a shorter coast that settles sooner, like <c>OverScroller</c> (friction 0.955 per 16 ms), up to

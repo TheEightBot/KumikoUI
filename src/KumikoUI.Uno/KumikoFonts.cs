@@ -108,7 +108,7 @@ public static class KumikoFonts
     /// <remarks>
     /// Unlike the app-package overloads, this method does not swallow exceptions: an unreadable stream
     /// surfaces the underlying <see cref="InvalidOperationException"/> from
-    /// <see cref="SkiaFontRegistrar.RegisterTypefaceFromStream"/> so the caller can decide how to react.
+    /// <see cref="SkiaFontRegistrar.RegisterTypefaceFromStream(string, Stream)"/> so the caller can decide how to react.
     /// </remarks>
     public static void RegisterFromStream(string family, Stream stream) =>
         SkiaFontRegistrar.RegisterTypefaceFromStream(family, stream);

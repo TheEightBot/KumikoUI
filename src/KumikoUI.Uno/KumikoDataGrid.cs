@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -32,6 +33,10 @@ namespace KumikoUI.Uno;
 /// <c>Input/InputMapping.cs</c>.
 /// </remarks>
 [Microsoft.UI.Xaml.Markup.ContentProperty(Name = nameof(Columns))]
+[SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "A control is not disposed by its owner; the grid releases its resources when its handler is disconnected or it is unloaded.")]
+[SuppressMessage("Design", "CA1010:Generic interface should also be implemented",
+    Justification = "Inherited from the Uno framework element, which enumerates its children; not part of the grid's own API.")]
 public partial class KumikoDataGrid : UserControl
 {
     private readonly Grid _root = new();

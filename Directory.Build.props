@@ -44,10 +44,10 @@
     <PackageIcon>logo.png</PackageIcon>
 
     <!--
-      Static analysis level (#54). `latest` is the compiler's default rule set and builds clean. `latest-recommended`
-      would also turn on rules that need API or behavior changes before 1.0 (CA1711 on the *EventArgs type names,
-      CA1720 on KumikoSelectionMode.Single, CA1305 on string.Format in SummaryAggregates, and CA1822/CA1805/CA1845/CA1859
-      cleanups in Core). Raise it once those are done.
+      Static analysis level (#54). `latest` is the compiler's default rule set, used by tests, samples and tools. The four
+      shipped libraries raise it to `latest-recommended` in their project files (#112) and build without warnings; the
+      exceptions are suppressed in source with a justification (CA1720 on KumikoSelectionMode.Single, CA1001/CA1010 on the
+      host controls) and CA1822 is checked on private and internal members only (.editorconfig).
     -->
     <AnalysisLevel>latest</AnalysisLevel>
 

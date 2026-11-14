@@ -582,7 +582,7 @@ public class RenderAllocationTests
                 + (featured ? style.GroupPanelHeight + 2 * style.SummaryRowHeight : 0),
         };
         var selection = new KumikoSelectionModel(source);
-        selection.HandleRowSelection(featured ? 4 : 3, shift: false, ctrl: false);
+        selection.HandleRowSelection(featured ? 4 : 3, shift: false, control: false);
         selection.SetCurrentCell(featured ? 4 : 3, 1);
         return new Grid(new KumikoRenderer(), source, scroll, selection, style);
     }

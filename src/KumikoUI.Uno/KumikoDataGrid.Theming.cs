@@ -118,7 +118,7 @@ public partial class KumikoDataGrid
     /// the browser); in a browser whose main pointer is a finger (CSS <c>pointer: coarse</c>), the Android preset.
     /// </summary>
     private static KumikoMomentumPreset PlatformMomentumPreset =>
-        OperatingSystem.IsIOS() ? KumikoMomentumPreset.Ios
+        OperatingSystem.IsIOS() ? KumikoMomentumPreset.IOS
         : OperatingSystem.IsAndroid() ? KumikoMomentumPreset.Android
         : KumikoUI.Uno.Input.BrowserMedia.HasCoarsePointer ? KumikoMomentumPreset.Android // a phone or tablet browser
         : KumikoMomentumPreset.Desktop;

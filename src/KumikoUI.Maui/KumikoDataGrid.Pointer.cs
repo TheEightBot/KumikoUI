@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KumikoUI.Core.Input;
 using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
@@ -90,6 +91,8 @@ public partial class KumikoDataGrid
     /// button on Android), plus a mouse's right and middle buttons on Android. Core takes the button from the press,
     /// so a release that names none is fine.
     /// </summary>
+    [SuppressMessage("Performance", "CA1822:Mark members as static",
+        Justification = "Reads the platform view on Android; static only on the other heads.")]
     private PointerButton GetPointerButton(SKTouchEventArgs e)
     {
 #if ANDROID

@@ -40,13 +40,12 @@
     <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt" Condition="Exists('PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt')" />
   </ItemGroup>
   <PropertyGroup Condition="'$(KumikoTrackPublicApi)' == 'true'">
-    <WarningsAsErrors>$(WarningsAsErrors);RS0016;RS0017;RS0025;RS0036;RS0037</WarningsAsErrors>
     <!--
-      RS0026/RS0027 (optional parameters must be on the overload with the most parameters) flag the deliberate
-      KumikoHitTester.HitTest and IDrawingContext.DrawTextInRect overload sets. Reshaping them is an API change tracked as a
-      pre-1.0 follow-up, not part of recording the surface.
+      RS0026 (only one overload of a method may have optional parameters) and RS0027 (that overload must have the most
+      parameters) are errors too (#112): an overload set that breaks them cannot take a new optional parameter later without
+      a source or binary break.
     -->
-    <NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
+    <WarningsAsErrors>$(WarningsAsErrors);RS0016;RS0017;RS0025;RS0026;RS0027;RS0036;RS0037</WarningsAsErrors>
   </PropertyGroup>
   <!--
     Apps in this repository (samples, eng/AotSmoke) reference KumikoUI.Core by project, so the targets the

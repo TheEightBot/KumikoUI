@@ -116,7 +116,7 @@ public partial class KumikoDataGrid
     /// </summary>
     private static KumikoMomentumPreset PlatformMomentumPreset =>
 #if IOS
-        KumikoMomentumPreset.Ios;
+        KumikoMomentumPreset.IOS;
 #elif ANDROID
         KumikoMomentumPreset.Android;
 #elif MACCATALYST || WINDOWS

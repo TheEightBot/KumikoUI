@@ -113,7 +113,7 @@ public sealed partial class KumikoInputController
             if (!onEditedCell)
             {
                 if (!CommitEditBeforeViewChange(dataSource, selection)) return true;
-                if (!selection.IsRowSelected(row)) selection.HandleRowSelection(row, shift: false, ctrl: false);
+                if (!selection.IsRowSelected(row)) selection.HandleRowSelection(row, shift: false, control: false);
                 if (hit.ColumnIndex >= 0) selection.CurrentCell = new CellPosition(row, hit.ColumnIndex);
                 Redraw();
             }

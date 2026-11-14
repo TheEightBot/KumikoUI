@@ -1,4 +1,3 @@
-KumikoUI.Uno.Input.InputMapping
 KumikoUI.Uno.KumikoDataGrid
 KumikoUI.Uno.KumikoDataGrid.ActiveRenderMode.get -> KumikoUI.Uno.KumikoRenderMode
 KumikoUI.Uno.KumikoDataGrid.AllowFiltering.get -> bool
@@ -97,8 +96,10 @@ KumikoUI.Uno.KumikoDataGrid.RowTappedCommand.get -> System.Windows.Input.IComman
 KumikoUI.Uno.KumikoDataGrid.RowTappedCommand.set -> void
 KumikoUI.Uno.KumikoDataGrid.ScrollSettings.get -> KumikoUI.Core.Input.ScrollSettings!
 KumikoUI.Uno.KumikoDataGrid.ScrollSettings.set -> void
-KumikoUI.Uno.KumikoDataGrid.ScrollToColumn(KumikoUI.Core.Models.KumikoColumn! column, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest) -> bool
-KumikoUI.Uno.KumikoDataGrid.ScrollToColumn(int columnIndex, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest) -> bool
+KumikoUI.Uno.KumikoDataGrid.ScrollToColumn(KumikoUI.Core.Models.KumikoColumn! column) -> bool
+KumikoUI.Uno.KumikoDataGrid.ScrollToColumn(KumikoUI.Core.Models.KumikoColumn! column, KumikoUI.Core.Models.KumikoScrollPosition position) -> bool
+KumikoUI.Uno.KumikoDataGrid.ScrollToColumn(int columnIndex) -> bool
+KumikoUI.Uno.KumikoDataGrid.ScrollToColumn(int columnIndex, KumikoUI.Core.Models.KumikoScrollPosition position) -> bool
 KumikoUI.Uno.KumikoDataGrid.ScrollToItem(object! item, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest, bool expandGroups = true) -> bool
 KumikoUI.Uno.KumikoDataGrid.ScrollToRow(int row, KumikoUI.Core.Models.KumikoScrollPosition position = KumikoUI.Core.Models.KumikoScrollPosition.Nearest) -> bool
 KumikoUI.Uno.KumikoDataGrid.Scrolled -> System.EventHandler<KumikoUI.Core.Models.KumikoScrolledEventArgs!>?
@@ -138,14 +139,13 @@ KumikoUI.Uno.KumikoDataGrid.ViewChanged -> System.EventHandler<KumikoUI.Core.Mod
 KumikoUI.Uno.KumikoFonts
 KumikoUI.Uno.KumikoRenderMode
 KumikoUI.Uno.KumikoRenderMode.Auto = 0 -> KumikoUI.Uno.KumikoRenderMode
-KumikoUI.Uno.KumikoRenderMode.Hardware = 1 -> KumikoUI.Uno.KumikoRenderMode
-KumikoUI.Uno.KumikoRenderMode.Software = 2 -> KumikoUI.Uno.KumikoRenderMode
+KumikoUI.Uno.KumikoRenderMode.Hardware = 2 -> KumikoUI.Uno.KumikoRenderMode
+KumikoUI.Uno.KumikoRenderMode.Software = 1 -> KumikoUI.Uno.KumikoRenderMode
 KumikoUI.Uno.UnoActionButtonDefinition
 KumikoUI.Uno.UnoActionButtonDefinition.Action.get -> System.Action?
 KumikoUI.Uno.UnoActionButtonDefinition.Action.set -> void
 KumikoUI.Uno.UnoActionButtonDefinition.BackgroundColor.get -> Windows.UI.Color
 KumikoUI.Uno.UnoActionButtonDefinition.BackgroundColor.set -> void
-KumikoUI.Uno.UnoActionButtonDefinition.Changed -> System.EventHandler?
 KumikoUI.Uno.UnoActionButtonDefinition.Command.get -> System.Windows.Input.ICommand?
 KumikoUI.Uno.UnoActionButtonDefinition.Command.set -> void
 KumikoUI.Uno.UnoActionButtonDefinition.CommandParameter.get -> object?
@@ -156,9 +156,6 @@ KumikoUI.Uno.UnoActionButtonDefinition.TextColor.get -> Windows.UI.Color
 KumikoUI.Uno.UnoActionButtonDefinition.TextColor.set -> void
 KumikoUI.Uno.UnoActionButtonDefinition.UnoActionButtonDefinition() -> void
 override KumikoUI.Uno.KumikoDataGrid.OnCreateAutomationPeer() -> Microsoft.UI.Xaml.Automation.Peers.AutomationPeer!
-static KumikoUI.Uno.Input.InputMapping.GetLiveModifiers() -> KumikoUI.Core.Input.InputModifiers
-static KumikoUI.Uno.Input.InputMapping.ToGridKey(Windows.System.VirtualKey key) -> KumikoUI.Core.Input.KumikoKey
-static KumikoUI.Uno.Input.InputMapping.ToInputModifiers(Windows.System.VirtualKeyModifiers mods) -> KumikoUI.Core.Input.InputModifiers
 static KumikoUI.Uno.KumikoFonts.RegisterFromAppPackageAsync(System.Collections.Generic.IEnumerable<(string! Family, string! AppxUri)>! fonts) -> System.Threading.Tasks.Task!
 static KumikoUI.Uno.KumikoFonts.RegisterFromAppPackageAsync(string! family, string! appxUri) -> System.Threading.Tasks.Task!
 static KumikoUI.Uno.KumikoFonts.RegisterFromStream(string! family, System.IO.Stream! stream) -> void

@@ -15,12 +15,19 @@
 		<KumikoTrackPublicApi>true</KumikoTrackPublicApi>
 		<!-- Package validation (#54); the baseline is described in Directory.Build.props. -->
 		<EnablePackageValidation>true</EnablePackageValidation>
+		<!-- The recommended code-analysis rules (#112); Directory.Build.props sets `latest` for tests and samples. -->
+		<AnalysisLevel>latest-recommended</AnalysisLevel>
 
 		<!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
 		<PackageId>KumikoUI.Maui</PackageId>
 		<Description>A high-performance, fully custom-drawn KumikoUI DataGrid control for .NET MAUI. Features virtual scrolling, sorting, filtering, grouping, cell editing, theming, row drag-and-drop, frozen columns/rows, and table/group summaries, drawn with SkiaSharp.</Description>
 		<PackageTags>maui;dotnet-maui;datagrid;data-grid;grid;table;skiasharp;android;ios;maccatalyst;windows;cross-platform</PackageTags>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<!--
+		  The library has no Android resources, so it needs no Resource designer class: without this the Android build adds a
+		  public KumikoUI.Maui.Resource type to the package (#112).
+		-->
+		<AndroidGenerateResourceDesigner>false</AndroidGenerateResourceDesigner>
 
 	</PropertyGroup>
 
