@@ -225,6 +225,91 @@ public class DrawnFilterPopupTests
     }
 
     [Fact]
+    public void Ok_WithASearch_FiltersToTheCheckedSearchResults()
+    {
+        var (popup, _, _, column) = Open(100);
+        popup.SearchText = "V0001"; // V00010-V00019, typed but not yet applied to the list
+
+        Key(popup, KumikoKey.Enter); // OK
+
+        var filter = Assert.IsType<FilterDescription>(column.ActiveFilter);
+        Assert.Equal(Enumerable.Range(10, 10).Select(Value).OrderBy(v => v), filter.SelectedValues!.OrderBy(v => v));
+    }
+
+    [Fact]
+    public void Ok_WithASearch_LeavesOutResultsTheUserUnchecked()
+    {
+        var (popup, manager, _, column) = Open(100);
+        popup.SearchText = "V0001";
+        Assert.Equal(10, popup.VisibleValues.Count);
+        Pointer(manager, InputAction.Pressed, ItemX, RowY(0)); // uncheck V00010
+        Pointer(manager, InputAction.Released, ItemX, RowY(0));
+
+        Key(popup, KumikoKey.Enter);
+
+        var filter = Assert.IsType<FilterDescription>(column.ActiveFilter);
+        Assert.Equal(9, filter.SelectedValues!.Count);
+        Assert.DoesNotContain(Value(10), filter.SelectedValues);
+    }
+
+    [Fact]
+    public void Ok_WithASearchMatchingEverything_AppliesNoFilter()
+    {
+        var (popup, _, _, column) = Open(20);
+        popup.SearchText = "V000";
+
+        Key(popup, KumikoKey.Enter);
+
+        Assert.Null(column.ActiveFilter);
+    }
+
+    [Fact]
+    public void SelectAll_ShowsAMixedStateWhenOnlySomeValuesAreChecked()
+    {
+        var (popup, manager, _, _) = Open(10);
+        Assert.Equal(DrawnCheckState.Checked, popup.SelectAllState);
+
+        Pointer(manager, InputAction.Pressed, ItemX, RowY(0)); // uncheck one
+        Pointer(manager, InputAction.Released, ItemX, RowY(0));
+        Assert.Equal(DrawnCheckState.Indeterminate, popup.SelectAllState);
+
+        for (int i = 1; i < 10; i++)
+        {
+            Pointer(manager, InputAction.Pressed, ItemX, RowY(i));
+            Pointer(manager, InputAction.Released, ItemX, RowY(i));
+        }
+        Assert.Equal(DrawnCheckState.Unchecked, popup.SelectAllState);
+    }
+
+    [Fact]
+    public void SelectAll_StateFollowsTheSearchResults()
+    {
+        var (popup, manager, _, _) = Open(100);
+        popup.SearchText = "V0001";
+        float rowY = 6 + 28 + 9 + 30 + 4 + 16;
+        Pointer(manager, InputAction.Pressed, 150, rowY); // Deselect All (the results)
+        Pointer(manager, InputAction.Released, 150, rowY);
+        Assert.Equal(DrawnCheckState.Unchecked, popup.SelectAllState); // the results are all unchecked, the rest is not
+
+        popup.SearchText = "";
+        Assert.Equal(DrawnCheckState.Indeterminate, popup.SelectAllState);
+    }
+
+    [Fact]
+    public void SelectAll_DrawsTheIndeterminateIcon_ForAMixedState()
+    {
+        var (popup, manager, _, _) = Open(10);
+        Pointer(manager, InputAction.Pressed, ItemX, RowY(0));
+        Pointer(manager, InputAction.Released, ItemX, RowY(0));
+        var icons = new RecordingIconProvider();
+        popup.IconProvider = icons;
+
+        popup.OnDraw(new RecordingDrawingContext());
+
+        Assert.Contains(KumikoIcon.Indeterminate, icons.Icons);
+    }
+
+    [Fact]
     public void TheSearchBox_FollowsTheTheme_AndThePopupHasOneShadow()
     {
         var (popup, manager, _, _) = Open(20);
