@@ -122,6 +122,12 @@ jobs:
         with:
           cache-nuget: 'true'
 
+      # Whitespace and final-newline rules of .editorconfig for every C# file in the repository (#54). --folder reads the
+      # files directly, so it needs neither a restore nor the MAUI and Uno workloads. Fix a failure locally with
+      # `dotnet format whitespace --folder .` (see CONTRIBUTING.md).
+      - name: Check formatting (dotnet format)
+        run: dotnet format whitespace --folder . --verify-no-changes
+
       - name: Restore
         run: dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
           && dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
