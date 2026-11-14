@@ -5,7 +5,7 @@ namespace KumikoUI.Core.Models;
 /// Supports both a value list (Excel-style checkboxes) and
 /// condition-based filtering (operator + value).
 /// </summary>
-public class FilterDescription
+public sealed class FilterDescription
 {
     /// <summary>The column this filter applies to.</summary>
     public KumikoColumn Column { get; }

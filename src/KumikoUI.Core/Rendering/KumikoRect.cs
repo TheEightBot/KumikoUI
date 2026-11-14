@@ -42,9 +42,15 @@ public readonly struct KumikoRect
         Height = height;
     }
 
-    /// <summary>Tests whether a point is inside this rectangle.</summary>
+    /// <summary>
+    /// Tests whether a point is inside this rectangle. The test is half-open: the left and top edges are inside, the
+    /// right and bottom edges are not, so two rectangles that share an edge never both contain a point on it.
+    /// </summary>
+    /// <param name="px">X-coordinate of the point.</param>
+    /// <param name="py">Y-coordinate of the point.</param>
+    /// <returns><see langword="true"/> when <c>Left &lt;= px &lt; Right</c> and <c>Top &lt;= py &lt; Bottom</c>.</returns>
     public bool Contains(float px, float py)
-        => px >= Left && px <= Right && py >= Top && py <= Bottom;
+        => px >= Left && px < Right && py >= Top && py < Bottom;
 
     /// <summary>Returns a new rectangle expanded by the specified amounts.</summary>
     public KumikoRect Inflate(float dx, float dy)

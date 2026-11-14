@@ -205,7 +205,7 @@ public class GridLevelFlagTests
         var g = new InputGrid();
         g.Input.AllowFiltering = false;
         int opened = 0;
-        g.Input.FilterPopupOpened += () => opened++;
+        g.Input.FilterPopupOpened += (_, _) => opened++;
 
         g.Tap(AgeFilterIconX, InputGrid.HeaderY);
 
@@ -231,7 +231,7 @@ public class GridLevelFlagTests
         g.Input.AllowFiltering = false;
         g.Input.AllowFiltering = true;
         int opened = 0;
-        g.Input.FilterPopupOpened += () => opened++;
+        g.Input.FilterPopupOpened += (_, _) => opened++;
 
         g.Tap(AgeFilterIconX, InputGrid.HeaderY);
 

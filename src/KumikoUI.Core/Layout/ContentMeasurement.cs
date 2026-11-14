@@ -13,11 +13,7 @@ internal sealed class ContentMeasurement
 {
     private KumikoSource? _source;
     private int _version;
-    private KumikoFont? _font;
-    private string? _family;
-    private float _size;
-    private bool _bold;
-    private bool _italic;
+    private KumikoFont _font;
 
     /// <summary>Whether a measurement has been stored.</summary>
     public bool HasValue { get; private set; }
@@ -33,11 +29,7 @@ internal sealed class ContentMeasurement
         HasValue
         && ReferenceEquals(_source, source)
         && _version == source.ContentVersion
-        && ReferenceEquals(_font, font)
-        && string.Equals(_family, font.Family, StringComparison.Ordinal)
-        && _size.Equals(font.Size) // exact: cache change detection
-        && _bold == font.IsBold
-        && _italic == font.IsItalic;
+        && _font == font; // value equality: exact family, size, weight and slant
 
     /// <summary>Stores the widest sampled cell text of <paramref name="source"/> as it is now, measured in <paramref name="font"/>.</summary>
     public void Store(KumikoSource source, KumikoFont font, float textWidth)
@@ -45,10 +37,6 @@ internal sealed class ContentMeasurement
         _source = source;
         _version = source.ContentVersion;
         _font = font;
-        _family = font.Family;
-        _size = font.Size;
-        _bold = font.IsBold;
-        _italic = font.IsItalic;
         TextWidth = textWidth;
         HasValue = true;
     }
@@ -57,7 +45,7 @@ internal sealed class ContentMeasurement
     public void Clear()
     {
         _source = null;
-        _font = null;
+        _font = default;
         HasValue = false;
     }
 }

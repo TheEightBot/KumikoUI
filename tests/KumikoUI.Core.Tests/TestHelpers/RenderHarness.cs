@@ -79,7 +79,7 @@ internal sealed class RenderHarness
         EditSession? editSession = null, PopupManager? popupManager = null)
     {
         var ctx = new RecordingDrawingContext();
-        Renderer.Render(ctx, Source, Scroll, Selection, Style,
+        Renderer.RenderFrame(ctx, Source, Scroll, Selection, Style,
             dragColumnIndex, dragColumnScreenX, dragRowIndex, dragRowScreenY, editSession, popupManager);
         return ctx;
     }

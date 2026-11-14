@@ -30,7 +30,7 @@ namespace KumikoUI.Core.Rendering;
 ///                                Command="{Binding ArchiveCommand}" /&gt;
 /// </code>
 /// </remarks>
-public class ActionButtonDefinition : IActionButtonDefinition
+public sealed class ActionButtonDefinition : IActionButtonDefinition
 {
     /// <summary>Text displayed on the button.</summary>
     public string Label { get; set; } = string.Empty;

@@ -10,8 +10,8 @@ public class KumikoStyle
     /// <summary>
     /// A counter incremented whenever a property of this style is set to a different value. The renderer
     /// rebuilds its cached paints only when the style instance or its version changes, so a frame drawn with an
-    /// unchanged style allocates no paints. Changing a property of a <see cref="KumikoFont"/> the style refers
-    /// to does not change the version (and needs none: cached paints refer to the same font instance).
+    /// unchanged style allocates no paints. A <see cref="KumikoFont"/> is a value, so replacing a font with an
+    /// equal one does not change the version, and a different one does.
     /// </summary>
     public int Version { get; private set; }
 

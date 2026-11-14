@@ -241,7 +241,7 @@ public class HeaderFitWidthTests
     }
 
     [Fact]
-    public void ChangingAPropertyOfTheHeaderFontInPlace_MeasuresAgain()
+    public void ReplacingTheHeaderFontWithALargerOne_MeasuresAgain()
     {
         var column = new KumikoColumn { Header = LongHeader, PropertyName = "Name" };
         var h = GridWith(600, column);
@@ -249,7 +249,7 @@ public class HeaderFitWidthTests
         h.Renderer.Render(ctx, h.Source, h.Scroll, h.Selection, h.Style);
         float before = column.Width;
 
-        h.Style.HeaderFont.Size = 28;
+        h.Style.HeaderFont = h.Style.HeaderFont with { Size = 28 };
         h.Renderer.Render(ctx, h.Source, h.Scroll, h.Selection, h.Style);
 
         Assert.Equal(2, ctx.HeaderMeasures(LongHeader));

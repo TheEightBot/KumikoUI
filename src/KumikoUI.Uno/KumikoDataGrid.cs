@@ -177,10 +177,10 @@ public partial class KumikoDataGrid : UserControl
     /// active text input into the hidden TextBox proxy and focuses it — on iOS/Android that summons the
     /// soft keyboard; on every head it routes subsequent keys and text to the proxy (which forwards to Core).
     /// </summary>
-    private void OnKeyboardFocusRequested() => FocusKeyboardInput();
+    private void OnKeyboardFocusRequested(object? sender, EventArgs e) => FocusKeyboardInput();
 
     /// <summary>A filter popup opened: start the cursor-blink repaint timer so its search caret blinks.</summary>
-    private void OnFilterPopupOpened()
+    private void OnFilterPopupOpened(object? sender, EventArgs e)
     {
         _filterPopupActive = true;
         StartCursorBlinkTimer();
@@ -188,7 +188,7 @@ public partial class KumikoDataGrid : UserControl
     }
 
     /// <summary>The filter popup closed: stop the cursor-blink timer (unless a cell edit is still active).</summary>
-    private void OnFilterPopupClosed()
+    private void OnFilterPopupClosed(object? sender, EventArgs e)
     {
         _filterPopupActive = false;
         if (!_editSession.IsEditing)

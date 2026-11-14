@@ -10,7 +10,7 @@ namespace KumikoUI.Core.Components;
 /// Fully custom-drawn combo box with dropdown popup.
 /// Supports item selection, keyboard navigation, and filterable search.
 /// </summary>
-public class DrawnComboBox : DrawnComponent, IValueEditor
+public sealed class DrawnComboBox : DrawnComponent, IValueEditor
 {
     private readonly List<DrawnComboBoxItem> _items = new();
     private int _selectedIndex = -1;
@@ -174,10 +174,10 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
     public event EventHandler<ComboBoxSelectionChangedEventArgs>? SelectionChanged;
 
     /// <summary>Raised when the dropdown opens.</summary>
-    public event Action? DropdownOpened;
+    public event EventHandler? DropdownOpened;
 
     /// <summary>Raised when the dropdown closes.</summary>
-    public event Action? DropdownClosed;
+    public event EventHandler? DropdownClosed;
 
     // ── Items management ────────────────────────────────────────
 
@@ -297,11 +297,10 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
         var b = Bounds;
 
         // Background
-        ctx.FillRect(b, new KumikoPaint { Color = BackgroundColor, Style = PaintStyle.Fill });
+        ctx.FillRect(b, new KumikoPaint { Color = BackgroundColor });
         ctx.DrawRect(b, new KumikoPaint
         {
             Color = IsFocused ? FocusedBorderColor : BorderColor,
-            Style = PaintStyle.Stroke,
             StrokeWidth = 1
         });
 
@@ -319,12 +318,12 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
 
         if (!string.IsNullOrEmpty(displayText))
         {
-            ctx.DrawText(displayText, textX, textY, new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font });
+            ctx.DrawText(displayText, textX, textY, new KumikoPaint { Color = TextColor, Font = Font });
         }
         else if (!string.IsNullOrEmpty(Placeholder))
         {
             ctx.DrawText(Placeholder, textX, textY,
-                new KumikoPaint { Color = new KumikoColor(160, 160, 160), Style = PaintStyle.Fill, Font = Font });
+                new KumikoPaint { Color = new KumikoColor(160, 160, 160), Font = Font });
         }
 
         ctx.Restore();
@@ -335,7 +334,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
 
     private void DrawArrow(IDrawingContext ctx, float x, float y, float w, float h)
     {
-        var paint = new KumikoPaint { Color = ArrowColor, Style = PaintStyle.Fill, IsAntiAlias = true };
+        var paint = new KumikoPaint { Color = ArrowColor, IsAntiAlias = true };
         // A 12 px square centered in the arrow area; the glyph shows whether the dropdown is open
         const float size = 12f;
         IconProvider.DrawIcon(ctx, _isDropdownOpen ? KumikoIcon.DropDownOpen : KumikoIcon.DropDown,
@@ -351,11 +350,11 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
 
         // Shadow
         ctx.FillRect(new KumikoRect(dropRect.X + 2, dropRect.Y + 2, dropRect.Width, dropRect.Height),
-            new KumikoPaint { Color = new KumikoColor(0, 0, 0, 30), Style = PaintStyle.Fill });
+            new KumikoPaint { Color = new KumikoColor(0, 0, 0, 30) });
 
         // Background
-        ctx.FillRect(dropRect, new KumikoPaint { Color = DropdownBackgroundColor, Style = PaintStyle.Fill });
-        ctx.DrawRect(dropRect, new KumikoPaint { Color = BorderColor, Style = PaintStyle.Stroke, StrokeWidth = 1 });
+        ctx.FillRect(dropRect, new KumikoPaint { Color = DropdownBackgroundColor });
+        ctx.DrawRect(dropRect, new KumikoPaint { Color = BorderColor, StrokeWidth = 1 });
 
         // Items
         ctx.Save();
@@ -372,14 +371,14 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
             // Highlight
             if (i == _highlightedIndex)
             {
-                ctx.FillRect(itemRect, new KumikoPaint { Color = HighlightColor, Style = PaintStyle.Fill });
+                ctx.FillRect(itemRect, new KumikoPaint { Color = HighlightColor });
             }
 
             // Item text
             float itemTextX = dropRect.X + Padding;
             float itemTextY = y + ItemHeight / 2;
             ctx.DrawText(items[i].DisplayText, itemTextX, itemTextY,
-                new KumikoPaint { Color = TextColor, Style = PaintStyle.Fill, Font = Font });
+                new KumikoPaint { Color = TextColor, Font = Font });
 
             y += ItemHeight;
         }
@@ -390,7 +389,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
             var thumb = ScrollbarThumb(dropRect);
             byte alpha = _pressTarget == PressTarget.Scrollbar ? (byte)220 : (byte)150;
             ctx.FillRoundRect(new KumikoRect(dropRect.Right - 5, thumb.Y, 4, thumb.Height), 2,
-                new KumikoPaint { Color = ArrowColor.WithAlpha(alpha), Style = PaintStyle.Fill });
+                new KumikoPaint { Color = ArrowColor.WithAlpha(alpha) });
         }
 
         ctx.Restore();
@@ -825,7 +824,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
         _isPanning = false;
         DropdownScrollOffset = 0;
         EnsureHighlightVisible();
-        DropdownOpened?.Invoke();
+        DropdownOpened?.Invoke(this, EventArgs.Empty);
         InvalidateVisual();
     }
 
@@ -835,7 +834,7 @@ public class DrawnComboBox : DrawnComponent, IValueEditor
         _isDropdownOpen = false;
         _filterText = string.Empty;
         _filteredItems = null;
-        DropdownClosed?.Invoke();
+        DropdownClosed?.Invoke(this, EventArgs.Empty);
         InvalidateVisual();
     }
 

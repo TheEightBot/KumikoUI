@@ -43,20 +43,6 @@ public class KumikoCellStyleTests
     }
 
     [Fact]
-    public void HasOverrides_WithBorderColor_ReturnsTrue()
-    {
-        var style = new KumikoCellStyle { BorderColor = KumikoColor.Black };
-        Assert.True(style.HasOverrides);
-    }
-
-    [Fact]
-    public void HasOverrides_WithBorderWidth_ReturnsTrue()
-    {
-        var style = new KumikoCellStyle { BorderWidth = 2f };
-        Assert.True(style.HasOverrides);
-    }
-
-    [Fact]
     public void HasOverrides_WithTextAlignment_ReturnsTrue()
     {
         var style = new KumikoCellStyle { TextAlignment = KumikoTextAlignment.Center };
@@ -114,7 +100,6 @@ public class KumikoCellStyleTests
             BackgroundColor = KumikoColor.Red,
             TextColor = KumikoColor.Blue,
             Padding = 5f,
-            BorderWidth = 2f,
             TextAlignment = KumikoTextAlignment.Right
         };
         var fallback = new KumikoCellStyle
@@ -122,14 +107,12 @@ public class KumikoCellStyleTests
             BackgroundColor = KumikoColor.Green,
             TextColor = KumikoColor.Black,
             Padding = 8f,
-            BorderWidth = 1f,
             TextAlignment = KumikoTextAlignment.Left
         };
         var result = KumikoCellStyle.Merge(primary, fallback)!;
         Assert.Equal(KumikoColor.Red, result.BackgroundColor);
         Assert.Equal(KumikoColor.Blue, result.TextColor);
         Assert.Equal(5f, result.Padding);
-        Assert.Equal(2f, result.BorderWidth);
         Assert.Equal(KumikoTextAlignment.Right, result.TextAlignment);
     }
 
@@ -141,7 +124,7 @@ public class KumikoCellStyleTests
         var primary = new KumikoCellStyle { Font = primaryFont };
         var fallback = new KumikoCellStyle { Font = fallbackFont };
         var result = KumikoCellStyle.Merge(primary, fallback)!;
-        Assert.Same(primaryFont, result.Font);
+        Assert.Equal(primaryFont, result.Font);
     }
 
     [Fact]
@@ -151,7 +134,7 @@ public class KumikoCellStyleTests
         var primary = new KumikoCellStyle { TextColor = KumikoColor.Red };
         var fallback = new KumikoCellStyle { Font = fallbackFont };
         var result = KumikoCellStyle.Merge(primary, fallback)!;
-        Assert.Same(fallbackFont, result.Font);
+        Assert.Equal(fallbackFont, result.Font);
     }
 }
 

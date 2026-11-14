@@ -283,7 +283,7 @@ public partial class KumikoDataGrid
     /// clickable glyphs). <see cref="UIElement.ProtectedCursor"/> is protected, which this control can set
     /// on itself. Touch-only heads ignore it.
     /// </summary>
-    private void OnInputControllerCursorChanged(KumikoCursor cursor)
+    private void OnInputControllerCursorChanged(object? sender, KumikoCursor cursor)
     {
         ProtectedCursor = cursor switch
         {
