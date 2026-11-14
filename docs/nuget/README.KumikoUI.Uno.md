@@ -10,6 +10,8 @@ KumikoUI.Uno is a high-performance data grid control for the Uno Platform. The w
 
 It targets .NET 10 on Windows (WinUI), desktop (Windows, macOS, Linux), WebAssembly, Android and iOS.
 
+> **Preview.** KumikoUI.Uno shares its engine and API with KumikoUI.Maui, and its WebAssembly, iOS and Android heads have been run on the sample app. Not every head has been checked end to end yet: the desktop head has had no interactive pass, Windows and Linux have not been run, and two input problems on the mobile heads are open. The per-head results and known issues are in the [Uno verification notes](https://github.com/TheEightBot/KumikoUI/blob/main/docs/uno/verification.md).
+
 ![KumikoUI data grid](https://raw.githubusercontent.com/TheEightBot/KumikoUI/main/images/main.png)
 
 ![Dark mode](https://raw.githubusercontent.com/TheEightBot/KumikoUI/main/images/dark_mode.png)
@@ -33,12 +35,15 @@ Install the package in your Uno app project:
 dotnet add package KumikoUI.Uno
 ```
 
-The app uses the Skia renderer. In your app's `.csproj`, include `SkiaRenderer` in `UnoFeatures`:
+The app uses the Skia renderer and the SkiaSharp major that KumikoUI is built with (Uno.Sdk defaults to SkiaSharp 3.x, and an app must resolve one SkiaSharp major). In your app's `.csproj`, set `SkiaSharpVersion` and include `SkiaRenderer` in `UnoFeatures`:
 
 ```xml
-<UnoFeatures>
-  SkiaRenderer;
-</UnoFeatures>
+<PropertyGroup>
+  <SkiaSharpVersion>4.153.1</SkiaSharpVersion>
+  <UnoFeatures>
+    SkiaRenderer;
+  </UnoFeatures>
+</PropertyGroup>
 ```
 
 On the Windows (WinAppSDK) head, also reference `SkiaSharp.Views.WinUI`, which the `SkiaRenderer` feature does not add there. `samples/SampleApp.Uno` shows the full project setup.
@@ -102,6 +107,7 @@ public class Person
 - [Project README](https://github.com/TheEightBot/KumikoUI#readme): column types, editing, validation, theming, fonts and more.
 - [Uno sample app](https://github.com/TheEightBot/KumikoUI/tree/main/samples/SampleApp.Uno).
 - [Uno user guide](https://github.com/TheEightBot/KumikoUI/blob/main/docs/uno/README.md): setup per head, keyboard and input methods, theming, fonts, images and known limits.
+- [Uno verification notes](https://github.com/TheEightBot/KumikoUI/blob/main/docs/uno/verification.md): what was run on each head, and the known issues.
 - [Changelog](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md) and [versioning policy](https://github.com/TheEightBot/KumikoUI/blob/main/docs/VERSIONING.md).
 - [Report an issue](https://github.com/TheEightBot/KumikoUI/issues).
 
