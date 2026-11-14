@@ -3,7 +3,7 @@
 Goal: a single Uno control, `KumikoUI.Uno.KumikoDataGrid`, that hosts an `SKXamlCanvas`, drives the
 reused `KumikoRenderer`, and exposes a `DependencyProperty` surface matching `KumikoUI.Maui`.
 
-Reference implementation to mirror: [`src/KumikoUI.Maui/KumikoDataGrid.cs`](../../src/KumikoUI.Maui/KumikoDataGrid.cs).
+Reference implementation to mirror: [`src/KumikoUI.Maui/KumikoDataGrid.cs`](../../../src/KumikoUI.Maui/KumikoDataGrid.cs).
 
 ---
 
@@ -89,7 +89,7 @@ is unnecessary here. Mirror MAUI instead: a thin layout host that owns one canva
 ## 3. The paint loop (reuse SkiaSharp + Core verbatim)
 
 The event and args are the **same types** MAUI uses, so the body is copied almost verbatim from
-[`KumikoDataGrid.OnPaintSurface`](../../src/KumikoUI.Maui/KumikoDataGrid.cs) (line ~610) — only DPI scaling
+[`KumikoDataGrid.OnPaintSurface`](../../../src/KumikoUI.Maui/KumikoDataGrid.cs) (line ~610) — only DPI scaling
 differs (see step 4).
 
 - [x] Implement (as shipped — adds `canvas.Save()/Restore()` around the scale and feeds the
@@ -113,7 +113,7 @@ differs (see step 4).
 
       // REUSED from KumikoUI.SkiaSharp; ResourceCache is a SkiaResourceCache the control keeps across
       // frames (disposed in OnUnloaded, created again on the next frame), #62.
-      using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
+      using var drawingContext = ResourceCache.CreateContext(canvas);
       _renderer.Render(                                            // REUSED from KumikoUI.Core
           drawingContext, _dataSource, _scroll, _selection, _style,
           _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
@@ -168,7 +168,7 @@ MAUI). Bridge the two with a single `canvas.Scale(scale)` where `scale = e.Info.
 Map each MAUI `BindableProperty` to a WinUI `DependencyProperty`. Same names, same defaults; the
 `PropertyChangedCallback` mutates Core state and calls `Invalidate()`.
 
-- [x] Register these (1:1 with [`KumikoDataGrid.cs`](../../src/KumikoUI.Maui/KumikoDataGrid.cs)). The
+- [x] Register these (1:1 with [`KumikoDataGrid.cs`](../../../src/KumikoUI.Maui/KumikoDataGrid.cs)). The
   "Core type / target" column records the exact CLR type each DP registers and what its callback
   mutates:
 
@@ -231,7 +231,7 @@ Map each MAUI `BindableProperty` to a WinUI `DependencyProperty`. Same names, sa
 ## 6. Public event parity
 
 - [x] Re-expose the same public events MAUI offers, forwarding from `InputController` / `_editSession`
-  (see [`KumikoDataGrid.cs`](../../src/KumikoUI.Maui/KumikoDataGrid.cs) lines ~1009–1037):
+  (see [`KumikoDataGrid.cs`](../../../src/KumikoUI.Maui/KumikoDataGrid.cs) lines ~1009–1037):
   `RowTapped`, `RowDoubleTapped` (→ `_inputController`), `CellBeginEdit`, `CellEndEdit`,
   `CellValueChanged` (→ `_editSession`). All five are implemented as add/remove forwarders, so the
   events fire as soon as Phase 04 wires the input/edit gesture paths.

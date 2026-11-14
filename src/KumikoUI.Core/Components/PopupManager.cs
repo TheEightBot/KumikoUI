@@ -18,7 +18,7 @@ namespace KumikoUI.Core.Components;
 /// selects, edits or sorts nothing (<see cref="PopupClosed"/> reports each closed popup). Wheel input over
 /// a popup goes to <see cref="DrawnComponent.OnScroll"/>.
 /// </remarks>
-public class PopupManager
+internal class PopupManager
 {
     private readonly List<PopupEntry> _popups = new();
     private int _nextZOrder = 1000;
@@ -35,6 +35,9 @@ public class PopupManager
 
     /// <summary>Are there any active popups?</summary>
     public bool HasActivePopups => _popups.Count > 0;
+
+    /// <summary>The popup shown last (drawn on top of the others), or null when none is open.</summary>
+    public DrawnComponent? TopPopup => _popups.Count > 0 ? _popups[^1].Component : null;
 
     /// <summary>
     /// Raised when the popup manager needs the hosting surface to redraw.
@@ -100,8 +103,20 @@ public class PopupManager
     public void DrawPopups(IDrawingContext ctx)
     {
         UpdateAnchors();
-        foreach (var entry in _popups.OrderBy(p => p.Component.ZOrder))
+        // Lowest ZOrder first, popups of equal ZOrder in the order they were shown. Picking the next one in turn
+        // (popups are few) allocates nothing, where sorting them with LINQ allocated on every frame.
+        int previous = -1;
+        for (int drawn = 0; drawn < _popups.Count; drawn++)
         {
+            int next = -1;
+            for (int i = 0; i < _popups.Count; i++)
+            {
+                if (previous >= 0 && !IsDrawnAfter(i, previous)) continue;
+                if (next < 0 || IsDrawnAfter(next, i)) next = i;
+            }
+
+            var entry = _popups[next];
+            previous = next;
             if (entry.Component.IsVisible)
             {
                 // One shadow per popup, drawn here; popups don't draw their own
@@ -327,10 +342,19 @@ public class PopupManager
         return PopupLayout.Clamp(bounds, viewport);
     }
 
-    private static void DrawPopupShadow(IDrawingContext ctx, KumikoRect bounds)
+    private readonly PaintMemo _paints = new();
+
+    /// <summary>Whether popup <paramref name="a"/> is drawn after popup <paramref name="b"/>: a higher ZOrder, or the same ZOrder and shown later.</summary>
+    private bool IsDrawnAfter(int a, int b)
+    {
+        int za = _popups[a].Component.ZOrder, zb = _popups[b].Component.ZOrder;
+        return za != zb ? za > zb : a > b;
+    }
+
+    private void DrawPopupShadow(IDrawingContext ctx, KumikoRect bounds)
     {
         var shadowColor = new KumikoColor(0, 0, 0, 40);
-        var shadowPaint = new KumikoPaint { Color = shadowColor, Style = PaintStyle.Fill };
+        var shadowPaint = _paints.Get(color: shadowColor);
         // Offset shadow
         ctx.FillRect(new KumikoRect(bounds.X + 2, bounds.Y + 2, bounds.Width, bounds.Height), shadowPaint);
     }

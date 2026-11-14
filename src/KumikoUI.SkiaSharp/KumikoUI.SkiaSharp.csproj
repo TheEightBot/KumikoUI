@@ -6,10 +6,12 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="KumikoUI.Core.Tests" />
+    <InternalsVisibleTo Include="KumikoUI.SkiaSharp.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.HarfBuzz" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -19,6 +21,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Public API is recorded in PublicAPI.*.txt files and checked by PublicApiAnalyzers (Directory.Build.targets, #54). -->
+    <KumikoTrackPublicApi>true</KumikoTrackPublicApi>
+    <!-- Package validation (#54); the baseline is described in Directory.Build.props. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <!-- The recommended code-analysis rules (#112); Directory.Build.props sets `latest` for tests and samples. -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
 
     <!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
     <PackageId>KumikoUI.SkiaSharp</PackageId>

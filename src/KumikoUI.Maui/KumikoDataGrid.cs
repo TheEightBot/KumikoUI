@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KumikoUI.Core;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
@@ -33,6 +34,8 @@ namespace KumikoUI.Maui;
 /// its XAML content is <see cref="Columns"/>.
 /// </remarks>
 [ContentProperty(nameof(Columns))]
+[SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "A control is not disposed by its owner; the grid releases its resources when its handler is disconnected or it is unloaded.")]
 public partial class KumikoDataGrid : ContentView
 {
     private readonly Grid _root = new();
@@ -117,7 +120,12 @@ public partial class KumikoDataGrid : ContentView
         // Image cells load through the grid's image cache (KumikoDataGrid.Images.cs)
         InitializeImages();
 
+        // Large sources sort, filter and group on a worker; the new view is swapped in on the UI thread, which raises
+        // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous. The property's
+        // default is not applied through its change callback, so give the source the default here.
+        _dataSource.BackgroundRebuildThreshold = KumikoSource.DefaultBackgroundRebuildThreshold;
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        _dataSource.ViewUpdated += OnDataSourceViewUpdated;
         // The source is the grid's own, so this never needs removing (KumikoDataGrid.Layout.cs)
         _dataSource.ColumnOrderChanged += OnDataSourceColumnOrderChanged;
 
@@ -129,9 +137,15 @@ public partial class KumikoDataGrid : ContentView
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
+        _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested; // KumikoDataGrid.Haptics.cs
 
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
+        _inputController.ScrollSettings = ScrollSettings.FromPreset(PlatformMomentumPreset); // KumikoDataGrid.Theming.cs
+
+        // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester, and draws
+        // the controller's hover and pressed feedback (#101).
+        _renderer.InputController = _inputController;
         InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;
         ConnectTheming();
@@ -141,6 +155,7 @@ public partial class KumikoDataGrid : ContentView
         _editSession.CellBeginEdit += OnEditSessionCellBeginEdit;
         _editSession.CellEndEdit += OnEditSessionCellEndEdit;
 
+        BindingContextChanged += OnGridBindingContextChanged; // KumikoDataGrid.ActionButtons.cs
 
 #if MACCATALYST || IOS
         // Set up native keyboard input and scroll gesture after the view is loaded
@@ -287,6 +302,31 @@ public partial class KumikoDataGrid : ContentView
             Dispatcher.Dispatch(InvalidateSurface);
         else
             InvalidateSurface();
+    }
+
+    // ── BackgroundRebuildThreshold ──
+
+    /// <summary>Identifies the <see cref="BackgroundRebuildThreshold"/> bindable property.</summary>
+    public static readonly BindableProperty BackgroundRebuildThresholdProperty = BindableProperty.Create(
+        nameof(BackgroundRebuildThreshold), typeof(int), typeof(KumikoDataGrid),
+        KumikoSource.DefaultBackgroundRebuildThreshold,
+        validateValue: (_, value) => (int)value >= 0,
+        propertyChanged: (b, _, n) => ((KumikoDataGrid)b)._dataSource.BackgroundRebuildThreshold = (int)n);
+
+    /// <summary>
+    /// The number of items from which sorting, filtering, grouping and summaries are rebuilt on a worker thread
+    /// instead of the UI thread (forwarded to <see cref="KumikoSource.BackgroundRebuildThreshold"/> of
+    /// <see cref="DataSource"/>). Default <see cref="KumikoSource.DefaultBackgroundRebuildThreshold"/> (10,000).
+    /// Below it rebuilds are synchronous; <see cref="int.MaxValue"/> keeps every rebuild synchronous. During a
+    /// background rebuild the grid keeps drawing the current rows, then draws the new view when it is swapped in;
+    /// selection, the current cell and an open edit follow their items. Item properties, comparers, the filter
+    /// predicate and group selectors must be safe to read from a worker while a rebuild runs.
+    /// A negative value is rejected: the property keeps its value.
+    /// </summary>
+    public int BackgroundRebuildThreshold
+    {
+        get => (int)GetValue(BackgroundRebuildThresholdProperty);
+        set => SetValue(BackgroundRebuildThresholdProperty, value);
     }
 
     // ── FrozenRowCount ──
@@ -582,6 +622,7 @@ public partial class KumikoDataGrid : ContentView
             if (IsObservingCollections)
                 newCollection.CollectionChanged += OnColumnsCollectionChanged;
             _dataSource.SetColumns(newCollection);
+            SyncActionButtonDefinitions();
         }
         else
         {
@@ -595,6 +636,7 @@ public partial class KumikoDataGrid : ContentView
     {
         if (_syncingFromSource) return; // the grid is copying the source's column order in (KumikoDataGrid.Layout.cs)
         _dataSource.SetColumns(Columns);
+        SyncActionButtonDefinitions();
         InvalidateSurface();
     }
 
@@ -903,7 +945,7 @@ public partial class KumikoDataGrid : ContentView
         // Use a temporary SKBitmap/Canvas for text measurement
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
-        using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
+        using var measureCtx = ResourceCache.CreateContext(canvas);
 
         // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
         // Auto column becomes Fixed at the fitted width so it keeps it.
@@ -920,13 +962,17 @@ public partial class KumikoDataGrid : ContentView
             UpdateAccessibilityHint();
     }
 
-    private void OnInputControllerNeedsRedraw()
+    // A background rebuild's view was swapped in (#254): draw it. The scroll offset is kept and clamped to the new
+    // content on the next frame, so a re-sort shows the same scroll position in the new order.
+    private void OnDataSourceViewUpdated(object? sender, EventArgs e) => RequestRedraw();
+
+    private void OnInputControllerNeedsRedraw(object? sender, EventArgs e)
     {
         RequestRedraw();
         SyncNativeTextInput(); // an editor or the filter search box may have opened or closed
     }
 
-    private void OnEditSessionNeedsRedraw()
+    private void OnEditSessionNeedsRedraw(object? sender, EventArgs e)
     {
         RequestRedraw();
         SyncNativeTextInput();
@@ -937,7 +983,7 @@ public partial class KumikoDataGrid : ContentView
     }
 
     // An action button's command raised CanExecuteChanged: that can happen on any thread.
-    private void OnRendererRedrawRequested()
+    private void OnRendererRedrawRequested(object? sender, EventArgs e)
     {
         if (Dispatcher.IsDispatchRequired)
             Dispatcher.Dispatch(RequestRedraw);
@@ -956,15 +1002,15 @@ public partial class KumikoDataGrid : ContentView
         }
     }
 
-    private void OnKeyboardFocusRequested() => FocusKeyboardInput();
+    private void OnKeyboardFocusRequested(object? sender, EventArgs e) => FocusKeyboardInput();
 
-    private void OnFilterPopupOpened()
+    private void OnFilterPopupOpened(object? sender, EventArgs e)
     {
         _filterPopupActive = true;
         StartCursorBlinkTimer();
     }
 
-    private void OnFilterPopupClosed()
+    private void OnFilterPopupClosed(object? sender, EventArgs e)
     {
         _filterPopupActive = false;
         StopCursorBlinkTimer();
@@ -1003,6 +1049,7 @@ public partial class KumikoDataGrid : ContentView
 
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
+        _dataSource.ViewUpdated -= OnDataSourceViewUpdated;
         _inputController.NeedsRedraw -= OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested -= OnRendererRedrawRequested;
         _renderer.Dispose();
@@ -1011,6 +1058,7 @@ public partial class KumikoDataGrid : ContentView
         _inputController.KeyboardFocusRequested -= OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened -= OnFilterPopupOpened;
         _inputController.FilterPopupClosed -= OnFilterPopupClosed;
+        _inputController.HapticFeedbackRequested -= OnHapticFeedbackRequested;
         _inputController.CursorChanged -= OnInputControllerCursorChanged;
         _editSession.NeedsRedraw -= OnEditSessionNeedsRedraw;
         _editSession.CellBeginEdit -= OnEditSessionCellBeginEdit;
@@ -1036,6 +1084,8 @@ public partial class KumikoDataGrid : ContentView
         _selectionBinder.Detach(); // the app's SelectedItems list, when it supplied one
 
 #if MACCATALYST || IOS
+        StopObservingKeyboardFrame();
+
         // Remove native keyboard input
         if (_nativeKeyInput != null)
         {
@@ -1058,9 +1108,7 @@ public partial class KumikoDataGrid : ContentView
                 platformView.RemoveGestureRecognizer(_nativeSecondaryClickGesture);
             _nativeSecondaryClickGesture = null;
         }
-#if MACCATALYST
         TeardownNativeHover(Handler?.PlatformView as UIView);
-#endif
 
         // Unsubscribe handler changed (prevent duplicate native setup on re-attach)
         this.HandlerChanged -= OnHandlerChanged_SetupNativeKeyboard;
@@ -1081,6 +1129,7 @@ public partial class KumikoDataGrid : ContentView
     {
         ConnectTheming();
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        _dataSource.ViewUpdated += OnDataSourceViewUpdated;
         // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
         _dataSource.Attach();
         ResubscribeObservedCollections();
@@ -1091,6 +1140,7 @@ public partial class KumikoDataGrid : ContentView
         _inputController.AutoFitColumnRequested += OnAutoFitColumnRequested;
         _inputController.KeyboardFocusRequested += OnKeyboardFocusRequested;
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
+        _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
         _editSession.NeedsRedraw += OnEditSessionNeedsRedraw;
@@ -1243,16 +1293,15 @@ public partial class KumikoDataGrid : ContentView
             _nativeKeyInput = CreateNativeTextInput(); // KumikoDataGrid.TextInput.cs
             platformView.AddSubview(_nativeKeyInput);
             _useNativeKeyInput = true;
+            ObserveKeyboardFrame(); // keeps the edited cell above the on-screen keyboard (#258)
         }
     }
 
     private void OnHandlerChanged_SetupNativeScroll(object? sender, EventArgs e)
     {
-#if MACCATALYST
-        // Mouse hover (cursor feedback): SKCanvasView only reports touches on Catalyst
+        // Mouse and trackpad hover (hover highlights; the cursor on Catalyst): SKCanvasView only reports touches
         if (Handler?.PlatformView is UIView hoverView)
             SetupNativeHover(hoverView);
-#endif
 
         // Guard against duplicate setup
         if (_nativeScrollGesture != null) return;

@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Editing;
 /// <summary>
 /// Event args for CellBeginEdit. Set Cancel=true to prevent editing.
 /// </summary>
-public class CellBeginEditEventArgs : EventArgs
+public sealed class CellBeginEditEventArgs : EventArgs
 {
     /// <summary>Zero-based row index of the cell.</summary>
     public int RowIndex { get; }
@@ -24,14 +24,14 @@ public class CellBeginEditEventArgs : EventArgs
     public bool Cancel { get; set; }
 
     /// <summary>Initializes the event data.</summary>
-    /// <param name="row">Zero-based row index of the cell.</param>
-    /// <param name="col">Zero-based column index of the cell.</param>
+    /// <param name="rowIndex">Zero-based row index of the cell.</param>
+    /// <param name="columnIndex">Zero-based column index of the cell.</param>
     /// <param name="column">Column definition for the cell.</param>
     /// <param name="value">Current value of the cell before editing.</param>
-    public CellBeginEditEventArgs(int row, int col, KumikoColumn column, object? value)
+    public CellBeginEditEventArgs(int rowIndex, int columnIndex, KumikoColumn column, object? value)
     {
-        RowIndex = row;
-        ColumnIndex = col;
+        RowIndex = rowIndex;
+        ColumnIndex = columnIndex;
         Column = column;
         CellValue = value;
     }

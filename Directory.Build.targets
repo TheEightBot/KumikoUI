@@ -22,6 +22,47 @@
     <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1570;CS1571;CS1572;CS1573;CS1574;CS1580;CS1581;CS1584;CS1587;CS1589;CS1590;CS1592;CS1658;CS1710;CS1711;CS1712;CS1723;CS1734</WarningsAsErrors>
   </PropertyGroup>
   <!--
+    Public API tracking for the four shipped libraries (those that set KumikoTrackPublicApi, #54). The analyzer compares
+    the public surface with the PublicAPI.*.txt files next to the project:
+      - PublicAPI.Shipped.txt / PublicAPI.Unshipped.txt hold the members present in every target framework.
+      - PublicAPI/<TargetFramework>/PublicAPI.Shipped.txt and .Unshipped.txt (optional) hold members only that target
+        framework has, such as the platform-specific handlers of KumikoUI.Maui and KumikoUI.Uno. The analyzer merges the
+        files that apply to the target framework being built.
+    RS0016 (public API not recorded) and RS0017 (recorded API no longer exists) are errors, so an API change that is not
+    written down fails the build. Nothing has shipped as a stable release yet, so every Shipped file is empty and the whole
+    surface lives in the Unshipped files; at the first stable release, move the Unshipped content into Shipped (CONTRIBUTING.md).
+  -->
+  <ItemGroup Condition="'$(KumikoTrackPublicApi)' == 'true'">
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+    <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Shipped.txt" Condition="Exists('PublicAPI/$(TargetFramework)/PublicAPI.Shipped.txt')" />
+    <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt" Condition="Exists('PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt')" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(KumikoTrackPublicApi)' == 'true'">
+    <!--
+      RS0026 (only one overload of a method may have optional parameters) and RS0027 (that overload must have the most
+      parameters) are errors too (#112): an overload set that breaks them cannot take a new optional parameter later without
+      a source or binary break.
+    -->
+    <WarningsAsErrors>$(WarningsAsErrors);RS0016;RS0017;RS0025;RS0026;RS0027;RS0036;RS0037</WarningsAsErrors>
+  </PropertyGroup>
+  <!--
+    The KumikoUI packages ship in lockstep (one MinVer version), and the hosts call KumikoUI.Core internals through
+    InternalsVisibleTo (#112, decision D3). Pin each package's dependency on another KumikoUI package to its exact
+    version ([1.0.0], not >= 1.0.0), so a mismatched set fails at restore instead of with MissingMethodException.
+  -->
+  <Target Name="KumikoPinSiblingPackageVersions"
+          AfterTargets="_GetProjectReferenceVersions"
+          Condition="'$(KumikoTrackPublicApi)' == 'true'">
+    <ItemGroup>
+      <_KumikoPinnedReferences Include="@(_ProjectReferencesWithVersions)"
+                               ProjectVersion="[%(_ProjectReferencesWithVersions.ProjectVersion)]" />
+      <_ProjectReferencesWithVersions Remove="@(_ProjectReferencesWithVersions)" />
+      <_ProjectReferencesWithVersions Include="@(_KumikoPinnedReferences)" />
+    </ItemGroup>
+  </Target>
+  <!--
     Apps in this repository (samples, eng/AotSmoke) reference KumikoUI.Core by project, so the targets the
     NuGet package delivers through buildTransitive are not applied to them. Import the same file so a
     PublishAot or TrimMode=full publish switches the reflection fallback off, as it does for package consumers (#76).

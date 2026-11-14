@@ -133,4 +133,20 @@ public readonly struct CellRenderContext
     /// renderer that draws images from cell values resolves them through it, as <see cref="ImageCellRenderer"/> does.
     /// </summary>
     public IKumikoImageResolver? ImageResolver { get; }
+
+    /// <summary>
+    /// Where the pointer is, in the same coordinates as <see cref="Bounds"/>, when it is over a control of this cell
+    /// that a click acts on (an enabled action button, a check box that can be toggled); null otherwise, which is
+    /// every other cell and every cell under a finger that is not pressing. A renderer draws hover feedback on the
+    /// control under it with <see cref="PaintCache.HoverOverlay"/>, or <see cref="PaintCache.PressedOverlay"/> when
+    /// <see cref="IsPointerPressed"/>. The grid sets it only on the cell it reports through
+    /// <see cref="IInteractiveCellRenderer.GetControlIndexAt"/> (or a Boolean cell's check box).
+    /// </summary>
+    public KumikoPoint? PointerPosition { get; init; }
+
+    /// <summary>
+    /// Whether the control under <see cref="PointerPosition"/> is being pressed (a press started on it and the pointer
+    /// is still over it). False when <see cref="PointerPosition"/> is null.
+    /// </summary>
+    public bool IsPointerPressed { get; init; }
 }

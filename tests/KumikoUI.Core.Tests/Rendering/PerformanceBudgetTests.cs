@@ -18,9 +18,9 @@ public class PerformanceBudgetTests
     // Ceilings sit well above what the operations allocate today; they catch a regression (a per-row allocation
     // or a boxed comparison on the hot path), not a few percent of drift.
     private const long MiB = 1024 * 1024;
-    private const long SortBudget = 160 * MiB;          // measured ~90 MB (int, date: ~900 B per row)
+    private const long SortBudget = 8 * MiB;            // measured 3.6 MB int/date, 1.2 MB string (each sort value read once, #254)
     private const long FilterBudget = 5 * MiB;          // measured ~2.4 MB numeric (no display text for conditions, #69), under 1 KB text
-    private const long GroupBudget = 20 * MiB;          // measured ~9-10.5 MB (struct rows, single-pass summaries, #69)
+    private const long GroupBudget = 12 * MiB;          // measured ~5.2 MB here, 10.4 MB in the benchmark (one shared index buffer, #254)
     private const long IncrementalBudget = 4 * 1024;    // measured 432 B
 
     public sealed class Row

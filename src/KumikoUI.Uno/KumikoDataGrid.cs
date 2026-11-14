@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -32,6 +33,10 @@ namespace KumikoUI.Uno;
 /// <c>Input/InputMapping.cs</c>.
 /// </remarks>
 [Microsoft.UI.Xaml.Markup.ContentProperty(Name = nameof(Columns))]
+[SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "A control is not disposed by its owner; the grid releases its resources when its handler is disconnected or it is unloaded.")]
+[SuppressMessage("Design", "CA1010:Generic interface should also be implemented",
+    Justification = "Inherited from the Uno framework element, which enumerates its children; not part of the grid's own API.")]
 public partial class KumikoDataGrid : UserControl
 {
     private readonly Grid _root = new();
@@ -72,6 +77,7 @@ public partial class KumikoDataGrid : UserControl
         // The hidden TextBox proxy and the text-input adapter (KumikoDataGrid.Editing.cs).
         _textInput = SetupInputProxy();
         _syncTextInput = SyncTextInputQueued;
+        _scrollAboveKeyboard = ScrollEditedCellAboveKeyboard;
 
         // The content is the grid's own: replacing it would detach the canvas
         RegisterPropertyChangedCallback(ContentProperty, OnContentReplaced);
@@ -90,8 +96,18 @@ public partial class KumikoDataGrid : UserControl
         // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
         InitializeAccessibility();
 
+        // Large sources sort, filter and group on a worker; the new view is swapped in on the UI thread, which raises
+        // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous. Single-threaded
+        // WebAssembly has no worker to build on, so it stays synchronous there.
+        // The property's default is not applied through its change callback, so give the source the default here.
+        if (OperatingSystem.IsBrowser())
+            BackgroundRebuildThreshold = int.MaxValue;
+        else
+            _dataSource.BackgroundRebuildThreshold = KumikoSource.DefaultBackgroundRebuildThreshold;
+
         // Core "invalidate" signals → request a single canvas repaint.
         _dataSource.ViewChanged += OnDataSourceViewChanged;
+        _dataSource.ViewUpdated += OnDataSourceViewUpdated;
         // The source is the grid's own, so this never needs removing (KumikoDataGrid.Layout.cs)
         _dataSource.ColumnOrderChanged += OnDataSourceColumnOrderChanged;
 
@@ -103,12 +119,18 @@ public partial class KumikoDataGrid : UserControl
         _inputController.FilterPopupOpened += OnFilterPopupOpened;
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
+        _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested; // KumikoDataGrid.Haptics.cs
 
         // IsEnabled=false stops all input in Core (KumikoDataGrid.Input.cs). Own event: wired once, no leak.
         IsEnabledChanged += OnIsEnabledChanged;
 
         // Wire edit session to input controller and style (mirrors MAUI).
         _inputController.EditSession = _editSession;
+        _inputController.ScrollSettings = ScrollSettings.FromPreset(PlatformMomentumPreset); // KumikoDataGrid.Theming.cs
+
+        // The renderer publishes what it measured while drawing (group chips) to the controller's hit tester, and draws
+        // the controller's hover and pressed feedback (#101).
+        _renderer.InputController = _inputController;
         InitializeClipboard(); // KumikoDataGrid.Clipboard.cs
         _editSession.Style = _style;
         ConnectTheming();
@@ -160,7 +182,7 @@ public partial class KumikoDataGrid : UserControl
         // Use a throwaway 1x1 Skia surface for text measurement (mirrors MAUI).
         using var bitmap = new SKBitmap(1, 1);
         using var canvas = new SKCanvas(bitmap);
-        using var measureCtx = new SkiaDrawingContext(canvas, ResourceCache);
+        using var measureCtx = ResourceCache.CreateContext(canvas);
 
         // Samples the rows on screen plus the first and last rows of the view, never every row (#24); a Star or
         // Auto column becomes Fixed at the fitted width so it keeps it.
@@ -176,10 +198,10 @@ public partial class KumikoDataGrid : UserControl
     /// active text input into the hidden TextBox proxy and focuses it — on iOS/Android that summons the
     /// soft keyboard; on every head it routes subsequent keys and text to the proxy (which forwards to Core).
     /// </summary>
-    private void OnKeyboardFocusRequested() => FocusKeyboardInput();
+    private void OnKeyboardFocusRequested(object? sender, EventArgs e) => FocusKeyboardInput();
 
     /// <summary>A filter popup opened: start the cursor-blink repaint timer so its search caret blinks.</summary>
-    private void OnFilterPopupOpened()
+    private void OnFilterPopupOpened(object? sender, EventArgs e)
     {
         _filterPopupActive = true;
         StartCursorBlinkTimer();
@@ -187,7 +209,7 @@ public partial class KumikoDataGrid : UserControl
     }
 
     /// <summary>The filter popup closed: stop the cursor-blink timer (unless a cell edit is still active).</summary>
-    private void OnFilterPopupClosed()
+    private void OnFilterPopupClosed(object? sender, EventArgs e)
     {
         _filterPopupActive = false;
         if (!_editSession.IsEditing)
@@ -218,6 +240,7 @@ public partial class KumikoDataGrid : UserControl
     private void OnEditSessionCellEndEdit(object? sender, CellEndEditEventArgs e)
     {
         _selection.IsEditing = false;
+        QueueKeyboardInsetRelease();
         if (!_filterPopupActive)
             StopCursorBlinkTimer();
         if (_lastPointerWasTouch)

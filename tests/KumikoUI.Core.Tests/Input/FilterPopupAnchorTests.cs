@@ -28,8 +28,9 @@ public class FilterPopupAnchorTests
     private static float OpenPopupX(InputGrid g, KumikoColumn column)
     {
         float x = HeaderX(g, column);
-        // Click the column's filter icon (12 px wide, 20 px inside its right edge) and read where the popup landed
-        float iconX = x + column.Width - 20 - 6;
+        // Click the middle of the column's filter icon (10 px wide, the cell padding inside its right edge) and read where
+        // the popup landed
+        float iconX = x + column.Width - g.Style.CellPadding - 5;
         g.Tap(iconX, InputGrid.HeaderY);
         Assert.True(g.Input.PopupManager.HasActivePopups);
         var popup = g.Input.PopupManager.HitTest(x + 2, g.Style.HeaderHeight + 2);

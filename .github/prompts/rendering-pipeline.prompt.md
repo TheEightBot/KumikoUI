@@ -6,32 +6,38 @@ description: Debug, optimize, or extend the KumikoUI rendering pipeline
 # Rendering Pipeline — Debug and Extend
 
 This prompt helps with understanding, debugging, or extending the KumikoUI canvas
-rendering pipeline.
+rendering pipeline. Read `.github/instructions/rendering.instructions.md` and `docs/RENDERING.md` too; the code in
+`src/KumikoUI.Core/KumikoRenderer.cs` (`RenderFrame`) is the truth when they differ.
 
 ---
 
 ## Pipeline overview
 
 ```
-KumikoDataGrid.OnPaintSurface
+host paint (MAUI: KumikoDataGrid.PaintSurface; Uno: the surface's render callback)
+  │   ResourceCache.CreateContext(canvas)        — a SkiaDrawingContext for this frame
   │
-  └─ KumikoRenderer.Render(IDrawingContext, KumikoSource, KumikoLayoutEngine, ...)
+  └─ KumikoRenderer.RenderFrame(ctx, source, scroll, selection, style, drag state, editSession, popupManager)
         │
-        ├─ DrawHeaderRow(...)         — column headers, sort indicators, filter icons
-        ├─ DrawFrozenRows(...)         — frozen-top data rows
-        ├─ DrawScrollableArea(...)     — virtual row loop (only visible rows rendered)
-        │     └─ DrawDataRow(row, ...)
-        │           └─ DrawCell(cell, ICellRenderer, ...)
-        ├─ DrawFrozenColumns(...)      — left and right frozen column overlays
-        ├─ DrawGroupHeaders(...)       — expandable group header rows
-        ├─ DrawSummaryRows(...)        — table-level summary rows
-        ├─ DrawGroupSummaryRows(...)   — per-group summary rows
-        ├─ DrawActiveEditor(...)       — overlays the active DrawnComponent editor
-        ├─ DrawScrollbars(...)         — canvas-drawn scrollbars
-        └─ DrawRowDragOverlay(...)     — drag-reorder ghost row
+        ├─ layout        — GetVisibleRowRangeWithOffset, ComputeColumnWidths, FrozenPanes.Resolve,
+        │                  ScrollState.ClampOffset, PaintCache.Update, CaptureFeedback
+        ├─ FillRect(background), DrawGroupingPanel
+        ├─ pass 1  scrolling columns:   DrawPaneRows → DrawHeader → DrawSortIndicators → DrawFilterIcons → DrawFrozenRows
+        │            (DrawPaneRows = DrawRowBand: DrawRows → DrawCurrentCellBorder → DrawGridLines)
+        ├─ pass 2  left-frozen columns:  the same, in its clip; DrawFrozenColumnDivider
+        ├─ pass 3  right-frozen columns: DrawRightFrozenBackground, the same; DrawRightFrozenColumnDivider
+        ├─ DrawFrozenRowDivider
+        ├─ DrawTableSummaryRows        — top, and bottom summaries that scroll
+        ├─ DrawGroupHeaderRow / DrawGroupSummaryRow — full-width rows
+        ├─ sticky group headers        — DrawGroupHeaderRow for each pinned header
+        ├─ DrawDragHandleColumn
+        ├─ DrawTableSummaryRows        — the pinned footer (PinBottomSummaryRows)
+        ├─ DrawColumnDragOverlay, DrawRowDragOverlay
+        └─ EditSession.PlaceEditor + DrawEditor, PopupManager.DrawPopups, the frame stats overlay
 ```
 
-All draw calls go through `IDrawingContext` → `SkiaDrawingContext` → `SKCanvas`.
+All draw calls go through `IDrawingContext` → `SkiaDrawingContext` → `SKCanvas`. Cells are drawn by an `ICellRenderer` that
+receives a `CellRenderContext`.
 
 ---
 
@@ -39,48 +45,45 @@ All draw calls go through `IDrawingContext` → `SkiaDrawingContext` → `SKCanv
 
 ### Allocations in the hot path
 
-KumikoUI avoids per-frame heap allocations. When adding render code:
+KumikoUI avoids per-frame heap allocations (`RenderAllocationTests` and `SkiaAllocationTests` assert 0 bytes). When adding
+render code:
 
 - **Use `for` loops** over `foreach` on `List<>` (avoids enumerator boxing).
 - **Use `PopulateVisible*` methods** on `KumikoLayoutEngine` (write into pre-allocated `List<>`).
-- **Do NOT use LINQ** (`.Where(...)`, `.Select(...)`) inside `Render(...)` or any method
-  it calls.
-- **Do NOT `new` SkiaSharp objects** (`SKPaint`, `SKFont`, `SKPath`) inside the render loop.
-  `SkiaDrawingContext` caches them keyed by `PaintKey` / `FontKey` structs.
+- **Do NOT use LINQ** (`.Where(...)`, `.Select(...)`) inside `RenderFrame` or any method it calls.
+- **Do NOT `new` SkiaSharp objects** (`SKPaint`, `SKFont`, `SKPath`) in Core, or inside the render loop. `SkiaDrawingContext`
+  takes them from the host's `SkiaResourceCache`, keyed by value structs.
+- **Do NOT format strings or box values per frame**: cells read `KumikoSource.GetCachedCellText`.
+- **Do NOT create a closure or a `new KumikoPaint`** in a draw method; reuse a field or a `PaintCache` paint.
 
 ### `PaintCache`
 
-`KumikoUI.Core.Rendering.PaintCache` pre-builds `KumikoPaint` instances from `KumikoStyle`
-at theme-change time. Prefer `paintCache.CellPaint(isSelected, style)` over
-constructing new `KumikoPaint` objects inline.
+`KumikoUI.Core.Rendering.PaintCache` pre-builds `KumikoPaint` instances from `KumikoStyle` and rebuilds them only when the
+style instance or its `KumikoStyle.Version` changes. Prefer `PaintCache.CellText`, `PaintCache.GridLine` and the others, or
+`PaintCache.CellTextPaint(cellStyle, style)` for a per-cell override, over constructing paints inline.
 
 ---
 
 ## Adding a new draw pass
 
 1. Add a private `Draw{FeatureName}(IDrawingContext ctx, ...)` method to `KumikoRenderer`.
-2. Call it from `Render(...)` at the correct z-order position (before editor overlay).
+2. Call it from `RenderFrame` at the correct z-order position (before the editor overlay and popups).
 3. Use `ctx.Save()` / `ctx.Restore()` around any `ctx.ClipRect()` or `ctx.Translate()`.
-4. Use `style.*` for all colors and sizes — never hardcode.
+4. Use `style.*` (through `PaintCache`) for all colors and sizes: never hardcode.
+5. If the pass draws something the pointer can hit, give it the same geometry in `KumikoHitTester` (share the numbers through
+   `InteractionGeometry`; what the frame measured goes to `RenderedHitRegions`) and add a test with `RenderHarness`.
 
 Template:
 ```csharp
 private void Draw{FeatureName}(
     IDrawingContext ctx,
     KumikoSource source,
-    KumikoLayoutEngine layout,
     KumikoStyle style,
     ScrollState scroll)
 {
     ctx.Save();
-    try
-    {
-        // ... drawing using ctx.Fill/DrawRect, ctx.DrawText, etc.
-    }
-    finally
-    {
-        ctx.Restore();
-    }
+    // ... drawing using ctx.FillRect / DrawRect / DrawText, with paints from _paintCache
+    ctx.Restore();
 }
 ```
 
@@ -90,14 +93,15 @@ private void Draw{FeatureName}(
 
 `SkiaDrawingContext` is in `KumikoUI.SkiaSharp`. It wraps `SKCanvas` and adds:
 
-- **Long-lived resource cache** — paints, fonts and typefaces come from a `SkiaResourceCache` the host
-  control owns and passes in every frame (`new SkiaDrawingContext(canvas, cache)`); bounded (LRU)
-- **Frame end** — disposing the context ends the frame and keeps the cached objects; the host disposes
+- **Long-lived resource cache**: paints, fonts and typefaces come from a `SkiaResourceCache` the host
+  control owns; a host starts every frame with `cache.CreateContext(canvas)` (bounded LRU, allocation-free)
+- **Text caches and font fallback**: measurements, laid-out lines and per-run typefaces are cached; emoji sequences are shaped with HarfBuzz
+- **Frame end**: disposing the context ends the frame and keeps the cached objects; the host disposes
   the cache on teardown
 
 If you need a SkiaSharp feature not exposed by `IDrawingContext`, **add it to the
 `IDrawingContext` interface first** (in `KumikoUI.Core`), then implement it in
-`SkiaDrawingContext` (in `KumikoUI.SkiaSharp`).
+`SkiaDrawingContext` (in `KumikoUI.SkiaSharp`), and in the two test doubles (`NoOpDrawingContext`, `RecordingDrawingContext`).
 
 Never reach directly into `SkiaDrawingContext` from Core renderer code.
 
@@ -105,31 +109,34 @@ Never reach directly into `SkiaDrawingContext` from Core renderer code.
 
 ## Hit testing
 
-`HitTesting` (in `KumikoUI.Core.Input`) converts a pointer position to a semantic
-grid location:
+`KumikoHitTester` (in `KumikoUI.Core.Input`) converts a pointer position to a semantic
+grid location, with the same pane and offset logic the renderer uses:
 
 ```csharp
-var hit = HitTesting.HitTest(
-    pointerX, pointerY,
-    layout, source, style, scroll,
-    viewportWidth, viewportHeight);
+var hit = hitTester.HitTest(
+    viewportX, viewportY,
+    scroll, style, source.DisplayColumns, source.RowCount, source, deviceType);
 
 switch (hit.Region)
 {
     case HitRegion.Cell:
-        // hit.Row, hit.Column
+        // hit.RowIndex, hit.ColumnIndex, hit.Column
         break;
-    case HitRegion.Header:
+    case HitRegion.HeaderCell:
         // hit.Column
         break;
-    case HitRegion.GroupHeader:
-        // hit.FlatRowIndex
+    case HitRegion.GroupHeaderRow:
+        // hit.RowIndex
         break;
-    case HitRegion.ColumnResizeHandle:
+    case HitRegion.HeaderResizeGrip:
         // hit.Column
         break;
 }
 ```
+
+The device type (`KumikoPointerDeviceType`) widens the targets for a finger. Regions: `HitRegion.None`, `Cell`, `HeaderCell`,
+`HeaderResizeGrip`, `HeaderFilterIcon`, `RowDragHandle`, `EmptyArea`, `GroupHeaderRow`, `GroupChevron`, `GroupPanelChip`,
+`GroupPanelChipRemove`, `GroupSummaryRow`, `TableSummaryRow`.
 
 ---
 
@@ -137,8 +144,10 @@ switch (hit.Region)
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Frozen columns show wrong content | Scrollable x-offset applied to frozen draw pass | Ensure frozen pass does NOT offset by `scroll.HorizontalOffset` |
-| Clipping bleeds outside cell | Missing `ctx.ClipRect(cellRect)` before text draw | Wrap text draw in `Save`/`ClipRect(cellRect)`/`Restore` |
-| Editor flickers or paints behind data | `DrawActiveEditor` called before data rows | Move `DrawActiveEditor` call to after all data/group passes |
-| Selection highlight not updating | `InvalidateSurface()` not called after `KumikoSelectionModel` change | Subscribe to `KumikoSelectionModel.Changed` and call `InvalidateSurface()` |
-| Font size not scaling with device | DPI scaling not applied | Multiply `KumikoFont.Size` by `SKCanvasView.CanvasSize / DeviceSize` ratio |
+| Frozen columns show wrong content | The scrolling x-offset applied to a frozen pane | Frozen passes position columns with `ColumnScreenX` and the pane; do not add `ScrollState.OffsetX` |
+| Clipping bleeds outside cell | Missing `ctx.ClipRect(cellRect)` before text draw | Wrap the draw in `Save`/`ClipRect(cellRect)`/`Restore`, or use `DrawTextInRect` with `clip: true` |
+| Editor flickers or paints behind data | The editor drawn before the data passes | The editor is drawn by `EditSession.DrawEditor` after the last pass; keep new passes before it |
+| A feature draws in the wrong place but clicks hit elsewhere | Draw and hit-test geometry diverged | Share the numbers through `InteractionGeometry`; test with `ExactHitRegionTests` |
+| Selection highlight not updating | A redraw was not requested after a `KumikoSelectionModel` change | The host repaints on the model's `SelectionChanged` and `CurrentCellChanged`; a new state needs the same signal (`RequestRedraw` in the host) |
+| Frame allocates | A `new`, LINQ, closure, boxing or string in a draw path | Find it with `RenderAllocationTests`; use a field, a `PaintCache` paint or the source's text cache |
+| Font size not scaling with device | Scale not applied | The host draws in logical units and scales the canvas by the display scale (`KumikoDataGrid.Rendering.cs`); do not scale in Core |

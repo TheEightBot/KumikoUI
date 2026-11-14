@@ -10,8 +10,10 @@ namespace KumikoUI.Core.Editing;
 /// Manages inline cell editing. Tracks the active edit session,
 /// creates/positions editors, and handles commit/cancel.
 /// </summary>
-public class EditSession
+public sealed class EditSession
 {
+    private readonly PaintMemo _paints = new();
+
     private readonly DrawnFocusManager _focusManager = new();
 
     // Edit state. The edit belongs to an item and a column; _editCell is where they are shown now, kept
@@ -104,9 +106,28 @@ public class EditSession
 
     /// <summary>
     /// The current grid style. When set, newly created editors will have
-    /// their theme colors applied automatically.
+    /// their theme colors applied automatically; assigning a style while an editor is open re-themes it at
+    /// once (a theme switch), keeping its text, selection and focus.
     /// </summary>
-    public KumikoStyle? Style { get; set; }
+    public KumikoStyle? Style
+    {
+        get => _style;
+        set
+        {
+            _style = value;
+            if (_isEditing && _activeEditor != null && value != null)
+            {
+                CellEditorFactory.ApplyThemeToEditor(_activeEditor, value);
+                if (_editItem != null && _editColumn != null &&
+                    (value.CellStyleResolver?.Invoke(_editItem, _editColumn)?.Font ?? _editColumn.CellStyle?.Font) is { } font)
+                    CellEditorFactory.ApplyFontToEditor(_activeEditor, font);
+                _activeEditor.InvalidateVisual();
+                NeedsRedraw?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    private KumikoStyle? _style;
 
     /// <summary>
     /// The visible area of the grid, in the coordinates of the cell bounds passed to <see cref="BeginEdit"/>.
@@ -128,7 +149,7 @@ public class EditSession
     public event EventHandler<CellValueChangedEventArgs>? CellValueChanged;
 
     /// <summary>Raised when the editor component needs to be redrawn.</summary>
-    public event Action? NeedsRedraw;
+    public event EventHandler? NeedsRedraw;
 
     /// <summary>
     /// Raised when a commit produces an error, a warning or an informational message, with the message
@@ -218,8 +239,8 @@ public class EditSession
 
             // The font the cell is drawn with: a dynamic style, the column's style, the grid's cell font
             var cellFont = Style.CellStyleResolver?.Invoke(item, column)?.Font ?? column.CellStyle?.Font;
-            if (cellFont != null)
-                CellEditorFactory.ApplyFontToEditor(_activeEditor, cellFont);
+            if (cellFont is { } font)
+                CellEditorFactory.ApplyFontToEditor(_activeEditor, font);
         }
 
         CellEditorFactory.ApplyViewportToEditor(_activeEditor, Viewport);
@@ -237,7 +258,7 @@ public class EditSession
         _focusManager.Register(_activeEditor);
         _focusManager.SetFocus(_activeEditor);
 
-        NeedsRedraw?.Invoke();
+        NeedsRedraw?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
@@ -368,7 +389,7 @@ public class EditSession
         CurrentValidation = result;
         ValidationFailed?.Invoke(this, new CellValidationEventArgs(
             _editCell.Row, _editCell.Column, _editColumn!, _editItem!, value, result, committed: false));
-        NeedsRedraw?.Invoke();
+        NeedsRedraw?.Invoke(this, EventArgs.Empty);
         return false;
     }
 
@@ -426,34 +447,38 @@ public class EditSession
     /// reported and the value kept. An edit that is open is committed first, and the toggle is skipped when
     /// that commit is refused.
     /// </summary>
-    public void ToggleBooleanCell(int row, int col, KumikoColumn column, KumikoSource dataSource)
+    /// <param name="rowIndex">The view row of the cell.</param>
+    /// <param name="columnIndex">The index of the cell's column.</param>
+    /// <param name="column">The cell's column.</param>
+    /// <param name="dataSource">The source the row belongs to.</param>
+    public void ToggleBooleanCell(int rowIndex, int columnIndex, KumikoColumn column, KumikoSource dataSource)
     {
         if (column.IsReadOnly) return;
-        if (row < 0 || row >= dataSource.RowCount || dataSource.IsNonDataRow(row)) return;
+        if (rowIndex < 0 || rowIndex >= dataSource.RowCount || dataSource.IsNonDataRow(rowIndex)) return;
 
         if (_isEditing && !CommitEdit(_editDataSource ?? dataSource)) return;
         // The commit may have moved rows (sort, grouping): the row is checked again
-        if (row >= dataSource.RowCount || dataSource.IsNonDataRow(row)) return;
+        if (rowIndex >= dataSource.RowCount || dataSource.IsNonDataRow(rowIndex)) return;
 
-        var item = dataSource.GetItem(row);
-        var currentValue = dataSource.GetCellValue(row, column);
+        var item = dataSource.GetItem(rowIndex);
+        var currentValue = dataSource.GetCellValue(rowIndex, column);
         var newValue = NextBooleanValue(currentValue, column.IsThreeState);
 
         // Raise begin-edit (cancelable)
-        var beginArgs = new CellBeginEditEventArgs(row, col, column, currentValue);
+        var beginArgs = new CellBeginEditEventArgs(rowIndex, columnIndex, column, currentValue);
         CellBeginEdit?.Invoke(this, beginArgs);
         if (beginArgs.Cancel) return;
 
-        CellValidationResult? result = CellValidator?.Invoke(row, col, newValue);
+        CellValidationResult? result = CellValidator?.Invoke(rowIndex, columnIndex, newValue);
         if (result is { IsValid: false })
         {
-            RefuseToggle(row, col, column, item, currentValue, newValue, result);
+            RefuseToggle(rowIndex, columnIndex, column, item, currentValue, newValue, result);
             return;
         }
 
         if (!dataSource.TrySetItemValue(item, column, newValue, out var writeError))
         {
-            RefuseToggle(row, col, column, item, currentValue, newValue,
+            RefuseToggle(rowIndex, columnIndex, column, item, currentValue, newValue,
                 CellValidationResult.Error(writeError ?? "The value could not be saved."));
             return;
         }
@@ -462,19 +487,19 @@ public class EditSession
         if (modelResult is { IsValid: false })
         {
             dataSource.TrySetItemValue(item, column, currentValue, out _);
-            RefuseToggle(row, col, column, item, currentValue, newValue, modelResult);
+            RefuseToggle(rowIndex, columnIndex, column, item, currentValue, newValue, modelResult);
             return;
         }
         result = MoreSevere(result, modelResult);
 
-        NeedsRedraw?.Invoke();
+        NeedsRedraw?.Invoke(this, EventArgs.Empty);
         CellEndEdit?.Invoke(this, new CellEndEditEventArgs(
-            row, col, column, currentValue, newValue, committed: true));
+            rowIndex, columnIndex, column, currentValue, newValue, committed: true));
         CellValueChanged?.Invoke(this, new CellValueChangedEventArgs(
-            row, col, column, currentValue, newValue));
+            rowIndex, columnIndex, column, currentValue, newValue));
         if (result is { ErrorMessage: { Length: > 0 } })
             ValidationFailed?.Invoke(this, new CellValidationEventArgs(
-                row, col, column, item, newValue, result, committed: true));
+                rowIndex, columnIndex, column, item, newValue, result, committed: true));
     }
 
     /// <summary>
@@ -496,7 +521,7 @@ public class EditSession
             row, col, column, item, attempted, result, committed: false));
         CellEndEdit?.Invoke(this, new CellEndEditEventArgs(
             row, col, column, oldValue, oldValue, committed: false));
-        NeedsRedraw?.Invoke();
+        NeedsRedraw?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -554,8 +579,11 @@ public class EditSession
     /// <summary>
     /// Check if the given cell is currently being edited.
     /// </summary>
-    public bool IsCellBeingEdited(int row, int col) =>
-        _isEditing && _editCell.Row == row && _editCell.Column == col;
+    /// <param name="rowIndex">The view row of the cell.</param>
+    /// <param name="columnIndex">The index of the cell's column.</param>
+    /// <returns>True while that cell has an open editor.</returns>
+    public bool IsCellBeingEdited(int rowIndex, int columnIndex) =>
+        _isEditing && _editCell.Row == rowIndex && _editCell.Column == columnIndex;
 
     // ── Rendering ───────────────────────────────────────────────
 
@@ -576,14 +604,10 @@ public class EditSession
 
         // Draw subtle drop shadow for depth effect
         var shadowBounds = bounds.Offset(1, 1).Inflate(1, 1);
-        ctx.FillRect(shadowBounds, new KumikoPaint
-        {
-            Color = shadowColor,
-            Style = PaintStyle.Fill
-        });
+        ctx.FillRect(shadowBounds, _paints.Get(color: shadowColor));
 
         // Background to cover cell content underneath
-        ctx.FillRect(bounds, new KumikoPaint { Color = bgColor });
+        ctx.FillRect(bounds, _paints.Get(color: bgColor));
         _activeEditor.OnDraw(ctx);
 
         // Validation state: an outline, an icon, and the message under the editor
@@ -598,26 +622,20 @@ public class EditSession
             ? new KumikoColor(220, 50, 50)    // red
             : new KumikoColor(255, 165, 0);   // orange
 
-        ctx.DrawRect(bounds, new KumikoPaint
-        {
-            Color = color,
-            Style = PaintStyle.Stroke,
-            StrokeWidth = 2f,
-            IsAntiAlias = true
-        });
+        ctx.DrawRect(bounds, _paints.Get(color: color, strokeWidth: 2f, isAntiAlias: true));
 
         const float iconRadius = 6f;
         var icon = new KumikoRect(bounds.Right - iconRadius * 2 - 4, bounds.Y + bounds.Height / 2 - iconRadius,
             iconRadius * 2, iconRadius * 2);
-        ctx.FillRoundRect(icon, iconRadius, new KumikoPaint { Color = color, Style = PaintStyle.Fill, IsAntiAlias = true });
-        var onColor = new KumikoPaint { Color = KumikoColor.White, Font = new KumikoFont("Default", 10, bold: true), IsAntiAlias = true };
+        ctx.FillRoundRect(icon, iconRadius, _paints.Get(color: color, isAntiAlias: true));
+        var onColor = _paints.Get(color: KumikoColor.White, font: new KumikoFont("Default", 10, bold: true), isAntiAlias: true);
         ctx.DrawTextInRect("!", icon, onColor, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
 
         if (string.IsNullOrEmpty(validation.ErrorMessage)) return;
-        var messagePaint = new KumikoPaint { Color = KumikoColor.White, Font = new KumikoFont("Default", 12), IsAntiAlias = true };
+        var messagePaint = _paints.Get(color: KumikoColor.White, font: new KumikoFont("Default", 12), isAntiAlias: true);
         float width = Math.Max(bounds.Width, ctx.MeasureText(validation.ErrorMessage, messagePaint).Width + 12);
         var message = new KumikoRect(bounds.X, bounds.Bottom + 2, width, 22);
-        ctx.FillRoundRect(message, 3, new KumikoPaint { Color = color, Style = PaintStyle.Fill, IsAntiAlias = true });
+        ctx.FillRoundRect(message, 3, _paints.Get(color: color, isAntiAlias: true));
         ctx.DrawTextInRect(validation.ErrorMessage, new KumikoRect(message.X + 6, message.Y, message.Width - 12, message.Height),
             messagePaint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
     }
@@ -707,7 +725,7 @@ public class EditSession
     /// <param name="releasedEvent">
     /// The original <c>Released</c> pointer event that triggered <c>BeginEdit</c>.
     /// </param>
-    public void TryForwardInitialTap(KumikoPointerEventArgs releasedEvent)
+    internal void TryForwardInitialTap(KumikoPointerEventArgs releasedEvent)
     {
         if (!_isEditing || _activeEditor == null) return;
         if (!_activeEditor.ActivatesImmediately) return;
@@ -784,14 +802,14 @@ public class EditSession
         _warnedValue = null;
         _pointerCaptured = false;
         CurrentValidation = null;
-        NeedsRedraw?.Invoke();
+        NeedsRedraw?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
     /// Called when an editor signals that its value is finalized
     /// (e.g. date picked, combo item selected). Auto-commits the edit.
     /// </summary>
-    private void OnEditorRedrawRequested() => NeedsRedraw?.Invoke();
+    private void OnEditorRedrawRequested(object? sender, EventArgs e) => NeedsRedraw?.Invoke(this, EventArgs.Empty);
 
     private void OnViewChanged(object? sender, KumikoViewChangedEventArgs e) => ApplyViewChange(e);
 
@@ -800,14 +818,14 @@ public class EditSession
     {
         if (CurrentValidation == null) return;
         CurrentValidation = null;
-        NeedsRedraw?.Invoke();
+        NeedsRedraw?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnEditorCopyRequested(object? sender, ClipboardTextEventArgs e) => ClipboardCopyRequested?.Invoke(this, e);
 
     private void OnEditorPasteRequested(object? sender, ClipboardRequestEventArgs e) => ClipboardPasteRequested?.Invoke(this, e);
 
-    private void OnEditorEditCompleted()
+    private void OnEditorEditCompleted(object? sender, EventArgs e)
     {
         if (!_isEditing || _editDataSource == null) return;
         CommitEdit(_editDataSource);

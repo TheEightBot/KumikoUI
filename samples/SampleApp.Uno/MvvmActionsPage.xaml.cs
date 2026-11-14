@@ -42,7 +42,25 @@ public sealed partial class MvvmActionsPage : Page
     private void OnClearSelectionClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) =>
         _viewModel.SelectedEmployee = null;
 
+    // WinUI shows one ContentDialog at a time and throws when a second one opens, which a double tap on an
+    // action button would cause: the first request wins until its dialog closes.
+    private bool _dialogOpen;
+
     private async void OnDeleteRequested(object? sender, Employee employee)
+    {
+        if (_dialogOpen) return;
+        _dialogOpen = true;
+        try
+        {
+            await ConfirmDeleteAsync(employee);
+        }
+        finally
+        {
+            _dialogOpen = false;
+        }
+    }
+
+    private async System.Threading.Tasks.Task ConfirmDeleteAsync(Employee employee)
     {
         var dialog = new ContentDialog
         {
@@ -59,6 +77,20 @@ public sealed partial class MvvmActionsPage : Page
     }
 
     private async void OnViewDetailsRequested(object? sender, Employee employee)
+    {
+        if (_dialogOpen) return;
+        _dialogOpen = true;
+        try
+        {
+            await ShowDetailsAsync(employee);
+        }
+        finally
+        {
+            _dialogOpen = false;
+        }
+    }
+
+    private async System.Threading.Tasks.Task ShowDetailsAsync(Employee employee)
     {
         var dialog = new ContentDialog
         {

@@ -5,7 +5,7 @@ namespace KumikoUI.Core.Models;
 /// Supports both a value list (Excel-style checkboxes) and
 /// condition-based filtering (operator + value).
 /// </summary>
-public class FilterDescription
+public sealed class FilterDescription
 {
     /// <summary>The column this filter applies to.</summary>
     public KumikoColumn Column { get; }
@@ -51,6 +51,18 @@ public class FilterDescription
         Evaluate(cellValue, displayText, SelectedValues is { } selected
             ? new HashSet<string>(selected, KumikoComparer.Default.TextComparer)
             : null, KumikoComparer.Default);
+
+    /// <summary>
+    /// A copy whose conditions are copies too, for a view build on a worker (#254): later changes to this
+    /// filter's conditions do not reach a build that is running.
+    /// </summary>
+    internal FilterDescription CloneForBuild() => new(Column)
+    {
+        SelectedValues = SelectedValues,
+        Condition1 = Condition1?.Clone(),
+        Condition2 = Condition2?.Clone(),
+        Combination = Combination,
+    };
 
     /// <summary>
     /// Evaluate with a source's text rules: <paramref name="values"/> is <see cref="SelectedValues"/> as a set

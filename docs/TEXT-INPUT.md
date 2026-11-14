@@ -134,8 +134,9 @@ The MAUI host on Android has no hidden `Entry`. Its adapter has three parts:
 
 ### Focus and the soft keyboard
 
-- Pressing the grid focuses the input view, so a hardware keyboard drives the grid without an editor open. The soft keyboard doesn't appear, because the view is a text editor only while a cell editor or the filter popup's search box is open.
-- When an edit begins, the view takes focus, the input method restarts with the editor's keyboard type, and `InputMethodManager.showSoftInput` shows the keyboard.
+- Pressing the grid focuses the input view, so a hardware keyboard drives the grid without an editor open. The soft keyboard doesn't appear, because the view is a text editor only while an editor that takes typed text (a text box) or the filter popup's search box is open.
+- When an edit with a text surface begins, the view takes focus, the input method restarts with the editor's keyboard type, and `InputMethodManager.showSoftInput` shows the keyboard.
+- An editor with no text surface (a combo box, a date picker or a scroll picker) raises no soft keyboard: it is operated by touch, and by the hardware keyboard through the focused input view. Moving from a text editor to one of these (Tab) hides the keyboard.
 - When the edit ends, the keyboard is hidden and the connection is dropped.
 - An edit that ends and immediately begins again (Tab, or Enter with `DismissKeyboardOnEnter` off) keeps the keyboard up.
 - A tap during an edit brings back a keyboard the user dismissed with Back.
@@ -159,7 +160,7 @@ The MAUI host on Android has no hidden `Entry`. Its adapter has three parts:
 
 After the input method's calls, the adapter reports the new selection and composition with `InputMethodManager.updateSelection`; a monitored extract gets `updateExtractedText`. When Core changes the text itself (undo, paste, a shortcut, a pointer gesture), the adapter calls `restartInput`. When only the selection moves, it calls `updateSelection`.
 
-With no text surface (the open editor is a combo box, a date picker or a picker), committed text becomes `KumikoKeyEventArgs` with `Text` set, deletions become Backspace and Delete, and a composition is typed when it finishes.
+With no text surface (the open editor is a combo box, a date picker or a picker), there is no soft keyboard and no input connection. Characters from a hardware keyboard become `KumikoKeyEventArgs` with `Text` set, and Backspace and Delete are keys.
 
 ### Keyboard type (`EditorInfo`)
 
@@ -170,7 +171,6 @@ With no text surface (the open editor is a combo box, a date picker or a picker)
 | `InputMask` of `#` placeholders only | `TYPE_CLASS_NUMBER` |
 | Any other `InputMask` | `TYPE_CLASS_TEXT \| NO_SUGGESTIONS` |
 | Filter popup search box | `TYPE_CLASS_TEXT \| VARIATION_FILTER \| NO_SUGGESTIONS` |
-| No text surface | `TYPE_CLASS_TEXT \| NO_SUGGESTIONS` |
 
 `imeOptions` is `IME_ACTION_NEXT` when Enter goes on to edit the next cell (`DismissKeyboardOnEnter` off), and `IME_ACTION_DONE` otherwise. It always includes `IME_FLAG_NO_EXTRACT_UI | IME_FLAG_NO_FULLSCREEN`, so landscape phones don't hide the grid behind a full-screen editor. The initial selection and, on Android 11 and later, the surrounding text are set too.
 
@@ -198,3 +198,11 @@ public class MainActivity : MauiAppCompatActivity { }
 ```
 
 In shared code, set it with `Application.Current.On<Microsoft.Maui.Controls.PlatformConfiguration.Android>().UseWindowSoftInputModeAdjust(WindowSoftInputModeAdjust.Resize)`. On Android 15 and later, apps are drawn edge to edge and `adjustResize` no longer shrinks the window. The grid's inset-based scrolling still keeps the cell above the keyboard.
+
+## Keeping the edited cell above the on-screen keyboard (iOS and Uno)
+
+On iOS the grid does what Android's inset check does (#258). While a cell editor is open, it follows `UIKeyboardWillChangeFrame` and `UIKeyboardWillHide`, works out how much of the grid's bottom the keyboard covers (the keyboard frame converted into the grid's own coordinates), scrolls the edited row above the keyboard's top edge, and sets `ScrollState.BottomInset` to the covered height. The inset extends the scroll range, so the last rows can scroll clear of the keyboard. It is set back to 0 when the keyboard hides or the edit ends. The Uno heads (iOS, Android, WebAssembly) do the same from `InputPane.Showing` and `Hiding`, reading `OccludedRect` and the grid's place in the window. Where the platform already shrinks the window for the keyboard, the grid's bottom is the keyboard's top, nothing is covered, and nothing changes. A keyboard that does not reach the grid's bottom edge (a floating iPad keyboard) is ignored.
+
+A newly edited cell is checked once per keyboard change, so a user who scrolls the cell away is not pulled back. A cell in a frozen row does not scroll, and a grid whose visible part above the keyboard is shorter than the header, summary and one row cannot show the cell; give the grid more room (for example by hiding the page's toolbar while editing). The filter popup is anchored under the header and does not scroll, so its search box is not moved. On Mac Catalyst no on-screen keyboard appears and nothing happens.
+
+The geometry (covered height, scroll distance, scroll with an inset) is `KumikoKeyboardAvoidance` in `KumikoUI.Core.Layout`, shared by every host and unit-tested; the Android code above uses it too, without an inset.

@@ -4,6 +4,7 @@ using Android.Views;
 using Android.Views.InputMethods;
 using AndroidX.Core.View;
 using KumikoUI.Core.Input;
+using KumikoUI.Core.Layout;
 using KumikoUI.Core.Rendering;
 using AView = Android.Views.View;
 
@@ -18,7 +19,9 @@ namespace KumikoUI.Maui;
 /// <remarks>
 /// <list type="bullet">
 /// <item>The input view takes focus when the grid is pressed, so a hardware keyboard navigates the grid; it
-/// becomes a text editor and shows the soft keyboard only while an edit or the filter popup's search box is open.
+/// becomes a text editor and shows the soft keyboard only while an editor that takes typed text (a text surface) or
+/// the filter popup's search box is open. A scroll picker, date picker or combo box raises no soft keyboard, and a
+/// hardware keyboard still operates it.
 /// </item>
 /// <item>A new edited cell (or the search box) restarts the input method, with the keyboard type of its editor;
 /// a change Core makes to the text (undo, paste, a shortcut) restarts it too, and a selection or composition change
@@ -157,7 +160,10 @@ public partial class KumikoDataGrid
         if (!ReferenceEquals(session, _androidTextInput.Session)) BindAndroidSession(session);
 
         var imm = GetInputMethodManager(view);
-        bool wanted = _editSession.IsEditing || session != null;
+        // Only an editor that takes typed text (a text surface) raises the soft keyboard. A scroll picker, a date picker
+        // or a combo box is operated by touch and by hardware keys, which the input view still receives while it holds
+        // focus, and the keyboard would cover half the grid.
+        bool wanted = session != null;
         if (wanted)
         {
             bool wasRequested = _androidImeRequested;
@@ -457,7 +463,7 @@ public partial class KumikoDataGrid
     private void CheckAndroidImeOverlap(bool force)
     {
         if (_androidInputHost is not { IsAttachedToWindow: true } host || !TryGetTouchScale(out float scale)) return;
-        if (_editSession is not { IsEditing: true, ActiveEditor: { IsVisible: true } editor }) return;
+        if (_editSession is not { IsEditing: true, ActiveEditor.IsVisible: true }) return;
 
         var insets = ViewCompat.GetRootWindowInsets(host);
         if (insets == null) return;
@@ -468,23 +474,19 @@ public partial class KumikoDataGrid
 
         PlaceAndroidInputView();
         if (imeBottom <= 0 || IsAdjustPan()) return;
-        // A frozen row does not scroll
-        if (_editSession.EditCell.Row < _dataSource.FrozenRowCount) return;
 
         var location = new int[2];
         host.GetLocationInWindow(location);
         int windowHeight = host.RootView?.Height ?? 0;
         if (windowHeight <= 0) return;
-        float visibleBottom = (Math.Min(location[1] + host.Height, windowHeight - imeBottom) - location[1]) / scale;
 
-        var bounds = editor.Bounds;
-        if (visibleBottom <= 0 || bounds.Bottom <= visibleBottom) return;
-
-        float before = _scroll.OffsetY;
-        _scroll.ScrollTo(_scroll.OffsetX, before + (bounds.Bottom - visibleBottom));
-        float moved = _scroll.OffsetY - before;
+        // The geometry is shared with the other hosts (KumikoKeyboardAvoidance). The window itself shrinks or insets
+        // for the keyboard here, so the grid adds no bottom inset of its own.
+        float obscured = KumikoKeyboardAvoidance.GetObscuredHeight(
+            location[1], location[1] + host.Height, windowHeight - imeBottom, float.PositiveInfinity) / scale;
+        float moved = KumikoKeyboardAvoidance.ScrollEditorIntoView(
+            _scroll, _dataSource, _style, _editSession, obscured, applyInset: false, margin: 0);
         if (moved <= 0) return;
-        editor.Bounds = new KumikoRect(bounds.X, bounds.Y - moved, bounds.Width, bounds.Height);
         PlaceAndroidInputView();
         InvalidateSurface();
     }

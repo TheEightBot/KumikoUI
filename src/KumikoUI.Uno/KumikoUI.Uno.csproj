@@ -24,6 +24,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Public API is recorded in PublicAPI.*.txt files and checked by PublicApiAnalyzers (Directory.Build.targets, #54). -->
+    <KumikoTrackPublicApi>true</KumikoTrackPublicApi>
+    <!-- Package validation (#54); the baseline is described in Directory.Build.props. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <!-- CompatibilitySuppressions.xml lists the expected differences between the Uno and WinUI builds. The Windows build is
+         packed only on Windows, so elsewhere those suppressions go unused; that is not an error. -->
+    <ApiCompatPermitUnnecessarySuppressions>true</ApiCompatPermitUnnecessarySuppressions>
+    <!-- The recommended code-analysis rules (#112); Directory.Build.props sets `latest` for tests and samples. -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
 
     <!--
       SkiaSharpVersion comes from the repo-root Directory.Packages.props (one version for every project).
@@ -52,6 +61,11 @@
     <Description>A high-performance, fully custom-drawn KumikoUI DataGrid control for the Uno Platform. Renders via SkiaSharp (SKXamlCanvas) on Windows (WinUI), desktop (Windows, macOS, Linux), WebAssembly, Android and iOS, reusing the same engine as KumikoUI.Maui.</Description>
     <PackageTags>uno;unoplatform;uno-platform;winui;datagrid;data-grid;grid;table;skiasharp;cross-platform;wasm;webassembly;desktop;android;ios</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!--
+      The library has no Android resources, so it needs no Resource designer class: without this the Android head adds a
+      public KumikoUI.Uno.Resource type to the package (#112).
+    -->
+    <AndroidGenerateResourceDesigner>false</AndroidGenerateResourceDesigner>
   </PropertyGroup>
 
   <!--
@@ -79,7 +93,21 @@
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-desktop'))">
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+    <!-- Uno's runtime pulls HarfBuzzSharp's Linux library at 8.3.x, while SkiaSharp.HarfBuzz (emoji sequences) brings
+         the managed HarfBuzzSharp 14.x: one version for both, as for SkiaSharp above. -->
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
   </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-browserwasm'))">
+    <!-- The same for WebAssembly, where the library is linked into dotnet.native.wasm. -->
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.WebAssembly" />
+  </ItemGroup>
+  <!--
+    The WebAssembly head reads CSS media queries (prefers-reduced-motion, pointer: coarse) through a [JSImport]
+    (Input/BrowserMedia.cs, #101); the JSImport source generator emits unsafe marshalling code.
+  -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-browserwasm'))">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
 
   <!--
     Core and SkiaSharp are plain Microsoft.NET.Sdk libraries that target only `net10.0`, while this is

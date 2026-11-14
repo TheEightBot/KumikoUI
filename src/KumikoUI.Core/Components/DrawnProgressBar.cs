@@ -7,7 +7,7 @@ namespace KumikoUI.Core.Components;
 /// Fully custom-drawn progress bar / slider.
 /// Can be used as a read-only progress indicator or interactive slider.
 /// </summary>
-public class DrawnProgressBar : DrawnComponent
+internal class DrawnProgressBar : DrawnComponent
 {
     private double _value;
     private bool _isDragging;
@@ -68,7 +68,7 @@ public class DrawnProgressBar : DrawnComponent
         var trackRect = new KumikoRect(b.X, trackTop, b.Width, TrackHeight);
 
         // Track background
-        ctx.FillRoundRect(trackRect, CornerRadius, new KumikoPaint { Color = TrackColor, Style = PaintStyle.Fill });
+        ctx.FillRoundRect(trackRect, CornerRadius, Paints.Get(color: TrackColor));
 
         // Fill
         double range = Maximum - Minimum;
@@ -77,7 +77,7 @@ public class DrawnProgressBar : DrawnComponent
         if (fillWidth > 0)
         {
             var fillRect = new KumikoRect(b.X, trackTop, fillWidth, TrackHeight);
-            ctx.FillRoundRect(fillRect, CornerRadius, new KumikoPaint { Color = FillColor, Style = PaintStyle.Fill });
+            ctx.FillRoundRect(fillRect, CornerRadius, Paints.Get(color: FillColor));
         }
 
         // Thumb
@@ -87,16 +87,11 @@ public class DrawnProgressBar : DrawnComponent
             float thumbY = b.Y + b.Height / 2;
             // Draw thumb as a filled circle approximated with a round rect
             var thumbRect = new KumikoRect(thumbX - ThumbRadius, thumbY - ThumbRadius, ThumbRadius * 2, ThumbRadius * 2);
-            ctx.FillRoundRect(thumbRect, ThumbRadius, new KumikoPaint { Color = ThumbColor, Style = PaintStyle.Fill });
+            ctx.FillRoundRect(thumbRect, ThumbRadius, Paints.Get(color: ThumbColor));
 
             if (IsFocused)
             {
-                ctx.DrawRoundRect(thumbRect, ThumbRadius, new KumikoPaint
-                {
-                    Color = new KumikoColor(0, 120, 215),
-                    Style = PaintStyle.Stroke,
-                    StrokeWidth = 2
-                });
+                ctx.DrawRoundRect(thumbRect, ThumbRadius, Paints.Get(color: new KumikoColor(0, 120, 215), strokeWidth: 2));
             }
         }
     }

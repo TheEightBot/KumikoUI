@@ -73,6 +73,9 @@ public partial class KumikoDataGrid
     private readonly Microsoft.UI.Dispatching.DispatcherQueueHandler _syncTextInput;
     private bool _textInputSyncQueued;
 
+    // True while the proxy raises TextChanging for a change of its own (see OnProxyTextChanging).
+    private bool _proxyChangingText;
+
     // ── Proxy setup / teardown ───────────────────────────────────
 
     /// <summary>
@@ -87,7 +90,7 @@ public partial class KumikoDataGrid
         // exposed through KumikoDataGridAutomationPeer.
         AutomationProperties.SetAccessibilityView(_inputProxy, AccessibilityView.Raw);
         _root.Children.Add(_inputProxy);
-        return new KumikoTextInputAdapter(new TextBoxTextInputProxy(_inputProxy), new GridTextInputTarget(this));
+        return new KumikoTextInputAdapter(new TextBoxTextInputProxy(this), new GridTextInputTarget(this));
     }
 
     /// <summary>Subscribes the proxy's events. Idempotent: Uno raises <c>Loaded</c> again on navigation back.</summary>
@@ -135,8 +138,29 @@ public partial class KumikoDataGrid
         _textInput.Sync();
         bool hadFocus = _inputProxy.FocusState != FocusState.Unfocused;
         _inputProxy.Focus(FocusState.Programmatic);
-        if (hadFocus && _lastPointerWasTouch)
+        // Taking focus can move the text box's caret (the Android and iOS heads put it at the start), and the
+        // input method types where the text box says the selection is: typing over a selected cell value would
+        // insert before it. Put the editor's selection back now and again once the focus change has settled.
+        _textInput.Sync();
+        QueueTextInputSync();
+        if (_editSession.IsEditing && _inputController.ActiveTextInput == null)
+        {
+            // An editor that takes no typed text (a scroll picker, a date picker, a combo box) needs the proxy's focus
+            // for hardware keys only: focusing a text box raises the soft keyboard on Android and iOS, so it is hidden
+            // again, now and once the focus change has settled.
+            HideSoftKeyboard();
+            DispatcherQueue?.TryEnqueue(HideSoftKeyboardForNonTextEditor);
+        }
+        else if (hadFocus && _lastPointerWasTouch)
+        {
             ShowSoftKeyboard();
+        }
+    }
+
+    private void HideSoftKeyboardForNonTextEditor()
+    {
+        if (_editSession.IsEditing && _inputController.ActiveTextInput == null)
+            HideSoftKeyboard();
     }
 
     private static void ShowSoftKeyboard()
@@ -173,7 +197,19 @@ public partial class KumikoDataGrid
 
     private void OnProxyTextChanging(TextBox sender, TextBoxTextChangingEventArgs e)
     {
-        _textInput.OnProxyTextChanged();
+        // While the text box raises TextChanging its displayed text is still the old one: selecting past that
+        // text's end (typing at the end of a cell) throws inside Uno, which crashes the Android input connection.
+        // The adapter leaves the proxy alone meanwhile; the queued sync puts the editor's text and selection back.
+        bool outer = _proxyChangingText;
+        _proxyChangingText = true;
+        try
+        {
+            _textInput.OnProxyTextChanged();
+        }
+        finally
+        {
+            _proxyChangingText = outer;
+        }
         QueueTextInputSync();
     }
 
@@ -264,16 +300,19 @@ public partial class KumikoDataGrid
     // ── Adapter plumbing ─────────────────────────────────────────
 
     /// <summary>The proxy <c>TextBox</c> as the adapter sees it.</summary>
-    private sealed class TextBoxTextInputProxy(TextBox box) : IKumikoTextInputProxy
+    private sealed class TextBoxTextInputProxy(KumikoDataGrid grid) : IKumikoTextInputProxy
     {
-        public string Text => box.Text ?? string.Empty;
+        public string Text => grid._inputProxy.Text ?? string.Empty;
 
-        public int SelectionStart => box.SelectionStart;
+        public int SelectionStart => grid._inputProxy.SelectionStart;
 
-        public int SelectionLength => box.SelectionLength;
+        public int SelectionLength => grid._inputProxy.SelectionLength;
+
+        public bool IsChangingText => grid._proxyChangingText;
 
         public void SetTextAndSelection(string text, int selectionStart, int selectionLength)
         {
+            var box = grid._inputProxy;
             if (!string.Equals(box.Text, text, StringComparison.Ordinal))
                 box.Text = text;
             box.Select(selectionStart, selectionLength);

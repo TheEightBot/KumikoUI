@@ -1,3 +1,4 @@
+using KumikoUI.Core.Components;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
@@ -501,9 +502,9 @@ public class PointerGestureTests
     {
         var g = new InputGrid();
         int opened = 0, closed = 0, focus = 0;
-        g.Input.FilterPopupOpened += () => opened++;
-        g.Input.FilterPopupClosed += () => closed++;
-        g.Input.KeyboardFocusRequested += () => focus++;
+        g.Input.FilterPopupOpened += (_, _) => opened++;
+        g.Input.FilterPopupClosed += (_, _) => closed++;
+        g.Input.KeyboardFocusRequested += (_, _) => focus++;
 
         g.Tap(180, InputGrid.HeaderY); // Age filter icon
 
@@ -520,11 +521,27 @@ public class PointerGestureTests
     }
 
     [Fact]
+    public void ActivePopup_IsTheOpenFilterPopup_AndNullOnceItCloses()
+    {
+        var g = new InputGrid();
+        Assert.Null(g.Input.ActivePopup);
+
+        g.Tap(180, InputGrid.HeaderY); // Age filter icon
+
+        var popup = Assert.IsType<DrawnFilterPopup>(g.Input.ActivePopup);
+        Assert.True(popup.IsVisible);
+
+        g.Key(KumikoKey.Escape);
+
+        Assert.Null(g.Input.ActivePopup);
+    }
+
+    [Fact]
     public void PressOutsideTheFilterPopup_ClosesItAndIsSwallowed()
     {
         var g = new InputGrid();
         int closed = 0;
-        g.Input.FilterPopupClosed += () => closed++;
+        g.Input.FilterPopupClosed += (_, _) => closed++;
         g.Tap(180, InputGrid.HeaderY);
 
         g.Tap(10, 240); // below the popup, over a grid row

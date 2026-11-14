@@ -166,6 +166,19 @@ public class HitTesterTests
     }
 
     [Fact]
+    public void HitTestResult_IsAValue_EqualByContent()
+    {
+        var a = new KumikoHitTestResult { Region = HitRegion.Cell, RowIndex = 2, ColumnIndex = 1, ContentX = 4, ContentY = 9 };
+        var b = new KumikoHitTestResult { Region = HitRegion.Cell, RowIndex = 2, ColumnIndex = 1, ContentX = 4, ContentY = 9 };
+
+        Assert.Equal(a, b);
+        Assert.NotEqual(a, b with { RowIndex = 3 });
+        Assert.Equal(KumikoHitTestResult.Empty, new KumikoHitTestResult());
+        Assert.Equal(HitRegion.None, new KumikoHitTestResult().Region);
+        Assert.Equal(-1, new KumikoHitTestResult().RowIndex);
+    }
+
+    [Fact]
     public void EmptyGrid_HasNothingToHit()
     {
         var g = new InputGrid(rows: 0);
@@ -193,10 +206,12 @@ public class HitTesterTests
     {
         var g = new InputGrid();
 
-        // Age spans 120..200: the icon covers 168..194, the grip 194..206.
+        // Age spans 120..200: the icon is drawn at 182..192 (the cell padding inside the right edge); a mouse hits it
+        // from 5 px either side, up to the grip at 194..206.
         Assert.Equal(HitRegion.HeaderFilterIcon, g.Hit(180, InputGrid.HeaderY).Region);
-        Assert.Equal(HitRegion.HeaderFilterIcon, g.Hit(168, InputGrid.HeaderY).Region);
-        Assert.Equal(HitRegion.HeaderCell, g.Hit(167, InputGrid.HeaderY).Region);
+        Assert.Equal(HitRegion.HeaderFilterIcon, g.Hit(177, InputGrid.HeaderY).Region);
+        Assert.Equal(HitRegion.HeaderCell, g.Hit(176, InputGrid.HeaderY).Region);
+        Assert.Equal(HitRegion.HeaderFilterIcon, g.Hit(193, InputGrid.HeaderY).Region);
         Assert.Equal(HitRegion.HeaderResizeGrip, g.Hit(196, InputGrid.HeaderY).Region);
     }
 

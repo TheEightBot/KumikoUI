@@ -6,7 +6,7 @@
   <PropertyGroup>
     <!--
       Uno single-project head TFMs. The sample and the library KumikoUI.Uno both target .NET 10
-      (docs/uno ADR-4, #10), so each app head binds the library's matching head directly. The Windows (WinAppSDK) head is conditioned on Windows
+      (docs/uno/plan ADR-4, #10), so each app head binds the library's matching head directly. The Windows (WinAppSDK) head is conditioned on Windows
       only so non-Windows machines / CI don't try to build it. Day to day you build one head with
       `-f net10.0-desktop`, but restore walks every head listed here: a local restore needs the workloads of
       all of them (`wasm-tools`, plus the mobile heads' workloads, see CONTRIBUTING.md), even when you only
@@ -88,7 +88,7 @@
     Demo fonts, shared with SampleApp.Maui from samples/Shared/Fonts (license texts live there too). Marked as
     Content so they are packaged into the app and resolvable via the ms-appx:///Assets/Fonts/<file>.ttf scheme used
     by KumikoFonts.RegisterFromAppPackageAsync in App.OnLaunched. KumikoUI.Uno itself ships no fonts —
-    the consuming app supplies and registers them (see docs/uno/05-fonts-and-assets.md §4).
+    the consuming app supplies and registers them (see docs/uno/plan/05-fonts-and-assets.md §4).
   -->
   <ItemGroup>
     <Content Include="../Shared/Fonts/NotoSansJP-Regular.ttf;../Shared/Fonts/MaterialIcons-Regular.ttf"
@@ -118,6 +118,7 @@
   <!-- Code shared with SampleApp.Maui, so both samples draw the same grid (the Grouping page's style). -->
   <ItemGroup>
     <Compile Include="../Shared/GroupingTheme.cs" Link="Shared/GroupingTheme.cs" />
+    <Compile Include="../Shared/ShowcaseData.cs" Link="Shared/ShowcaseData.cs" />
   </ItemGroup>
 
   <!--

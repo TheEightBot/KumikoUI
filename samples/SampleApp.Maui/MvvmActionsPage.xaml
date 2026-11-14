@@ -148,14 +148,18 @@
                     return item => item, so the renderer receives the full Employee
                     object as its value (the command parameter).
 
-                    MauiActionButtonDefinition is NOT in the visual tree so BindingContext
-                    is not inherited — use Source={x:Reference actionsGrid} to resolve the VM.
+                    A Star column shrinks to its MinWidth (40 by default) when the other columns fill the grid, as they
+                    do on a phone; MinWidth="180" keeps both buttons wide enough to tap there.
+
+                    MauiActionButtonDefinition is not in the visual tree, so the grid hands it its own BindingContext
+                    (the page's view model): a plain {Binding ...} resolves against it.
                 -->
                 <core:KumikoColumn x:Name="actionsColumn"
                                      Header="Actions"
                                      PropertyName=""
                                      ColumnType="Template"
                                      Width="200"
+                                     MinWidth="180"
                                      AllowSorting="False"
                                      AllowFiltering="False"
                                      SizeMode="Star"
@@ -165,14 +169,12 @@
                             <render:ActionButtonsCellRenderer.Buttons>
                                 <dg:MauiActionButtonDefinition
                                     Label="Details"
-                                    BackgroundColor="13,110,253"
-                                    Command="{Binding Path=BindingContext.ViewDetailsCommand,
-                                                      Source={x:Reference actionsGrid}}" />
+                                    BackgroundColor="#0D6EFD"
+                                    Command="{Binding ViewDetailsCommand}" />
                                 <dg:MauiActionButtonDefinition
                                     Label="Delete"
-                                    BackgroundColor="220,53,69"
-                                    Command="{Binding Path=BindingContext.DeleteCommand,
-                                                      Source={x:Reference actionsGrid}}" />
+                                    BackgroundColor="#DC3545"
+                                    Command="{Binding DeleteCommand}" />
                             </render:ActionButtonsCellRenderer.Buttons>
                         </render:ActionButtonsCellRenderer>
                     </core:KumikoColumn.CustomCellRenderer>

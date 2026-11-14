@@ -1,0 +1,72 @@
+# EditorConfig for KumikoUI (#54). It records the conventions the code already follows; CI checks the whitespace
+# rules with `dotnet format whitespace --folder . --verify-no-changes` (see CONTRIBUTING.md).
+# https://editorconfig.org
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.md]
+# Two trailing spaces are a Markdown line break.
+trim_trailing_whitespace = false
+
+[*.{csproj,props,targets,xaml,resx,json,yml,yaml,sh,xml,slnx,config}]
+indent_size = 2
+
+# The MAUI library project file is indented with tabs.
+[src/KumikoUI.Maui/KumikoUI.Maui.csproj]
+indent_style = tab
+
+[*.sln]
+indent_style = tab
+
+[*.cs]
+# Whitespace ---------------------------------------------------------------------------------------------------------------
+indent_size = 4
+tab_width = 4
+csharp_indent_case_contents = true
+csharp_indent_case_contents_when_block = false
+csharp_indent_switch_labels = true
+csharp_indent_labels = one_less_than_current
+csharp_indent_block_contents = true
+csharp_indent_braces = false
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_space_between_parentheses = false
+csharp_space_before_colon_in_inheritance_clause = true
+csharp_space_after_colon_in_inheritance_clause = true
+csharp_space_around_binary_operators = before_and_after
+csharp_space_between_square_brackets = false
+csharp_preserve_single_line_statements = true
+csharp_preserve_single_line_blocks = true
+
+# New lines: Allman braces ---------------------------------------------------------------------------------------------------
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = false
+csharp_new_line_before_members_in_anonymous_types = false
+csharp_new_line_between_query_expression_clauses = true
+
+# Language conventions (severity none: the code is mixed, so they document intent without failing builds) ---------------------
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_using_directive_placement = outside_namespace:suggestion
+csharp_prefer_braces = true:silent
+
+# Code analysis (#112): the shipped libraries build with AnalysisLevel latest-recommended (their project files).
+# CA1822 (member can be static) is checked on private and internal members only: making a public instance member
+# static is a breaking change, and an instance member keeps the freedom to use instance state later.
+dotnet_code_quality.CA1822.api_surface = private, internal
+
+# Files of the MAUI sample app that keep the tab indentation of the .NET MAUI project template.
+[samples/SampleApp.Maui/{MauiProgram.cs,App.xaml.cs,AppShell.xaml.cs,MainPage.xaml.cs,DevFlow/KumikoDevFlowExtension.cs,Platforms/iOS/AppDelegate.cs,Platforms/iOS/Program.cs,Platforms/MacCatalyst/AppDelegate.cs,Platforms/MacCatalyst/Program.cs,Platforms/Android/MainApplication.cs,Platforms/Windows/App.xaml.cs}]
+indent_style = tab

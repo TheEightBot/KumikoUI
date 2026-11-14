@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Models;
 /// Defines visual properties for an entire row.
 /// All properties are nullable; a null value means "inherit from grid-level style".
 /// </summary>
-public class KumikoRowStyle
+public sealed class KumikoRowStyle
 {
     /// <summary>Background color of the row.</summary>
     public KumikoColor? BackgroundColor { get; set; }
@@ -21,5 +21,5 @@ public class KumikoRowStyle
     /// Returns true if any property is set (non-null).
     /// </summary>
     public bool HasOverrides =>
-        BackgroundColor.HasValue || TextColor.HasValue || Font != null;
+        BackgroundColor.HasValue || TextColor.HasValue || Font.HasValue;
 }

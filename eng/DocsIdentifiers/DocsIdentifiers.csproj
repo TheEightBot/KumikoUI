@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Build-time tool, not a shipped package and not part of KumikoUI.sln. It reads the Markdown files that tell
+    contributors and AI assistants how the code is built (the Copilot instructions and prompts, ARCHITECTURE.md,
+    RENDERING.md, the Uno user guide) and fails when a backticked identifier or file name in them does not exist
+    in the source (#96). See "Documentation identifiers" in CONTRIBUTING.md.
+
+    It uses only the .NET SDK and needs no workloads, so it runs on any OS, and it reads text files only: a run
+    takes about a second.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IncludeSymbols>false</IncludeSymbols>
+    <RootNamespace>KumikoUI.Build.DocsIdentifiers</RootNamespace>
+  </PropertyGroup>
+
+  <!-- No version stamping for a build tool (Directory.Build.props adds MinVer to every project). -->
+  <ItemGroup>
+    <PackageReference Remove="MinVer" />
+  </ItemGroup>
+
+</Project>

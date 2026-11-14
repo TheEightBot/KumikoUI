@@ -3,7 +3,7 @@ namespace KumikoUI.Core.Input;
 /// <summary>
 /// Configurable scroll/inertia settings for the grid.
 /// </summary>
-public class ScrollSettings
+public sealed class ScrollSettings
 {
     /// <summary>Deceleration factor per frame (0..1). Lower = more friction, stops faster. Default 0.92.</summary>
     public float Friction { get; set; } = 0.92f;
@@ -43,4 +43,29 @@ public class ScrollSettings
     /// it. The speed grows linearly with the depth into the band, from 0 at its inner edge. Default 1200.
     /// </summary>
     public float AutoScrollMaxSpeed { get; set; } = 1200f;
+
+    /// <summary>
+    /// New settings tuned for a platform's feel (#101): the friction, speed cap and stop and fling thresholds of
+    /// <paramref name="preset"/>; every other setting keeps its default. Each call returns a new instance to change
+    /// further.
+    /// </summary>
+    /// <param name="preset">The platform to feel like.</param>
+    /// <returns>The settings.</returns>
+    public static ScrollSettings FromPreset(KumikoMomentumPreset preset) => preset switch
+    {
+        KumikoMomentumPreset.IOS => new ScrollSettings
+        {
+            Friction = 0.968f, MaxVelocity = 8000f, MinVelocity = 10f, FlingThresholdMultiplier = 5f,
+        },
+        KumikoMomentumPreset.Android => new ScrollSettings
+        {
+            Friction = 0.955f, MaxVelocity = 8000f, MinVelocity = 10f, FlingThresholdMultiplier = 5f,
+        },
+        KumikoMomentumPreset.Desktop => new ScrollSettings
+        {
+            Friction = 0.92f, MaxVelocity = 6000f, MinVelocity = 5f, FlingThresholdMultiplier = 20f,
+            WheelScrollMultiplier = 3f,
+        },
+        _ => new ScrollSettings(),
+    };
 }

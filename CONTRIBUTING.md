@@ -85,7 +85,7 @@ dotnet run --project samples/SampleApp.Uno -f net10.0-desktop
 Package versions come from git tags through [MinVer](https://github.com/adamralph/minver); no project file contains a version.
 
 - A commit tagged `vX.Y.Z` (or `vX.Y.Z-suffix`) builds exactly that version for all four packages.
-- Any other commit builds the next version as a prerelease, for example `0.2.0-alpha.0.8`: eight commits after the last tag. `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 0.2).
+- Any other commit builds the next version as a prerelease, for example `1.0.0-alpha.0.8`: eight commits after the last tag. After a prerelease tag it is that version with the commit count appended (`1.0.0-preview.1.5`). `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 1.0; it only affects builds whose computed version would be lower, so untagged commits after `v0.2.0` build `1.0.0-alpha.0.N`, which sorts below `1.0.0-preview.1`).
 - Clones need tags and history (`git fetch --tags`, no shallow clone) or MinVer falls back to `0.2.0-alpha.0`.
 
 To release:
@@ -94,9 +94,14 @@ To release:
 2. Push a version tag on that commit on `main`:
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v1.0.0-preview.1   # a prerelease: published as a NuGet prerelease and a GitHub prerelease
+git push origin v1.0.0-preview.1
+
+git tag v1.0.0             # a stable release
+git push origin v1.0.0
 ```
+
+A tag with a suffix (`v1.0.0-preview.1`) is a prerelease on NuGet.org and on GitHub; NuGet hides it from consumers unless they ask for prereleases (`dotnet add package KumikoUI.Maui --prerelease`). The heading of its CHANGELOG section is `## [1.0.0-preview.1] - YYYY-MM-DD`.
 
 The section becomes the GitHub release notes, and every package links to the CHANGELOG. Versioning rules (SemVer, lockstep packages, deprecation, support window) are in [docs/VERSIONING.md](docs/VERSIONING.md).
 
@@ -164,6 +169,27 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 - KumikoUI.Core must stay free of UI-framework and SkiaSharp references; host-specific code belongs in KumikoUI.Maui or KumikoUI.Uno.
 - Add or update tests with every behavior change (xUnit; see [`tests/`](tests)). Bug fixes start with a failing test.
 
+### Public API and formatting
+
+**Recording an API change.** The public surface of the four shipped libraries (Core, SkiaSharp, Maui, Uno) is recorded in `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to each project and checked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Adding, changing or removing a public or protected member without updating those files fails the build (RS0016 for an unrecorded member, RS0017 for a recorded one that no longer exists). RS0026 and RS0027 are errors as well: only one overload of a method may have optional parameters, and it must be the one with the most parameters, so a later optional parameter can be added without a break. Nothing has shipped as a stable release yet, so every `Shipped` file is empty and the whole surface is in the `Unshipped` files; at the first stable release the maintainer moves the `Unshipped` lines into `Shipped` (the exact steps are in [the 1.0 API review](docs/release-readiness/api-review-1.0.md#steps-at-the-10-tag)), and from then on a removal or change of a shipped line is a breaking change that must be called out in the CHANGELOG.
+
+To record a change, either:
+
+- run `eng/update-public-api.sh` (all four libraries) or `eng/update-public-api.sh Core` (named ones), which rewrites the `Unshipped` files from the current source for every target framework the machine can build, then review `git diff -- '*PublicAPI*.txt'`; or
+- apply the RS0016 code fix in your IDE ("Add to public API"), or edit `PublicAPI.Unshipped.txt` by hand. Lines are sorted and look like `KumikoUI.Core.Models.KumikoColumn.Header.get -> string!`; the first line of a file is `#nullable enable` in the `Shipped` file.
+
+KumikoUI.Maui and KumikoUI.Uno target several frameworks. Members every framework has live in the project's own `PublicAPI.Unshipped.txt`; members only some frameworks have (for example the `GlobalStaticResources` class the Uno XAML generator adds to every Uno head) live in `PublicAPI/<target framework>/PublicAPI.Unshipped.txt`. The Windows heads cannot be built on macOS or Linux, so CI is the first to check them; if the Windows build reports RS0016 or RS0017, add or remove the line in `PublicAPI/net10.0-windows10.0.19041.0/` (Maui) or `PublicAPI/net10.0-windows10.0.26100/` (Uno), each with its own `PublicAPI.Shipped.txt` containing `#nullable enable`.
+
+Package validation (`EnablePackageValidation`) also runs when the packages are packed. Once the first stable version is out, the maintainer enables `PackageValidationBaselineVersion` (see `Directory.Build.props`) so that a breaking change against the last release fails the pack.
+
+**Formatting.** [`.editorconfig`](.editorconfig) records the whitespace rules the code follows (four-space indentation, Allman braces, LF line endings, final newline). CI runs:
+
+```bash
+dotnet format whitespace --folder . --verify-no-changes
+```
+
+Run `dotnet format whitespace --folder .` to fix what it reports before you push; it only changes whitespace.
+
 ### Public type names
 
 KumikoUI types are imported next to other UI frameworks' types, so a public type must never share its simple name with a public type of:
@@ -223,6 +249,16 @@ An annotation that is not directly followed by a code block, or has an unknown w
 **Writing snippets that compile.** Keep a snippet short and complete enough to compile as written; if it only works with something the text does not show, either show it or state the assumption in the README and add it to `Fixtures.cs`. If a snippet fails on one host only, annotate it `maui` or `uno` rather than hiding the failure. To add other Markdown files, pass `--file` (repeatable, relative to the repository root) to the tool; the default list is `README.md` and `docs/nuget/*.md`, and a file that does not exist is skipped. The NuGet READMEs carry no annotations (nuget.org cannot render HTML comments), so the tool infers what it needs: statements followed by type declarations are split into a method and a namespace, a block that names `MauiApp`, `ContentPage` or `Microsoft.UI.Xaml` is compiled for that host, a block in `README.KumikoUI.Maui.md` or `README.KumikoUI.Uno.md` for that host (Core and SkiaSharp for both), and a `partial` page class is paired with the XAML page whose `x:Class` names it. The `.github/instructions/*.md` files hold API fragments rather than compilable examples, so they are not in the default list.
 
 CI (`Build (Documentation snippets — MAUI + Uno)`) runs this on every pull request that changes code or one of those Markdown files.
+
+### Documentation identifiers
+
+The documents that tell contributors and AI assistants how the code is built (`.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`, `docs/ARCHITECTURE.md`, `docs/RENDERING.md` and `docs/uno/README.md`) must name only code that exists. `eng/DocsIdentifiers` (a console tool, not part of `KumikoUI.sln`) reads every backticked identifier and file name in them, and the multi-hump names in their code blocks, and fails when one does not occur in the source, or is not a member of the type it is written after (`KumikoSource.Name`). It reads text files only, needs no workload and takes about a second:
+
+```shell
+dotnet run --project eng/DocsIdentifiers -c Release
+```
+
+Run it after you rename or remove a type or member, or edit one of those documents. Fix the document; when a name is not code (a platform API, an example name in a template), add it to `eng/DocsIdentifiers/allowlist.txt` with a reason: an allowlist entry that no document uses is itself an error. It is a word check, not a compiler: it does not tell a public member from a private one or notice a changed signature, so it complements, and does not replace, the compiled snippets above. CI (`Check documentation identifiers`) runs it on every pull request that changes code or one of those documents.
 
 ### Pull requests
 

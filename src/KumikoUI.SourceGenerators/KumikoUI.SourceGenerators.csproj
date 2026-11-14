@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk" TreatAsLocalProperty="PublishTrimmed;TrimMode;PublishAot;IsTrimmable;IsAotCompatible">
 
   <!--
     Roslyn source generator for [KumikoGridItem] (#17). Shipped inside the KumikoUI.Core package
@@ -10,6 +10,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <IsRoslynComponent>true</IsRoslynComponent>
+    <!-- An app's `dotnet publish -p:PublishTrimmed=true` (or PublishAot) reaches this project as a global property
+         through the project references, and netstandard2.0 cannot be trimmed (NETSDK1124). It is a compiler
+         plug-in, never published, so those properties are local here and off. -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishAot>false</PublishAot>
+    <IsTrimmable>false</IsTrimmable>
+    <IsAotCompatible>false</IsAotCompatible>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsPackable>false</IsPackable>
     <IncludeSymbols>false</IncludeSymbols>

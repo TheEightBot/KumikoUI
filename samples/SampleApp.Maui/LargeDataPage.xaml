@@ -13,7 +13,9 @@
                Padding="16,12"
                Grid.Row="0" />
 
-        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4" Grid.Row="1">
+        <!-- One scrolling row: on a phone it takes one line, leaving the room above the soft keyboard to the grid -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+        <FlexLayout Wrap="NoWrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4">
             <Button x:Name="btn10K" Text="Load 10K" Clicked="OnLoad10KClicked" Margin="4,0,0,4" />
             <Button x:Name="btn50K" Text="Load 50K" Clicked="OnLoad50KClicked" Margin="4,0,0,4" />
             <Button x:Name="btn100K" Text="Load 100K" Clicked="OnLoad100KClicked" Margin="4,0,0,4" />
@@ -31,6 +33,7 @@
             <Label x:Name="surfaceLabel" VerticalOptions="Center" Margin="8,0" />
             <Label x:Name="statusLabel" Text="No data loaded" VerticalOptions="Center" Margin="8,0" />
         </FlexLayout>
+        </ScrollView>
 
         <dg:KumikoDataGrid x:Name="kumiko"
                          Grid.Row="2"

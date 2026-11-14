@@ -286,7 +286,7 @@ public class SortDirectionTests
         var ctx = new RecordingDrawingContext();
         popup.OnDraw(ctx);
         var requested = new List<KumikoSortDirection>();
-        popup.SortRequested += requested.Add;
+        popup.SortRequested += (_, direction) => requested.Add(direction);
 
         foreach (var rect in new[] { "Sort Checked First", "Sort Unchecked First" }
                      .Select(label => ctx.Texts.Single(t => t.Text == label).Rect))

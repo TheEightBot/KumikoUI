@@ -18,11 +18,11 @@ public class KumikoDataGridRenderingTests
     // ── Surface selection ─────────────────────────────────────────
 
     [Theory]
-    [InlineData(KumikoRenderMode.Auto, true, true, KumikoRenderMode.Gpu)]
+    [InlineData(KumikoRenderMode.Auto, true, true, KumikoRenderMode.Hardware)]
     [InlineData(KumikoRenderMode.Auto, true, false, KumikoRenderMode.Software)]  // iOS, Windows
     [InlineData(KumikoRenderMode.Auto, false, true, KumikoRenderMode.Software)]
-    [InlineData(KumikoRenderMode.Gpu, true, false, KumikoRenderMode.Gpu)]        // opt in where Auto does not
-    [InlineData(KumikoRenderMode.Gpu, false, false, KumikoRenderMode.Software)]  // no GPU view: falls back
+    [InlineData(KumikoRenderMode.Hardware, true, false, KumikoRenderMode.Hardware)]        // opt in where Auto does not
+    [InlineData(KumikoRenderMode.Hardware, false, false, KumikoRenderMode.Software)]  // no GPU view: falls back
     [InlineData(KumikoRenderMode.Software, true, true, KumikoRenderMode.Software)]
     public void Resolve_PicksTheSurface(KumikoRenderMode requested, bool gpuSupported, bool gpuDefault, KumikoRenderMode expected)
     {
@@ -32,10 +32,10 @@ public class KumikoDataGridRenderingTests
     [Fact]
     public void Create_GpuMode_IsAnSKGLView()
     {
-        var surface = KumikoSurfaceFactory.Create(KumikoRenderMode.Gpu);
+        var surface = KumikoSurfaceFactory.Create(KumikoRenderMode.Hardware);
 
         Assert.IsType<SKGLView>(surface.View);
-        Assert.Equal(KumikoRenderMode.Gpu, surface.Mode);
+        Assert.Equal(KumikoRenderMode.Hardware, surface.Mode);
     }
 
     [Fact]
@@ -45,6 +45,26 @@ public class KumikoDataGridRenderingTests
 
         Assert.IsType<SKCanvasView>(surface.View);
         Assert.Equal(KumikoRenderMode.Software, surface.Mode);
+    }
+
+    [Fact]
+    public void NewGrid_RebuildsLargeSourcesInTheBackground()
+    {
+        var grid = new KumikoDataGrid();
+
+        // #254: sources of 10 000 rows or more sort, filter and group on a worker; smaller ones stay synchronous.
+        Assert.Equal(KumikoSource.DefaultBackgroundRebuildThreshold, grid.BackgroundRebuildThreshold);
+        Assert.Equal(KumikoSource.DefaultBackgroundRebuildThreshold, grid.DataSource.BackgroundRebuildThreshold);
+        grid.BackgroundRebuildThreshold = 500;
+        Assert.Equal(500, grid.DataSource.BackgroundRebuildThreshold);
+        grid.BackgroundRebuildThreshold = -1; // rejected by the property's validation
+        Assert.Equal(500, grid.BackgroundRebuildThreshold);
+        Assert.Equal(500, grid.DataSource.BackgroundRebuildThreshold);
+        grid.BackgroundRebuildThreshold = KumikoSource.DefaultBackgroundRebuildThreshold;
+        grid.ItemsSource = new ObservableCollection<string> { "b", "a" };
+        grid.DataSource.Refresh();
+        Assert.False(grid.DataSource.IsViewUpdatePending);
+        Assert.Equal(2, grid.DataSource.RowCount);
     }
 
     [Fact]
@@ -58,7 +78,7 @@ public class KumikoDataGridRenderingTests
     }
 
     [Theory]
-    [InlineData(KumikoRenderMode.Gpu)]
+    [InlineData(KumikoRenderMode.Hardware)]
     [InlineData(KumikoRenderMode.Software)]
     [InlineData(KumikoRenderMode.Auto)]
     public void RenderMode_Set_KeepsOneSurface(KumikoRenderMode mode)
@@ -70,14 +90,14 @@ public class KumikoDataGridRenderingTests
         var root = Assert.IsType<Grid>(grid.Content);
         Assert.IsAssignableFrom<View>(Assert.Single(root.Children));
         Assert.Equal(KumikoSurfaceFactory.Resolve(mode), grid.ActiveRenderMode);
-        Assert.Equal(grid.ActiveRenderMode == KumikoRenderMode.Gpu, root.Children[0] is SKGLView);
+        Assert.Equal(grid.ActiveRenderMode == KumikoRenderMode.Hardware, root.Children[0] is SKGLView);
     }
 
     [Fact]
     public void RenderMode_SwappedBackAndForth_StillPaints()
     {
         var grid = PaintableGrid();
-        grid.RenderMode = KumikoRenderMode.Gpu;
+        grid.RenderMode = KumikoRenderMode.Hardware;
         grid.RenderMode = KumikoRenderMode.Software;
 
         using var surface = NewSurface();
@@ -100,7 +120,7 @@ public class KumikoDataGridRenderingTests
         public KumikoColor Color { get; set; } = new(255, 0, 0);
 
         public void Render(IDrawingContext ctx, in CellRenderContext cell) =>
-            ctx.FillRect(cell.Bounds, new KumikoPaint { Color = Color, Style = PaintStyle.Fill });
+            ctx.FillRect(cell.Bounds, new KumikoPaint { Color = Color });
     }
 
     private const int SurfaceWidth = 300, SurfaceHeight = 400;

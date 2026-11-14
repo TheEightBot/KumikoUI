@@ -376,7 +376,7 @@ public class ViewPipelineTests
     }
 
     [Fact]
-    public void AGroupSummaryOfTheProperty_StillRebuildsTheGroups()
+    public void AGroupSummaryOfTheProperty_IsUpdatedInPlace_WithoutRebuildingTheGroups()
     {
         var items = NewItems(9);
         var source = NewSource(items, out _);
@@ -388,10 +388,28 @@ public class ViewPipelineTests
 
         items[0].Quantity = 100; // Oslo
 
-        Assert.Equal(new[] { KumikoViewChangeKind.Rebuild }, kinds);
+        // #254: Sum, Average and Count group summaries follow the change in place, like table summaries (#69).
+        Assert.Equal(new[] { KumikoViewChangeKind.Redraw }, kinds);
         Assert.Equal(items.Sum(i => (double)i.Quantity), Raw(source, nameof(Item.Quantity), SummaryType.Sum));
         var oslo = source.GetGroupSummaries($"{nameof(Item.City)}=Oslo")!;
         Assert.Equal(items.Where(i => i.City == "Oslo").Sum(i => (double)i.Quantity), oslo[0].GetRawValue(nameof(Item.Quantity), SummaryType.Sum));
+    }
+
+    [Fact]
+    public void AGroupMaxSummaryOfTheProperty_StillRebuildsTheGroups()
+    {
+        var items = NewItems(9);
+        var source = NewSource(items, out _);
+        source.AddGroupDescription(new GroupDescription(nameof(Item.City)));
+        source.AddGroupSummaryRow(new GroupSummaryRow { Name = "G", Columns = { new SummaryColumnDescription(nameof(Item.Quantity), SummaryType.Max) } });
+        var kinds = new List<KumikoViewChangeKind>();
+        source.ViewChanged += (_, e) => kinds.Add(e.Kind);
+
+        items[0].Quantity = 100; // Oslo
+
+        Assert.Equal(new[] { KumikoViewChangeKind.Rebuild }, kinds);
+        var oslo = source.GetGroupSummaries($"{nameof(Item.City)}=Oslo")!;
+        Assert.Equal(100, oslo[0].GetRawValue(nameof(Item.Quantity), SummaryType.Max));
     }
 
     [Fact]

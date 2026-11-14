@@ -47,12 +47,6 @@ public static class KumikoUIHostingExtensions
         return builder;
     }
 
-    /// <summary>Registers KumikoUI with the MAUI app builder.</summary>
-    /// <param name="builder">The MAUI app builder.</param>
-    /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-    [Obsolete("Use UseKumikoUI() instead. This method forwards to it and will be removed before 1.0.")]
-    public static MauiAppBuilder UseSkiaKumikoUI(this MauiAppBuilder builder) => builder.UseKumikoUI();
-
     /// <summary>
     /// Throws when <see cref="UseKumikoUI"/> did not run for the app that owns <paramref name="services"/>.
     /// </summary>

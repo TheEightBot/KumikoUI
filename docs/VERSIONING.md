@@ -17,7 +17,7 @@ KumikoUI follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html
 
 Before 1.0 the API is still settling: breaking changes can land in any minor release and are always listed under **Changed** with a **Breaking:** prefix in the [CHANGELOG](../CHANGELOG.md).
 
-Prerelease versions (`1.0.0-preview.1`, `0.2.0-alpha.0.8`) carry no compatibility promise.
+Prerelease versions (`1.0.0-preview.1`, `0.2.0-alpha.0.8`) carry no compatibility promise. A `-preview.N` package is a candidate for the stable version, not a stable API: public API, documented behavior and package dependencies can change between `1.0.0-preview.1`, later previews and `1.0.0`, and the "From 1.0" column above applies only from `1.0.0`. Changes between previews are listed in the [CHANGELOG](../CHANGELOG.md) (breaking ones with the **Breaking:** prefix), but a preview is not held to the deprecation rules below. Install a preview explicitly (`--prerelease` or `--version`); NuGet does not pick one when a stable version exists.
 
 ## What counts as public API
 
@@ -37,5 +37,5 @@ From 1.0, a public API is removed only after it has been marked `[Obsolete]` wit
 
 - **.NET:** each KumikoUI major targets the current .NET LTS release (currently .NET 10, supported until November 2028). When .NET moves to a new LTS, the next KumikoUI major moves with it; the previous major gets security fixes for six months.
 - **Minimum OS versions** are re-baselined at each .NET major release; see the README's "Supported platforms".
-- **Fixes:** bug and security fixes ship in the latest minor of the current major. Before 1.0, only the latest release is supported (see [SECURITY.md](../SECURITY.md)).
+- **Fixes:** bug and security fixes ship in the latest minor of the current major. Before 1.0.0 (the `0.x` releases and the `1.0.0-preview.N` prereleases), only the latest release is supported (see [SECURITY.md](../SECURITY.md)).
 - **SkiaSharp, .NET MAUI and Uno Platform:** KumikoUI moves to new majors of its dependencies in its own minor (before 1.0) or major (from 1.0) releases, and states the required versions in the CHANGELOG.

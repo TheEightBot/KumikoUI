@@ -94,7 +94,7 @@ Check(KumikoLayoutState.Capture(restored).ToJson() == layoutJson, "the layout JS
 var style = new KumikoStyle();
 var scroll = new ScrollState { ViewportWidth = Width, ViewportHeight = Height };
 var selection = new KumikoSelectionModel(source);
-selection.HandleRowSelection(1, shift: false, ctrl: false);
+selection.HandleRowSelection(1, shift: false, control: false);
 
 using var surface = SKSurface.Create(new SKImageInfo(Width, Height));
 Check(surface is not null, "SKSurface could be created (SkiaSharp native library loaded)");

@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Event args for the SortColumnsChanged event.
 /// </summary>
-public class SortColumnsChangedEventArgs : EventArgs
+public sealed class SortColumnsChangedEventArgs : EventArgs
 {
     /// <summary>The column whose sort state was toggled.</summary>
     public KumikoColumn Column { get; }

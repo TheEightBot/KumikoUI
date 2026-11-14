@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Models;
 /// cell stays on its item and column. Items that are no longer visible leave the selection. Only data rows can
 /// be selected; group header and group summary rows can hold the current cell but are never selected.
 /// </summary>
-public class KumikoSelectionModel
+public sealed class KumikoSelectionModel
 {
     private readonly HashSet<object> _items = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, int> _rowOfItem = new(ReferenceEqualityComparer.Instance);
@@ -62,8 +62,11 @@ public class KumikoSelectionModel
     /// <summary>The data item of the current cell, or null when there is none or it is on a group row.</summary>
     public object? CurrentItem => _currentKey is GroupRowKey ? null : _currentKey;
 
-    /// <summary>Is cell editing active?</summary>
-    public bool IsEditing { get; set; }
+    /// <summary>
+    /// Whether a cell editor is open. The input controller and the host controls keep it in step with the
+    /// <see cref="Editing.EditSession"/>; it is read-only for application code.
+    /// </summary>
+    public bool IsEditing { get; internal set; }
 
     // ── Events ──
 
@@ -203,8 +206,8 @@ public class KumikoSelectionModel
     /// </summary>
     /// <param name="row">Zero-based visible row index that was clicked.</param>
     /// <param name="shift">Whether the Shift modifier is held (range select in Extended mode).</param>
-    /// <param name="ctrl">Whether the Ctrl modifier is held (toggle in Extended mode).</param>
-    public void HandleRowSelection(int row, bool shift, bool ctrl)
+    /// <param name="control">Whether the Ctrl (or Command) modifier is held (toggle in Extended mode).</param>
+    public void HandleRowSelection(int row, bool shift, bool control)
     {
         if (row < 0 || row >= Source.RowCount) return;
 
@@ -222,7 +225,7 @@ public class KumikoSelectionModel
                     ClearItems();
                     AddRange(_anchorRow, row);
                 }
-                else if (Mode == KumikoSelectionMode.Multiple || (Mode == KumikoSelectionMode.Extended && ctrl))
+                else if (Mode == KumikoSelectionMode.Multiple || (Mode == KumikoSelectionMode.Extended && control))
                 {
                     if (isData) ToggleRow(row);
                 }
@@ -261,9 +264,8 @@ public class KumikoSelectionModel
     /// Moves the current cell one column to the left in on-screen order (<see cref="KumikoSource.DisplayColumns"/>:
     /// left-frozen, scrolling, right-frozen), skipping hidden columns. It stays put at the first column.
     /// </summary>
-    /// <param name="totalColumns">Unused; kept for compatibility. The visible columns come from the source.</param>
     /// <param name="shift">Whether Shift is held.</param>
-    public void NavigateLeft(int totalColumns, bool shift)
+    public void NavigateLeft(bool shift)
     {
         if (!_currentCell.IsValid) return;
         int display = Source.ToDisplayIndex(_currentCell.Column);
@@ -275,9 +277,8 @@ public class KumikoSelectionModel
     /// Moves the current cell one column to the right in on-screen order, skipping hidden columns. It stays
     /// put at the last column.
     /// </summary>
-    /// <param name="totalColumns">Unused; kept for compatibility. The visible columns come from the source.</param>
     /// <param name="shift">Whether Shift is held.</param>
-    public void NavigateRight(int totalColumns, bool shift)
+    public void NavigateRight(bool shift)
     {
         if (!_currentCell.IsValid) return;
         int display = Source.ToDisplayIndex(_currentCell.Column);
@@ -288,26 +289,28 @@ public class KumikoSelectionModel
     /// Moves the current cell to the first visible column in on-screen order, or to row 0 as well if Ctrl is
     /// held.
     /// </summary>
-    public void NavigateHome(bool ctrlHeld, int totalRows, bool shift)
+    /// <param name="totalRows">The number of visible rows.</param>
+    /// <param name="shift">Whether Shift is held.</param>
+    /// <param name="control">Whether Ctrl (or Command) is held.</param>
+    public void NavigateHome(int totalRows, bool shift, bool control)
     {
         if (!_currentCell.IsValid) return;
         int column = Source.ToColumnIndex(0);
-        MoveTo(ctrlHeld ? 0 : _currentCell.Row, column >= 0 ? column : _currentCell.Column, shift, totalRows);
+        MoveTo(control ? 0 : _currentCell.Row, column >= 0 ? column : _currentCell.Column, shift, totalRows);
     }
 
     /// <summary>
     /// Moves the current cell to the last visible column in on-screen order, or to the last row as well if
     /// Ctrl is held.
     /// </summary>
-    /// <param name="ctrlHeld">Whether Ctrl is held.</param>
     /// <param name="totalRows">The number of visible rows.</param>
-    /// <param name="totalColumns">Unused; kept for compatibility. The visible columns come from the source.</param>
     /// <param name="shift">Whether Shift is held.</param>
-    public void NavigateEnd(bool ctrlHeld, int totalRows, int totalColumns, bool shift)
+    /// <param name="control">Whether Ctrl (or Command) is held.</param>
+    public void NavigateEnd(int totalRows, bool shift, bool control)
     {
         if (!_currentCell.IsValid) return;
         int column = Source.ToColumnIndex(Source.DisplayColumns.Count - 1);
-        MoveTo(ctrlHeld ? totalRows - 1 : _currentCell.Row, column >= 0 ? column : _currentCell.Column, shift, totalRows);
+        MoveTo(control ? totalRows - 1 : _currentCell.Row, column >= 0 ? column : _currentCell.Column, shift, totalRows);
     }
 
     /// <summary>Moves within the current row to a display column; a position outside the visible columns does nothing.</summary>
@@ -319,7 +322,10 @@ public class KumikoSelectionModel
     }
 
     /// <summary>Moves the current cell up by one page of rows.</summary>
-    public void NavigatePageUp(int pageSize, bool shift, int totalRows)
+    /// <param name="pageSize">The number of rows in a page.</param>
+    /// <param name="totalRows">The number of visible rows.</param>
+    /// <param name="shift">Whether Shift is held.</param>
+    public void NavigatePageUp(int pageSize, int totalRows, bool shift)
     {
         if (!_currentCell.IsValid) return;
         MoveTo(Math.Max(0, _currentCell.Row - pageSize), _currentCell.Column, shift, totalRows);

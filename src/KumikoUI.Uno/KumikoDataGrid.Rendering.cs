@@ -118,6 +118,7 @@ public partial class KumikoDataGrid
     /// <summary>Called from <c>OnLoaded</c>: resumes drawing, DPI tracking and any pending frame work.</summary>
     private void AttachSurface()
     {
+        SyncReducedMotion(); // KumikoDataGrid.Motion.cs
         _surface.Attach(_surfaceRenderer!);
         AttachXamlRoot();
         if (_frames.Attach())
@@ -155,12 +156,18 @@ public partial class KumikoDataGrid
         if (bg.A > 0)
             canvas.DrawColor(new SKColor(bg.R, bg.G, bg.B, bg.A), SKBlendMode.SrcOver);
 
-        using var drawingContext = new SkiaDrawingContext(canvas, ResourceCache);
+        using var drawingContext = ResourceCache.CreateContext(canvas);
 
-        _renderer.Render(drawingContext, _dataSource, _scroll, _selection, _style,
+        _renderer.RenderFrame(drawingContext, _dataSource, _scroll, _selection, _style,
             _inputController.DragColumnIndex, _inputController.DragColumnScreenX,
             _inputController.DragRowIndex, _inputController.DragRowScreenY,
             _editSession, _inputController.PopupManager);
+        OnKeyboardFrameRendered(); // KumikoDataGrid.KeyboardAvoidance.cs
+
+        // The frame may have started a transition (the current row's highlight fading in), or one runs on: the frame
+        // loop steps it
+        if (_inputController.IsAnimating)
+            StartInertialScroll();
     }
 
     /// <summary>
@@ -186,8 +193,8 @@ public partial class KumikoDataGrid
     // ── Frame loop (CompositionTarget.Rendering) ──────────────────
 
     /// <summary>
-    /// Starts stepping the inertial scroller and edge autoscroll once per frame (a fling began on release or cancel,
-    /// or a row drag holds the pointer at an edge).
+    /// Starts stepping the inertial scroller, edge autoscroll, the editor's animation and Core's transitions once per
+    /// frame (a fling began on release or cancel, a row drag holds the pointer at an edge, a group slides open).
     /// </summary>
     private void StartInertialScroll()
     {
@@ -230,7 +237,8 @@ public partial class KumikoDataGrid
             bool scrolling = _inputController.UpdateInertialScroll(_scroll, frameMs);
             bool autoScrolling = _inputController.UpdateAutoScroll(_scroll, frameMs);
             bool animating = _editSession.UpdateAnimation(frameMs);
-            if (!scrolling && !autoScrolling && !animating)
+            bool transitioning = _inputController.UpdateAnimations(frameMs); // KumikoDataGrid.Motion.cs
+            if (!scrolling && !autoScrolling && !animating && !transitioning)
                 _frames.StopAnimation();
         }
 
@@ -320,10 +328,14 @@ public partial class KumikoDataGrid
 
     private void OnDataSourceViewChanged(object? sender, KumikoUI.Core.Models.KumikoViewChangedEventArgs e) => RequestRedraw();
 
-    private void OnInputControllerNeedsRedraw() => RequestRedraw();
+    // A background rebuild's view was swapped in (#254): draw it. The scroll offset is kept and clamped to the new
+    // content on the next frame, so a re-sort shows the same scroll position in the new order.
+    private void OnDataSourceViewUpdated(object? sender, EventArgs e) => RequestRedraw();
 
-    private void OnEditSessionNeedsRedraw() => RequestRedraw();
+    private void OnInputControllerNeedsRedraw(object? sender, EventArgs e) => RequestRedraw();
+
+    private void OnEditSessionNeedsRedraw(object? sender, EventArgs e) => RequestRedraw();
 
     // An action button's command raised CanExecuteChanged: that can happen on any thread.
-    private void OnRendererRedrawRequested() => Invalidate();
+    private void OnRendererRedrawRequested(object? sender, EventArgs e) => Invalidate();
 }
