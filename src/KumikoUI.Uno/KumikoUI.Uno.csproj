@@ -28,6 +28,9 @@
     <KumikoTrackPublicApi>true</KumikoTrackPublicApi>
     <!-- Package validation (#54); the baseline is described in Directory.Build.props. -->
     <EnablePackageValidation>true</EnablePackageValidation>
+    <!-- CompatibilitySuppressions.xml lists the expected differences between the Uno and WinUI builds. The Windows build is
+         packed only on Windows, so elsewhere those suppressions go unused; that is not an error. -->
+    <ApiCompatPermitUnnecessarySuppressions>true</ApiCompatPermitUnnecessarySuppressions>
     <!-- The recommended code-analysis rules (#112); Directory.Build.props sets `latest` for tests and samples. -->
     <AnalysisLevel>latest-recommended</AnalysisLevel>
 

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Package validation compares the reference build (net10.0, Uno) with the Windows App SDK build of the same package. These
+  differences come from the two UI frameworks, not from KumikoUI, and are expected:
+  - Uno's DependencyObject implements IEnumerable (its child collection); WinUI's does not.
+  - Uno's XAML generator adds GlobalStaticResources to the Uno builds; the Windows build uses WinUI's XAML compiler.
+-->
+<Suppressions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:KumikoUI.Uno.GlobalStaticResources</Target>
+    <Left>lib/net10.0/KumikoUI.Uno.dll</Left>
+    <Right>lib/net10.0-windows10.0.26100/KumikoUI.Uno.dll</Right>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0008</DiagnosticId>
+    <Target>T:KumikoUI.Uno.KumikoDataGrid</Target>
+    <Left>lib/net10.0/KumikoUI.Uno.dll</Left>
+    <Right>lib/net10.0-windows10.0.26100/KumikoUI.Uno.dll</Right>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0008</DiagnosticId>
+    <Target>T:KumikoUI.Uno.UnoActionButtonDefinition</Target>
+    <Left>lib/net10.0/KumikoUI.Uno.dll</Left>
+    <Right>lib/net10.0-windows10.0.26100/KumikoUI.Uno.dll</Right>
+  </Suppression>
+</Suppressions>
