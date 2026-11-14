@@ -7,7 +7,7 @@ namespace KumikoUI.Core.Input;
 /// Pointer buttons and context menus (#100): only the primary button selects, sorts, scrolls, drags and edits; the
 /// secondary button and a touch or pen long press raise <see cref="ContextRequested"/>.
 /// </summary>
-public partial class KumikoInputController
+public sealed partial class KumikoInputController
 {
     // The button of the press in progress (KumikoPointerEventArgs.Button of its Pressed event).
     private PointerButton _pressButton = PointerButton.Primary;

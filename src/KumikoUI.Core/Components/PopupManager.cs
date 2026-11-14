@@ -18,7 +18,7 @@ namespace KumikoUI.Core.Components;
 /// selects, edits or sorts nothing (<see cref="PopupClosed"/> reports each closed popup). Wheel input over
 /// a popup goes to <see cref="DrawnComponent.OnScroll"/>.
 /// </remarks>
-public class PopupManager
+internal class PopupManager
 {
     private readonly List<PopupEntry> _popups = new();
     private int _nextZOrder = 1000;
@@ -330,7 +330,7 @@ public class PopupManager
     private static void DrawPopupShadow(IDrawingContext ctx, KumikoRect bounds)
     {
         var shadowColor = new KumikoColor(0, 0, 0, 40);
-        var shadowPaint = new KumikoPaint { Color = shadowColor, Style = PaintStyle.Fill };
+        var shadowPaint = new KumikoPaint { Color = shadowColor };
         // Offset shadow
         ctx.FillRect(new KumikoRect(bounds.X + 2, bounds.Y + 2, bounds.Width, bounds.Height), shadowPaint);
     }

@@ -501,9 +501,9 @@ public class PointerGestureTests
     {
         var g = new InputGrid();
         int opened = 0, closed = 0, focus = 0;
-        g.Input.FilterPopupOpened += () => opened++;
-        g.Input.FilterPopupClosed += () => closed++;
-        g.Input.KeyboardFocusRequested += () => focus++;
+        g.Input.FilterPopupOpened += (_, _) => opened++;
+        g.Input.FilterPopupClosed += (_, _) => closed++;
+        g.Input.KeyboardFocusRequested += (_, _) => focus++;
 
         g.Tap(180, InputGrid.HeaderY); // Age filter icon
 
@@ -524,7 +524,7 @@ public class PointerGestureTests
     {
         var g = new InputGrid();
         int closed = 0;
-        g.Input.FilterPopupClosed += () => closed++;
+        g.Input.FilterPopupClosed += (_, _) => closed++;
         g.Tap(180, InputGrid.HeaderY);
 
         g.Tap(10, 240); // below the popup, over a grid row

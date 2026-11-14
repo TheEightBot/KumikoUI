@@ -21,7 +21,7 @@ namespace KumikoUI.Core.Models;
 /// <see cref="KumikoSource.SetColumnFilter"/>. The editor settings (<c>Editor*</c> properties and editor factories)
 /// are read when an editor opens and raise no notification.
 /// </remarks>
-public class KumikoColumn : INotifyPropertyChanged
+public sealed class KumikoColumn : INotifyPropertyChanged
 {
     /// <summary>
     /// Raised after a configuration property changed; <see cref="PropertyChangedEventArgs.PropertyName"/> names it.

@@ -7,7 +7,7 @@ namespace KumikoUI.Core.Input;
 /// Performs hit testing against the grid layout.
 /// Determines what the user clicked/touched.
 /// </summary>
-public class KumikoHitTester
+public sealed class KumikoHitTester
 {
     private const float ResizeGripWidth = 6f;
     private const float FilterIconSize = 12f;

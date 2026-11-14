@@ -25,7 +25,7 @@ namespace KumikoUI.Maui;
 /// <c>Source={x:Reference …}</c> or <c>Source={RelativeSource …}</c> to point
 /// bindings at the correct source object.
 /// </remarks>
-public class MauiActionButtonDefinition : BindableObject, IActionButtonDefinition
+public sealed class MauiActionButtonDefinition : BindableObject, IActionButtonDefinition
 {
     // ── BindableProperty declarations ────────────────────────────
 

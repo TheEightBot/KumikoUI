@@ -5,7 +5,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Clipboard text event (for copy/cut — host reads the Text).</summary>
-public class ClipboardTextEventArgs : EventArgs
+public sealed class ClipboardTextEventArgs : EventArgs
 {
     /// <summary>The text to be placed on the clipboard.</summary>
     public string Text { get; }

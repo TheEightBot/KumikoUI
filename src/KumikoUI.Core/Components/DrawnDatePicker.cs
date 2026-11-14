@@ -31,7 +31,7 @@ namespace KumikoUI.Core.Components;
 /// pending, Left, Right, Home and End edit the text instead.
 /// </para>
 /// </remarks>
-public class DrawnDatePicker : DrawnComponent, IValueEditor
+public sealed class DrawnDatePicker : DrawnComponent, IValueEditor
 {
     private DateTime _selectedDate = DateTime.Today; // the selection, or where the keyboard starts when there is none
     private bool _hasSelection = true;
@@ -102,10 +102,10 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
     private readonly Dictionary<int, string> _yearStrings = new();
 
     // Paints reused by every draw
-    private readonly KumikoPaint _fillPaint = new() { Style = PaintStyle.Fill };
-    private readonly KumikoPaint _strokePaint = new() { Style = PaintStyle.Stroke };
-    private readonly KumikoPaint _arrowPaint = new() { Style = PaintStyle.Stroke, IsAntiAlias = true };
-    private readonly KumikoPaint _textPaint = new() { Style = PaintStyle.Fill };
+    private readonly KumikoPaint _fillPaint = new();
+    private readonly KumikoPaint _strokePaint = new();
+    private readonly KumikoPaint _arrowPaint = new() { IsAntiAlias = true };
+    private readonly KumikoPaint _textPaint = new();
 
     /// <summary>Creates a date picker showing the current month with no date selected.</summary>
     public DrawnDatePicker()
@@ -119,7 +119,7 @@ public class DrawnDatePicker : DrawnComponent, IValueEditor
             EditingBackgroundColor = BackgroundColor,
         };
         _box.TextChanged += (_, _) => OnTextEdited();
-        _box.RedrawRequested += InvalidateVisual;
+        _box.RedrawRequested += (_, _) => InvalidateVisual();
     }
 
     // ── Style ───────────────────────────────────────────────────

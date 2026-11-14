@@ -166,6 +166,19 @@ public class HitTesterTests
     }
 
     [Fact]
+    public void HitTestResult_IsAValue_EqualByContent()
+    {
+        var a = new KumikoHitTestResult { Region = HitRegion.Cell, RowIndex = 2, ColumnIndex = 1, ContentX = 4, ContentY = 9 };
+        var b = new KumikoHitTestResult { Region = HitRegion.Cell, RowIndex = 2, ColumnIndex = 1, ContentX = 4, ContentY = 9 };
+
+        Assert.Equal(a, b);
+        Assert.NotEqual(a, b with { RowIndex = 3 });
+        Assert.Equal(KumikoHitTestResult.Empty, new KumikoHitTestResult());
+        Assert.Equal(HitRegion.None, new KumikoHitTestResult().Region);
+        Assert.Equal(-1, new KumikoHitTestResult().RowIndex);
+    }
+
+    [Fact]
     public void EmptyGrid_HasNothingToHit()
     {
         var g = new InputGrid(rows: 0);

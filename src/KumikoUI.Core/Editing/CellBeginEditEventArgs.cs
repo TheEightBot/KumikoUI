@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Editing;
 /// <summary>
 /// Event args for CellBeginEdit. Set Cancel=true to prevent editing.
 /// </summary>
-public class CellBeginEditEventArgs : EventArgs
+public sealed class CellBeginEditEventArgs : EventArgs
 {
     /// <summary>Zero-based row index of the cell.</summary>
     public int RowIndex { get; }

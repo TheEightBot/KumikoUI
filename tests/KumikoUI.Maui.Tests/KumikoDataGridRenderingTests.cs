@@ -100,7 +100,7 @@ public class KumikoDataGridRenderingTests
         public KumikoColor Color { get; set; } = new(255, 0, 0);
 
         public void Render(IDrawingContext ctx, in CellRenderContext cell) =>
-            ctx.FillRect(cell.Bounds, new KumikoPaint { Color = Color, Style = PaintStyle.Fill });
+            ctx.FillRect(cell.Bounds, new KumikoPaint { Color = Color });
     }
 
     private const int SurfaceWidth = 300, SurfaceHeight = 400;

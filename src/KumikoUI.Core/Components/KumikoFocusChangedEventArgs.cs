@@ -3,7 +3,7 @@ using KumikoUI.Core.Rendering;
 namespace KumikoUI.Core.Components;
 
 /// <summary>Provides data for the <see cref="DrawnFocusManager.FocusChanged"/> event.</summary>
-public class KumikoFocusChangedEventArgs : EventArgs
+internal class KumikoFocusChangedEventArgs : EventArgs
 {
     /// <summary>The component that previously held focus, or <c>null</c> if none.</summary>
     public DrawnComponent? OldFocus { get; }

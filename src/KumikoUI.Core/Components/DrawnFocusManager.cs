@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Components;
 /// Manages keyboard focus among drawn components.
 /// Only one component at a time can have focus.
 /// </summary>
-public class DrawnFocusManager
+internal class DrawnFocusManager
 {
     private readonly List<DrawnComponent> _components = new();
     private DrawnComponent? _focused;

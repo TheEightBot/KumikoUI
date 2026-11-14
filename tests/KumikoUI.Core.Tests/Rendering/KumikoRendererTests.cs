@@ -109,7 +109,7 @@ public class KumikoRendererTests
             var op = ctx.SingleText(title);
             Assert.Equal(new KumikoRect(x + 8, 0, width - 16 - 14, 40), op.Rect);
             Assert.Equal(h.Style.HeaderTextColor, op.Color);
-            Assert.Same(h.Style.HeaderFont, op.Font);
+            Assert.Equal(h.Style.HeaderFont, op.Font);
         }
     }
 
@@ -199,7 +199,7 @@ public class KumikoRendererTests
         var name = ctx.SingleText("P03");
         Assert.Equal(new KumikoRect(8, h.RowTop(3), 150 - 16, 36), name.Rect);
         Assert.Equal(h.Style.CellTextColor, name.Color);
-        Assert.Same(h.Style.CellFont, name.Font);
+        Assert.Equal(h.Style.CellFont, name.Font);
 
         var salary = ctx.SingleText("1030");
         Assert.Equal(new KumikoRect(408, h.RowTop(3), 150 - 16, 36), salary.Rect);
@@ -514,7 +514,6 @@ public class KumikoRendererTests
         var ctx = h.Render();
         var arrow = Assert.Single(ctx.Polygons, o => o.Color == h.Style.SortIndicatorColor);
 
-        Assert.Equal(PaintStyle.Fill, arrow.Style);
         Assert.Empty(ctx.Lines.Where(l => l.Color == h.Style.SortIndicatorColor));
         Assert.Equal(3, arrow.Points!.Length);
         // Name is 150 px wide: arrow spans 134-142 (width - padding - 8), centred on the 40 px header.

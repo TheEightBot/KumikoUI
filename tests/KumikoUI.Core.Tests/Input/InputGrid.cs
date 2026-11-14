@@ -64,8 +64,8 @@ internal sealed class InputGrid
         Source.SetItems(Items);
         Edit.Style = Style;
         if (withEditSession) Input.EditSession = Edit;
-        Input.NeedsRedraw += () => Redraws++;
-        Input.CursorChanged += cursor => Cursors.Add(cursor);
+        Input.NeedsRedraw += (_, _) => Redraws++;
+        Input.CursorChanged += (_, cursor) => Cursors.Add(cursor);
         configure?.Invoke(this);
         Render();
     }
