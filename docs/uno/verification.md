@@ -70,7 +70,8 @@ this work lists where.
    it ("XBob Jones"), and typing at the end of a value threw inside Uno; on Android that exception crashed the app
    from the input connection, on iOS characters were lost ("Kim Lee" became "iK" + the old text). Both are fixed
    on Android and re-checked there on the merged code. On iOS the merged code types every character in order
-   ("Kim Lee" arrives whole), but typing over a selected value still goes in front of it (follow-up F9, #279).
+   ("Kim Lee" arrives whole). This pass also saw typing over a selected value go in front of it on iOS (F9, #279),
+   which later runs on the released code did not reproduce.
 5. **IME on WebAssembly and iOS:** no input method that composes could be driven by the automation (no Japanese
    keyboard is installed in the browser or the simulator). The composition path itself is covered by the unit
    tests of `KumikoTextInputAdapter`.
@@ -111,7 +112,7 @@ this work lists where.
 | Fix | Heads | Commit |
 |---|---|---|
 | Typing at the end of a cell editor or the filter search box threw `ArgumentOutOfRangeException` from `TextBox.Select`: the grid wrote its hidden text box back while that text box was still raising `TextChanging`. Crashed the app on Android, logged on most WebAssembly keystrokes, lost characters on iOS. The grid now syncs the text box right after the change. | Android, iOS, WebAssembly (and desktop, same code path) | `fix(uno): do not write the proxy text box while it raises TextChanging` |
-| Typing over a selected value inserted in front of it on Android: focusing the hidden text box moved its caret to the start. The grid puts the editor's selection back after focusing it. (iOS has the same symptom from a different cause: F9.) | Android | `fix(uno): restore the editor's selection after focusing the proxy text box` |
+| Typing over a selected value inserted in front of it on Android: focusing the hidden text box moved its caret to the start. The grid puts the editor's selection back after focusing it. (This pass also saw the symptom on iOS, F9, which later runs did not reproduce.) | Android | `fix(uno): restore the editor's selection after focusing the proxy text box` |
 | The sample had no page with row drag; the All Components page now shows the drag handle and has the MAUI page's Row Drag button. Its theme button said Light while the grid followed a dark app theme. | all | `fix(samples): Uno main page can drag rows and its theme button starts from the shown theme` |
 
 | The filter popup applied every checked value on OK, including values a search had hidden, and its Select All box always showed a check mark. OK now keeps the checked values that match the search, and the box shows checked, empty or indeterminate. | all (Core) | `fix(core): filter popup OK applies the search and Select All shows a mixed state` |
@@ -146,13 +147,15 @@ Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
 - **F7. An open editor keeps the old theme.** *Fixed in Core* (see above); re-check on the Android emulator.
 - **F8. Android Release cold start is slow.** ([#278](https://github.com/TheEightBot/KumikoUI/issues/278)) About 15 to 20 seconds from launch to the first grid on the emulator;
   measure on a device.
-- **F9. iOS: typing over a selected cell value goes in front of it.** ([#279](https://github.com/TheEightBot/KumikoUI/issues/279)) iOS simulator, All Components, double-tap
-  "Eve Davis" (the editor selects all of it), type "Kim Lee": the cell reads "Kim LeeEve Davis". The managed proxy
-  `TextBox` has the right selection, but Uno's iOS host keeps a native `UITextField` behind it whose own selection is
-  not updated: `InvisibleTextBoxViewExtension.StartEntry` copies the selection only when it creates that field, and
-  `TextBox.Select` ignores a selection that did not change, so re-syncing from the grid does not reach it. Re-selecting
-  through a different selection after focus was tried in this pass and made iOS drop characters, so it was not kept.
-  Needs a fix in the host that reaches the native field after it becomes first responder, or an Uno fix.
+- **F9. iOS: typing over a selected cell value goes in front of it.** *Closed: not reproduced on the released code*
+  ([#279](https://github.com/TheEightBot/KumikoUI/issues/279)). This pass saw it on the iOS simulator: on the All
+  Components page, double-tap "Eve Davis" (the editor selects all of it) and type "Kim Lee", and the cell read
+  "Kim LeeEve Davis". The suspected cause was the native `UITextField` behind Uno's proxy `TextBox`, whose selection
+  could fall out of step with the managed one. Later runs on `1.0.0-preview.1` (Debug and Release, iPhone 17 and the
+  `KumikoUI-Uno-iPhone` simulator, typed text and on-screen keys, first and later edits) replaced the value every
+  time, and logging showed the native field's selection matched the editor's once the edit opened. The grid's
+  re-sync after focusing the proxy (`fix(uno): restore the editor's selection after focusing the proxy text box`)
+  reaches the native field through `TextBox.Select`.
 - **F10. Sample shell under the system bars on iOS and Android.** ([#280](https://github.com/TheEightBot/KumikoUI/issues/280)) The page title and toolbar run under the status bar
   and the last row under the home indicator / gesture bar. `VisibleBoundsPadding` on the `NavigationView` had no
   effect on iOS; the shell needs a padded container (or the safe-area insets applied by hand).
@@ -168,7 +171,7 @@ KumikoUI.Uno stays the least verified host until the issues above are closed.
 
 - **Text entry on the two mobile heads was broken until this pass** (an app crash on Android, lost and misplaced
   characters on iOS) and nothing had caught it: the unit tests modeled a text box that behaves better than Uno's.
-  Android is fixed and has had one emulator run; iOS still types in front of a selected value (F9).
+  Android is fixed and has had one emulator run; iOS replaces a selected value in later simulator runs (F9 is closed).
 - **The desktop head has had no interactive run at all** (F1), and Windows and Linux have none either. Desktop is the
   head most Uno apps ship first.
 - **Accessibility is uneven** (F4: VoiceOver cannot reach the grid on macOS), and the filter search cannot be typed

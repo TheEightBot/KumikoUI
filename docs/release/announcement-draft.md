@@ -69,7 +69,7 @@ dotnet add package KumikoUI.Uno --prerelease    # Uno Platform (the least verifi
 KumikoUI.Uno shares the engine, the API and most of the input code with the MAUI package, and we walked its sample app on
 WebAssembly, an iOS simulator and an Android emulator. We did not walk every head end to end: the desktop head has had no
 interactive pass (#274), Windows and Linux have not been run, and several input and accessibility problems are open
-(#275 to #280). The list is in `docs/uno/verification.md`.
+(#275 to #278, #280). The list is in `docs/uno/verification.md`.
 
 **What a preview means**
 

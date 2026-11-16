@@ -113,7 +113,7 @@ Remains for `1.0.0`:
 
 - Freeze `PublicAPI.Shipped.txt`, set the package validation baseline, and take the open decisions: 8-digit hex order, the two editor-factory shapes, `Auto` = Hardware on Android (confirm on a physical phone) and the HarfBuzz dependency.
 - Hands-on passes on Windows and on physical devices, and a screen-reader run.
-- The open Uno issues (#274 to #280).
+- The open Uno issues (#274 to #278, #280).
 - A `1.0.0` CHANGELOG section, release notes and announcement.
 
 Deferred to 1.x as before: the specs listed under epic X, the per-cell accessibility tree (#79) and right-to-left layout (#80).
