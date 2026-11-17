@@ -44,11 +44,11 @@
     <!--
       UnoFeatures let's you quickly add and manage implicit package references based on the features you want to use.
       https://aka.platform.uno/singleproject-features
-      SkiaRenderer also brings in SkiaSharp.Views.Uno.WinUI (which provides SkiaSharp.Views.Windows.SKXamlCanvas)
+      Skia (Uno 7 ignores SkiaRenderer in a library) also brings in SkiaSharp.Views.Uno.WinUI (which provides SkiaSharp.Views.Windows.SKXamlCanvas)
       on every non-Windows head, so Phase 03 can host the SKXamlCanvas.
     -->
     <UnoFeatures>
-      SkiaRenderer;
+      Skia;
     </UnoFeatures>
 
     <!--
@@ -76,6 +76,13 @@
   -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="SkiaSharp.Views.WinUI" />
+  </ItemGroup>
+  <!--
+    Uno 7's Skia feature (the only one a library may use; SkiaRenderer is ignored in a library) no longer adds
+    SkiaSharp.Views.Uno.WinUI, which provides SKXamlCanvas on every non-Windows head, so reference it explicitly.
+  -->
+  <ItemGroup Condition="!$(TargetFramework.Contains('-windows'))">
+    <PackageReference Include="SkiaSharp.Views.Uno.WinUI" />
   </ItemGroup>
 
   <!--
@@ -146,8 +153,8 @@
 
   <!--
     The Uno.Sdk adds implicit packages on every head that a library must not hand on to its consumers:
-    Uno.WinUI.Lottie and Uno.WinUI.Graphics2DSK (added by the SkiaRenderer feature; an app head requests them
-    itself through its own UnoFeatures) and the DevServer packages. Mark them PrivateAssets="all" so they stay
+    Uno.WinUI.Lottie, Uno.WinUI.Graphics2DSK and Uno.WinUI.Composition.Skia (added by the Skia features; an app
+    head requests them itself through its own UnoFeatures) and the DevServer packages. Mark them PrivateAssets="all" so they stay
     out of the nuspec's dependency groups (Uno.Resizetizer, Uno.Sdk.Extras and Uno.Settings.DevServer are
     already private). The Uno SDK creates these references in its UnoImplicitPackages target, so this runs
     right after it, before restore and pack read the PackageReference items.
@@ -160,12 +167,27 @@
       <PackageReference Condition="'%(Identity)' == 'Uno.WinUI.Graphics2DSK'">
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
+      <PackageReference Condition="'%(Identity)' == 'Uno.WinUI.Composition.Skia'">
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
       <PackageReference Condition="'%(Identity)' == 'Uno.WinUI.DevServer'">
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
       <PackageReference Condition="'%(Identity)' == 'Uno.Wasm.Bootstrap.DevServer'">
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Uno.Sdk 7 adds its uno-proguard.cfg to every Android project, libraries included, which makes the library
+    pack a KumikoUI.Uno.aar holding only that file. The app head that consumes the package gets the same rules
+    from its own Uno.Sdk, so drop the item here and keep Android resources out of the package (#66).
+  -->
+  <Target Name="KumikoRemoveUnoProguardConfiguration" BeforeTargets="PrepareForBuild"
+          Condition="$(TargetFramework.Contains('-android'))">
+    <ItemGroup>
+      <ProguardConfiguration Remove="@(ProguardConfiguration)" Condition="'%(Filename)' == 'uno-proguard'" />
     </ItemGroup>
   </Target>
 
