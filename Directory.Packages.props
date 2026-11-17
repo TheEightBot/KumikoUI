@@ -67,7 +67,7 @@
     <PackageVersion Include="SkiaSharp.Skottie" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="$(SkiaSharpVersion)" />
     <!-- The HarfBuzzSharp version SkiaSharp.HarfBuzz depends on; its Linux native library is a separate package. -->
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.301" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.4.0.101" />
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.2.1.301" />
   </ItemGroup>
 
@@ -83,7 +83,7 @@
   <ItemGroup Label="Build">
     <PackageVersion Include="MinVer" Version="8.0.0" />
     <!-- Records the public API of the four shipped libraries in PublicAPI.*.txt files (Directory.Build.targets, #54). -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
   </ItemGroup>
 
   <!--
