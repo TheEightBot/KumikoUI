@@ -35,9 +35,12 @@ public sealed partial class BasicGridPage : Page
 
     public BasicGridPage()
     {
+        StartupTrace.Mark("BasicGridPage ctor start");
         this.InitializeComponent();
+        StartupTrace.Mark("BasicGridPage InitializeComponent done");
         DataContext = _viewModel;
         LoadSampleData();
+        StartupTrace.Mark("BasicGridPage data loaded");
 
         // Rows can be dragged by their handle, as on the MAUI sample's main page (the Row Drag button cycles the modes)
         kumiko.ShowRowDragHandle = true;
