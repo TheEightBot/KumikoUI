@@ -9,6 +9,7 @@
         TabBar. A NavigationView drives a Frame; selecting an item navigates the Frame to the
         matching page. The first item is selected in code-behind so the basic grid shows on launch.
     -->
+    <Grid x:Name="SafeAreaRoot">
     <NavigationView x:Name="NavView"
                     PaneDisplayMode="Auto"
                     IsBackButtonVisible="Collapsed"
@@ -28,4 +29,5 @@
 
         <Frame x:Name="ContentFrame" />
     </NavigationView>
+    </Grid>
 </Page>
