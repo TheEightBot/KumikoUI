@@ -143,18 +143,30 @@ public partial class KumikoDataGrid
         // insert before it. Put the editor's selection back now and again once the focus change has settled.
         _textInput.Sync();
         QueueTextInputSync();
-        if (_editSession.IsEditing && _inputController.ActiveTextInput == null)
+        switch (SoftKeyboardPolicy.Decide(
+            _editSession.IsEditing, _inputController.ActiveTextInput != null, hadFocus, _lastPointerWasTouch))
         {
-            // An editor that takes no typed text (a scroll picker, a date picker, a combo box) needs the proxy's focus
-            // for hardware keys only: focusing a text box raises the soft keyboard on Android and iOS, so it is hidden
-            // again, now and once the focus change has settled.
-            HideSoftKeyboard();
-            DispatcherQueue?.TryEnqueue(HideSoftKeyboardForNonTextEditor);
+            case SoftKeyboardAction.Hide:
+                // An editor that takes no typed text (a scroll picker, a date picker, a combo box) needs the proxy's
+                // focus for hardware keys only: focusing a text box raises the soft keyboard on Android and iOS, so
+                // it is hidden again, now and once the focus change has settled.
+                HideSoftKeyboard();
+                DispatcherQueue?.TryEnqueue(HideSoftKeyboardForNonTextEditor);
+                break;
+            case SoftKeyboardAction.Show:
+                // The proxy kept its focus while the keyboard was hidden (after a touch edit, or the keyboard was
+                // dismissed with the filter popup still open): ask again now and once more when the press that asked
+                // has settled, since an input method can ignore a request that races the touch that caused it.
+                ShowSoftKeyboard();
+                DispatcherQueue?.TryEnqueue(ShowSoftKeyboardForFocusedProxy);
+                break;
         }
-        else if (hadFocus && _lastPointerWasTouch)
-        {
+    }
+
+    private void ShowSoftKeyboardForFocusedProxy()
+    {
+        if (_inputProxy.FocusState != FocusState.Unfocused && _inputController.ActiveTextInput != null)
             ShowSoftKeyboard();
-        }
     }
 
     private void HideSoftKeyboardForNonTextEditor()
