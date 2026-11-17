@@ -23,6 +23,7 @@ public class Application : Microsoft.UI.Xaml.NativeApplication
 {
     static Application()
     {
+        SampleApp.Uno.StartupTrace.Mark("Application static ctor");
         App.InitializeLogging();
     }
 
