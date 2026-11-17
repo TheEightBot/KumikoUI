@@ -70,6 +70,10 @@
     <!-- The HarfBuzzSharp version SkiaSharp.HarfBuzz depends on; its Linux native library is a separate package. -->
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.4.0.101" />
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.4.0.101" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Android" Version="14.4.0.101" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.iOS" Version="14.4.0.101" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.4.0.101" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.macOS" Version="14.4.0.101" />
   </ItemGroup>
 
   <ItemGroup Label="Hosts">

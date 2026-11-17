@@ -9,6 +9,7 @@ using Android.Runtime;
 using Android.Views;
 using Android.Widget;
 using Microsoft.UI.Xaml.Media;
+using Uno.UI.Hosting;
 
 namespace SampleApp.Uno.Droid;
 
@@ -19,7 +20,7 @@ namespace SampleApp.Uno.Droid;
     HardwareAccelerated = true,
     Theme = "@style/Theme.App.Starting"
 )]
-public class Application : Microsoft.UI.Xaml.NativeApplication
+public class Application : global::Uno.UI.Runtime.Android.NativeApplication
 {
     static Application()
     {
@@ -27,9 +28,14 @@ public class Application : Microsoft.UI.Xaml.NativeApplication
     }
 
     public Application(IntPtr javaReference, JniHandleOwnership transfer)
-        : base(() => new App(), javaReference, transfer)
+        : base(javaReference, transfer)
     {
     }
 
+    // Uno 7 builds the host in the application class, when the first activity starts.
+    protected override global::Uno.UI.Hosting.UnoPlatformHost CreateHost() =>
+        global::Uno.UI.Hosting.UnoPlatformHostBuilder.Create()
+            .App(() => new App())
+            .UseAndroid()
+            .Build();
 }
-

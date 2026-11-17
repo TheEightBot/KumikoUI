@@ -74,6 +74,27 @@
   </ItemGroup>
 
   <!--
+    Uno.Sdk 7.0.22 adds HarfBuzzSharp's native libraries to each head at 14.4.0.100, while Uno.WinUI 7.0.65 and
+    SkiaSharp.HarfBuzz depend on the managed HarfBuzzSharp 14.4.0.101, whose native packages need 14.4.0.101. The
+    mismatch is an NU1605 downgrade, so the app references the natives at the managed version (Directory.Packages.props).
+    Uno dedups its implicit references against these explicit ones.
+  -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Android" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.iOS" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-desktop'))">
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.macOS" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-browserwasm'))">
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.WebAssembly" />
+  </ItemGroup>
+
+  <!--
     Reference the library under test. KumikoUI.Uno is itself a multi-head Uno project with the SAME
     head TFMs as this app, so the per-head TargetFramework MUST flow through (no UndefineProperties)
     for the app's net10.0-desktop to bind the library's matching net10.0-desktop output. KumikoUI.Uno

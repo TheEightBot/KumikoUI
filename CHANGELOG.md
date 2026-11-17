@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- **Breaking:** SkiaSharp 4.156.1 (was 4.153.1), which needs Uno.Sdk 7 / Uno.WinUI 7 and `Microsoft.Maui.Controls` 10.0.110. KumikoUI.Uno is built with Uno.Sdk 7.0.22 (was 6.7.30), and KumikoUI.Maui now declares a minimum of `Microsoft.Maui.Controls` 10.0.110 (was 10.0.20). Uno apps must move to Uno.Sdk 7 and set `<SkiaSharpVersion>4.156.1</SkiaSharpVersion>`. On Uno.Sdk 7.0.22 an app may also need explicit `HarfBuzzSharp.NativeAssets.*` references at 14.4.0.101 (the version the managed HarfBuzzSharp requires), because the SDK pins its own at 14.4.0.100 (NU1605).
+- KumikoUI.Uno lists the `Skia` Uno feature (Uno 7 ignores `SkiaRenderer` in a library) and references `SkiaSharp.Views.Uno.WinUI` explicitly on every non-Windows head.
+- The public API files now declare the members the compiler synthesizes for records, record structs and delegates (`Equals`, `GetHashCode`, `ToString`, `==`, `!=`, `Deconstruct`, `Invoke`), which Microsoft.CodeAnalysis.PublicApiAnalyzers 5.x requires. No behavior change.
+
 ## [1.0.0-preview.1] - 2026-11-14
 
 First 1.0 prerelease. All four packages (KumikoUI.Core, KumikoUI.SkiaSharp, KumikoUI.Maui, KumikoUI.Uno) ship at this version, and each package depends on the exact version of its siblings. The API may still change before 1.0.0. KumikoUI.Uno is the least verified host. The release brings the 1.0 API review and `sealed`/value-type changes (#37, #112), `KumikoSource` thread affinity (#69), saved layouts, column reordering and context menus (#98, #100), native text input on iOS, Android, Windows and Uno (#40-#43), and the hardware-accelerated render mode on MAUI (`KumikoRenderMode.Hardware`, #71); the entries marked **Breaking:** below list what to change when upgrading from 0.2.0. See [docs/release/1.0.0-preview.1-release-notes.md](https://github.com/TheEightBot/KumikoUI/blob/v1.0.0-preview.1/docs/release/1.0.0-preview.1-release-notes.md) for the summary and known issues.
