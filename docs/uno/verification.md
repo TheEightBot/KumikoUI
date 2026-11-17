@@ -40,9 +40,9 @@ this work lists where.
 | Editing: date picker | ◻ ³ | ✅ | ◻ | ◻ | ✅ | ✅ | not run ²⁰ |
 | Keyboard navigation (arrows, Tab between cells) | ◻ ³ | ✅ | n/a | n/a | ✅ | ✅ | not run ²⁰ |
 | Tab out of the grid (no keyboard trap) | ◻ ³ | ✅ | n/a | n/a | ✅ (both ends) | ✅ (both ends) | not run ²⁰ |
-| Filter popup (open, check list, search, OK) | ◻ ³ | ✅ after fix ⁷ | ◻ | ⚠️ ⁸ | ◻ ²³ (opens) | ✅ (search narrows the list, OK filters, Clear) | not run ²⁰ |
+| Filter popup (open, check list, search, OK) | ◻ ³ | ✅ after fix ⁷ | ✅ | ✅ ⁸ | ◻ ²³ (opens) | ✅ (search narrows the list, OK filters, Clear) | not run ²⁰ |
 | Column resize (drag the header border) | ◻ ³ | ✅ | ◻ | ✅ | ◻ ²³ | ✅ | not run ²⁰ |
-| Column reorder (drag a header) | ◻ ³ | ✅ | ◻ | ◻ ⁹ | ◻ ²³ | ✅ | not run ²⁰ |
+| Column reorder (drag a header) | ◻ ³ | ✅ | ◻ | ✅ ⁹ | ◻ ²³ | ✅ | not run ²⁰ |
 | Row drag (handle) | ◻ ³ | ◻ ¹⁰ | ◻ ¹⁰ | ✅ (after the sample fix) | ◻ ²³ | ✅ | not run ²⁰ |
 | Grouping (group buttons, chips, remove chip, expand/collapse) | ◻ ³ | ✅ | ◻ | ◻ | ◻ ²³ | ✅ | not run ²⁰ |
 | Theme switch: sample button (Light → Dark → High Contrast) | ◻ ³ | ✅ | ◻ | ◻ | ◻ ²³ | ✅ | not run ²⁰ |
@@ -63,9 +63,10 @@ this work lists where.
    [Fixed during the pass](#fixed-during-the-pass) an `ArgumentOutOfRangeException` was logged on most keystrokes.
    Cell text uses a monospaced fallback face in the browser (the grid's default typeface has no system font to
    resolve to there); this is legible but differs from the other heads.
-2. **iOS and Android, sample shell:** the window is drawn edge to edge, and the sample page's title and toolbar
-   run under the status bar and the bottom row under the home indicator / gesture bar. The grid itself draws
-   correctly; the sample shell needs to respect the visible bounds (follow-up F10, #280).
+2. **iOS and Android, sample shell:** *fixed* (follow-up F10, #280). The mobile heads draw edge to edge, so the sample
+   page's title and toolbar ran under the status bar and the bottom row under the home indicator / gesture bar.
+   The sample shell now pads itself by `ApplicationView.VisibleBounds` and re-applies it on `VisibleBoundsChanged`.
+   Checked in portrait and landscape on the iOS simulator (iPhone 17 Pro) and the Android emulator (API 35).
 3. **Desktop (macOS) interaction:** the app renders, follows the dark appearance and exposes its XAML buttons to
    the accessibility tree, but pointer and keyboard input could not be delivered to it in this run (background
    automation only reaches accessibility actions, and full-screen control was not granted). Every interactive row
@@ -94,10 +95,17 @@ this work lists where.
    values, including the hidden ones, so search plus OK did not filter; "Select All" stayed checked after
    unchecking items. Both were Core behavior, the same on every host, and are fixed (see
    [Fixed during the pass](#fixed-during-the-pass)).
-8. **Filter popup on Android:** opening it and the check list work, but tapping the search box never shows the soft
-   keyboard, so the search cannot be typed into on a phone (follow-up F2, #275).
-9. **Column reorder by touch (Android):** two slow header drags with `adb input swipe` started neither a column drag
-   nor a pan; mouse reorder works on WebAssembly. Needs a check with a real finger (follow-up F3, #276).
+8. **Filter popup on Android:** opening it, the check list and the search work. The first pass saw no soft keyboard
+   when tapping the search box; this did not reproduce on the released code (F2, #275): the keyboard shows on open
+   and when the box is tapped after the keyboard was dismissed, and typed text filters the list. The host's
+   show-keyboard decision is now `SoftKeyboardPolicy` (unit tested), and the explicit show is repeated once the press
+   has settled.
+9. **Column reorder by touch (Android):** the first pass's two `adb input swipe` drags did nothing visible. Re-run
+   with `adb shell input motionevent DOWN/MOVE/UP` (steps of 20 px, 100 ms apart), the header drag starts (the ghost
+   follows the finger) and the column moves on release. A hold of 500 ms or more before moving opens the header's
+   sort menu instead (#288), a press near a header's right edge resizes the column (#289), and dragging toward the
+   frozen columns auto-scrolls to the start (#290). The earlier failure is put down to the automation; a check with a
+   real finger on a physical device is still pending (F3, #276).
 10. **Row drag on WebAssembly and iOS:** not exercised; the sample had no page with row drag enabled until the sample
     fix in this pass, and the WebAssembly and iOS runs predate it. Android, run after the fix, works.
 11. **Theme follow on Android:** the grid follows a system dark-mode switch live. An editor that was open kept the old
@@ -187,14 +195,17 @@ Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
   to the filter popup (notes 18 to 26). Still open: every interactive row on macOS (the app has to be in front, note
   3), the rest of Windows (note 23), the Windows App SDK head (note 20), and IME, theme follow and DPI change on a
   real desktop.
-- **F2. Android: the filter popup's search box gets no soft keyboard.** ([#275](https://github.com/TheEightBot/KumikoUI/issues/275)) All Components page, tap the Department
-  filter icon, tap the search box: the keyboard never appears (`dumpsys input_method` shows `mInputShown=false`), so
-  nothing can be typed. Cell editors do get the keyboard. Core raises `KeyboardFocusRequested` and the host calls
-  `InputPane.TryShow()` because the proxy already has focus; that does not show the keyboard on Uno's Android Skia
-  head. Check iOS as well.
-- **F3. Touch column reorder on Android.** ([#276](https://github.com/TheEightBot/KumikoUI/issues/276)) All Components page, press and slowly drag the Salary header to the left:
-  no column drag starts (mouse drag works on WebAssembly). Confirm on a device with a real finger before treating
-  it as a bug.
+- **F2. Android: the filter popup's search box gets no soft keyboard.** *Not reproduced on 1.0.0-preview.1*
+  ([#275](https://github.com/TheEightBot/KumikoUI/issues/275)). On the Android emulator and the iOS simulator the
+  keyboard appears when the popup opens and again when the search box is tapped after the keyboard was dismissed,
+  and typing filters the list. A defensive change repeats the explicit show once the press has settled
+  (`SoftKeyboardPolicy`, tests in `SoftKeyboardPolicyTests`). Re-check on a physical device and with other keyboards
+  (Samsung, SwiftKey).
+- **F3. Touch column reorder on Android.** *Not a bug on the emulator; physical device pending*
+  ([#276](https://github.com/TheEightBot/KumikoUI/issues/276)). With `adb shell input motionevent` touch input the
+  header drag starts and the column moves. What looked like nothing was a hold of 500 ms or more (opens the sort
+  menu, #288), a drag across the frozen/unfrozen boundary, or a press at a header's right edge (resize, #289). Tests:
+  `TouchColumnReorderTests`. Confirm with a real finger on a physical device.
 - **F4. macOS desktop: the grid is missing from the accessibility tree.** ([#277](https://github.com/TheEightBot/KumikoUI/issues/277)) Launch the desktop head, inspect with
   Accessibility Inspector or VoiceOver: buttons and navigation items are there, the grid is not. The same peer is
   exposed on WebAssembly and Android, so the gap is in how Uno's macOS host maps `KumikoDataGridAutomationPeer`.
@@ -203,9 +214,20 @@ Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
   reproduced in Core; guard tests were added. Re-check on a device if it shows again, with a screenshot of the
   popup edge.
 - **F6. Filter popup search and Select All.** *Fixed in Core* (see above).
-- **F7. An open editor keeps the old theme.** *Fixed in Core* (see above); re-check on the Android emulator.
-- **F8. Android Release cold start is slow.** ([#278](https://github.com/TheEightBot/KumikoUI/issues/278)) About 15 to 20 seconds from launch to the first grid on the emulator;
-  measure on a device.
+- **F7. An open editor keeps the old theme.** *Fixed in Core* (see above); re-checked on the iOS simulator
+  (iPhone 17 Pro, Debug): with a text editor open, switching the system appearance from light to dark restyled the
+  open editor (dark background, light text) without closing it. Not re-run on Android.
+- **F8. Android Release cold start is slow.** *Closed: not reproduced*
+  ([#278](https://github.com/TheEightBot/KumikoUI/issues/278)). The earlier 15 to 20 seconds did not reproduce on
+  `1.0.0-preview.1`. On the `KumikoUI-MAUI-Android` AVD (Android 35 google_apis arm64-v8a, 4 cores, 2 GB RAM, Apple
+  Silicon host, other emulators running at the same time) the Uno sample's Release build (default profiled AOT,
+  Uno.Sdk 6.7.30) started in a median of 2.16 s (`am start -W` TotalTime, 7 force-stop cold starts, range 1.5 to
+  3.5 s), with the first grid frame about 1.85 s after launch (range 1.3 to 3.2 s). The MAUI sample's Release build
+  on the same emulator started in a median of 1.13 s (range 0.65 to 2.07 s), first grid frame about 0.96 s after
+  process start. The extra second is Uno runtime startup (about 0.6 to 0.9 s to `OnLaunched`) and the NavigationView
+  shell (about 0.35 s); KumikoUI's own share (font registration about 15 ms, grid page construction and data about
+  70 ms, first paint a few hundred ms) is small. The sample logs startup markers under the logcat tag
+  `KumikoStartup` (`StartupTrace`). No physical device was measured.
 - **F9. iOS: typing over a selected cell value goes in front of it.** *Closed: not reproduced on the released code*
   ([#279](https://github.com/TheEightBot/KumikoUI/issues/279)). This pass saw it on the iOS simulator: on the All
   Components page, double-tap "Eve Davis" (the editor selects all of it) and type "Kim Lee", and the cell read
@@ -215,15 +237,17 @@ Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
   time, and logging showed the native field's selection matched the editor's once the edit opened. The grid's
   re-sync after focusing the proxy (`fix(uno): restore the editor's selection after focusing the proxy text box`)
   reaches the native field through `TextBox.Select`.
-- **F10. Sample shell under the system bars on iOS and Android.** ([#280](https://github.com/TheEightBot/KumikoUI/issues/280)) The page title and toolbar run under the status bar
-  and the last row under the home indicator / gesture bar. `VisibleBoundsPadding` on the `NavigationView` had no
-  effect on iOS; the shell needs a padded container (or the safe-area insets applied by hand).
-- **F11. A mouse press with no named button is taken as a primary press.** (issue to file) On Uno's X11 host a wheel
+- **F10. Sample shell under the system bars on iOS and Android.** *Fixed in the sample*
+  ([#280](https://github.com/TheEightBot/KumikoUI/issues/280)). `VisibleBoundsPadding` on the `NavigationView` had no
+  effect on iOS, and padding on the `Page` did not apply either. The shell now wraps the `NavigationView` in a `Grid`
+  whose padding comes from `ApplicationView.VisibleBounds`, on iOS and Android only. The minimal pane's menu button
+  still covers the start of the page title on phones (#291).
+- **F11. A mouse press with no named button is taken as a primary press.** ([#286](https://github.com/TheEightBot/KumikoUI/issues/286)) On Uno's X11 host a wheel
   notch that arrives as an XInput2 press of button 4 to 7 reaches the grid as a pointer press whose update kind is
   `Other` and with no button pressed; `PointerMapping.ToPointerButton` maps that to `PointerButton.Primary`, so the
   notch selects the cell under the pointer and two notches open its editor (note 21). A mouse press that names no
   button should be ignored.
-- **F12. Linux: the app is not in the AT-SPI tree.** (issue to file) Uno 6.7's X11 host has no AT-SPI bridge, so
+- **F12. Linux: the app is not in the AT-SPI tree.** ([#287](https://github.com/TheEightBot/KumikoUI/issues/287)) Uno 6.7's X11 host has no AT-SPI bridge, so
   Orca sees nothing of the app, the grid included (note 27). Nothing in KumikoUI can expose it; track the Uno side
   and document the limit.
 
