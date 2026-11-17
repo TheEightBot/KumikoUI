@@ -209,6 +209,27 @@ Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
 - **F4. macOS desktop: the grid is missing from the accessibility tree.** ([#277](https://github.com/TheEightBot/KumikoUI/issues/277)) Launch the desktop head, inspect with
   Accessibility Inspector or VoiceOver: buttons and navigation items are there, the grid is not. The same peer is
   exposed on WebAssembly and Android, so the gap is in how Uno's macOS host maps `KumikoDataGridAutomationPeer`.
+  *Cause found (2026-11-17), in Uno, not KumikoUI.* Uno 6.7.135's macOS bridge maps the peer correctly: on the first
+  page shown, the Release build has an `AXTable` named by `GridDescription`, with `GridHint`'s text as its help and a
+  settable `AXFocused`, and the peer's help-text changes and notifications reach the element and VoiceOver's
+  announcements. What loses the grid is the bridge's handling of elements added later:
+  - The bridge never registers an element whose `AccessibilityView` is Raw; it attaches that element's children to
+    the nearest registered ancestor while it builds the tree. A child added *after* the tree is built under a Raw
+    parent is sent to the native side with the Raw parent's handle, which the native side does not know, and
+    `uno_accessibility_add_element` then makes that child the root of the window's tree. VoiceOver is left with one
+    stray element: no buttons, no navigation items, no grid.
+  - Any page shown after the first adds such children: the grid's hidden keyboard proxy (a Raw `TextBox`) and the Raw
+    `ContentElement` scroll viewer of the `TextBox` template build their parts on the first layout, and so do a
+    `ScrollBar`'s Raw thumb and a `ToggleSwitch`'s Raw thumb in the sample's toolbars. Seen on the Grouping and Large
+    Data pages: after navigating, the window's tree was a 1×1 element inside the grid's proxy, or a scroll bar thumb.
+  - In a Debug build the sample calls `UseStudio()` (Hot Design), whose elements do the same at launch, so
+    `dotnet run` shows an empty tree from the start.
+  KumikoUI cannot avoid it: applying the proxy's templates in the grid's constructor was tried and changed nothing
+  (the template parts were still added once the grid was in the window), and without Raw the proxy would be exposed as an empty text field while its
+  template's Raw scroll viewer still triggers the bug. The fix belongs in Uno's macOS bridge (attach a late child to
+  the nearest registered ancestor, and never replace the root with an element whose parent is unknown); the report
+  for Uno is ready to file. Until it is fixed, VoiceOver reaches the grid only on the page the app opens with, in a
+  Release build. Windows exposes the grid through UI Automation (note 26); Linux exposes nothing (F12).
 - **F5. Combo box keys and list drawing.** *Resolved, no code change.* Picking an item commits the edit, and Enter on
   the cell then opens the editor again by design (Enter is an edit trigger like F2). The list overdraw was not
   reproduced in Core; guard tests were added. Re-check on a device if it shows again, with a screenshot of the
