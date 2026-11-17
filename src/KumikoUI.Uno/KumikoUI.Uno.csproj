@@ -153,8 +153,8 @@
 
   <!--
     The Uno.Sdk adds implicit packages on every head that a library must not hand on to its consumers:
-    Uno.WinUI.Lottie and Uno.WinUI.Graphics2DSK (added by the SkiaRenderer feature; an app head requests them
-    itself through its own UnoFeatures) and the DevServer packages. Mark them PrivateAssets="all" so they stay
+    Uno.WinUI.Lottie, Uno.WinUI.Graphics2DSK and Uno.WinUI.Composition.Skia (added by the Skia features; an app
+    head requests them itself through its own UnoFeatures) and the DevServer packages. Mark them PrivateAssets="all" so they stay
     out of the nuspec's dependency groups (Uno.Resizetizer, Uno.Sdk.Extras and Uno.Settings.DevServer are
     already private). The Uno SDK creates these references in its UnoImplicitPackages target, so this runs
     right after it, before restore and pack read the PackageReference items.
@@ -167,12 +167,27 @@
       <PackageReference Condition="'%(Identity)' == 'Uno.WinUI.Graphics2DSK'">
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
+      <PackageReference Condition="'%(Identity)' == 'Uno.WinUI.Composition.Skia'">
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
       <PackageReference Condition="'%(Identity)' == 'Uno.WinUI.DevServer'">
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
       <PackageReference Condition="'%(Identity)' == 'Uno.Wasm.Bootstrap.DevServer'">
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Uno.Sdk 7 adds its uno-proguard.cfg to every Android project, libraries included, which makes the library
+    pack a KumikoUI.Uno.aar holding only that file. The app head that consumes the package gets the same rules
+    from its own Uno.Sdk, so drop the item here and keep Android resources out of the package (#66).
+  -->
+  <Target Name="KumikoRemoveUnoProguardConfiguration" BeforeTargets="PrepareForBuild"
+          Condition="$(TargetFramework.Contains('-android'))">
+    <ItemGroup>
+      <ProguardConfiguration Remove="@(ProguardConfiguration)" Condition="'%(Filename)' == 'uno-proguard'" />
     </ItemGroup>
   </Target>
 
