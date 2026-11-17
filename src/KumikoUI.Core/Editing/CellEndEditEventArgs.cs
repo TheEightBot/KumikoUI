@@ -23,7 +23,7 @@ public sealed class CellEndEditEventArgs : EventArgs
     /// <summary>Cell value after editing.</summary>
     public object? NewValue { get; }
 
-    /// <summary>True if the edit was committed; false if cancelled.</summary>
+    /// <summary>True if the edit was committed; false if canceled.</summary>
     public bool Committed { get; }
 
     /// <summary>Initializes the event data.</summary>

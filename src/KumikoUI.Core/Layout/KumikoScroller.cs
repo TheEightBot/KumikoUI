@@ -39,6 +39,9 @@ public static class KumikoScroller
     /// <param name="scroll">The scroll state supplying the vertical offset.</param>
     /// <param name="row">The row in the flat view (group header and summary rows count).</param>
     /// <returns>The row's top edge in viewport pixels.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="source"/>, <paramref name="style"/> or <paramref name="scroll"/> is <c>null</c>.
+    /// </exception>
     public static float GetRowY(KumikoSource source, KumikoStyle style, ScrollState scroll, int row)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -63,6 +66,9 @@ public static class KumikoScroller
     /// <param name="scroll">The scroll state supplying the horizontal offset and viewport width.</param>
     /// <param name="columnIndex">The index into <paramref name="columns"/>.</param>
     /// <returns>The column's left edge in viewport pixels.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="columns"/>, <paramref name="style"/> or <paramref name="scroll"/> is <c>null</c>.
+    /// </exception>
     public static float GetColumnX(IReadOnlyList<KumikoColumn> columns, KumikoStyle style, ScrollState scroll, int columnIndex)
     {
         ArgumentNullException.ThrowIfNull(columns);
@@ -93,6 +99,9 @@ public static class KumikoScroller
     /// <param name="row">The row in the flat view.</param>
     /// <param name="position">Where the row should land.</param>
     /// <returns>The vertical offset.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="source"/>, <paramref name="style"/> or <paramref name="scroll"/> is <c>null</c>.
+    /// </exception>
     public static float GetRowOffsetY(KumikoSource source, KumikoStyle style, ScrollState scroll, int row,
         KumikoScrollPosition position = KumikoScrollPosition.Nearest)
     {
@@ -137,6 +146,9 @@ public static class KumikoScroller
     /// <param name="columnIndex">The index into <paramref name="columns"/>.</param>
     /// <param name="position">Where the column should land.</param>
     /// <returns>The horizontal offset.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="columns"/>, <paramref name="style"/> or <paramref name="scroll"/> is <c>null</c>.
+    /// </exception>
     public static float GetColumnOffsetX(IReadOnlyList<KumikoColumn> columns, KumikoStyle style, ScrollState scroll,
         int columnIndex, KumikoScrollPosition position = KumikoScrollPosition.Nearest)
     {
@@ -187,6 +199,9 @@ public static class KumikoScroller
     /// <param name="row">The row in the flat view.</param>
     /// <param name="position">Where the row should land.</param>
     /// <returns>Whether the row exists.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="scroll"/>, <paramref name="source"/> or <paramref name="style"/> is <c>null</c>.
+    /// </exception>
     public static bool ScrollToRow(ScrollState scroll, KumikoSource source, KumikoStyle style, int row,
         KumikoScrollPosition position = KumikoScrollPosition.Nearest)
     {
@@ -211,6 +226,9 @@ public static class KumikoScroller
     /// <param name="columnIndex">The index into <see cref="KumikoSource.Columns"/>.</param>
     /// <param name="position">Where the column should land.</param>
     /// <returns>Whether the column exists and is visible.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="scroll"/>, <paramref name="source"/> or <paramref name="style"/> is <c>null</c>.
+    /// </exception>
     public static bool ScrollToColumn(ScrollState scroll, KumikoSource source, KumikoStyle style, int columnIndex,
         KumikoScrollPosition position = KumikoScrollPosition.Nearest)
     {
@@ -240,6 +258,9 @@ public static class KumikoScroller
     /// <param name="position">Where the item's row should land.</param>
     /// <param name="expandGroups">Whether to expand collapsed groups that hold the item.</param>
     /// <returns>Whether the item was found and scrolled to.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="item"/> or <paramref name="source"/> is <c>null</c>.
+    /// </exception>
     public static bool ScrollToItem(ScrollState scroll, KumikoSource source, KumikoStyle style, object item,
         KumikoScrollPosition position = KumikoScrollPosition.Nearest, bool expandGroups = true)
     {
