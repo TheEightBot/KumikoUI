@@ -160,11 +160,49 @@ public class ExactHitRegionTests
 
         var middle = g.Tester.HitTest(140, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
             g.Source, KumikoPointerDeviceType.Touch);
-        var nearEdge = g.Tester.HitTest(151, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
+        var nearEdge = g.Tester.HitTest(153, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
             g.Source, KumikoPointerDeviceType.Touch);
 
         Assert.Equal(HitRegion.HeaderCell, middle.Region);
-        Assert.Equal(HitRegion.HeaderResizeGrip, nearEdge.Region); // a quarter of 40 px inside the edge
+        Assert.Equal(HitRegion.HeaderResizeGrip, nearEdge.Region); // 7 px inside the edge, within the 8 px floor
+    }
+
+    // Age spans 120..(120 + width); the point is `inside` px left of its right edge. A finger's grip reaches the
+    // smaller of 16 px and a fifth of the column (at least 8 px) into it.
+    [Theory]
+    [InlineData(40f, 8f, true)]
+    [InlineData(40f, 9f, false)]
+    [InlineData(60f, 12f, true)]
+    [InlineData(60f, 13f, false)] // a quarter would still be a resize here
+    [InlineData(100f, 16f, true)]
+    [InlineData(100f, 17f, false)]
+    public void ResizeGrip_ForAFinger_ReachesAtMostAFifthIntoAColumn(float width, float inside, bool onGrip)
+    {
+        var g = new InputGrid(configure: c => { c.Age.Width = width; c.Age.AllowFiltering = false; });
+
+        Assert.Equal(onGrip, g.Tester.HitTest(120 + width - inside, InputGrid.HeaderY, g.Scroll, g.Style,
+            g.Source.Columns, g.Source.RowCount, g.Source, KumikoPointerDeviceType.Touch).Region == HitRegion.HeaderResizeGrip);
+    }
+
+    [Fact]
+    public void ResizeGrip_ForAFinger_InANarrowColumn_ReorderPressNearTheRightIsAHeaderCell()
+    {
+        var g = new InputGrid(configure: c => { c.Age.Width = 60; c.Age.AllowFiltering = false; }); // Age: 120..180
+
+        var hit = g.Tester.HitTest(167, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
+            g.Source, KumikoPointerDeviceType.Touch); // 13 px left of the border: a quarter-wide grip (15 px) made this a resize
+
+        Assert.Equal(HitRegion.HeaderCell, hit.Region);
+        Assert.Same(g.Age, hit.Column);
+    }
+
+    [Fact]
+    public void ResizeGrip_ForAMouse_StillReachesAQuarterOfANarrowColumn()
+    {
+        var g = new InputGrid(configure: c => { c.Style.ColumnResizeGripWidth = 40; c.Age.Width = 40; c.Age.AllowFiltering = false; }); // Age: 120..160
+
+        Assert.Equal(HitRegion.HeaderResizeGrip, g.Hit(150, InputGrid.HeaderY).Region); // 10 px inside: a quarter of 40
+        Assert.Equal(HitRegion.HeaderCell, g.Hit(149, InputGrid.HeaderY).Region);
     }
 
     [Fact]

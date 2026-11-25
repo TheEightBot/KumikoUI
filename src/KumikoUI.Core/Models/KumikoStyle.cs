@@ -283,7 +283,8 @@ public sealed class KumikoStyle
 
     /// <summary>
     /// Width in pixels of a column's resize grip for a finger (see <see cref="ColumnResizeGripWidth"/>), wider so a
-    /// touch can find the edge. Default: 32.
+    /// touch can find the edge. Each half reaches at most a fifth of the column on that side of the edge (at least
+    /// 8 px), so a narrow header keeps a middle to press and drag for a reorder. Default: 32.
     /// </summary>
     public float TouchColumnResizeGripWidth { get; set => Set(ref field, value); } = 32f;
 
