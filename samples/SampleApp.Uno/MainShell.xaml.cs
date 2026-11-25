@@ -1,5 +1,7 @@
 using System;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.UI.ViewManagement;
 
 namespace SampleApp.Uno;
 
@@ -25,7 +27,36 @@ public sealed partial class MainShell : Page
             _initialNavigationDone = true;
             NavView.SelectedItem = NavView.MenuItems[0];
         };
+
+        // The mobile heads draw edge to edge, so the shell insets itself by the system bars (status bar, notch,
+        // home indicator / gesture bar). Desktop and WebAssembly windows are not drawn under system chrome.
+        // NavigationView's VisibleBoundsPadding did not take effect on iOS, so the insets are applied by hand
+        // from ApplicationView.VisibleBounds (#280).
+#if __IOS__ || __ANDROID__
+        Loaded += (_, _) => ApplicationView.GetForCurrentView().VisibleBoundsChanged += OnVisibleBoundsChanged;
+        Unloaded += (_, _) => ApplicationView.GetForCurrentView().VisibleBoundsChanged -= OnVisibleBoundsChanged;
+        SizeChanged += (_, _) => ApplySafeAreaPadding();
+#endif
     }
+
+#if __IOS__ || __ANDROID__
+    private void OnVisibleBoundsChanged(ApplicationView sender, object args) => ApplySafeAreaPadding();
+
+    private void ApplySafeAreaPadding()
+    {
+        var visible = ApplicationView.GetForCurrentView().VisibleBounds;
+        if (ActualWidth <= 0 || ActualHeight <= 0 || visible.Width <= 0 || visible.Height <= 0)
+            return;
+
+        // This page is the window's content, so its size is the window's; the part outside VisibleBounds is the
+        // system bars.
+        SafeAreaRoot.Padding = new Thickness(
+            Math.Max(0, visible.Left),
+            Math.Max(0, visible.Top),
+            Math.Max(0, ActualWidth - visible.Right),
+            Math.Max(0, ActualHeight - visible.Bottom));
+    }
+#endif
 
     private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
