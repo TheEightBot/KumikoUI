@@ -15,7 +15,7 @@ public enum InputAction
     /// <see cref="Hover"/>.
     /// </summary>
     Moved,
-    /// <summary>The input gesture was cancelled.</summary>
+    /// <summary>The input gesture was canceled.</summary>
     Cancelled,
     /// <summary>A scroll/wheel event.</summary>
     Scroll,
