@@ -98,6 +98,11 @@ public sealed partial class KumikoInputController
     // A press on a row drag handle: the drag starts as soon as it moves, with no drag threshold (-1 when none).
     private int _armedDragRow = -1;
 
+    // A touch long press on a reorderable column header arms two outcomes (#288): moving past DragThreshold starts the
+    // column drag, lifting with no movement raises ContextRequested. The column index and the long press position.
+    private int _headerLongPressColumn = -1;
+    private float _headerLongPressX, _headerLongPressY;
+
     // The device of the press in progress: a touch drag on a row pans, a mouse or pen drag reorders it.
     private KumikoPointerDeviceType _pressDeviceType;
 
@@ -918,6 +923,7 @@ public sealed partial class KumikoInputController
         _isDraggingRow = false;
         _dragRowIndex = -1;
         _armedDragRow = -1;
+        _headerLongPressColumn = -1;
         _autoScrollVelocityY = 0;
         _autoScrollVelocityX = 0;
         _pressDeviceType = e.DeviceType;
@@ -1033,6 +1039,23 @@ public sealed partial class KumikoInputController
             return;
         }
 
+        // A held header (touch long press): within the slop it stays held, past it the column drag starts.
+        if (_headerLongPressColumn >= 0)
+        {
+            if (MathF.Abs(e.X - _headerLongPressX) <= DragThreshold && MathF.Abs(e.Y - _headerLongPressY) <= DragThreshold)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            int column = _headerLongPressColumn;
+            _headerLongPressColumn = -1;
+            if (column < columns.Count && CommitEditBeforeViewChange(dataSource, selection))
+                BeginColumnDrag(column, _headerLongPressX, e.X, scroll, style, columns);
+            e.Handled = true;
+            return;
+        }
+
         // A press on a drag handle starts the row drag as soon as it moves (past a tap's jitter), in any direction.
         if (_armedDragRow >= 0 && !_isPanning)
         {
@@ -1069,15 +1092,7 @@ public sealed partial class KumikoInputController
                     Math.Abs(e.X - _lastPanX) > Math.Abs(e.Y - _lastPanY) &&
                     CommitEditBeforeViewChange(dataSource, selection))
                 {
-                    _isDraggingColumn = true;
-                    _dragColumnIndex = startHit.ColumnIndex;
-                    // The ghost keeps the point where the header was grabbed, whatever pane it is in.
-                    float columnLeft = ColumnDragGeometry.ScreenLeft(columns, startHit.ColumnIndex, scroll, style);
-                    _dragColumnOffset = float.IsNaN(columnLeft) ? 0 : _lastPanX - columnLeft;
-                    DragColumnScreenX = e.X - _dragColumnOffset;
-                    _autoScrollVelocityX = ComputeColumnDragAutoScroll(e.X, scroll, style, columns);
-                    if (CanAnimate(style)) _animations.StartLift();
-                    RequestHaptic(KumikoHapticKind.DragStart, _pressDeviceType);
+                    BeginColumnDrag(startHit.ColumnIndex, _lastPanX, e.X, scroll, style, columns);
                     e.Handled = true;
                     return;
                 }
@@ -1250,6 +1265,18 @@ public sealed partial class KumikoInputController
                 ColumnResized?.Invoke(this, new ColumnResizedEventArgs(
                     _resizeColumnIndex, columns[_resizeColumnIndex]));
             }
+            e.Handled = true;
+            return;
+        }
+
+        // A held header lifted with no movement: now the menu (#288), and the release neither sorts nor taps.
+        if (_headerLongPressColumn >= 0)
+        {
+            int held = _headerLongPressColumn;
+            _headerLongPressColumn = -1;
+            var heldHit = _hitTester.HitTest(e.X, e.Y, scroll, style, columns, totalRows, dataSource, e.DeviceType);
+            if (heldHit.Region == HitRegion.HeaderCell && heldHit.ColumnIndex == held)
+                RequestContext(KumikoContextTrigger.LongPress, e, heldHit, selection, dataSource);
             e.Handled = true;
             return;
         }
@@ -1507,6 +1534,7 @@ public sealed partial class KumikoInputController
     private void HandlePointerCancelled(KumikoPointerEventArgs e, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
     {
         _editorConsumedPointerDown = false;
+        _headerLongPressColumn = -1;
 
         if (_isResizingColumn)
         {
@@ -1576,7 +1604,9 @@ public sealed partial class KumikoInputController
 
     /// <summary>
     /// Handle a long press gesture: on touch it may start a row drag, and a cell with the LongPress edit trigger
-    /// edits. Otherwise a finger or a pen raises <see cref="ContextRequested"/> (and the rest of the press is
+    /// edits. A touch long press on a column header that can be reordered holds it: moving the finger then starts the
+    /// column drag, and lifting it with no movement raises <see cref="ContextRequested"/> (#288). Otherwise a finger
+    /// or a pen raises <see cref="ContextRequested"/> (and the rest of the press is
     /// ignored), and a mouse selects the cell.
     /// </summary>
     private void HandleLongPress(
@@ -1612,6 +1642,18 @@ public sealed partial class KumikoInputController
             // Inside the open editor the press stays the editor's: no menu over it, and nothing is committed
             if (_editSession is { IsEditing: true, ActiveEditor: { } editor } && editor.HitTest(e.X, e.Y))
             {
+                e.Handled = true;
+                return;
+            }
+
+            // A touch long press on a reorderable header waits: moving starts the column drag, lifting asks for the menu.
+            if (e.DeviceType == KumikoPointerDeviceType.Touch && hit.Region == HitRegion.HeaderCell &&
+                hit.Column?.AllowReorder == true)
+            {
+                _headerLongPressColumn = hit.ColumnIndex;
+                _headerLongPressX = e.X;
+                _headerLongPressY = e.Y;
+                RequestHaptic(KumikoHapticKind.LongPress, e.DeviceType);
                 e.Handled = true;
                 return;
             }
@@ -1740,6 +1782,25 @@ public sealed partial class KumikoInputController
             _autoScrollVelocityY = 0; // a row held in an edge band scrolls once the finger moves
         }
         return true;
+    }
+
+    /// <summary>
+    /// Starts dragging the header of column <paramref name="columnIndex"/>, grabbed at viewport x
+    /// <paramref name="grabX"/> and now at <paramref name="pointerX"/>: the ghost keeps the grab point, whatever pane
+    /// the column is in.
+    /// </summary>
+    private void BeginColumnDrag(
+        int columnIndex, float grabX, float pointerX, ScrollState scroll, KumikoStyle style,
+        IReadOnlyList<KumikoColumn> columns)
+    {
+        _isDraggingColumn = true;
+        _dragColumnIndex = columnIndex;
+        float columnLeft = ColumnDragGeometry.ScreenLeft(columns, columnIndex, scroll, style);
+        _dragColumnOffset = float.IsNaN(columnLeft) ? 0 : grabX - columnLeft;
+        DragColumnScreenX = pointerX - _dragColumnOffset;
+        _autoScrollVelocityX = ComputeColumnDragAutoScroll(pointerX, scroll, style, columns);
+        if (CanAnimate(style)) _animations.StartLift();
+        RequestHaptic(KumikoHapticKind.DragStart, _pressDeviceType);
     }
 
     /// <summary>Starts dragging <paramref name="row"/>, grabbed at viewport y <paramref name="grabY"/>.</summary>

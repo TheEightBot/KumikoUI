@@ -395,8 +395,8 @@ public class ContextRequestedTests
 
         g.Pointer(InputAction.Pressed, 60, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
         g.Pointer(InputAction.LongPress, 60, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
-        g.Pointer(InputAction.Moved, 64, InputGrid.HeaderY + 20, deviceType: KumikoPointerDeviceType.Touch);
-        g.Pointer(InputAction.Released, 64, InputGrid.HeaderY + 20, deviceType: KumikoPointerDeviceType.Touch);
+        g.Pointer(InputAction.Moved, 62, InputGrid.HeaderY + 3, deviceType: KumikoPointerDeviceType.Touch); // within the slop
+        g.Pointer(InputAction.Released, 62, InputGrid.HeaderY + 3, deviceType: KumikoPointerDeviceType.Touch);
 
         Assert.Equal(KumikoSortDirection.None, g.Name.SortDirection);
         Assert.Equal(0f, g.Scroll.OffsetY);
