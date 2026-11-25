@@ -175,7 +175,7 @@ dependencies between the packages, and the remaining doc follow-ups. See [Decisi
 | `ActionButtonLayout` | Public static layout helper that allocates a list per call, used only inside Core. | fix now: internal. |
 | `PaintCache` | `BackgroundPaint(color)` is a public static that allocates a new paint on a type whose purpose is caching; used only by tests. | fix now: internal. The cached paints stay public (`CellRenderContext.Paints`). |
 | `KumikoColor` | `ToUint32()`; a small set of named colors (`CornflowerBlue`, `DodgerBlue`, `WhiteSmoke`, ...). | fix now: `ToUInt32()` (FDG casing of `UInt32`). Named colors keep. |
-| `KumikoColorTypeConverter` | 8-digit hex is `#AARRGGBB`; issue #37 asked for `#RRGGBBAA`. | keep (behavior unchanged); [decision D1](#decisions-for-the-maintainer). |
+| `KumikoColorTypeConverter` | 8-digit hex is `#AARRGGBB`; issue #37 asked for `#RRGGBBAA`. | keep `#AARRGGBB`; `rgb()`/`rgba()` added (#304, [decision D1](#decisions-for-the-maintainer)). |
 | `KumikoFont`, `KumikoFontMetrics`, `KumikoPoint`, `KumikoRect`, `KumikoSize`, `KumikoTextLines`, `KumikoFrameStats` | `KumikoRect.Contains(float px, float py)`; `KumikoFont(family, size, bold = false, italic = false)`. | keep. |
 | `KumikoPaint` | Mutable, sealed. | keep: reused across draw calls without allocating. |
 | `KumikoTextLayout`, `KumikoTextMeasurer` | Public static text layout used by the default `DrawTextInRect` and by custom contexts. | keep. |
