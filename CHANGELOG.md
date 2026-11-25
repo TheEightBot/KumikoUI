@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Changed
-- **Breaking:** SkiaSharp 4.156.1 (was 4.153.1), which needs Uno.Sdk 7 / Uno.WinUI 7 and `Microsoft.Maui.Controls` 10.0.110. KumikoUI.Uno is built with Uno.Sdk 7.0.22 (was 6.7.30), and KumikoUI.Maui now declares a minimum of `Microsoft.Maui.Controls` 10.0.110 (was 10.0.20). Uno apps must move to Uno.Sdk 7 and set `<SkiaSharpVersion>4.156.1</SkiaSharpVersion>`. On Uno.Sdk 7.0.22 an app may also need explicit `HarfBuzzSharp.NativeAssets.*` references at 14.4.0.101 (the version the managed HarfBuzzSharp requires), because the SDK pins its own at 14.4.0.100 (NU1605).
+- **Breaking:** SkiaSharp 4.157.0 (was 4.153.1), which needs Uno.Sdk 7 / Uno.WinUI 7 and `Microsoft.Maui.Controls` 10.0.110. KumikoUI.Uno is built with Uno.Sdk 7.0.22 (was 6.7.30), and KumikoUI.Maui now declares a minimum of `Microsoft.Maui.Controls` 10.0.110 (was 10.0.20). Uno apps must move to Uno.Sdk 7 and set `<SkiaSharpVersion>4.157.0</SkiaSharpVersion>`. On Uno.Sdk 7.0.22 an app may also need explicit `HarfBuzzSharp.NativeAssets.*` references at 14.4.0.200 (the version the managed HarfBuzzSharp requires), because the SDK pins its own at 14.4.0.100 (NU1605).
 - KumikoUI.Uno lists the `Skia` Uno feature (Uno 7 ignores `SkiaRenderer` in a library) and references `SkiaSharp.Views.Uno.WinUI` explicitly on every non-Windows head.
 - The public API files now declare the members the compiler synthesizes for records, record structs and delegates (`Equals`, `GetHashCode`, `ToString`, `==`, `!=`, `Deconstruct`, `Invoke`), which Microsoft.CodeAnalysis.PublicApiAnalyzers 5.x requires. No behavior change.
 

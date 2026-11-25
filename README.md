@@ -16,7 +16,7 @@
   </p>
   <p align="center">
     <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" />
-    <img alt="SkiaSharp" src="https://img.shields.io/badge/SkiaSharp-4.156.1-ff6b6b" />
+    <img alt="SkiaSharp" src="https://img.shields.io/badge/SkiaSharp-4.157.0-ff6b6b" />
     <img alt="Hosts" src="https://img.shields.io/badge/hosts-.NET%20MAUI%20%7C%20Uno%20Platform-512BD4" />
     <img alt="Platforms" src="https://img.shields.io/badge/platforms-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20WebAssembly-blue" />
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
@@ -113,7 +113,7 @@ All four packages share one version, and each depends on the exact version of th
 
 ## Supported platforms
 
-All packages target **.NET 10** and **SkiaSharp 4.156.1**.
+All packages target **.NET 10** and **SkiaSharp 4.157.0**.
 
 | Package | Platform (target framework) | Minimum OS | App build host | Verification |
 |---|---|---|---|---|
@@ -144,7 +144,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
 |---|---|---|
 | Package | `KumikoUI.Maui` | `KumikoUI.Uno` |
 | Startup | `builder.UseKumikoUI()` in `MauiProgram` (required: it registers SkiaSharp's MAUI handlers and passes `ConfigureFonts` aliases to the grid) | no startup call |
-| App project | — | `<SkiaSharpVersion>4.156.1</SkiaSharpVersion>` and the `SkiaRenderer` Uno feature |
+| App project | — | `<SkiaSharpVersion>4.157.0</SkiaSharpVersion>` and the `SkiaRenderer` Uno feature |
 | Control namespace | `clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui` | `using:KumikoUI.Uno` |
 | Models namespace | `clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core` | `using:KumikoUI.Core.Models` |
 | Two-way bindings | default for the selection properties | set `Mode=TwoWay` explicitly (WinUI bindings default to one-way) |
@@ -221,7 +221,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
    <!-- snippet: skip project file fragment, not C# or XAML -->
    ```xml
    <PropertyGroup>
-     <SkiaSharpVersion>4.156.1</SkiaSharpVersion>
+     <SkiaSharpVersion>4.157.0</SkiaSharpVersion>
      <UnoFeatures>
        SkiaRenderer;
      </UnoFeatures>
@@ -229,7 +229,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
 
    <!-- Windows App SDK head only: the SkiaRenderer feature does not add the WinUI SkiaSharp views -->
    <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-     <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.156.1" />
+     <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.157.0" />
    </ItemGroup>
    ```
 
@@ -1938,7 +1938,7 @@ Set `IsReadOnly`, `AllowSorting` or `AllowFiltering` to `False` on the grid. The
 The grid places its input view over the edited cell. If the keyboard still covers the cell, the grid scrolls it above the keyboard. A cell in the last rows can only move as far as the grid can scroll, so let the window make room: set `WindowSoftInputMode` to `adjustResize` or `adjustPan` ([docs/TEXT-INPUT.md](docs/TEXT-INPUT.md#android)).
 
 **My Uno app fails to load SkiaSharp, or draws nothing.**
-Set `<SkiaSharpVersion>4.156.1</SkiaSharpVersion>` in the app project and enable the `SkiaRenderer` Uno feature: Uno.Sdk defaults to SkiaSharp 3.x, and the app must resolve the same major as KumikoUI. On the Windows App SDK head, also reference `SkiaSharp.Views.WinUI` ([Uno Platform](#uno-platform)).
+Set `<SkiaSharpVersion>4.157.0</SkiaSharpVersion>` in the app project and enable the `SkiaRenderer` Uno feature: Uno.Sdk defaults to SkiaSharp 3.x, and the app must resolve the same major as KumikoUI. On the Windows App SDK head, also reference `SkiaSharp.Views.WinUI` ([Uno Platform](#uno-platform)).
 
 **My iOS or Mac Catalyst app terminates at launch.**
 Adopt the UIScene lifecycle; see the note under [.NET MAUI](#net-maui).

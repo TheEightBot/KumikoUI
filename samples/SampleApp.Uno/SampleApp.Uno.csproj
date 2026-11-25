@@ -74,8 +74,8 @@
   </ItemGroup>
 
   <!--
-    Uno.Sdk 7.0.22 adds HarfBuzzSharp's native libraries to each head at 14.4.0.100, while Uno.WinUI 7.0.65 and
-    SkiaSharp.HarfBuzz depend on the managed HarfBuzzSharp 14.4.0.101, whose native packages need 14.4.0.101. The
+    Uno.Sdk 7.0.22 adds HarfBuzzSharp's native libraries to each head at 14.4.0.100, while SkiaSharp.HarfBuzz
+    4.157.0 depends on the managed HarfBuzzSharp 14.4.0.200, whose native packages need 14.4.0.200. The
     mismatch is an NU1605 downgrade, so the app references the natives at the managed version (Directory.Packages.props).
     Uno dedups its implicit references against these explicit ones.
   -->

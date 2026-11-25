@@ -14,12 +14,12 @@
       one app. SkiaSharp 4's runtime assembly keeps the v3 members (they are only removed from the
       reference assembly), so Uno's own runtime, compiled against 3.x, binds unchanged.
     -->
-    <SkiaSharpVersion>4.156.1</SkiaSharpVersion>
+    <SkiaSharpVersion>4.157.0</SkiaSharpVersion>
 
     <!--
       Minimum .NET MAUI version KumikoUI.Maui supports. It becomes the package's dependency floor, so it
       no longer floats with whatever MAUI workload the build machine has. 10.0.110 is also the floor of
-      SkiaSharp.Views.Maui.Controls 4.156.1. Dependabot ignores it (.github/dependabot.yml); raise it by hand.
+      SkiaSharp.Views.Maui.Controls 4.157.0. Dependabot ignores it (.github/dependabot.yml); raise it by hand.
     -->
     <MauiVersion>10.0.110</MauiVersion>
 
@@ -68,12 +68,12 @@
     <PackageVersion Include="SkiaSharp.Skottie" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="$(SkiaSharpVersion)" />
     <!-- The HarfBuzzSharp version SkiaSharp.HarfBuzz depends on; its Linux native library is a separate package. -->
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.4.0.101" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.4.0.101" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Android" Version="14.4.0.101" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.iOS" Version="14.4.0.101" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.4.0.101" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.macOS" Version="14.4.0.101" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Android" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.iOS" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.macOS" Version="14.4.0.200" />
   </ItemGroup>
 
   <ItemGroup Label="Hosts">
