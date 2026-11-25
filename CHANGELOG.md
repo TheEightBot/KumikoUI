@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - KumikoUI.Uno lists the `Skia` Uno feature (Uno 7 ignores `SkiaRenderer` in a library) and references `SkiaSharp.Views.Uno.WinUI` explicitly on every non-Windows head.
 - The public API files now declare the members the compiler synthesizes for records, record structs and delegates (`Equals`, `GetHashCode`, `ToString`, `==`, `!=`, `Deconstruct`, `Invoke`), which Microsoft.CodeAnalysis.PublicApiAnalyzers 5.x requires. No behavior change.
 
+### Fixed
+- The Uno sample's navigation shell no longer draws the pane's menu button over the page title on a phone, and its pane item labels are no longer clipped in landscape: the `NavigationView` now has a header row and switches directly from the minimal pane to the expanded one at 640 effective pixels (#291).
+
 ## [1.0.0-preview.1] - 2026-11-14
 
 First 1.0 prerelease. All four packages (KumikoUI.Core, KumikoUI.SkiaSharp, KumikoUI.Maui, KumikoUI.Uno) ship at this version, and each package depends on the exact version of its siblings. The API may still change before 1.0.0. KumikoUI.Uno is the least verified host. The release brings the 1.0 API review and `sealed`/value-type changes (#37, #112), `KumikoSource` thread affinity (#69), saved layouts, column reordering and context menus (#98, #100), native text input on iOS, Android, Windows and Uno (#40-#43), and the hardware-accelerated render mode on MAUI (`KumikoRenderMode.Hardware`, #71); the entries marked **Breaking:** below list what to change when upgrading from 0.2.0. See [docs/release/1.0.0-preview.1-release-notes.md](https://github.com/TheEightBot/KumikoUI/blob/v1.0.0-preview.1/docs/release/1.0.0-preview.1-release-notes.md) for the summary and known issues.

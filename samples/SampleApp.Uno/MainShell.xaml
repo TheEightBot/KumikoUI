@@ -8,13 +8,26 @@
         Navigation shell hosting the demo pages — the Uno analogue of SampleApp.Maui's AppShell
         TabBar. A NavigationView drives a Frame; selecting an item navigates the Frame to the
         matching page. The first item is selected in code-behind so the basic grid shows on launch.
+
+        Display mode (#291): below 640 effective pixels the pane is minimal (a menu button), at or above it
+        the pane is expanded with labels. The compact (icons-only) mode is skipped because these items have
+        no icons, so it clipped their labels in landscape. The Header (the selected item's label, set in
+        OnSelectionChanged) gives the minimal-mode menu button its own row, so it no longer sits on top of the page
+        content.
     -->
     <Grid x:Name="SafeAreaRoot">
     <NavigationView x:Name="NavView"
                     PaneDisplayMode="Auto"
+                    CompactModeThresholdWidth="640"
+                    ExpandedModeThresholdWidth="640"
                     IsBackButtonVisible="Collapsed"
                     IsSettingsVisible="False"
                     SelectionChanged="OnSelectionChanged">
+        <NavigationView.HeaderTemplate>
+            <DataTemplate>
+                <TextBlock Text="{Binding}" Style="{ThemeResource SubtitleTextBlockStyle}" />
+            </DataTemplate>
+        </NavigationView.HeaderTemplate>
         <NavigationView.MenuItems>
             <NavigationViewItem Content="All Components" Tag="BasicGrid" />
             <NavigationViewItem Content="Grouping" Tag="Grouping" />
