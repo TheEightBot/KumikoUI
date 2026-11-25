@@ -28,7 +28,7 @@ new KumikoColumn
     TextAlignment   = KumikoTextAlignment.Left,
     CustomCellRenderer  = null,
     EditorDescriptor    = null,
-    CustomEditorFactory = null,
+    EditorFactory       = null,               // Func<CellEditorContext, DrawnComponent?>
     EditorItems         = null,
     EditorItemsString   = "A,B,C",            // XAML-friendly CSV for Picker/ComboBox
     CellStyle           = null,
@@ -48,7 +48,7 @@ new KumikoColumn
 | `Picker` | `TextCellRenderer` | `DrawnScrollPicker` |
 | `Image` | `ImageCellRenderer` | (not editable) |
 | `ProgressBar` | `ProgressBarCellRenderer` | `DrawnProgressBar` slider when editable |
-| `Template` | `CustomCellRenderer` or text | `CustomEditorFactory` or `EditorDescriptor` |
+| `Template` | `CustomCellRenderer` or text | `EditorFactory` or `EditorDescriptor` |
 
 ---
 

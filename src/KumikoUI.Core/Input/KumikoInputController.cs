@@ -2031,7 +2031,7 @@ public sealed partial class KumikoInputController
     /// (<see cref="IInteractiveCellRenderer"/>), unless the column has an editor of its own, which wins.
     /// </summary>
     private static IInteractiveCellRenderer? GetInteractiveRenderer(KumikoColumn? column)
-        => column is { EditorFactory: null, CustomEditorFactory: null, EditorDescriptor: null } &&
+        => column is { EditorFactory: null, EditorDescriptor: null } &&
            column.CustomCellRenderer is IInteractiveCellRenderer interactive
             ? interactive
             : null;

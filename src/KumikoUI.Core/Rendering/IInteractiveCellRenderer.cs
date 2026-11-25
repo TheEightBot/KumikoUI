@@ -7,8 +7,8 @@ namespace KumikoUI.Core.Rendering;
 /// </summary>
 /// <remarks>
 /// A column whose renderer implements this interface never opens an editor, whatever its edit triggers say,
-/// and is not blocked by <c>IsReadOnly</c>. A column with its own <c>EditorFactory</c>,
-/// <c>CustomEditorFactory</c> or <c>EditorDescriptor</c> is not treated as interactive: the editor wins.
+/// and is not blocked by <c>IsReadOnly</c>. A column with its own <c>EditorFactory</c> or
+/// <c>EditorDescriptor</c> is not treated as interactive: the editor wins.
 /// The handlers may change the data (remove the row they belong to): the grid reads nothing about the row
 /// after they return.
 /// </remarks>

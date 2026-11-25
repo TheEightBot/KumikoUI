@@ -206,6 +206,8 @@ each is cheapest to take before the freeze.
 | B. Consolidate now | Remove `KumikoColumn.CustomEditorFactory`; make `EditorDescriptor.CreateEditor(CellEditorContext)` the only (abstract) member; give `ICellEditorProvider` the single context method; update `ActionButtonsCellRenderer`, the built-in descriptors, tests, README and instructions. | A **Breaking:** note for preview users who wrote custom editors (a mechanical change: `(value, bounds)` becomes `context.Value`, `context.Bounds`). |
 | C. Half step | Mark `CustomEditorFactory` and the legacy overloads `[Obsolete]` at 1.0, remove them in 2.0; flip `EditorDescriptor` so the context overload is the abstract one. | Still breaking for descriptors now, and leaves the obsolete members in 1.x. |
 
+**Decided: consolidate** (#305), option B.
+
 **Recommendation: B**, in this preview cycle. It is the last cheap moment, the change is mechanical, and it removes an
 extension point the docs would otherwise have to explain for every 1.x release.
 

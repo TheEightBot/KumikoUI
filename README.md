@@ -304,7 +304,7 @@ Each column is a `KumikoColumn`. Its `ColumnType` picks the cell renderer and th
 | `Picker` | Text | `DrawnScrollPicker` (scroll wheel) | Items from `EditorItems` or `EditorItemsString` |
 | `Image` | Image, centered in a square | none | A URL, file or asset name, bytes, a stream or a host image source, loaded off the UI thread; see [Images](#images) |
 | `ProgressBar` | Progress bar | none (read-only) | A number between `ProgressMinimum` (default 0) and `ProgressMaximum` (default 100); see [Progress bars](#progress-bars) |
-| `Template` | `CustomCellRenderer` (text if none) | `EditorFactory`, `CustomEditorFactory`, `EditorDescriptor`, an `ICellEditorProvider` renderer, or a text box | For action buttons and your own renderers |
+| `Template` | `CustomCellRenderer` (text if none) | `EditorFactory`, `EditorDescriptor`, an `ICellEditorProvider` renderer, or a text box | For action buttons and your own renderers |
 
 ```xml
 <core:KumikoColumn Header="Department" PropertyName="Department" Width="140"
@@ -558,7 +558,7 @@ An action column is a `Template` column whose `CustomCellRenderer` is an `Action
 - **`CanExecute`.** A button whose `Command.CanExecute(parameter)` is false is drawn disabled (the style's `ActionButtonDisabledBackgroundColor` and `ActionButtonDisabledTextColor`) and does nothing when tapped. The parameter is `CommandParameter`, or the row item when that is not set. The renderer listens to `CanExecuteChanged` and the grid redraws; the listener holds the renderer weakly, and `ActionButtonsCellRenderer.Dispose()` removes it. A button with only an `Action` is always enabled.
 - **Keyboard.** Enter on the current action cell runs its first button when that button is enabled. Tab stops at the column like any other editable column; give it `AllowTabStop="False"` to skip it.
 - **Safe commands.** A command may remove the row it was run for, even the last one.
-- A column with its own `EditorFactory`, `CustomEditorFactory` or `EditorDescriptor` is not interactive: the editor wins.
+- A column with its own `EditorFactory` or `EditorDescriptor` is not interactive: the editor wins.
 
 ### XAML with bound commands (.NET MAUI)
 
@@ -658,7 +658,7 @@ kumiko.Columns.Add(actionsColumn);
 | `CommandParameter` | `object?` | Overrides the row item as the parameter |
 | `Action` | `Action?` | Code-behind callback; runs in addition to `Command` when both are set |
 
-`ActionButtonsCellRenderer` also has `CornerRadius` (default 5), `ButtonSpacing` (6) and `CellPadding` (4). To open the buttons as an editor instead, set `CustomEditorFactory` to create a `DrawnActionButtons` with the same `Buttons`; that editor raises the edit events.
+`ActionButtonsCellRenderer` also has `CornerRadius` (default 5), `ButtonSpacing` (6) and `CellPadding` (4). To open the buttons as an editor instead, set `EditorFactory` to create a `DrawnActionButtons` with the same `Buttons` (`Bounds = context.Bounds`, `RowItem = context.Value`); that editor raises the edit events.
 
 ---
 
@@ -956,6 +956,21 @@ var notes = new KumikoColumn
     },
 };
 ```
+
+A reusable editor is an `EditorDescriptor` subclass. It overrides `CreateEditor(CellEditorContext)`, the same context `EditorFactory` gets; a renderer that implements `ICellEditorProvider` implements the same method:
+
+```csharp
+public sealed class UpperCaseEditorDescriptor : EditorDescriptor
+{
+    public override DrawnComponent? CreateEditor(CellEditorContext context) => new DrawnTextBox
+    {
+        Bounds = context.Bounds,
+        Text = (context.InitialCharacter?.ToString() ?? context.Value?.ToString() ?? "").ToUpperInvariant(),
+    };
+}
+```
+
+The precedence is `EditorFactory`, then `EditorDescriptor`, then a `CustomCellRenderer` that implements `ICellEditorProvider`, then a text box. Upgrading from a preview that had the `(value, bounds)` shapes: replace `CustomEditorFactory = (value, bounds) => ...` with `EditorFactory = context => ...`, read `context.Value` and `context.Bounds`, and override or implement `CreateEditor(CellEditorContext)` in place of `CreateEditor(object?, KumikoRect)` (see the [changelog](CHANGELOG.md)).
 
 A custom editor's value is committed when it implements `IValueEditor` (`Value`, `HasValue`, `IsDirty`); all built-in editors do.
 

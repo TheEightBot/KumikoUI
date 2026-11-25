@@ -179,7 +179,6 @@ The edited value is read back through `IValueEditor`, so `GetEditorValue` needs 
 ```csharp
 // src/KumikoUI.Core/Editing/{Name}EditorDescriptor.cs
 using KumikoUI.Core.Components;
-using KumikoUI.Core.Rendering;
 
 namespace KumikoUI.Core.Editing;
 
@@ -192,16 +191,16 @@ public sealed class {Name}EditorDescriptor : EditorDescriptor
     public int Step { get; set; } = 1;
 
     /// <inheritdoc />
-    public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
+    public override DrawnComponent? CreateEditor(CellEditorContext context)
         => new Drawn{Name}
         {
-            Bounds = cellBounds,
-            Value  = ({ValueType}?)currentValue ?? default
+            Bounds = context.Bounds,
+            Value  = ({ValueType}?)context.Value ?? default
         };
 }
 ```
 
-Override `CreateEditor(CellEditorContext context)` instead to read the typed character and the culture.
+`context` also carries the character typed to open the edit (`InitialCharacter`) and the grid's culture (`Culture`).
 
 **XAML usage:**
 ```xml

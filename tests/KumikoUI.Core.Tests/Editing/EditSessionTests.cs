@@ -631,7 +631,7 @@ public class EditSessionTests
         var f = new Fixture();
         var combo = new CompletingCombo { IsVisible = true };
         f.Name.ColumnType = KumikoColumnType.Template;
-        f.Name.CustomEditorFactory = (_, _) => combo;
+        f.Name.EditorFactory = _ => combo;
         f.Begin(0, 0);
         combo.Pick("Yan");
 
@@ -648,7 +648,7 @@ public class EditSessionTests
         var f = new Fixture();
         var combo = new CompletingCombo { IsVisible = true };
         f.Name.ColumnType = KumikoColumnType.Template;
-        f.Name.CustomEditorFactory = (_, _) => combo;
+        f.Name.EditorFactory = _ => combo;
         f.Begin(0, 0);
         f.Session.CancelEdit();
 
@@ -995,11 +995,11 @@ public class EditSessionTests
         int fired = 0;
         f.Name.ColumnType = KumikoColumnType.Template;
         f.Name.PropertyName = "";
-        f.Name.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
+        f.Name.EditorFactory = context => new DrawnActionButtons
         {
-            Bounds = bounds,
+            Bounds = context.Bounds,
             IsVisible = true,
-            RowItem = value,
+            RowItem = context.Value,
             Buttons = new List<IActionButtonDefinition>
             {
                 new ActionButtonDefinition { Label = "Go", Action = () => fired++ }
@@ -1034,9 +1034,9 @@ public class EditSessionTests
         int fired = 0;
         f.Name.ColumnType = KumikoColumnType.Template;
         f.Name.PropertyName = "";
-        f.Name.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
+        f.Name.EditorFactory = context => new DrawnActionButtons
         {
-            Bounds = bounds,
+            Bounds = context.Bounds,
             IsVisible = true,
             Buttons = new List<IActionButtonDefinition>
             {

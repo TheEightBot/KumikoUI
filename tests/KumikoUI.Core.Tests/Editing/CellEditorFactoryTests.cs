@@ -291,24 +291,24 @@ public class CellEditorFactoryTests
 
         public void Render(IDrawingContext ctx, in CellRenderContext cell) { }
 
-        public DrawnComponent? CreateEditor(object? value, KumikoRect bounds) => Result;
+        public DrawnComponent? CreateEditor(CellEditorContext context) => Result;
     }
 
     private sealed class DescriptorStub : EditorDescriptor
     {
         public DrawnComponent? Result { get; set; } = new MarkerComponent();
-        public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds) => Result;
+        public override DrawnComponent? CreateEditor(CellEditorContext context) => Result;
     }
 
     [Fact]
-    public void TemplateEditor_CustomFactoryWinsOverDescriptorAndProvider()
+    public void TemplateEditor_EditorFactoryWinsOverDescriptorAndProvider()
     {
         var fromFactory = new MarkerComponent();
         object? seenValue = null;
         KumikoRect seenBounds = default;
         var column = Column(KumikoColumnType.Template, c =>
         {
-            c.CustomEditorFactory = (v, b) => { seenValue = v; seenBounds = b; return fromFactory; };
+            c.EditorFactory = context => { seenValue = context.Value; seenBounds = context.Bounds; return fromFactory; };
             c.EditorDescriptor = new DescriptorStub();
             c.CustomCellRenderer = new ProviderRenderer();
         });

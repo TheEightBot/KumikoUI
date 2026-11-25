@@ -1,5 +1,4 @@
 using KumikoUI.Core.Components;
-using KumikoUI.Core.Rendering;
 
 namespace KumikoUI.Core.Editing;
 
@@ -11,30 +10,25 @@ public sealed class TextEditorDescriptor : EditorDescriptor
     /// <summary>Restrict to numeric characters only.</summary>
     public bool NumericOnly { get; set; }
 
-    /// <inheritdoc/>
-    public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
+    /// <summary>Creates the text box; a character typed to open the edit replaces the text.</summary>
+    /// <param name="context">The cell's value, bounds and the character that opened the edit.</param>
+    public override DrawnComponent? CreateEditor(CellEditorContext context)
     {
-        return new DrawnTextBox
+        var textBox = new DrawnTextBox
         {
-            Bounds = cellBounds,
-            Text = currentValue?.ToString() ?? string.Empty,
+            Bounds = context.Bounds,
+            Text = context.Value?.ToString() ?? string.Empty,
             NumericOnly = NumericOnly,
             IsVisible = true,
             Padding = 4f
         };
-    }
-
-    /// <summary>Creates the text box; a character typed to open the edit replaces the text.</summary>
-    public override DrawnComponent? CreateEditor(CellEditorContext context)
-    {
-        var editor = CreateEditor(context.Value, context.Bounds);
-        if (editor is DrawnTextBox textBox && context.InitialCharacter is { } typed)
+        if (context.InitialCharacter is { } typed)
         {
             // The typed character replaces the value: a change by the user
             textBox.InitialSelectionMode = EditTextSelectionMode.CursorAtEnd;
             textBox.StartTrackingChanges();
             textBox.Text = typed.ToString();
         }
-        return editor;
+        return textBox;
     }
 }
