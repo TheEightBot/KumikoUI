@@ -652,7 +652,7 @@ kumiko.Columns.Add(actionsColumn);
 | Button property | Type | Meaning |
 |---|---|---|
 | `Label` | `string` | Text on the button |
-| `BackgroundColor` | `KumikoColor` | Pill color (`R,G,B`, `R,G,B,A`, `#RGB`, `#RRGGBB`, `#AARRGGBB` or a color name in XAML) |
+| `BackgroundColor` | `KumikoColor` | Pill color (`R,G,B`, `R,G,B,A`, `rgb()`, `rgba()`, `#RGB`, `#RRGGBB`, `#AARRGGBB` or a color name in XAML) |
 | `TextColor` | `KumikoColor` | Label color (default: white) |
 | `Command` | `ICommand?` | Executed on tap; the row item is the default parameter |
 | `CommandParameter` | `object?` | Overrides the row item as the parameter |
@@ -1214,7 +1214,7 @@ style.ShowVerticalGridLines = false;
 kumiko.GridStyle = style;
 ```
 
-`KumikoColor` takes bytes (`R`, `G`, `B` and an optional `A`) and has named colors such as `White`, `Black` and `Transparent`. In XAML, a `KumikoColor` property accepts `R,G,B`, `R,G,B,A`, `#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` (alpha first, as in XAML and MAUI), any CSS color name (`Orange`, `CornflowerBlue`, `SlateGray`, ... in any case) and `Transparent`; text it cannot read throws a `FormatException` that names it. `KumikoFont` is a value (a `readonly record struct`): two fonts with the same content are equal, and you change one with `with` (`style.CellFont = style.CellFont with { Size = 16 }`). It has `Family` (`"Default"` is the platform font, or a family you registered, see [Custom Fonts](#custom-fonts)), `Size`, `IsBold` and `IsItalic`.
+`KumikoColor` takes bytes (`R`, `G`, `B` and an optional `A`) and has named colors such as `White`, `Black` and `Transparent`. In XAML, a `KumikoColor` property accepts `R,G,B`, `R,G,B,A`, `rgb(220, 53, 69)`, `rgba(220, 53, 69, 0.5)` (CSS notation: channels 0 to 255, alpha last as 0 to 1 or a percentage such as `50%`, case and spaces ignored), `#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` (alpha first, as in XAML and MAUI), any CSS color name (`Orange`, `CornflowerBlue`, `SlateGray`, ... in any case) and `Transparent`; text it cannot read throws a `FormatException` that names it. `KumikoFont` is a value (a `readonly record struct`): two fonts with the same content are equal, and you change one with `with` (`style.CellFont = style.CellFont with { Size = 16 }`). It has `Family` (`"Default"` is the platform font, or a family you registered, see [Custom Fonts](#custom-fonts)), `Size`, `IsBold` and `IsItalic`.
 
 ### Per-cell and per-row styles
 

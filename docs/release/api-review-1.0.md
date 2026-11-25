@@ -176,6 +176,8 @@ each is cheapest to take before the freeze.
 
 **Recommendation: A.** Add C only if users ask; it does not need to be decided now.
 
+**Decided: keep `#AARRGGBB` and add `rgb()`/`rgba()`** (#304). Implemented in `KumikoColorTypeConverter`.
+
 ### D2. Two editor-factory shapes
 
 **Evidence.**

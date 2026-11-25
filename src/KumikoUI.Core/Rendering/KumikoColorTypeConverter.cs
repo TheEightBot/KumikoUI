@@ -16,10 +16,17 @@ namespace KumikoUI.Core.Rendering;
 ///   <item><description><c>#ARGB</c> — short hex with alpha first. Example: <c>#8FA0</c></description></item>
 ///   <item><description><c>#RRGGBB</c> — hex RGB. Example: <c>#DC3545</c></description></item>
 ///   <item><description><c>#AARRGGBB</c> — hex ARGB, alpha first as in XAML and MAUI. Example: <c>#80DC3545</c></description></item>
+///   <item><description><c>rgb(R, G, B)</c> — CSS functional notation, channels are integers 0 to 255, fully opaque.
+///     Example: <c>rgb(220, 53, 69)</c></description></item>
+///   <item><description><c>rgba(R, G, B, A)</c> — as <c>rgb()</c> plus alpha last, as in CSS: a number from 0 (transparent)
+///     to 1 (opaque) written with a period, or a percentage. Examples: <c>rgba(220, 53, 69, 0.5)</c>,
+///     <c>rgba(220, 53, 69, 50%)</c></description></item>
 ///   <item><description>A standard color name: the CSS color keywords (<c>Orange</c>, <c>CornflowerBlue</c>,
 ///     <c>SlateGray</c>, ...), plus <c>Transparent</c>.</description></item>
 /// </list>
-/// Text that matches none of these throws a <see cref="FormatException"/> that names the text.
+/// The comma form <c>R,G,B,A</c> takes alpha as a byte (0 to 255) and 8-digit hex puts alpha first
+/// (<c>#AARRGGBB</c>); <c>rgba()</c> is the form that puts alpha last as a 0 to 1 fraction.
+/// Text that matches none of these, including channels or alpha out of range, throws a <see cref="FormatException"/> that names the text.
 /// </remarks>
 public sealed class KumikoColorTypeConverter : TypeConverter
 {
@@ -197,6 +204,9 @@ public sealed class KumikoColorTypeConverter : TypeConverter
         if (s.Length > 1 && s[0] == '#' && TryParseHex(s.AsSpan(1), out var hex))
             return hex;
 
+        if (TryParseFunctional(s, out var functional))
+            return functional;
+
         // CSV: R,G,B  or  R,G,B,A
         var parts = s.Split(',');
         if (parts.Length is 3 or 4 &&
@@ -211,7 +221,50 @@ public sealed class KumikoColorTypeConverter : TypeConverter
 
         throw new FormatException(
             $"Cannot convert '{s}' to KumikoColor. " +
-            "Use R,G,B  /  R,G,B,A  /  #RGB  /  #ARGB  /  #RRGGBB  /  #AARRGGBB  /  a standard color name.");
+            "Use R,G,B  /  R,G,B,A  /  rgb(R, G, B)  /  rgba(R, G, B, A)  /  #RGB  /  #ARGB  /  #RRGGBB  /  #AARRGGBB  /  a standard color name.");
+    }
+
+    // Parses rgb(r, g, b) and rgba(r, g, b, a): integer channels 0-255, alpha 0-1 (invariant culture) or a percentage.
+    private static bool TryParseFunctional(string s, out KumikoColor color)
+    {
+        color = default;
+        bool hasAlpha;
+        if (s.StartsWith("rgba(", StringComparison.OrdinalIgnoreCase)) hasAlpha = true;
+        else if (s.StartsWith("rgb(", StringComparison.OrdinalIgnoreCase)) hasAlpha = false;
+        else return false;
+
+        if (s[^1] != ')') return false;
+
+        int open = s.IndexOf('(');
+        var parts = s.Substring(open + 1, s.Length - open - 2).Split(',');
+        if (parts.Length != (hasAlpha ? 4 : 3)) return false;
+
+        if (!byte.TryParse(parts[0].Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out byte r) ||
+            !byte.TryParse(parts[1].Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out byte g) ||
+            !byte.TryParse(parts[2].Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out byte b))
+            return false;
+
+        byte a = 255;
+        if (hasAlpha)
+        {
+            var text = parts[3].Trim();
+            double scale = 1;
+            if (text.EndsWith('%'))
+            {
+                text = text[..^1].TrimEnd();
+                scale = 0.01;
+            }
+
+            if (!double.TryParse(text, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out double alpha))
+                return false;
+
+            alpha *= scale;
+            if (!(alpha >= 0 && alpha <= 1)) return false; // also rejects NaN
+            a = (byte)Math.Round(alpha * 255, MidpointRounding.AwayFromZero);
+        }
+
+        color = new KumikoColor(r, g, b, a);
+        return true;
     }
 
     // Parses the digits after '#': 3 (RGB), 4 (ARGB), 6 (RRGGBB) or 8 (AARRGGBB) hex digits.

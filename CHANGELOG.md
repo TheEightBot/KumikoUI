@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- `KumikoColorTypeConverter` (so every `KumikoColor` property in XAML) accepts the CSS functional forms `rgb(r, g, b)` and `rgba(r, g, b, a)`: channels are integers 0 to 255, alpha is a number from 0 to 1 (period as the decimal separator in any culture) or a percentage such as `50%`, and white space and case are ignored. Out-of-range values and bad syntax throw the same `FormatException` as invalid hex. Hex is unchanged, 8 digits are still `#AARRGGBB` (#304).
+
 ### Changed
 - **Breaking:** SkiaSharp 4.157.0 (was 4.153.1), which needs Uno.Sdk 7 / Uno.WinUI 7 and `Microsoft.Maui.Controls` 10.0.110. KumikoUI.Uno is built with Uno.Sdk 7.0.22 (was 6.7.30), and KumikoUI.Maui now declares a minimum of `Microsoft.Maui.Controls` 10.0.110 (was 10.0.20). Uno apps must move to Uno.Sdk 7 and set `<SkiaSharpVersion>4.157.0</SkiaSharpVersion>`. On Uno.Sdk 7.0.22 an app may also need explicit `HarfBuzzSharp.NativeAssets.*` references at 14.4.0.200 (the version the managed HarfBuzzSharp requires), because the SDK pins its own at 14.4.0.100 (NU1605).
 - KumikoUI.Uno lists the `Skia` Uno feature (Uno 7 ignores `SkiaRenderer` in a library) and references `SkiaSharp.Views.Uno.WinUI` explicitly on every non-Windows head.
