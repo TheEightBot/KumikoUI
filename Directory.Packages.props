@@ -14,14 +14,14 @@
       one app. SkiaSharp 4's runtime assembly keeps the v3 members (they are only removed from the
       reference assembly), so Uno's own runtime, compiled against 3.x, binds unchanged.
     -->
-    <SkiaSharpVersion>4.153.1</SkiaSharpVersion>
+    <SkiaSharpVersion>4.157.0</SkiaSharpVersion>
 
     <!--
       Minimum .NET MAUI version KumikoUI.Maui supports. It becomes the package's dependency floor, so it
-      no longer floats with whatever MAUI workload the build machine has. 10.0.20 is also the floor of
-      SkiaSharp.Views.Maui.Controls 4.153.1. Dependabot ignores it (.github/dependabot.yml); raise it by hand.
+      no longer floats with whatever MAUI workload the build machine has. 10.0.110 is also the floor of
+      SkiaSharp.Views.Maui.Controls 4.157.0. Dependabot ignores it (.github/dependabot.yml); raise it by hand.
     -->
-    <MauiVersion>10.0.20</MauiVersion>
+    <MauiVersion>10.0.110</MauiVersion>
 
     <!--
       Version of Microsoft.Windows.Compatibility that Uno.Sdk adds implicitly to WebAssembly heads
@@ -40,7 +40,7 @@
       MAUI uses MauiVersion above (the minimum KumikoUI.Maui supports).
     -->
     <WindowsAppSdkWinUIVersion>1.8.260528001</WindowsAppSdkWinUIVersion>
-    <UnoWinUIVersion>6.7.135</UnoWinUIVersion>
+    <UnoWinUIVersion>7.0.65</UnoWinUIVersion>
     <WindowsDesktopRefVersion>10.0.13</WindowsDesktopRefVersion>
     <!-- Other UI frameworks and grids an app may import next to KumikoUI. -->
     <CommunityToolkitWinUIDataGridVersion>7.1.2</CommunityToolkitWinUIDataGridVersion>
@@ -64,11 +64,16 @@
     <PackageVersion Include="SkiaSharp.Views" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.Views.Maui.Controls" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.Views.WinUI" Version="$(SkiaSharpVersion)" />
+    <PackageVersion Include="SkiaSharp.Views.Uno.WinUI" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.Skottie" Version="$(SkiaSharpVersion)" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="$(SkiaSharpVersion)" />
     <!-- The HarfBuzzSharp version SkiaSharp.HarfBuzz depends on; its Linux native library is a separate package. -->
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.301" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.2.1.301" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Android" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.iOS" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.4.0.200" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.macOS" Version="14.4.0.200" />
   </ItemGroup>
 
   <ItemGroup Label="Hosts">
@@ -83,7 +88,7 @@
   <ItemGroup Label="Build">
     <PackageVersion Include="MinVer" Version="8.0.0" />
     <!-- Records the public API of the four shipped libraries in PublicAPI.*.txt files (Directory.Build.targets, #54). -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
   </ItemGroup>
 
   <!--

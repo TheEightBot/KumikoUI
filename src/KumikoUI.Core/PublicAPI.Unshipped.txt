@@ -453,11 +453,14 @@ KumikoUI.Core.Editing.CellBeginEditEventArgs.Column.get -> KumikoUI.Core.Models.
 KumikoUI.Core.Editing.CellBeginEditEventArgs.ColumnIndex.get -> int
 KumikoUI.Core.Editing.CellBeginEditEventArgs.RowIndex.get -> int
 KumikoUI.Core.Editing.CellEditorContext
+KumikoUI.Core.Editing.CellEditorContext.<Clone>$() -> KumikoUI.Core.Editing.CellEditorContext!
 KumikoUI.Core.Editing.CellEditorContext.Bounds.get -> KumikoUI.Core.Rendering.KumikoRect
 KumikoUI.Core.Editing.CellEditorContext.Bounds.init -> void
 KumikoUI.Core.Editing.CellEditorContext.CellEditorContext(object? Value, KumikoUI.Core.Rendering.KumikoRect Bounds, char? InitialCharacter = null, System.Globalization.CultureInfo? Culture = null) -> void
 KumikoUI.Core.Editing.CellEditorContext.Culture.get -> System.Globalization.CultureInfo?
 KumikoUI.Core.Editing.CellEditorContext.Culture.init -> void
+KumikoUI.Core.Editing.CellEditorContext.Deconstruct(out object? Value, out KumikoUI.Core.Rendering.KumikoRect Bounds, out char? InitialCharacter, out System.Globalization.CultureInfo? Culture) -> void
+KumikoUI.Core.Editing.CellEditorContext.Equals(KumikoUI.Core.Editing.CellEditorContext? other) -> bool
 KumikoUI.Core.Editing.CellEditorContext.InitialCharacter.get -> char?
 KumikoUI.Core.Editing.CellEditorContext.InitialCharacter.init -> void
 KumikoUI.Core.Editing.CellEditorContext.Value.get -> object?
@@ -703,6 +706,7 @@ KumikoUI.Core.Input.KumikoHitTestResult.ContentX.get -> float
 KumikoUI.Core.Input.KumikoHitTestResult.ContentX.init -> void
 KumikoUI.Core.Input.KumikoHitTestResult.ContentY.get -> float
 KumikoUI.Core.Input.KumikoHitTestResult.ContentY.init -> void
+KumikoUI.Core.Input.KumikoHitTestResult.Equals(KumikoUI.Core.Input.KumikoHitTestResult other) -> bool
 KumikoUI.Core.Input.KumikoHitTestResult.GroupDescriptionIndex.get -> int
 KumikoUI.Core.Input.KumikoHitTestResult.GroupDescriptionIndex.init -> void
 KumikoUI.Core.Input.KumikoHitTestResult.KumikoHitTestResult() -> void
@@ -852,7 +856,9 @@ KumikoUI.Core.Input.KumikoScrollUnit
 KumikoUI.Core.Input.KumikoScrollUnit.Notches = 0 -> KumikoUI.Core.Input.KumikoScrollUnit
 KumikoUI.Core.Input.KumikoScrollUnit.Pixels = 1 -> KumikoUI.Core.Input.KumikoScrollUnit
 KumikoUI.Core.Input.KumikoTextRange
+KumikoUI.Core.Input.KumikoTextRange.Deconstruct(out int Start, out int Length) -> void
 KumikoUI.Core.Input.KumikoTextRange.End.get -> int
+KumikoUI.Core.Input.KumikoTextRange.Equals(KumikoUI.Core.Input.KumikoTextRange other) -> bool
 KumikoUI.Core.Input.KumikoTextRange.IsEmpty.get -> bool
 KumikoUI.Core.Input.KumikoTextRange.KumikoTextRange() -> void
 KumikoUI.Core.Input.KumikoTextRange.KumikoTextRange(int Start, int Length) -> void
@@ -1508,6 +1514,7 @@ KumikoUI.Core.Models.KumikoSource.ViewChanged -> System.EventHandler<KumikoUI.Co
 KumikoUI.Core.Models.KumikoSource.ViewUpdated -> System.EventHandler?
 KumikoUI.Core.Models.KumikoSource.WhenViewUpdatedAsync() -> System.Threading.Tasks.Task!
 KumikoUI.Core.Models.KumikoStrings
+KumikoUI.Core.Models.KumikoStrings.<Clone>$() -> KumikoUI.Core.Models.KumikoStrings!
 KumikoUI.Core.Models.KumikoStrings.AccessibleGridHint.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AccessibleGridHint.init -> void
 KumikoUI.Core.Models.KumikoStrings.AccessibleGridHintWithCell.get -> string!
@@ -1556,6 +1563,7 @@ KumikoUI.Core.Models.KumikoStrings.EnterValidValue.get -> string!
 KumikoUI.Core.Models.KumikoStrings.EnterValidValue.init -> void
 KumikoUI.Core.Models.KumikoStrings.EnterWholeNumber.get -> string!
 KumikoUI.Core.Models.KumikoStrings.EnterWholeNumber.init -> void
+KumikoUI.Core.Models.KumikoStrings.Equals(KumikoUI.Core.Models.KumikoStrings? other) -> bool
 KumikoUI.Core.Models.KumikoStrings.FilterBlanks.get -> string!
 KumikoUI.Core.Models.KumikoStrings.FilterBlanks.init -> void
 KumikoUI.Core.Models.KumikoStrings.FilterCancel.get -> string!
@@ -1572,6 +1580,7 @@ KumikoUI.Core.Models.KumikoStrings.FilterSelectAll.get -> string!
 KumikoUI.Core.Models.KumikoStrings.FilterSelectAll.init -> void
 KumikoUI.Core.Models.KumikoStrings.GroupPanelLabel.get -> string!
 KumikoUI.Core.Models.KumikoStrings.GroupPanelLabel.init -> void
+KumikoUI.Core.Models.KumikoStrings.KumikoStrings() -> void
 KumikoUI.Core.Models.KumikoStrings.NumberOutOfRange.get -> string!
 KumikoUI.Core.Models.KumikoStrings.NumberOutOfRange.init -> void
 KumikoUI.Core.Models.KumikoStrings.SortBooleanCheckedFirst.get -> string!
@@ -2028,6 +2037,7 @@ KumikoUI.Core.Rendering.KumikoColor.WithAlpha(byte alpha) -> KumikoUI.Core.Rende
 KumikoUI.Core.Rendering.KumikoColorTypeConverter
 KumikoUI.Core.Rendering.KumikoColorTypeConverter.KumikoColorTypeConverter() -> void
 KumikoUI.Core.Rendering.KumikoFont
+KumikoUI.Core.Rendering.KumikoFont.Equals(KumikoUI.Core.Rendering.KumikoFont other) -> bool
 KumikoUI.Core.Rendering.KumikoFont.Family.get -> string!
 KumikoUI.Core.Rendering.KumikoFont.Family.init -> void
 KumikoUI.Core.Rendering.KumikoFont.IsBold.get -> bool
@@ -2264,24 +2274,35 @@ override KumikoUI.Core.Components.DrawnTextBox.OnKeyDown(KumikoUI.Core.Input.Kum
 override KumikoUI.Core.Components.DrawnTextBox.OnPointerDown(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
 override KumikoUI.Core.Components.DrawnTextBox.OnPointerMove(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
 override KumikoUI.Core.Components.DrawnTextBox.OnPointerUp(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
+override KumikoUI.Core.Editing.CellEditorContext.Equals(object? obj) -> bool
+override KumikoUI.Core.Editing.CellEditorContext.GetHashCode() -> int
+override KumikoUI.Core.Editing.CellEditorContext.ToString() -> string!
 override KumikoUI.Core.Editing.NumericUpDownEditorDescriptor.CreateEditor(KumikoUI.Core.Editing.CellEditorContext! context) -> KumikoUI.Core.Components.DrawnComponent?
 override KumikoUI.Core.Editing.NumericUpDownEditorDescriptor.CreateEditor(object? currentValue, KumikoUI.Core.Rendering.KumikoRect cellBounds) -> KumikoUI.Core.Components.DrawnComponent?
 override KumikoUI.Core.Editing.TextEditorDescriptor.CreateEditor(KumikoUI.Core.Editing.CellEditorContext! context) -> KumikoUI.Core.Components.DrawnComponent?
 override KumikoUI.Core.Editing.TextEditorDescriptor.CreateEditor(object? currentValue, KumikoUI.Core.Rendering.KumikoRect cellBounds) -> KumikoUI.Core.Components.DrawnComponent?
+override KumikoUI.Core.Input.KumikoHitTestResult.GetHashCode() -> int
+override KumikoUI.Core.Input.KumikoTextRange.GetHashCode() -> int
 override KumikoUI.Core.Models.CellPosition.Equals(object? obj) -> bool
 override KumikoUI.Core.Models.CellPosition.GetHashCode() -> int
 override KumikoUI.Core.Models.CellPosition.ToString() -> string!
+override KumikoUI.Core.Models.KumikoStrings.Equals(object? obj) -> bool
+override KumikoUI.Core.Models.KumikoStrings.GetHashCode() -> int
+override KumikoUI.Core.Models.KumikoStrings.ToString() -> string!
 override KumikoUI.Core.Rendering.KumikoColor.Equals(object? obj) -> bool
 override KumikoUI.Core.Rendering.KumikoColor.GetHashCode() -> int
 override KumikoUI.Core.Rendering.KumikoColor.ToString() -> string!
 override KumikoUI.Core.Rendering.KumikoColorTypeConverter.CanConvertFrom(System.ComponentModel.ITypeDescriptorContext? context, System.Type! sourceType) -> bool
 override KumikoUI.Core.Rendering.KumikoColorTypeConverter.ConvertFrom(System.ComponentModel.ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object! value) -> object?
+override KumikoUI.Core.Rendering.KumikoFont.GetHashCode() -> int
 override KumikoUI.Core.Rendering.KumikoRect.ToString() -> string!
 static KumikoUI.Core.Data.KumikoAccessorRegistry.AddProvider(KumikoUI.Core.Data.IKumikoAccessorProvider! provider) -> void
 static KumikoUI.Core.Data.KumikoAccessorRegistry.IsReflectionPropertyAccessSupported.get -> bool
 static KumikoUI.Core.Data.KumikoAccessorRegistry.Register(System.Type! itemType, KumikoUI.Core.Data.IKumikoAccessorProvider! provider) -> void
 static KumikoUI.Core.Data.KumikoValueConverter.TryConvert(object? value, System.Type! targetType, System.Globalization.CultureInfo! culture, KumikoUI.Core.Models.KumikoStrings! strings, out object? result, out string? error) -> bool
 static KumikoUI.Core.Data.KumikoValueConverter.TryConvert(object? value, System.Type! targetType, System.Globalization.CultureInfo! culture, out object? result, out string? error) -> bool
+static KumikoUI.Core.Editing.CellEditorContext.operator !=(KumikoUI.Core.Editing.CellEditorContext? left, KumikoUI.Core.Editing.CellEditorContext? right) -> bool
+static KumikoUI.Core.Editing.CellEditorContext.operator ==(KumikoUI.Core.Editing.CellEditorContext? left, KumikoUI.Core.Editing.CellEditorContext? right) -> bool
 static KumikoUI.Core.Editing.CellEditorFactory.ApplyFontToEditor(KumikoUI.Core.Components.DrawnComponent! editor, KumikoUI.Core.Rendering.KumikoFont font) -> void
 static KumikoUI.Core.Editing.CellEditorFactory.ApplyThemeToEditor(KumikoUI.Core.Components.DrawnComponent! editor, KumikoUI.Core.Models.KumikoStyle! style) -> void
 static KumikoUI.Core.Editing.CellEditorFactory.ApplyViewportToEditor(KumikoUI.Core.Components.DrawnComponent! editor, KumikoUI.Core.Rendering.KumikoRect viewport) -> void
@@ -2291,7 +2312,11 @@ static KumikoUI.Core.Editing.CellValidationResult.Error(string! message) -> Kumi
 static KumikoUI.Core.Editing.CellValidationResult.Valid.get -> KumikoUI.Core.Editing.CellValidationResult!
 static KumikoUI.Core.Editing.CellValidationResult.Warning(string! message) -> KumikoUI.Core.Editing.CellValidationResult!
 static KumikoUI.Core.Input.KumikoHitTestResult.Empty.get -> KumikoUI.Core.Input.KumikoHitTestResult
+static KumikoUI.Core.Input.KumikoHitTestResult.operator !=(KumikoUI.Core.Input.KumikoHitTestResult left, KumikoUI.Core.Input.KumikoHitTestResult right) -> bool
+static KumikoUI.Core.Input.KumikoHitTestResult.operator ==(KumikoUI.Core.Input.KumikoHitTestResult left, KumikoUI.Core.Input.KumikoHitTestResult right) -> bool
 static KumikoUI.Core.Input.KumikoTextRange.FromBounds(int start, int end) -> KumikoUI.Core.Input.KumikoTextRange
+static KumikoUI.Core.Input.KumikoTextRange.operator !=(KumikoUI.Core.Input.KumikoTextRange left, KumikoUI.Core.Input.KumikoTextRange right) -> bool
+static KumikoUI.Core.Input.KumikoTextRange.operator ==(KumikoUI.Core.Input.KumikoTextRange left, KumikoUI.Core.Input.KumikoTextRange right) -> bool
 static KumikoUI.Core.Input.KumikoTsvFormatter.EscapeField(string? field) -> string!
 static KumikoUI.Core.Input.KumikoTsvFormatter.Format(KumikoUI.Core.Models.KumikoSource! source, System.Collections.Generic.IEnumerable<int>! rows, bool includeHeaders) -> string!
 static KumikoUI.Core.Input.ScrollSettings.FromPreset(KumikoUI.Core.Input.KumikoMomentumPreset preset) -> KumikoUI.Core.Input.ScrollSettings!
@@ -2322,6 +2347,8 @@ static KumikoUI.Core.Models.KumikoComparer.Default.get -> KumikoUI.Core.Models.K
 static KumikoUI.Core.Models.KumikoLayoutState.Capture(KumikoUI.Core.Models.KumikoSource! source) -> KumikoUI.Core.Models.KumikoLayoutState!
 static KumikoUI.Core.Models.KumikoLayoutState.FromJson(string! json) -> KumikoUI.Core.Models.KumikoLayoutState!
 static KumikoUI.Core.Models.KumikoStrings.Default.get -> KumikoUI.Core.Models.KumikoStrings!
+static KumikoUI.Core.Models.KumikoStrings.operator !=(KumikoUI.Core.Models.KumikoStrings? left, KumikoUI.Core.Models.KumikoStrings? right) -> bool
+static KumikoUI.Core.Models.KumikoStrings.operator ==(KumikoUI.Core.Models.KumikoStrings? left, KumikoUI.Core.Models.KumikoStrings? right) -> bool
 static KumikoUI.Core.Models.KumikoTheme.Create(KumikoUI.Core.Models.KumikoThemeMode theme) -> KumikoUI.Core.Models.KumikoStyle!
 static KumikoUI.Core.Models.KumikoTheme.CreateDark() -> KumikoUI.Core.Models.KumikoStyle!
 static KumikoUI.Core.Models.KumikoTheme.CreateHighContrast() -> KumikoUI.Core.Models.KumikoStyle!
@@ -2344,6 +2371,8 @@ static KumikoUI.Core.Rendering.KumikoColor.White.get -> KumikoUI.Core.Rendering.
 static KumikoUI.Core.Rendering.KumikoColor.WhiteSmoke.get -> KumikoUI.Core.Rendering.KumikoColor
 static KumikoUI.Core.Rendering.KumikoColor.operator !=(KumikoUI.Core.Rendering.KumikoColor left, KumikoUI.Core.Rendering.KumikoColor right) -> bool
 static KumikoUI.Core.Rendering.KumikoColor.operator ==(KumikoUI.Core.Rendering.KumikoColor left, KumikoUI.Core.Rendering.KumikoColor right) -> bool
+static KumikoUI.Core.Rendering.KumikoFont.operator !=(KumikoUI.Core.Rendering.KumikoFont left, KumikoUI.Core.Rendering.KumikoFont right) -> bool
+static KumikoUI.Core.Rendering.KumikoFont.operator ==(KumikoUI.Core.Rendering.KumikoFont left, KumikoUI.Core.Rendering.KumikoFont right) -> bool
 static KumikoUI.Core.Rendering.KumikoFontIconProvider.CreateMaterialIcons(string! fontFamily = "MaterialIcons") -> KumikoUI.Core.Rendering.KumikoFontIconProvider!
 static KumikoUI.Core.Rendering.KumikoIconProvider.Default.get -> KumikoUI.Core.Rendering.KumikoIconProvider!
 static KumikoUI.Core.Rendering.KumikoRect.Empty.get -> KumikoUI.Core.Rendering.KumikoRect
@@ -2371,3 +2400,10 @@ virtual KumikoUI.Core.Components.DrawnComponent.UpdateAnimation(float frameInter
 virtual KumikoUI.Core.Editing.EditorDescriptor.CreateEditor(KumikoUI.Core.Editing.CellEditorContext! context) -> KumikoUI.Core.Components.DrawnComponent?
 virtual KumikoUI.Core.Rendering.KumikoFontIconProvider.DrawIcon(KumikoUI.Core.Rendering.IDrawingContext! ctx, KumikoUI.Core.Rendering.KumikoIcon icon, KumikoUI.Core.Rendering.KumikoRect bounds, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
 virtual KumikoUI.Core.Rendering.KumikoIconProvider.DrawIcon(KumikoUI.Core.Rendering.IDrawingContext! ctx, KumikoUI.Core.Rendering.KumikoIcon icon, KumikoUI.Core.Rendering.KumikoRect bounds, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
+virtual KumikoUI.Core.Rendering.KumikoTextMeasurer.Invoke(System.ReadOnlySpan<char> text) -> float
+~override KumikoUI.Core.Input.KumikoHitTestResult.Equals(object obj) -> bool
+~override KumikoUI.Core.Input.KumikoHitTestResult.ToString() -> string
+~override KumikoUI.Core.Input.KumikoTextRange.Equals(object obj) -> bool
+~override KumikoUI.Core.Input.KumikoTextRange.ToString() -> string
+~override KumikoUI.Core.Rendering.KumikoFont.Equals(object obj) -> bool
+~override KumikoUI.Core.Rendering.KumikoFont.ToString() -> string

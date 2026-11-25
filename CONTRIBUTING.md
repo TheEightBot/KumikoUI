@@ -18,7 +18,7 @@ The repository pins its toolchain so every machine and CI build the same way:
 |---|---|---|
 | .NET SDK | `global.json` → `sdk.version` (roll forward: latest patch) | 10.0.401 |
 | Workload set used by CI (MAUI, iOS, Android, Mac Catalyst, WebAssembly) | `.github/actions/setup-dotnet/action.yml` | 10.0.402.1 |
-| Uno.Sdk | `global.json` → `msbuild-sdks` | 6.7.30 |
+| Uno.Sdk | `global.json` → `msbuild-sdks` | 7.0.22 |
 | NuGet package versions | `Directory.Packages.props` (central package management) | — |
 | Package sources | `nuget.config` (nuget.org only) | — |
 
