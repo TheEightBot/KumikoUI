@@ -309,6 +309,11 @@ These hold today. The 1.0 plan is in [docs/ROADMAP.md](../ROADMAP.md).
   (#67). Treat a head as "builds" until that pass reports on it.
 - **One element for screen readers.** Cells, headers, editors and popups are not exposed individually, so a screen reader
   cannot read or navigate cell contents. A per-cell accessibility tree is planned for 1.x.
+- **Screen readers on the desktop head depend on Uno's host.** Windows exposes the grid through UI Automation. On
+  macOS, Uno 6.7's accessibility bridge loses the whole window's tree, grid included, once the app navigates to another
+  page, and from launch in a Debug build that uses Hot Design (`UseStudio()`), so VoiceOver reaches the grid only on the
+  page the app opens with. Linux (X11) has no AT-SPI bridge in Uno 6.7, so Orca sees nothing of the app. Details are in
+  [verification.md](verification.md) (F4, F12).
 - **Right to left is not supported.** The grid always lays out and draws left to right, also inside a right-to-left page,
   and Hebrew or Arabic text is drawn without bidi reordering (#80).
 - **No Mac Catalyst head.** Use the desktop head on macOS.
