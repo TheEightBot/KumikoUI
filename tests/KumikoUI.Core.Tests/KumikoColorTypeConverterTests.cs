@@ -6,7 +6,7 @@ namespace KumikoUI.Core.Tests;
 
 /// <summary>
 /// The string to color converter used by XAML and design-time tools: named colors, hex forms, comma
-/// separated channels, culture independence and what it does with text it cannot read.
+/// separated channels, rgb() and rgba(), culture independence and what it does with text it cannot read.
 /// </summary>
 public class KumikoColorTypeConverterTests
 {
@@ -171,6 +171,101 @@ public class KumikoColorTypeConverterTests
         var ex = Assert.Throws<FormatException>(() => Converter.ConvertFrom(null, CultureInfo.InvariantCulture, text));
 
         Assert.Contains(text, ex.Message);
+    }
+
+    [Theory]
+    [InlineData("rgb(220, 53, 69)", 220, 53, 69, 255)]
+    [InlineData("rgb(0,0,0)", 0, 0, 0, 255)]
+    [InlineData("rgb(255,255,255)", 255, 255, 255, 255)]
+    [InlineData("rgba(220, 53, 69, 1)", 220, 53, 69, 255)]
+    [InlineData("rgba(220, 53, 69, 0)", 220, 53, 69, 0)]
+    [InlineData("rgba(220, 53, 69, 0.5)", 220, 53, 69, 128)]
+    [InlineData("rgba(220, 53, 69, .5)", 220, 53, 69, 128)]
+    [InlineData("rgba(220, 53, 69, 0.2)", 220, 53, 69, 51)]
+    [InlineData("rgba(220, 53, 69, 50%)", 220, 53, 69, 128)]
+    [InlineData("rgba(220, 53, 69, 100%)", 220, 53, 69, 255)]
+    [InlineData("rgba(220, 53, 69, 0%)", 220, 53, 69, 0)]
+    [InlineData("rgba(220, 53, 69, 12.5 %)", 220, 53, 69, 32)]
+    public void RgbAndRgbaFunctionalForms(string text, byte r, byte g, byte b, byte a)
+    {
+        Assert.Equal(new KumikoColor(r, g, b, a), Convert(text));
+    }
+
+    [Theory]
+    [InlineData("  RGB( 1 , 2 , 3 )  ")]
+    [InlineData("Rgb(1,2,3)")]
+    [InlineData("rgb(\t1,\t2,\t3\t)")]
+    public void RgbIgnoresWhiteSpaceAndCase(string text)
+    {
+        Assert.Equal(new KumikoColor(1, 2, 3), Convert(text));
+    }
+
+    [Theory]
+    [InlineData("RGBA(1, 2, 3, 0.5)")]
+    [InlineData(" rgba( 1,2,3,50% ) ")]
+    [InlineData("RgBa(1,2,3,.5)")]
+    public void RgbaIgnoresWhiteSpaceAndCase(string text)
+    {
+        Assert.Equal(new KumikoColor(1, 2, 3, 128), Convert(text));
+    }
+
+    [Fact]
+    public void RgbaAlphaUsesThePeriodWhateverTheCulture()
+    {
+        var result = Converter.ConvertFrom(null, new CultureInfo("de-DE"), "rgba(1, 2, 3, 0.5)");
+
+        Assert.Equal(new KumikoColor(1, 2, 3, 128), result);
+    }
+
+    [Theory]
+    [InlineData("rgb(1,2)")]
+    [InlineData("rgb(1,2,3,4)")]
+    [InlineData("rgb(1,2,3,0.5)")]
+    [InlineData("rgba(1,2,3)")]
+    [InlineData("rgba(1,2,3,0.5,1)")]
+    [InlineData("rgb(256,0,0)")]
+    [InlineData("rgb(0,256,0)")]
+    [InlineData("rgb(0,0,256)")]
+    [InlineData("rgb(-1,0,0)")]
+    [InlineData("rgb(1.5,0,0)")]
+    [InlineData("rgb(50%,0,0)")]
+    [InlineData("rgb(a,b,c)")]
+    [InlineData("rgb(,,)")]
+    [InlineData("rgb()")]
+    [InlineData("rgb(1,2,3")]
+    [InlineData("rgb 1,2,3)")]
+    [InlineData("rgb(1 2 3)")]
+    [InlineData("rgb(1,2,3)x")]
+    [InlineData("rgba(1,2,3,1.5)")]
+    [InlineData("rgba(1,2,3,-0.1)")]
+    [InlineData("rgba(1,2,3,101%)")]
+    [InlineData("rgba(1,2,3,-5%)")]
+    [InlineData("rgba(1,2,3,)")]
+    [InlineData("rgba(1,2,3,abc)")]
+    [InlineData("rgba(1,2,3,NaN)")]
+    [InlineData("rgba(1,2,3,Infinity)")]
+    [InlineData("rgba(1,2,3,1e0)")]
+    [InlineData("rgba(1,2,3,0,5)")]
+    [InlineData("rgba(1,2,3,%)")]
+    [InlineData("rgba(1,2,3,50%%)")]
+    public void InvalidFunctionalFormsThrowAFormatExceptionNamingTheText(string text)
+    {
+        var ex = Assert.Throws<FormatException>(() => Converter.ConvertFrom(null, CultureInfo.InvariantCulture, text));
+
+        Assert.Contains("Cannot convert", ex.Message);
+        Assert.Contains(text.Trim(), ex.Message);
+    }
+
+    [Theory]
+    [InlineData("#80DC3545", 220, 53, 69, 128)]
+    [InlineData("#DC3545", 220, 53, 69, 255)]
+    [InlineData("#8FA0", 255, 170, 0, 136)]
+    [InlineData("#FA0", 255, 170, 0, 255)]
+    [InlineData("#FF000080", 0, 0, 128, 255)]
+    [InlineData("#00FF0080", 255, 0, 128, 0)]
+    public void HexStaysAlphaFirst(string text, byte r, byte g, byte b, byte a)
+    {
+        Assert.Equal(new KumikoColor(r, g, b, a), Convert(text));
     }
 
     [Fact]
