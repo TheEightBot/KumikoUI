@@ -165,9 +165,9 @@ public class ActionButtonsInteractionTests
     {
         var details = new TestCommand();
         var f = new Fixture(details);
-        f.Grid.Name.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
+        f.Grid.Name.EditorFactory = context => new DrawnActionButtons
         {
-            Bounds = bounds, RowItem = value, Buttons = f.Buttons.Buttons,
+            Bounds = context.Bounds, RowItem = context.Value, Buttons = f.Buttons.Buttons,
         };
 
         f.Grid.Tap(First, f.Grid.RowY(0));

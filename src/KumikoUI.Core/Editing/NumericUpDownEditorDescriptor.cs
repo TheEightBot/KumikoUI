@@ -1,6 +1,5 @@
 using System.Globalization;
 using KumikoUI.Core.Components;
-using KumikoUI.Core.Rendering;
 
 namespace KumikoUI.Core.Editing;
 
@@ -34,10 +33,6 @@ public sealed class NumericUpDownEditorDescriptor : EditorDescriptor
 
     /// <summary>Is the control read-only?</summary>
     public bool IsReadOnly { get; set; }
-
-    /// <inheritdoc/>
-    public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds) =>
-        CreateEditor(new CellEditorContext(currentValue, cellBounds));
 
     /// <summary>
     /// Creates the numeric up/down in the grid's culture, holding the cell's number. A typed digit, sign or

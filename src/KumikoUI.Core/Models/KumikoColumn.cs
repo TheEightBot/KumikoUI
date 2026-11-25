@@ -563,21 +563,17 @@ public sealed class KumikoColumn : INotifyPropertyChanged
     public bool EditorIsFilterable { get; set; }
 
     /// <summary>
-    /// Custom editor factory for Template columns.
-    /// Receives (currentValue, cellBounds) and returns a DrawnComponent editor.
-    /// </summary>
-    public Func<object?, Rendering.KumikoRect, Components.DrawnComponent?>? CustomEditorFactory { get; set; }
-
-    /// <summary>
-    /// Custom editor factory for Template columns that also receives the character typed to open the edit
-    /// (<see cref="Editing.CellEditorContext.InitialCharacter"/>). Takes precedence over
-    /// <see cref="CustomEditorFactory"/>, which cannot see that character.
+    /// Custom editor factory for Template columns. Receives a <see cref="Editing.CellEditorContext"/> with the
+    /// cell's value (<see cref="Editing.CellEditorContext.Value"/>), the rectangle to place the editor in
+    /// (<see cref="Editing.CellEditorContext.Bounds"/>), the grid's culture and the character typed to open
+    /// the edit (<see cref="Editing.CellEditorContext.InitialCharacter"/>), and returns the editor. Takes
+    /// precedence over <see cref="EditorDescriptor"/>.
     /// </summary>
     public Func<Editing.CellEditorContext, Components.DrawnComponent?>? EditorFactory { get; set; }
 
     /// <summary>
     /// XAML-declarable editor descriptor for Template columns.
-    /// When set and neither <see cref="EditorFactory"/> nor <see cref="CustomEditorFactory"/> is set, this descriptor
+    /// When set and <see cref="EditorFactory"/> is not set, this descriptor
     /// is used to create editors. Allows full XAML configuration of editor
     /// properties without code-behind.
     /// </summary>

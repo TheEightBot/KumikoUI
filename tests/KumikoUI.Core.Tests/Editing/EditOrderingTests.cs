@@ -266,29 +266,11 @@ public class EditOrderingTests
     private sealed class ContextDescriptor : EditorDescriptor
     {
         public CellEditorContext? Seen { get; private set; }
-        public bool LegacyCalled { get; private set; }
-
-        public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
-        {
-            LegacyCalled = true;
-            return new DrawnTextBox { Bounds = cellBounds };
-        }
 
         public override DrawnComponent? CreateEditor(CellEditorContext context)
         {
             Seen = context;
             return new DrawnTextBox { Bounds = context.Bounds };
-        }
-    }
-
-    private sealed class LegacyDescriptor : EditorDescriptor
-    {
-        public bool LegacyCalled { get; private set; }
-
-        public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
-        {
-            LegacyCalled = true;
-            return new DrawnTextBox { Bounds = cellBounds };
         }
     }
 
@@ -298,25 +280,10 @@ public class EditOrderingTests
 
         public void Render(IDrawingContext ctx, in CellRenderContext cell) { }
 
-        public DrawnComponent? CreateEditor(object? value, KumikoRect bounds) => new DrawnTextBox { Bounds = bounds };
-
         public DrawnComponent? CreateEditor(CellEditorContext context)
         {
             Seen = context;
             return new DrawnTextBox { Bounds = context.Bounds };
-        }
-    }
-
-    private sealed class LegacyProvider : ICellRenderer, ICellEditorProvider
-    {
-        public bool Called { get; private set; }
-
-        public void Render(IDrawingContext ctx, in CellRenderContext cell) { }
-
-        public DrawnComponent? CreateEditor(object? value, KumikoRect bounds)
-        {
-            Called = true;
-            return new DrawnTextBox { Bounds = bounds };
         }
     }
 
@@ -365,33 +332,38 @@ public class EditOrderingTests
     }
 
     [Fact]
-    public void EditorFactory_TakesPrecedenceOverTheLegacyFactory()
+    public void EditorFactory_TakesPrecedenceOverTheDescriptorAndTheProvider()
     {
-        bool legacy = false;
+        var descriptor = new ContextDescriptor();
+        var provider = new ContextProvider();
         var (source, session, column) = TemplateGrid(c =>
         {
-            c.CustomEditorFactory = (_, b) => { legacy = true; return new DrawnTextBox { Bounds = b }; };
+            c.EditorDescriptor = descriptor;
+            c.CustomCellRenderer = provider;
             c.EditorFactory = ctx => new DrawnTextBox { Bounds = ctx.Bounds };
         });
 
         Assert.True(session.BeginEdit(0, 0, column, source, Bounds, 'q'));
 
-        Assert.False(legacy);
+        Assert.Null(descriptor.Seen);
+        Assert.Null(provider.Seen);
     }
 
     [Fact]
-    public void CustomEditorFactory_StillWorksAsBefore()
+    public void EditorDescriptor_TakesPrecedenceOverTheProvider()
     {
-        object? seenValue = null;
-        var (source, session, column) = TemplateGrid(c => c.CustomEditorFactory = (value, b) =>
+        var descriptor = new ContextDescriptor();
+        var provider = new ContextProvider();
+        var (source, session, column) = TemplateGrid(c =>
         {
-            seenValue = value;
-            return new DrawnTextBox { Bounds = b };
+            c.EditorDescriptor = descriptor;
+            c.CustomCellRenderer = provider;
         });
 
         Assert.True(session.BeginEdit(0, 0, column, source, Bounds, 'q'));
 
-        Assert.Equal("Alice", seenValue);
+        Assert.NotNull(descriptor.Seen);
+        Assert.Null(provider.Seen);
     }
 
     [Fact]
@@ -403,18 +375,20 @@ public class EditOrderingTests
         Assert.True(session.BeginEdit(0, 0, column, source, Bounds, 'q'));
 
         Assert.Equal('q', descriptor.Seen!.InitialCharacter);
-        Assert.False(descriptor.LegacyCalled);
     }
 
     [Fact]
-    public void EditorDescriptor_OverridingOnlyTheLegacyMethod_StillWorks()
+    public void EditorDescriptor_ReceivesTheValueBoundsAndCulture()
     {
-        var descriptor = new LegacyDescriptor();
+        var descriptor = new ContextDescriptor();
         var (source, session, column) = TemplateGrid(c => c.EditorDescriptor = descriptor);
 
-        Assert.True(session.BeginEdit(0, 0, column, source, Bounds, 'q'));
+        Assert.True(session.BeginEdit(0, 0, column, source, Bounds));
 
-        Assert.True(descriptor.LegacyCalled);
+        Assert.Equal("Alice", descriptor.Seen!.Value);
+        Assert.Equal(Bounds, descriptor.Seen.Bounds);
+        Assert.Same(source.Comparer.Culture, descriptor.Seen.Culture);
+        Assert.Null(descriptor.Seen.InitialCharacter);
     }
 
     [Fact]
@@ -441,14 +415,16 @@ public class EditOrderingTests
     }
 
     [Fact]
-    public void CellEditorProvider_ImplementingOnlyTheLegacyMethod_StillWorks()
+    public void CellEditorProvider_ReceivesTheValueAndBounds()
     {
-        var provider = new LegacyProvider();
+        var provider = new ContextProvider();
         var (source, session, column) = TemplateGrid(c => c.CustomCellRenderer = provider);
 
-        Assert.True(session.BeginEdit(0, 0, column, source, Bounds, 'q'));
+        Assert.True(session.BeginEdit(0, 0, column, source, Bounds));
 
-        Assert.True(provider.Called);
+        Assert.Equal("Alice", provider.Seen!.Value);
+        Assert.Equal(Bounds, provider.Seen.Bounds);
+        Assert.Null(provider.Seen.InitialCharacter);
     }
 
     [Fact]

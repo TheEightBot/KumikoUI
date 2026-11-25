@@ -94,8 +94,9 @@ KumikoColumnType.{NewType} => Create{Type}Editor(column, currentValue, cellBound
 case Drawn{Type} editor: editor.ApplyTheme(style); break;
 ```
 
-Template columns resolve an editor in this order: `KumikoColumn.EditorFactory`, `CustomEditorFactory`,
-`EditorDescriptor`, an `ICellEditorProvider` renderer, then a text editor. A new editor that only one app needs goes
+Template columns resolve an editor in this order: `KumikoColumn.EditorFactory`, `EditorDescriptor`, an
+`ICellEditorProvider` renderer, then a text editor. All three custom paths take the same `CellEditorContext`
+(`Value`, `Bounds`, `InitialCharacter`, `Culture`). A new editor that only one app needs goes
 through one of those, not through a new `KumikoColumnType`.
 
 ---
@@ -110,11 +111,9 @@ public sealed class RatingEditorDescriptor : EditorDescriptor
     public double Minimum { get; set; } = 0;
     public double Maximum { get; set; } = 5;
 
-    public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
-        => new RatingEditor { Bounds = cellBounds };
-
-    // Override this overload instead to read the typed character and the culture:
-    // public override DrawnComponent? CreateEditor(CellEditorContext context)
+    // context.Value is the cell's value; context.InitialCharacter and context.Culture are there too
+    public override DrawnComponent? CreateEditor(CellEditorContext context)
+        => new RatingEditor { Bounds = context.Bounds };
 }
 ```
 

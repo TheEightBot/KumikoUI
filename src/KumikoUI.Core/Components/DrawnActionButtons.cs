@@ -18,17 +18,17 @@ namespace KumikoUI.Core.Components;
 ///
 /// <b>Prefer <see cref="ActionButtonsCellRenderer"/> alone.</b> It runs the buttons without opening an
 /// editor, so a tap raises no edit events. This editor remains for columns that supply their own
-/// <c>CustomEditorFactory</c>.
+/// <c>EditorFactory</c>.
 ///
 /// A button whose command's <c>CanExecute</c> is false is drawn disabled and a tap on it does nothing
 /// (the edit just ends).
 ///
 /// <b>Code-behind usage</b> — capture the row item and wire <c>Command</c> per button:
 /// <code>
-/// actionsColumn.CustomEditorFactory = (value, bounds) => new DrawnActionButtons
+/// actionsColumn.EditorFactory = context => new DrawnActionButtons
 /// {
-///     Bounds  = bounds,
-///     RowItem = value,
+///     Bounds  = context.Bounds,
+///     RowItem = context.Value,
 ///     Buttons =
 ///     [
 ///         new() { Label = "Edit",   BackgroundColor = new KumikoColor(13, 110, 253), Command = vm.EditCommand   },

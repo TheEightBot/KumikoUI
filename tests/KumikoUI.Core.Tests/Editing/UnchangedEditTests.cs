@@ -308,7 +308,7 @@ public class UnchangedEditTests
         {
             PropertyName = nameof(Employee.Size),
             ColumnType = KumikoColumnType.Template,
-            CustomEditorFactory = (_, bounds) => stars = new Stars { Bounds = bounds },
+            EditorFactory = context => stars = new Stars { Bounds = context.Bounds },
         });
 
         f.Open();
@@ -328,7 +328,7 @@ public class UnchangedEditTests
         {
             PropertyName = nameof(Employee.Name),
             ColumnType = KumikoColumnType.Template,
-            CustomEditorFactory = (_, bounds) => new Decoration { Bounds = bounds },
+            EditorFactory = context => new Decoration { Bounds = context.Bounds },
         });
 
         f.Open();

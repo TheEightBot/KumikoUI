@@ -536,7 +536,7 @@ Tab and Shift+Tab exit, `KumikoInputController.WouldHandleTab` and Escape behavi
 
 ## 9. Editors, popups and in-cell controls
 
-Editors and popups are `DrawnComponent`s. A new public interface lets them, and custom editors from `KumikoColumn.EditorFactory`/`CustomEditorFactory`, describe themselves:
+Editors and popups are `DrawnComponent`s. A new public interface lets them, and custom editors from `KumikoColumn.EditorFactory`, describe themselves:
 
 ```csharp
 public interface IKumikoSemanticElement

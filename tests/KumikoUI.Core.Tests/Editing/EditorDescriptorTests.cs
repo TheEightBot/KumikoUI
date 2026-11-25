@@ -13,12 +13,15 @@ public class EditorDescriptorTests
 {
     private static readonly KumikoRect Bounds = new(5, 6, 140, 30);
 
+    /// <summary>The context the grid passes for a cell holding <paramref name="value"/> at <see cref="Bounds"/>.</summary>
+    private static CellEditorContext At(object? value) => new(value, Bounds);
+
     // ── TextEditorDescriptor ──────────────────────────────────────
 
     [Fact]
     public void TextEditorDescriptor_BuildsATextBoxHoldingTheValue()
     {
-        var box = Assert.IsType<DrawnTextBox>(new TextEditorDescriptor().CreateEditor("hello", Bounds));
+        var box = Assert.IsType<DrawnTextBox>(new TextEditorDescriptor().CreateEditor(At("hello")));
 
         Assert.Equal("hello", box.Text);
         Assert.Equal(Bounds, box.Bounds);
@@ -32,7 +35,7 @@ public class EditorDescriptorTests
     [InlineData(12.5, "12.5")]
     public void TextEditorDescriptor_FormatsTheValueAsText(object? value, string expected)
     {
-        var box = Assert.IsType<DrawnTextBox>(new TextEditorDescriptor().CreateEditor(value, Bounds));
+        var box = Assert.IsType<DrawnTextBox>(new TextEditorDescriptor().CreateEditor(At(value)));
 
         Assert.Equal(expected, box.Text);
     }
@@ -40,7 +43,7 @@ public class EditorDescriptorTests
     [Fact]
     public void TextEditorDescriptor_NumericOnlyIsPassedOn()
     {
-        var box = Assert.IsType<DrawnTextBox>(new TextEditorDescriptor { NumericOnly = true }.CreateEditor(1, Bounds));
+        var box = Assert.IsType<DrawnTextBox>(new TextEditorDescriptor { NumericOnly = true }.CreateEditor(At(1)));
 
         Assert.True(box.NumericOnly);
     }
@@ -68,7 +71,7 @@ public class EditorDescriptorTests
             Minimum = 1, Maximum = 5, Step = 0.5, DecimalPlaces = 1, Format = "N1", IsReadOnly = true
         };
 
-        var editor = Assert.IsType<DrawnNumericUpDown>(descriptor.CreateEditor(3, Bounds));
+        var editor = Assert.IsType<DrawnNumericUpDown>(descriptor.CreateEditor(At(3)));
 
         Assert.Equal(Bounds, editor.Bounds);
         Assert.Equal(1, editor.Minimum);
@@ -89,7 +92,7 @@ public class EditorDescriptorTests
     [InlineData(true, 1.0)]
     public void NumericUpDownDescriptor_StartsFromTheConvertedValue(object? value, double expected)
     {
-        var editor = Assert.IsType<DrawnNumericUpDown>(new NumericUpDownEditorDescriptor().CreateEditor(value, Bounds));
+        var editor = Assert.IsType<DrawnNumericUpDown>(new NumericUpDownEditorDescriptor().CreateEditor(At(value)));
 
         Assert.Equal(expected, editor.Value);
     }
@@ -99,15 +102,15 @@ public class EditorDescriptorTests
     {
         var descriptor = new NumericUpDownEditorDescriptor { Minimum = 1, Maximum = 5 };
 
-        Assert.Equal(5, Assert.IsType<DrawnNumericUpDown>(descriptor.CreateEditor(99, Bounds)).Value);
-        Assert.Equal(1, Assert.IsType<DrawnNumericUpDown>(descriptor.CreateEditor(-3, Bounds)).Value);
+        Assert.Equal(5, Assert.IsType<DrawnNumericUpDown>(descriptor.CreateEditor(At(99))).Value);
+        Assert.Equal(1, Assert.IsType<DrawnNumericUpDown>(descriptor.CreateEditor(At(-3))).Value);
     }
 
     [Fact]
     public void NumericUpDownDescriptor_ValueThatIsNotConvertibleFallsBackToTheDefault()
     {
         var editor = Assert.IsType<DrawnNumericUpDown>(
-            new NumericUpDownEditorDescriptor().CreateEditor(new object(), Bounds));
+            new NumericUpDownEditorDescriptor().CreateEditor(At(new object())));
 
         Assert.Equal(0, editor.Value);
     }
@@ -116,7 +119,7 @@ public class EditorDescriptorTests
     public void NumericUpDownEditor_StepsWithinTheRange()
     {
         var editor = Assert.IsType<DrawnNumericUpDown>(
-            new NumericUpDownEditorDescriptor { Minimum = 0, Maximum = 2, Step = 1 }.CreateEditor(1, Bounds));
+            new NumericUpDownEditorDescriptor { Minimum = 0, Maximum = 2, Step = 1 }.CreateEditor(At(1)));
 
         editor.Increment();
         editor.Increment();
@@ -185,7 +188,7 @@ public class EditorDescriptorTests
 
     private sealed class NullDescriptor : EditorDescriptor
     {
-        public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds) => null;
+        public override DrawnComponent? CreateEditor(CellEditorContext context) => null;
     }
 
     [Fact]
@@ -205,11 +208,11 @@ public class EditorDescriptorTests
         public object? Value { get; private set; }
         public KumikoRect Bounds { get; private set; }
 
-        public override DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds)
+        public override DrawnComponent? CreateEditor(CellEditorContext context)
         {
-            Value = currentValue;
-            Bounds = cellBounds;
-            return new DrawnTextBox { Bounds = cellBounds, IsVisible = true };
+            Value = context.Value;
+            Bounds = context.Bounds;
+            return new DrawnTextBox { Bounds = context.Bounds, IsVisible = true };
         }
     }
 
@@ -221,10 +224,10 @@ public class EditorDescriptorTests
 
         public void Render(IDrawingContext ctx, in CellRenderContext cell) { }
 
-        public DrawnComponent? CreateEditor(object? value, KumikoRect bounds)
+        public DrawnComponent? CreateEditor(CellEditorContext context)
         {
             Created++;
-            return new DrawnNumericUpDown { Bounds = bounds, Value = Convert.ToDouble(value), IsVisible = true };
+            return new DrawnNumericUpDown { Bounds = context.Bounds, Value = Convert.ToDouble(context.Value), IsVisible = true };
         }
     }
 

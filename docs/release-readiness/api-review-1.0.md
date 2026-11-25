@@ -48,8 +48,8 @@ the `ctx` parameter name, `Ms`-suffixed timing members, `EventHandler<KumikoCurs
 the public host-contract members of `KumikoInputController`/`KumikoRenderer`/`KumikoLayoutEngine`, Uno's generated
 `GlobalStaticResources`, `KumikoSelectionMode.Single`, and the `#AARRGGBB` order of `KumikoColorTypeConverter`.
 
-**Open for the maintainer:** the 8-digit hex order, the legacy `(value, bounds)` editor-factory path, exact-version
-dependencies between the packages, and the remaining doc follow-ups. See [Decisions for the maintainer](#decisions-for-the-maintainer).
+**Open for the maintainer:** the 8-digit hex order, exact-version dependencies between the packages, and the remaining
+doc follow-ups (the legacy `(value, bounds)` editor-factory path is decided: consolidated in #305). See [Decisions for the maintainer](#decisions-for-the-maintainer).
 
 ## Cross-cutting findings
 
@@ -355,7 +355,7 @@ Do these on the release commit, in this order, after every change that should be
 | # | Decision | Options | Recommendation |
 |---|---|---|---|
 | D1 | `KumikoColorTypeConverter` 8-digit hex order | A. keep `#AARRGGBB`; B. switch to `#RRGGBBAA`; C. keep A and add `rgba()`/`rgb()` | **Decided: keep `#AARRGGBB` and add `rgb()`/`rgba()`** (#304). Implemented in `KumikoColorTypeConverter`; see [details](#kumikocolortypeconverter-8-digit-hex). |
-| D2 | Two editor-factory shapes | Keep both (`KumikoColumn.CustomEditorFactory`, `EditorDescriptor.CreateEditor(object?, KumikoRect)` abstract, `ICellEditorProvider.CreateEditor(object?, KumikoRect)`), or make the `CellEditorContext` form the only one before 1.0 (remove `CustomEditorFactory`, make `EditorDescriptor.CreateEditor(CellEditorContext)` the abstract member, give `ICellEditorProvider` one method). | Consolidate before 1.0 if a breaking release note for custom-editor authors is acceptable: today a new descriptor must implement the legacy overload to get the full one. Touches about 15 test sites and three README examples. |
+| D2 | Two editor-factory shapes | Keep both (`KumikoColumn.CustomEditorFactory`, `EditorDescriptor.CreateEditor(object?, KumikoRect)` abstract, `ICellEditorProvider.CreateEditor(object?, KumikoRect)`), or make the `CellEditorContext` form the only one before 1.0 (remove `CustomEditorFactory`, make `EditorDescriptor.CreateEditor(CellEditorContext)` the abstract member, give `ICellEditorProvider` one method). | **Decided: consolidate** (#305). `CustomEditorFactory` and the `(object?, KumikoRect)` overloads are removed; `EditorDescriptor.CreateEditor(CellEditorContext)` is abstract and `ICellEditorProvider` has that one method. The CHANGELOG has the **Breaking:** migration note. |
 | D3 | Hosts use Core internals while depending on `KumikoUI.Core >= x` (X12) | a. Pin exact versions between the packages (`[1.0.0]`), for example with a target after `_GetProjectReferenceVersions` that wraps `ProjectVersion` in brackets; b. make the members the hosts need public and drop the host `InternalsVisibleTo`; c. leave it and document "keep all KumikoUI packages on the same version" | **Decided: a.** Implemented by the `KumikoPinSiblingPackageVersions` target in `Directory.Build.targets`; the packed nuspecs show `[version]` for every KumikoUI dependency. |
 | D4 | Doc follow-ups owned by other work | `docs/RENDERING.md` (MAUI surface table still says `Gpu`) and the `.github/instructions` API fragments were outside this change's scope. | Update with the `#96` documentation pass. |
 

@@ -1,5 +1,4 @@
 using KumikoUI.Core.Components;
-using KumikoUI.Core.Rendering;
 
 namespace KumikoUI.Core.Editing;
 
@@ -11,16 +10,12 @@ namespace KumikoUI.Core.Editing;
 public abstract class EditorDescriptor
 {
     /// <summary>
-    /// Create an editor component for the given value and cell bounds.
+    /// Create an editor component for the cell described by <paramref name="context"/>: its value
+    /// (<see cref="CellEditorContext.Value"/>), the rectangle to place the editor in
+    /// (<see cref="CellEditorContext.Bounds"/>), the grid's culture and the character typed to open the edit
+    /// (<see cref="CellEditorContext.InitialCharacter"/>).
     /// </summary>
-    public abstract DrawnComponent? CreateEditor(object? currentValue, KumikoRect cellBounds);
-
-    /// <summary>
-    /// Create an editor component for the cell described by <paramref name="context"/>, which also carries
-    /// the character typed to open the edit. The grid calls this overload; the default forwards to
-    /// <see cref="CreateEditor(object?, KumikoRect)"/>, so an existing descriptor keeps working. Override
-    /// it to honor <see cref="CellEditorContext.InitialCharacter"/>.
-    /// </summary>
-    public virtual DrawnComponent? CreateEditor(CellEditorContext context) =>
-        CreateEditor(context.Value, context.Bounds);
+    /// <param name="context">The cell the editor is created for.</param>
+    /// <returns>The editor, or <see langword="null"/> to skip editing.</returns>
+    public abstract DrawnComponent? CreateEditor(CellEditorContext context);
 }

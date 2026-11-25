@@ -1,4 +1,5 @@
 using KumikoUI.Core.Components;
+using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -86,7 +87,7 @@ public class ActionButtonsCellRendererTests
         var renderer = Renderer();
         renderer.CornerRadius = 9;
         var display = Render(renderer);
-        var editor = (DrawnActionButtons)renderer.CreateEditor(null, Cell)!;
+        var editor = (DrawnActionButtons)renderer.CreateEditor(new CellEditorContext(null, Cell))!;
         var edit = new RecordingDrawingContext();
 
         editor.OnDraw(edit);
@@ -105,7 +106,7 @@ public class ActionButtonsCellRendererTests
         renderer.CellPadding = 1;
         var row = new object();
 
-        var editor = Assert.IsType<DrawnActionButtons>(renderer.CreateEditor(row, Cell));
+        var editor = Assert.IsType<DrawnActionButtons>(renderer.CreateEditor(new CellEditorContext(row, Cell)));
 
         Assert.Same(renderer.Buttons, editor.Buttons);
         Assert.Same(row, editor.RowItem);
@@ -123,7 +124,7 @@ public class ActionButtonsCellRendererTests
     public void CreateEditor_SeesButtonsAddedLater()
     {
         var renderer = new ActionButtonsCellRenderer();
-        var editor = (DrawnActionButtons)renderer.CreateEditor(null, Cell)!;
+        var editor = (DrawnActionButtons)renderer.CreateEditor(new CellEditorContext(null, Cell))!;
         int fired = 0;
 
         renderer.Buttons.Add(new ActionButtonDefinition { Label = "Go", Action = () => fired++ });

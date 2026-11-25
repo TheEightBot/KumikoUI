@@ -1142,8 +1142,6 @@ KumikoUI.Core.Models.KumikoColumn.CustomCellRenderer.get -> KumikoUI.Core.Render
 KumikoUI.Core.Models.KumikoColumn.CustomCellRenderer.set -> void
 KumikoUI.Core.Models.KumikoColumn.CustomComparer.get -> System.Collections.IComparer?
 KumikoUI.Core.Models.KumikoColumn.CustomComparer.set -> void
-KumikoUI.Core.Models.KumikoColumn.CustomEditorFactory.get -> System.Func<object?, KumikoUI.Core.Rendering.KumikoRect, KumikoUI.Core.Components.DrawnComponent?>?
-KumikoUI.Core.Models.KumikoColumn.CustomEditorFactory.set -> void
 KumikoUI.Core.Models.KumikoColumn.EditTriggers.get -> KumikoUI.Core.Editing.EditTrigger?
 KumikoUI.Core.Models.KumikoColumn.EditTriggers.set -> void
 KumikoUI.Core.Models.KumikoColumn.EditorDescriptor.get -> KumikoUI.Core.Editing.EditorDescriptor?
@@ -1947,7 +1945,7 @@ KumikoUI.Core.Rendering.ActionButtonsCellRenderer.CellPadding.get -> float
 KumikoUI.Core.Rendering.ActionButtonsCellRenderer.CellPadding.set -> void
 KumikoUI.Core.Rendering.ActionButtonsCellRenderer.CornerRadius.get -> float
 KumikoUI.Core.Rendering.ActionButtonsCellRenderer.CornerRadius.set -> void
-KumikoUI.Core.Rendering.ActionButtonsCellRenderer.CreateEditor(object? value, KumikoUI.Core.Rendering.KumikoRect bounds) -> KumikoUI.Core.Components.DrawnComponent?
+KumikoUI.Core.Rendering.ActionButtonsCellRenderer.CreateEditor(KumikoUI.Core.Editing.CellEditorContext! context) -> KumikoUI.Core.Components.DrawnComponent?
 KumikoUI.Core.Rendering.ActionButtonsCellRenderer.Dispose() -> void
 KumikoUI.Core.Rendering.ActionButtonsCellRenderer.GetControlIndexAt(KumikoUI.Core.Rendering.KumikoRect cellRect, float x, float y, object? value) -> int
 KumikoUI.Core.Rendering.ActionButtonsCellRenderer.HasControlAt(KumikoUI.Core.Rendering.KumikoRect cellRect, float x, float y, object? value) -> bool
@@ -1987,7 +1985,6 @@ KumikoUI.Core.Rendering.IActionButtonDefinition.Label.get -> string!
 KumikoUI.Core.Rendering.IActionButtonDefinition.TextColor.get -> KumikoUI.Core.Rendering.KumikoColor
 KumikoUI.Core.Rendering.ICellEditorProvider
 KumikoUI.Core.Rendering.ICellEditorProvider.CreateEditor(KumikoUI.Core.Editing.CellEditorContext! context) -> KumikoUI.Core.Components.DrawnComponent?
-KumikoUI.Core.Rendering.ICellEditorProvider.CreateEditor(object? value, KumikoUI.Core.Rendering.KumikoRect bounds) -> KumikoUI.Core.Components.DrawnComponent?
 KumikoUI.Core.Rendering.ICellRenderer
 KumikoUI.Core.Rendering.ICellRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> void
 KumikoUI.Core.Rendering.IDrawingContext
@@ -2218,7 +2215,7 @@ KumikoUI.Core.Rendering.TextCellRenderer
 KumikoUI.Core.Rendering.TextCellRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> void
 KumikoUI.Core.Rendering.TextCellRenderer.TextCellRenderer() -> void
 abstract KumikoUI.Core.Components.DrawnComponent.OnDraw(KumikoUI.Core.Rendering.IDrawingContext! ctx) -> void
-abstract KumikoUI.Core.Editing.EditorDescriptor.CreateEditor(object? currentValue, KumikoUI.Core.Rendering.KumikoRect cellBounds) -> KumikoUI.Core.Components.DrawnComponent?
+abstract KumikoUI.Core.Editing.EditorDescriptor.CreateEditor(KumikoUI.Core.Editing.CellEditorContext! context) -> KumikoUI.Core.Components.DrawnComponent?
 const KumikoUI.Core.Data.KumikoAccessorRegistry.ReflectionSwitchName = "KumikoUI.Core.IsReflectionPropertyAccessSupported" -> string!
 const KumikoUI.Core.Input.KumikoTsvFormatter.RowSeparator = "\r\n" -> string!
 const KumikoUI.Core.Layout.KumikoKeyboardAvoidance.DefaultMargin = 4 -> float
@@ -2278,9 +2275,7 @@ override KumikoUI.Core.Editing.CellEditorContext.Equals(object? obj) -> bool
 override KumikoUI.Core.Editing.CellEditorContext.GetHashCode() -> int
 override KumikoUI.Core.Editing.CellEditorContext.ToString() -> string!
 override KumikoUI.Core.Editing.NumericUpDownEditorDescriptor.CreateEditor(KumikoUI.Core.Editing.CellEditorContext! context) -> KumikoUI.Core.Components.DrawnComponent?
-override KumikoUI.Core.Editing.NumericUpDownEditorDescriptor.CreateEditor(object? currentValue, KumikoUI.Core.Rendering.KumikoRect cellBounds) -> KumikoUI.Core.Components.DrawnComponent?
 override KumikoUI.Core.Editing.TextEditorDescriptor.CreateEditor(KumikoUI.Core.Editing.CellEditorContext! context) -> KumikoUI.Core.Components.DrawnComponent?
-override KumikoUI.Core.Editing.TextEditorDescriptor.CreateEditor(object? currentValue, KumikoUI.Core.Rendering.KumikoRect cellBounds) -> KumikoUI.Core.Components.DrawnComponent?
 override KumikoUI.Core.Input.KumikoHitTestResult.GetHashCode() -> int
 override KumikoUI.Core.Input.KumikoTextRange.GetHashCode() -> int
 override KumikoUI.Core.Models.CellPosition.Equals(object? obj) -> bool
@@ -2397,7 +2392,6 @@ virtual KumikoUI.Core.Components.DrawnComponent.OnPointerMove(KumikoUI.Core.Inpu
 virtual KumikoUI.Core.Components.DrawnComponent.OnPointerUp(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
 virtual KumikoUI.Core.Components.DrawnComponent.OnScroll(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
 virtual KumikoUI.Core.Components.DrawnComponent.UpdateAnimation(float frameIntervalMs) -> bool
-virtual KumikoUI.Core.Editing.EditorDescriptor.CreateEditor(KumikoUI.Core.Editing.CellEditorContext! context) -> KumikoUI.Core.Components.DrawnComponent?
 virtual KumikoUI.Core.Rendering.KumikoFontIconProvider.DrawIcon(KumikoUI.Core.Rendering.IDrawingContext! ctx, KumikoUI.Core.Rendering.KumikoIcon icon, KumikoUI.Core.Rendering.KumikoRect bounds, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
 virtual KumikoUI.Core.Rendering.KumikoIconProvider.DrawIcon(KumikoUI.Core.Rendering.IDrawingContext! ctx, KumikoUI.Core.Rendering.KumikoIcon icon, KumikoUI.Core.Rendering.KumikoRect bounds, KumikoUI.Core.Rendering.KumikoPaint! paint) -> void
 virtual KumikoUI.Core.Rendering.KumikoTextMeasurer.Invoke(System.ReadOnlySpan<char> text) -> float

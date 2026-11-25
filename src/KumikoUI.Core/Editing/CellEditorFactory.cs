@@ -307,15 +307,12 @@ public static class CellEditorFactory
     private static DrawnComponent? CreateTemplateEditor(
         KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter, CultureInfo culture)
     {
-        // Priority: context factory → explicit factory → EditorDescriptor → renderer self-creates → text fallback.
-        // Every custom path gets the typing-trigger character, the legacy factory delegate excepted.
+        // Priority: EditorFactory → EditorDescriptor → renderer self-creates → text fallback.
+        // Every custom path gets the same context, typing-trigger character included.
         var context = new CellEditorContext(value, cellBounds, initialCharacter, culture);
 
         if (column.EditorFactory != null)
             return column.EditorFactory(context);
-
-        if (column.CustomEditorFactory != null)
-            return column.CustomEditorFactory(value, cellBounds);
 
         if (column.EditorDescriptor != null)
             return column.EditorDescriptor.CreateEditor(context);

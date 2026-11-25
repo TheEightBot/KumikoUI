@@ -175,11 +175,11 @@ public class ActionButtonsCellRenderer : ICellRenderer, ICellEditorProvider, IIn
     /// Kept for hosts that open the buttons as an editor themselves. The grid does not: a tap on an action
     /// cell runs the button without an editor (<see cref="IInteractiveCellRenderer"/>).
     /// </remarks>
-    public DrawnComponent? CreateEditor(object? value, KumikoRect bounds)
+    public DrawnComponent? CreateEditor(Editing.CellEditorContext context)
         => new KumikoUI.Core.Components.DrawnActionButtons
         {
-            Bounds = bounds,
-            RowItem = value,
+            Bounds = context.Bounds,
+            RowItem = context.Value,
             Buttons = Buttons,
             CornerRadius = CornerRadius,
             ButtonSpacing = ButtonSpacing,
