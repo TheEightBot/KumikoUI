@@ -13,7 +13,9 @@ public partial class App : Application
     /// </summary>
     public App()
     {
+        StartupTrace.Mark("App ctor");
         this.InitializeComponent();
+        StartupTrace.Mark("App InitializeComponent done");
     }
 
     protected Window? MainWindow { get; private set; }
@@ -28,12 +30,14 @@ public partial class App : Application
         // typefaces (no flash of fallback/tofu glyphs). Registration is non-fatal: a missing
         // font is logged and the grid falls back to the system default.
         // See docs/uno/plan/05-fonts-and-assets.md and docs/uno/plan/06-sample-app.md §3.
+        StartupTrace.Mark("OnLaunched start");
         await KumikoFonts.RegisterFromAppPackageAsync(new[]
         {
             ("NotoSansJP", "ms-appx:///Assets/Fonts/NotoSansJP-Regular.ttf"),
             ("MaterialIcons", "ms-appx:///Assets/Fonts/MaterialIcons-Regular.ttf"),
         });
 
+        StartupTrace.Mark("fonts registered");
         MainWindow = new Window();
 #if DEBUG
         MainWindow.UseStudio();
@@ -63,6 +67,7 @@ public partial class App : Application
         MainWindow.SetWindowIcon();
         // Ensure the current window is active
         MainWindow.Activate();
+        StartupTrace.Mark("Window.Activate done");
     }
 
     /// <summary>
