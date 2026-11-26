@@ -52,12 +52,13 @@
     <AnalysisLevel>latest</AnalysisLevel>
 
     <!--
-      Package validation (#54): EnablePackageValidation is on for the four shipped libraries (their project files) and
-      checks that a package's target frameworks are consistent. No stable release exists yet, so there is nothing to compare
-      against. For the first stable release (1.0.0), uncomment the next line (set it to the previously released stable
-      version, then keep it one release behind) so that ApiCompat fails the pack on a breaking change:
+      Package validation (#54): EnablePackageValidation is on for the four shipped libraries (their project files). Besides
+      checking that a package's target frameworks are consistent, ApiCompat compares each package with the last stable
+      release below and fails the pack on a breaking change. Keep it one stable release behind: after publishing X.Y.Z,
+      set it to X.Y.Z on the next commit. Record an intentional break in CompatibilitySuppressions.xml
+      (dotnet pack /p:GenerateCompatibilitySuppressionFile=true) and in the CHANGELOG.
     -->
-    <!-- <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion> -->
+    <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
 
     <!-- Deterministic builds for reproducibility -->
     <Deterministic>true</Deterministic>
