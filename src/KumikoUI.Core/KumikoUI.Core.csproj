@@ -50,6 +50,8 @@
     <!-- The host test projects compile the host sources and drive the drawn focus manager directly. -->
     <InternalsVisibleTo Include="KumikoUI.Maui.Tests" />
     <InternalsVisibleTo Include="KumikoUI.Uno.Tests" />
+    <!-- The benchmarks time the internal row layout index (#320). -->
+    <InternalsVisibleTo Include="KumikoUI.Benchmarks" />
   </ItemGroup>
   <!-- The package README shown on nuget.org: plain Markdown with absolute image URLs (#95). -->
   <ItemGroup>

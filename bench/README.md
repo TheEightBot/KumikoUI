@@ -20,6 +20,8 @@ All use `[MemoryDiagnoser]` and deterministic data (row `i` is a pure function o
 - `DataBenchmarks` (#70): the data pipeline on 100 000 rows, each benchmark one view rebuild: sort by int, string and date columns and by two columns; text-contains and numeric-greater-than filters; one- and two-level grouping with group and table summaries; sort, filter and group together; and `KumikoLayoutEngine.ComputeColumnWidths` for 10 columns.
 - `IncrementalBenchmarks` (#70): adding and removing one item at the end and in the middle of an `ObservableCollection` of 100 000 items with no sort, filter or grouping active (handled without rebuilding the view).
 - `BackgroundRebuildBenchmarks` (#254): sorting 1 000 000 rows synchronously on the calling thread (`Synchronous`, `BackgroundRebuildThreshold` off) versus in the background (`Background_EndToEnd`: from the request until the sorted view is published). The UI thread's share of a background sort (the call, copying the item references, swapping the view in) is asserted by `BackgroundRebuildTests.ToggleSort_On1MRows_NeverBlocksTheUiThreadLongerThanAFrame` (`Category=Performance`): about 1 ms on the reference machine.
+- `RowLayoutBenchmarks` (#320): the row offset index behind variable row height at 100 000 and 1 000 000 rows of measured, varying heights: a row's top (`RowToY`), the row at a y (`YToRow`), re-measuring one row (`MeasureOneRow`, two Fenwick point updates), and a sort followed by the first query (`SortThenFirstQuery`, the sort plus re-mapping every height from the per-item cache).
+- `AutoRowHeightRenderBenchmarks` (#320): one `KumikoRenderer.Render` frame of a 30-row grid in `RowHeightMode.Auto` with two wrapping columns, into a no-op context that implements the wrapping members: `AutoSteady` after warm-up (every visible row measured), `AutoScrolling` revealing and measuring one row per frame.
 - `LiveUpdateBenchmarks` (#69): 100 items of a 100 000-row source raise `PropertyChanged` for a summarized property, as a live feed does. `HundredChanges_Sum` has a Sum summary, which follows each change in constant time; `HundredChanges_Max_Batched` has a Max summary and makes the changes inside one `BeginUpdate` scope, so the table summaries are recomputed once over the visible rows (nothing is re-sorted, re-filtered or regrouped). Before #69 each change rebuilt the whole view.
 
 ## Measured numbers
@@ -60,6 +62,11 @@ A budget is a number a change must not break. The first column is the intent, th
 | Render a 30×10 frame, steady state | ≤ 20 µs | exactly 0 B | `RenderAllocationTests` (0 B, every CI run); time by benchmark |
 | Render with the frame-time overlay on, between text updates | ≤ 20 µs | exactly 0 B | `PerformanceBudgetTests` (0 B); time by benchmark |
 | Scrolling frame (one new row) | ≤ 20 µs | ≤ 2 KB | by benchmark |
+| Render a 30×10 frame, `RowHeightMode.Auto` with 2 wrapped columns (or a `RowHeightResolver`), steady state | ≤ 25 µs | exactly 0 B | `RowHeightAllocationTests` (0 B, every CI run, also through SkiaSharp); time by `AutoRowHeightRenderBenchmarks` |
+| Scrolling frame in `Auto`, one new row with 2 wrapped cells | ≤ 80 µs | ≤ 8 KB | `AutoRowHeightRenderBenchmarks` |
+| First frame after a jump into unmeasured rows (30 rows × 2 wrapped cells) | ≤ 4 ms (the per-frame measuring budget) | ≤ 256 KB | by benchmark |
+| Re-map row heights after sorting 100K rows, all measured | ≤ 5 ms on top of the sort | ≤ 64 B once the arrays are sized | `RowLayoutBenchmarks` |
+| Row to y, y to row, 1M rows of varying height | ≤ 150 ns | 0 B | `RowLayoutBenchmarks`; `KumikoRowLayoutTests` (0 B) |
 | Sort 100K rows | ≤ 300 ms | ≤ 8 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
 | Filter 100K rows (text or numeric) | ≤ 10 ms | ≤ 5 MB | `PerformanceBudgetTests` (allocation); time by benchmark |
 | Group 100K rows, 1–2 levels, with summaries | ≤ 100 ms | ≤ 12 MB | `PerformanceBudgetTests` (allocation); time by benchmark |

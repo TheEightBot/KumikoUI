@@ -65,8 +65,14 @@ internal sealed class KumikoRowLayout
     private int[] _checked = Array.Empty<int>();
 
     // Fenwick trees (1-based) over the rows: sum of known heights, count of unknown rows.
-    private double[] _sumTree = Array.Empty<double>();
-    private int[] _unknownTree = Array.Empty<int>();
+    // Both trees in one array of nodes, so a query step reads one cache line, not two.
+    private FenwickNode[] _tree = Array.Empty<FenwickNode>();
+
+    private struct FenwickNode
+    {
+        public double Sum;      // sum of the known heights in the node's range
+        public int Unknown;     // count of the unmeasured rows in the node's range
+    }
 
     private int _count;
     private int _highBit;
@@ -450,8 +456,9 @@ internal sealed class KumikoRowLayout
                 int deltaUnknown = old > 0 ? 0 : -1;
                 for (int i = row + 1; i <= _count; i += i & -i)
                 {
-                    _sumTree[i] += deltaSum;
-                    _unknownTree[i] += deltaUnknown;
+                    ref var node = ref _tree[i];
+                    node.Sum += deltaSum;
+                    node.Unknown += deltaUnknown;
                 }
             }
             changed = true;
@@ -501,8 +508,9 @@ internal sealed class KumikoRowLayout
         long unknown = 0;
         for (int i = row; i > 0; i -= i & -i)
         {
-            sum += _sumTree[i];
-            unknown += _unknownTree[i];
+            ref var node = ref _tree[i];
+            sum += node.Sum;
+            unknown += node.Unknown;
         }
         return sum + unknown * (double)_estimate;
     }
@@ -517,7 +525,8 @@ internal sealed class KumikoRowLayout
         {
             int next = pos + step;
             if (next > _count) continue;
-            double span = _sumTree[next] + _unknownTree[next] * estimate;
+            ref var node = ref _tree[next];
+            double span = node.Sum + node.Unknown * estimate;
             if (span <= remaining)
             {
                 pos = next;
@@ -620,18 +629,18 @@ internal sealed class KumikoRowLayout
     private void BuildTrees()
     {
         int n = _count;
-        Array.Clear(_sumTree, 0, n + 1);
-        Array.Clear(_unknownTree, 0, n + 1);
+        Array.Clear(_tree, 0, n + 1);
         for (int i = 1; i <= n; i++)
         {
             float h = _heights[i - 1];
-            if (h > 0) _sumTree[i] += h;
-            else _unknownTree[i] += 1;
+            ref var node = ref _tree[i];
+            if (h > 0) node.Sum += h;
+            else node.Unknown += 1;
             int parent = i + (i & -i);
             if (parent <= n)
             {
-                _sumTree[parent] += _sumTree[i];
-                _unknownTree[parent] += _unknownTree[i];
+                _tree[parent].Sum += node.Sum;
+                _tree[parent].Unknown += node.Unknown;
             }
         }
         _highBit = n == 0 ? 0 : 1 << (31 - System.Numerics.BitOperations.LeadingZeroCount((uint)n));
@@ -641,14 +650,13 @@ internal sealed class KumikoRowLayout
 
     private void EnsureCapacity(int rowCount)
     {
-        if (_heights.Length >= rowCount && _sumTree.Length >= rowCount + 1) return;
+        if (_heights.Length >= rowCount && _tree.Length >= rowCount + 1) return;
         int capacity = Math.Max(16, _heights.Length);
         while (capacity < rowCount) capacity *= 2;
         Array.Resize(ref _heights, capacity);
         Array.Resize(ref _stamps, capacity);
         Array.Resize(ref _checked, capacity);
-        _sumTree = new double[capacity + 1];
-        _unknownTree = new int[capacity + 1];
+        _tree = new FenwickNode[capacity + 1];
         _treeDirty = true;
     }
 
@@ -658,8 +666,7 @@ internal sealed class KumikoRowLayout
         _heights = Array.Empty<float>();
         _stamps = Array.Empty<int>();
         _checked = Array.Empty<int>();
-        _sumTree = Array.Empty<double>();
-        _unknownTree = Array.Empty<int>();
+        _tree = Array.Empty<FenwickNode>();
         _items.Clear();
         _measuredSum = 0;
         _measuredCount = 0;
