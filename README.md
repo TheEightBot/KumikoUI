@@ -32,7 +32,7 @@
 
 ---
 
-Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pickers and the grouping panel are drawn by `KumikoUI.Core`, so a grid looks the same on every platform. The host controls add what a canvas can't do: a connection to the platform's text input (keyboard, soft keyboard and input methods), the platform's pointer and gesture events, and the mouse cursor. The grid draws no scrollbars; it scrolls by touch, mouse wheel, trackpad and keyboard.
+Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pickers and the grouping panel are drawn by `KumikoUI.Core`, so a grid looks the same on every platform. The host controls add what a canvas can't do: a connection to the platform's text input (keyboard, soft keyboard and input methods), the platform's pointer and gesture events, and the mouse cursor. It scrolls by touch, mouse wheel, trackpad and keyboard, and draws overlay scroll bars that show while it scrolls; with a mouse they drag and page ([Scroll bars](#scroll-bars)).
 
 <p align="center">
   <img src="images/main.png" alt="KumikoUI DataGrid showing every column type" width="100%" />
@@ -88,7 +88,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Selection | None, Single, Multiple, Extended; item-based, so it survives sort, filter and regrouping; MVVM-bindable |
 | Rows | Drag and drop reorder by handle or by row |
 | Interaction | Hover and pressed feedback, short transitions (group expand and collapse, column drag), momentum presets for iOS, Android and desktop, optional haptics, and a context-menu event; every timing is listed in [docs/INTERACTION.md](docs/INTERACTION.md) |
-| Scrolling | Touch, wheel, trackpad and keyboard; `ScrollToRow`, `ScrollToItem` and `ScrollToColumn`; bindable `VerticalOffset` and `HorizontalOffset`; a `Scrolled` event |
+| Scrolling | Touch, wheel, trackpad and keyboard; overlay scroll bars that fade, drag and page; `ScrollToRow`, `ScrollToItem` and `ScrollToColumn`; bindable `VerticalOffset` and `HorizontalOffset`; a `Scrolled` event |
 | Clipboard | Ctrl/Cmd+C copies the selected rows as tab-separated text; copy, cut and paste work in editors |
 | Theming | Light, Dark and HighContrast presets, bindable, following the system light/dark setting by default; every color, font and size on `KumikoStyle`; per-cell and per-row style resolvers |
 | Icons | Every built-in glyph (sort arrows, filter buttons, chevrons, check marks, editor buttons) drawn by a replaceable icon provider: the built-in vector set, an icon font such as Material Icons, or your own drawing ([Icons](#icons)) |
@@ -1367,6 +1367,16 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | `RowDropIndicatorColor` | `KumikoColor` | 0, 120, 215 | Line marking the drop position |
 | `RowDropIndicatorWidth` | `float` | 2 | Width of that line |
 
+| Scroll bars | Type | Light | Meaning |
+|---|---|---|---|
+| `VerticalScrollBarVisibility` | `KumikoScrollBarVisibility` | `Auto` | When the vertical scroll bar is drawn (also the grid's `VerticalScrollBarVisibility`; see [Scroll bars](#scroll-bars)) |
+| `HorizontalScrollBarVisibility` | `KumikoScrollBarVisibility` | `Auto` | When the horizontal scroll bar is drawn (also the grid's `HorizontalScrollBarVisibility`) |
+| `ScrollBarThickness` | `float` | 4 | Thumb thickness at rest and while a finger scrolls |
+| `ScrollBarExpandedThickness` | `float` | 10 | Bar thickness while a mouse or pen hovers or drags it, and the width of the band it can press |
+| `ScrollBarMinThumbLength` | `float` | 32 | Shortest thumb |
+| `ScrollBarThumbColor` | `KumikoColor` | 0, 0, 0, 110 | Thumb; a fading bar scales its alpha (white on Dark, cyan on HighContrast) |
+| `ScrollBarTrackColor` | `KumikoColor` | 0, 0, 0, 20 | Track, drawn only while the bar is expanded |
+
 | Icons | Type | Light | Meaning |
 |---|---|---|---|
 | `IconProvider` | `IKumikoIconProvider` | `KumikoIconProvider.Default` | Draws every built-in glyph of the grid and of its editors and filter popup (see [Icons](#icons)); never null |
@@ -1405,6 +1415,7 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `AlternateRowBackground` | `Color?` | null (style) | Color of alternate rows; setting it also turns shading on. |
 | `AllowRowDragDrop` | `bool?` | null (style: off) | Drag a row from any cell. |
 | `ShowRowDragHandle` | `bool?` | null (style: off) | Drag handle on each row. |
+| `VerticalScrollBarVisibility`, `HorizontalScrollBarVisibility` | `KumikoScrollBarVisibility` | `Auto` | When each scroll bar is drawn ([Scroll bars](#scroll-bars)); once set, wins over the style and theme. |
 | `ShowFrameStats` | `bool` | false | Frame-time overlay ([Performance](#performance)). |
 | `GridDescription` | `string?` | null ("Data grid") | Accessible name; null uses `KumikoStrings.AccessibleGridName` ([Accessibility](#accessibility)). |
 | `GridHint` | `string?` | null (computed) | Accessible hint; null describes the row and column counts and the current cell. |
@@ -1479,7 +1490,7 @@ MAUI cannot open a menu at a point, so the sample app shows an action sheet (`Di
 
 From highest to lowest: the explicit properties below, together with `RowHeight` and `HeaderHeight`; then whichever of `Theme` or `GridStyle` was assigned last; then the system theme, while `FollowSystemTheme` is on. The order of attributes in XAML does not matter. Assigning `GridStyle` or `ScrollSettings` null resets it to the preset or the default settings.
 
-`ShowHorizontalGridLines`, `ShowVerticalGridLines`, `AlternateRowBackground`, `AllowRowDragDrop` and `ShowRowDragHandle` are nullable. Null leaves the value to `GridStyle` and `Theme`; a value overrides it. Setting one writes it into the current style immediately, and assigning `GridStyle` or `Theme` afterwards re-applies every explicit value to the new style, so an explicit property wins over the theme in either order. Setting a property back to null stops overriding but doesn't restore the earlier value until the next style or theme assignment.
+`ShowHorizontalGridLines`, `ShowVerticalGridLines`, `AlternateRowBackground`, `AllowRowDragDrop` and `ShowRowDragHandle` are nullable. Null leaves the value to `GridStyle` and `Theme`; a value overrides it. Setting one writes it into the current style immediately, and assigning `GridStyle` or `Theme` afterwards re-applies every explicit value to the new style, so an explicit property wins over the theme in either order. Setting a property back to null stops overriding but doesn't restore the earlier value until the next style or theme assignment. `VerticalScrollBarVisibility` and `HorizontalScrollBarVisibility` are not nullable (default `Auto`); once set, they override the style the same way.
 
 ### Repainting
 
@@ -1720,6 +1731,31 @@ kumiko.ScrollSettings = new ScrollSettings
 | `AutoScrollEdgeSize`, `AutoScrollMaxSpeed` | 40, 1200 | Autoscroll during a row drag ([Row Drag and Drop](#row-drag-and-drop)) |
 
 A drag that starts on a column header and moves sideways reorders the column rather than scrolling, and with `AllowRowDragDrop` a long press on touch (a mostly vertical drag with a mouse) on a cell moves the row. Trackpads scroll by pixels, Shift plus the wheel scrolls horizontally, and once the grid reaches its end the wheel scrolls the page instead. `IsEnabled="False"` stops all input.
+
+### Scroll bars
+
+The grid draws a vertical scroll bar at the right edge of the scrolling rows (below the header, the top summaries and the frozen rows, above a pinned summary footer) and a horizontal one at the bottom of the rows, across the scrolling columns between the frozen panes. A bar shows only while its content overflows, and its thumb is as long as the share of the content on screen (at least `ScrollBarMinThumbLength`). `VerticalScrollBarVisibility` and `HorizontalScrollBarVisibility` choose when each is drawn:
+
+| `KumikoScrollBarVisibility` | Behavior |
+|---|---|
+| `Auto` (default) | An overlay that appears while the grid scrolls (a pan, a fling, the wheel, the keyboard or code) and while a mouse rests over the bar's edge, stays for a second, then fades out. With animations off (`KumikoStyle.EnableAnimations`, or the platform's reduced-motion setting) it hides without fading. |
+| `Always` | Drawn whenever the content overflows. |
+| `Never` | Not drawn; the edge belongs to the cells. |
+
+With a mouse or a pen, resting over a bar widens it from `ScrollBarThickness` (4) to `ScrollBarExpandedThickness` (10) over its track. Dragging the thumb scrolls in proportion; pressing the track pages one screen toward the pointer and repeats while held, until the thumb reaches the pointer. A press on a bar never selects, pans or drags a row. A finger pans through the bars, which are a position indicator on touch. The bars lie over the cells at the edge, not over the header, so column resize grips stay reachable. Screen readers and the keyboard scroll as before; the bars are visual only.
+
+```xml
+<kumiko:KumikoDataGrid VerticalScrollBarVisibility="Always"
+                       HorizontalScrollBarVisibility="Never" />
+```
+
+```csharp
+kumiko.VerticalScrollBarVisibility = KumikoScrollBarVisibility.Always;
+kumiko.GridStyle.ScrollBarThumbColor = new KumikoColor(0, 120, 215, 160);
+kumiko.GridStyle.ScrollBarExpandedThickness = 12;
+```
+
+Set on the grid, the visibility survives a `Theme` or `GridStyle` change; the sizes and colors are style members ([KumikoStyle reference](#kumikostyle-reference)). Every timing is in [docs/INTERACTION.md](docs/INTERACTION.md).
 
 ### Programmatic scrolling
 
@@ -1970,9 +2006,6 @@ Text in Arabic or Hebrew is drawn, but the grid layout is not mirrored: it draws
 
 **How do I keep the column order, widths and sort between sessions?**
 Save `GetLayoutState().ToJson()` and restore it with `ApplyLayoutState(KumikoLayoutState.FromJson(json))` ([Saving and restoring the layout](#saving-and-restoring-the-layout)). A user's column drag also moves the column in the grid's `Columns` collection.
-
-**Where are the scrollbars?**
-The grid doesn't draw scrollbars yet. It scrolls by touch, mouse wheel, trackpad and keyboard, and from code with the `ScrollTo` methods and `VerticalOffset`.
 
 **Can I update the collection from a background thread?**
 No. Make collection and item changes on the UI thread: a change raised on another thread throws `InvalidOperationException`. Do the work in the background and post the change to the UI thread ([Threading](#threading)).

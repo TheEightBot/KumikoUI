@@ -51,6 +51,7 @@ public sealed class DrawnFilterPopup : DrawnComponent
     private const float PopupPadding = 6f;
     private const float SeparatorMargin = 4f;
     private const float ScrollbarHitWidth = 12f;
+    private const float MinThumbHeight = 20f;
     private const float DragThreshold = 6f;
     private const int WheelRowsPerNotch = 3;
 
@@ -529,7 +530,7 @@ public sealed class DrawnFilterPopup : DrawnComponent
         if (scrollable)
         {
             var thumb = ScrollbarThumb(list);
-            ctx.FillRoundRect(new KumikoRect(list.Right - 5, thumb.Y, 4, thumb.Height), 2,
+            ScrollThumb.Fill(ctx, new KumikoRect(list.Right - 5, thumb.Y, 4, thumb.Height),
                 Paints.Get(color: PlaceholderColor.WithAlpha(_pressTarget == Target.Scrollbar ? (byte)220 : (byte)150)));
         }
 
@@ -538,9 +539,8 @@ public sealed class DrawnFilterPopup : DrawnComponent
 
     private KumikoRect ScrollbarThumb(KumikoRect list)
     {
-        float thumbHeight = Math.Max(20, list.Height * (list.Height / ContentHeight));
-        float max = MaxScrollOffset;
-        float thumbY = list.Y + (max > 0 ? _scrollOffset / max : 0) * (list.Height - thumbHeight);
+        float thumbHeight = ScrollThumb.Length(list.Height, list.Height, ContentHeight, MinThumbHeight);
+        float thumbY = ScrollThumb.Start(list.Y, list.Height, thumbHeight, _scrollOffset, MaxScrollOffset);
         return new KumikoRect(list.Right - ScrollbarHitWidth, thumbY, ScrollbarHitWidth, thumbHeight);
     }
 
@@ -758,10 +758,9 @@ public sealed class DrawnFilterPopup : DrawnComponent
 
     private void ScrollThumbTo(KumikoRect list, float thumbTop)
     {
-        float thumbHeight = ScrollbarThumb(list).Height;
-        float track = list.Height - thumbHeight;
-        if (track <= 0) return;
-        ScrollTo((thumbTop - list.Y) / track * MaxScrollOffset);
+        float offset = ScrollThumb.OffsetAt(thumbTop, list.Y, list.Height, ScrollbarThumb(list).Height, MaxScrollOffset);
+        if (float.IsNaN(offset)) return;
+        ScrollTo(offset);
     }
 
     private void EnsureItemVisible(int index)

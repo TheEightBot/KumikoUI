@@ -129,6 +129,34 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void ScrollBars_FadingAndExpanded_AllocateNothingPerFrame()
+    {
+        // Both scroll bars (#316): the horizontal one fading out, the vertical one hovered (expanded over its track),
+        // stepped by the frame loop between frames.
+        var grid = CreateGrid(featured: true);
+        grid.Scroll.ViewportWidth -= 300; // columns overflow too
+        var input = new KumikoUI.Core.Input.KumikoInputController { AnimationsEnabled = true };
+        grid.Renderer.InputController = input;
+        grid.Render(new NoOpDrawingContext());
+        grid.Scroll.OffsetX = 40;
+        grid.Render(new NoOpDrawingContext()); // the horizontal bar shows
+        input.UpdateAnimations(KumikoUI.Core.Input.InteractionAnimations.ScrollBarHoldMs + 50); // and starts fading
+        input.HandlePointer(new KumikoUI.Core.Input.KumikoPointerEventArgs
+        {
+            Action = KumikoUI.Core.Input.InputAction.Hover, X = grid.Scroll.ViewportWidth - 3, Y = grid.Scroll.ViewportHeight / 2,
+        }, grid.Scroll, grid.Selection, grid.Style, grid.Source);
+        Assert.True(input.IsScrollBarExpanded(vertical: true));
+        Assert.InRange(input.ScrollBarOpacity(vertical: false, grid.Style), 0.01f, 0.99f);
+
+        // The clock is held (0 ms steps), so every measured frame draws the bars as they are
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+        {
+            input.UpdateAnimations(0);
+            grid.Render(ctx);
+        }));
+    }
+
+    [Fact]
     public void SteadyState_GridUsingEveryPerFrameFeature_WithAFontIconProvider_AllocatesNothing()
     {
         // Every glyph of the featured grid drawn as an icon font glyph (#119): the glyph strings are built once.

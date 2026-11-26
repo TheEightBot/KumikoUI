@@ -114,7 +114,7 @@ public class HitTesterTests
         g.Scroll.OffsetX = 50;
 
         Assert.Same(g.Name, g.Hit(10, g.RowY(0)).Column);
-        Assert.Same(g.Score, g.Hit(290, g.RowY(0)).Column);
+        Assert.Same(g.Score, g.Hit(280, g.RowY(0)).Column); // left of the vertical scroll bar's band
         Assert.Same(g.City, g.Hit(150, g.RowY(0)).Column); // content x 200: scrollable columns start at 120
     }
 
@@ -332,7 +332,7 @@ public class HitTesterTests
         g.Scroll.OffsetY = 100;
 
         Assert.Equal(HitRegion.TableSummaryRow, g.Hit(50, 256 - 10).Region);
-        Assert.Equal(HitRegion.Cell, g.Hit(50, 256 - 40).Region);
+        Assert.Equal(HitRegion.Cell, g.Hit(50, 256 - 50).Region); // above the horizontal scroll bar's band
     }
 
     [Fact]
@@ -526,7 +526,7 @@ public class HitTesterTests
             x.Style.RowDragHandlePosition = DragHandlePosition.Right;
         });
 
-        Assert.Equal(HitRegion.RowDragHandle, g.Hit(290, g.RowY(1)).Region);
+        Assert.Equal(HitRegion.RowDragHandle, g.Hit(280, g.RowY(1)).Region); // left of the vertical scroll bar's band
         Assert.Equal(HitRegion.Cell, g.Hit(100, g.RowY(1)).Region);
     }
 

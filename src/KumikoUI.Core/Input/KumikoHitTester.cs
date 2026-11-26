@@ -94,6 +94,14 @@ public sealed class KumikoHitTester
         FrozenPanes.Resolve(columns, style, scroll.ViewportWidth);
         var (frozenWidth, rightFrozenWidth) = FrozenPanes.GetWidths(columns);
 
+        // The scroll bars (#316) lie over the rows' edges: a mouse or pen lands on them first, a finger pans through
+        if (deviceType != KumikoPointerDeviceType.Touch &&
+            ScrollBarGeometry.Compute(scroll, style, columns, dataSource).HitTest(viewportX, viewportY) is var bar &&
+            bar != HitRegion.None)
+        {
+            return new KumikoHitInfo { Region = bar, ContentX = viewportX, ContentY = viewportY };
+        }
+
         // Compute drag handle offsets
         float handleOffset = 0, rightHandleWidth = 0;
         if (style.ShowRowDragHandle)

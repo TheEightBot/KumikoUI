@@ -48,13 +48,14 @@ KumikoRenderer.RenderFrame(ctx, source, scroll, selection, style, drag state, ed
 │      when PinBottomSummaryRows                                              │
 │ M. DrawColumnDragOverlay (a lifted or dropping header), DrawRowDragOverlay  │
 │    Restore                                                                  │
+│    ScrollBarRenderer.Draw: the scroll bars, from ScrollBarGeometry          │
 │ N. EditSession.PlaceEditor + DrawEditor (absolute coordinates)              │
 │ O. PopupManager.DrawPopups (filter, combo box, date picker)                 │
 │ P. KumikoFrameStats overlay (when ShowFrameStats)                           │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Hit testing mirrors this order. `KumikoHitTester` resolves a point against the same geometry (panes, frozen rows, sticky headers, the pinned footer), and `InteractionGeometry` holds the sizes both sides share (filter icon, resize grip, group chevron, chips). What a frame measured while drawing, the grouping panel's chips, goes to the hit tester through `RenderedHitRegions` (`BeginGroupPanel`, `AddChip`), so a hit lands on what was drawn. A change to where something is drawn changes its hit region too.
+Hit testing mirrors this order. `KumikoHitTester` resolves a point against the same geometry (panes, frozen rows, sticky headers, the pinned footer), and `InteractionGeometry` holds the sizes both sides share (filter icon, resize grip, group chevron, chips). The scroll bars come from one helper, `ScrollBarGeometry`, which the renderer, the hit tester and the input controller all read; a mouse or pen lands on a bar before the cells under it, a finger never does. What a frame measured while drawing, the grouping panel's chips, goes to the hit tester through `RenderedHitRegions` (`BeginGroupPanel`, `AddChip`), so a hit lands on what was drawn. A change to where something is drawn changes its hit region too.
 
 ## Surfaces and Frame Loop
 

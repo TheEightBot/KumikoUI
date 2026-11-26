@@ -1,0 +1,27 @@
+#nullable enable
+KumikoUI.Core.Input.HitRegion.HorizontalScrollBarThumb = 15 -> KumikoUI.Core.Input.HitRegion
+KumikoUI.Core.Input.HitRegion.HorizontalScrollBarTrack = 16 -> KumikoUI.Core.Input.HitRegion
+KumikoUI.Core.Input.HitRegion.VerticalScrollBarThumb = 13 -> KumikoUI.Core.Input.HitRegion
+KumikoUI.Core.Input.HitRegion.VerticalScrollBarTrack = 14 -> KumikoUI.Core.Input.HitRegion
+KumikoUI.Core.Models.KumikoScrollBarVisibility
+KumikoUI.Core.Models.KumikoScrollBarVisibility.Always = 1 -> KumikoUI.Core.Models.KumikoScrollBarVisibility
+KumikoUI.Core.Models.KumikoScrollBarVisibility.Auto = 0 -> KumikoUI.Core.Models.KumikoScrollBarVisibility
+KumikoUI.Core.Models.KumikoScrollBarVisibility.Never = 2 -> KumikoUI.Core.Models.KumikoScrollBarVisibility
+KumikoUI.Core.Models.KumikoStyle.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
+KumikoUI.Core.Models.KumikoStyle.HorizontalScrollBarVisibility.set -> void
+KumikoUI.Core.Models.KumikoStyle.ScrollBarExpandedThickness.get -> float
+KumikoUI.Core.Models.KumikoStyle.ScrollBarExpandedThickness.set -> void
+KumikoUI.Core.Models.KumikoStyle.ScrollBarMinThumbLength.get -> float
+KumikoUI.Core.Models.KumikoStyle.ScrollBarMinThumbLength.set -> void
+KumikoUI.Core.Models.KumikoStyle.ScrollBarThickness.get -> float
+KumikoUI.Core.Models.KumikoStyle.ScrollBarThickness.set -> void
+KumikoUI.Core.Models.KumikoStyle.ScrollBarThumbColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Models.KumikoStyle.ScrollBarThumbColor.set -> void
+KumikoUI.Core.Models.KumikoStyle.ScrollBarTrackColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Models.KumikoStyle.ScrollBarTrackColor.set -> void
+KumikoUI.Core.Models.KumikoStyle.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
+KumikoUI.Core.Models.KumikoStyle.VerticalScrollBarVisibility.set -> void
+KumikoUI.Core.Models.KumikoStyleOptions.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility?
+KumikoUI.Core.Models.KumikoStyleOptions.HorizontalScrollBarVisibility.set -> void
+KumikoUI.Core.Models.KumikoStyleOptions.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility?
+KumikoUI.Core.Models.KumikoStyleOptions.VerticalScrollBarVisibility.set -> void

@@ -139,5 +139,9 @@ internal sealed class InputGrid
     public KumikoHitTestResult Hit(float x, float y) =>
         Tester.HitTest(x, y, Scroll, Style, Source.Columns, Source.RowCount, Source);
 
+    /// <summary>What a point is on for a pointer of <paramref name="deviceType"/> (a finger passes through the scroll bars).</summary>
+    public KumikoHitTestResult Hit(float x, float y, KumikoPointerDeviceType deviceType) =>
+        Tester.HitTest(x, y, Scroll, Style, Source.Columns, Source.RowCount, Source, deviceType);
+
     public string NameAt(int row) => (string)Source.GetCellValue(row, Name)!;
 }

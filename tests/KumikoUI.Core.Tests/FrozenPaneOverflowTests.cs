@@ -302,7 +302,7 @@ public class FrozenPaneOverflowTests
 
         Assert.Equal(934 - 390, g.Scroll.OffsetX);
         Assert.Equal(260, g.X("City"));
-        Assert.Same(g.Column("City"), g.Hit(380, RowY).Column);
+        Assert.Same(g.Column("City"), g.Hit(375, RowY).Column); // left of the vertical scroll bar's band
         Assert.Same(g.Column("Name"), g.Hit(250, RowY).Column); // Name is pinned over the scrolled columns
     }
 
