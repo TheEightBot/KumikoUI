@@ -903,16 +903,25 @@ public sealed class DrawnFilterPopup : DrawnComponent
             }
         }
 
-        if (allSelected)
+        // The popup edits only the value list: conditions set from code (Condition1/Condition2/Combination) stay.
+        // The result is a new description, so FilterChanging sees the change like any other.
+        var existing = _column.ActiveFilter;
+        bool hasConditions = existing?.Condition1 != null;
+
+        if (allSelected && !hasConditions)
         {
-            // All selected = no filter needed
+            // All selected and nothing else active = no filter needed
             _dataSource.SetColumnFilter(_column, null);
         }
         else
         {
             var filter = new FilterDescription(_column)
             {
-                SelectedValues = selectedValues
+                // All selected means no value-list filter; the conditions (if any) keep filtering.
+                SelectedValues = allSelected ? null : selectedValues,
+                Condition1 = existing?.Condition1?.Clone(),
+                Condition2 = existing?.Condition2?.Clone(),
+                Combination = existing?.Combination ?? FilterCombination.And,
             };
             _dataSource.SetColumnFilter(_column, filter);
         }

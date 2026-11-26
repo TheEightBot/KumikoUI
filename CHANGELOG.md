@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- Pressing OK in a column's filter popup no longer drops the conditions of a `FilterDescription` set from code. OK now updates only the value selection and keeps `Condition1`, `Condition2` and `Combination`; with every value checked it removes the value list but keeps the conditions (the filter is removed only when it has none), and a filter that has conditions and no value list opens with every value checked. Clear still removes the whole filter, conditions included.
+
 ## [1.0.0] - 2026-11-25
 
 The first stable release of all four packages. From this version on the public API follows Semantic Versioning: a breaking change waits for 2.0.0 ([docs/VERSIONING.md](docs/VERSIONING.md)). The changes below are those since 1.0.0-preview.1; coming from 0.2.0, read the [1.0.0-preview.1] section too. Follow-ups planned for 1.0.1 are in the [1.0.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/5).
