@@ -169,7 +169,22 @@ this work lists where.
     focus to the "Restore Layout" button and the "All Components" navigation item. Narrator itself was not run.
 27. **AT-SPI on Linux:** Uno 6.7's X11 host has no AT-SPI bridge. With at-spi2-core running, an AT-SPI dump lists a
     GTK test window and its button but nothing of the Uno app: no window, no buttons, no grid, so Orca would find
-    nothing (F12). Orca was not run (no audio in the container).
+    nothing (F12). Orca was not run (no audio in the container). Rechecked on 2026-11-25 with Uno 7.0.65 (note 33).
+33. **AT-SPI on Linux, recheck with Uno 7.0.65 (2026-11-25).** Source: `src/Uno.UI.Runtime.X11/Accessibility/`
+    (`AtspiServer`, `X11Accessibility`, `AtspiEnablement`, `AtspiRoleMap`, `AtspiNode`, `AtspiTextSegmentation`) is
+    present at the 7.0.65 tag. The bridge starts only while the desktop's `org.a11y.Status` reports `IsEnabled` or
+    `ScreenReaderEnabled`, and there is no app-level switch. Run: `dotnet publish samples/SampleApp.Uno -f
+    net10.0-desktop -c Release`, then in `mcr.microsoft.com/dotnet/sdk:10.0` (Ubuntu, arm64) with `xvfb`, `dbus-x11`,
+    `at-spi2-core`, `python3-pyatspi`, `xdotool`: Xvfb 1600x1000, `dbus-launch`, `at-spi-bus-launcher`,
+    `busctl --user set-property org.a11y.Bus /org/a11y/bus org.a11y.Status IsEnabled b true` (without it the desktop
+    has zero AT-SPI children), `dotnet SampleApp.Uno.dll`, then a `pyatspi` dump. Result: one application
+    `SampleApp.Uno` with a `frame`, the navigation items as `list item` (Action + Component) in a `Selection`
+    container, the Minimize, Maximize and Close `push button`s, `scroll bar`s with Value, `label`s with Text, and the
+    grid as a `panel` named "Employee data grid with all component types" with description "200 rows, 11 columns",
+    states `focusable`, `showing`, `visible`, `enabled`, `sensitive`, and only the Component interface. After a
+    pointer click and arrow keys (`xdotool` in the same session) its description stayed "200 rows, 11 columns" (no
+    current cell) and no focused state appeared, unlike Windows (note 26); that may be an input effect of the
+    window-manager-less Xvfb session and was not investigated further. Orca was not run.
 
 ## Fixed during the pass
 
@@ -269,8 +284,12 @@ Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
   notch selects the cell under the pointer and two notches open its editor (note 21). A mouse press that names no
   button should be ignored.
 - **F12. Linux: the app is not in the AT-SPI tree.** ([#287](https://github.com/TheEightBot/KumikoUI/issues/287)) Uno 6.7's X11 host has no AT-SPI bridge, so
-  Orca sees nothing of the app, the grid included (note 27). Nothing in KumikoUI can expose it; track the Uno side
-  and document the limit.
+  Orca sees nothing of the app, the grid included (note 27). **Rechecked on Uno 7.0.65 (note 33): the bridge now
+  exists** (upstream [unoplatform/uno#24380](https://github.com/unoplatform/uno/issues/24380), PR
+  [#24381](https://github.com/unoplatform/uno/pull/24381), merged 2026-11-04), so the app, its window and the
+  grid are in the tree. What is left is on the KumikoUI side: the grid is one `panel` with no table, selection or
+  action interface, its description does not follow the current cell, and it did not report a focus state in the
+  probe (note 33).
 
 ## Recommendation: ship KumikoUI.Uno as 1.0.0-preview
 
@@ -288,7 +307,7 @@ KumikoUI.Uno stays the least verified host until the issues above are closed.
   and Windows the rows it got to before the pass stopped; one input bug turned up there (F11). Desktop is the head
   most Uno apps ship first.
 - **Accessibility is uneven:** Windows exposes the grid through UI Automation, macOS only until the user navigates
-  (F4), and Linux not at all (F12); both gaps are in Uno's desktop hosts. The filter search cannot be typed into on
+  (F4), and Linux only as a plain panel with no cell content (F12, Uno 7.0.65 note 33); the macOS gap is in Uno's desktop host. The filter search cannot be typed into on
   Android (F2).
 - **What is solid:** rendering on every head that ran, the trimmed WebAssembly build CI produces (so the
   `continue-on-error` on that job can go), scrolling and momentum, selection, keyboard navigation and Tab exit,
