@@ -42,5 +42,10 @@ public enum HitRegion
     /// <summary>The track of the horizontal scroll bar, left or right of its thumb (a mouse or pen only).</summary>
     HorizontalScrollBarTrack,
     /// <summary>The column menu button in a column header (see <see cref="KumikoInputController.ShowColumnMenuButton"/>).</summary>
-    HeaderMenuButton
+    HeaderMenuButton,
+    /// <summary>
+    /// The load-more row after the last row (#318): loading, "Load more" or a failed load's retry. It is not a row of
+    /// the view, so the hit's row index is -1.
+    /// </summary>
+    LoadMoreRow
 }

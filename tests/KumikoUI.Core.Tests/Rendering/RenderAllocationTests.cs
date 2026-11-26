@@ -1,3 +1,4 @@
+using KumikoUI.Core.Data;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
 using KumikoUI.Core.Tests.TestHelpers;
@@ -200,6 +201,44 @@ public class RenderAllocationTests
             grid.Scroll.OffsetY = frame++ % 2 == 0 ? 0 : 5 * grid.Style.RowHeight + 7;
             grid.Render(ctx);
         }));
+    }
+
+    [Theory]
+    [InlineData("Loading")]
+    [InlineData("Failed")]
+    [InlineData("LoadMore")]
+    public void SteadyState_TheLoadMoreRowOnScreen_AllocatesNothing(string state)
+    {
+        // The load-more row (#318) after the last row, scrolled into view; the busy indicator animates every frame.
+        var grid = CreateGrid(featured: true);
+        var pending = new TaskCompletionSource<int>();
+        var source = new PendingIncrementalSource(pending.Task);
+        var loader = grid.Source.IncrementalLoading;
+        loader.Scheduler = (_, _) => { };
+        loader.Mode = state == "LoadMore" ? KumikoLoadMoreMode.Manual : KumikoLoadMoreMode.None;
+        grid.Source.IncrementalSource = source;
+        if (state != "LoadMore") _ = loader.LoadMoreAsync();
+        if (state == "Failed") pending.SetException(new InvalidOperationException("offline"));
+        long clock = 0;
+        grid.Renderer.LoadMoreClock = () => clock;
+        grid.Render(new NoOpDrawingContext());
+        grid.Scroll.OffsetY = grid.Scroll.MaxOffsetY;
+
+        var check = new RecordingDrawingContext();
+        grid.Render(check);
+        Assert.Contains(check.Texts, o => o.Text is "Loading more..." or "Retry" or "Load more");
+
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+        {
+            clock += 70;
+            grid.Render(ctx);
+        }));
+    }
+
+    private sealed class PendingIncrementalSource(Task<int> pending) : KumikoUI.Core.Data.IKumikoIncrementalSource
+    {
+        public bool HasMoreItems => true;
+        public Task<int> LoadMoreItemsAsync(int count, CancellationToken cancellationToken) => pending;
     }
 
     [Fact]

@@ -120,6 +120,9 @@ public partial class KumikoDataGrid : ContentView
         // Image cells load through the grid's image cache (KumikoDataGrid.Images.cs)
         InitializeImages();
 
+        // Incremental "load more" loading (KumikoDataGrid.LoadMore.cs)
+        InitializeLoadMore();
+
         // Large sources sort, filter and group on a worker; the new view is swapped in on the UI thread, which raises
         // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous. The property's
         // default is not applied through its change callback, so give the source the default here.
@@ -1047,6 +1050,7 @@ public partial class KumikoDataGrid : ContentView
 
         // Stop observing the app's collection and its items (the source lives on; Reconnect re-attaches it)
         _dataSource.Detach();
+        DisconnectLoadMore(); // KumikoDataGrid.LoadMore.cs
 
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
@@ -1133,6 +1137,7 @@ public partial class KumikoDataGrid : ContentView
         _dataSource.ViewUpdated += OnDataSourceViewUpdated;
         // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
         _dataSource.Attach();
+        ReconnectLoadMore(); // KumikoDataGrid.LoadMore.cs
         ResubscribeObservedCollections();
         _selectionBinder.Attach();
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;

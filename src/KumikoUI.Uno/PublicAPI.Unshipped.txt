@@ -2,14 +2,44 @@
 KumikoUI.Uno.KumikoDataGrid.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
 KumikoUI.Uno.KumikoDataGrid.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Uno.KumikoDataGrid.HorizontalScrollBarVisibility.set -> void
+KumikoUI.Uno.KumikoDataGrid.IncrementalSource.get -> KumikoUI.Core.Data.IKumikoIncrementalSource?
+KumikoUI.Uno.KumikoDataGrid.IncrementalSource.set -> void
 KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabled.get -> bool
 KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabled.set -> void
+KumikoUI.Uno.KumikoDataGrid.IsLoadingMore.get -> bool
+KumikoUI.Uno.KumikoDataGrid.IsLoadingMore.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSize.get -> int
+KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSize.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandParameter.get -> object?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandParameter.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCompleted -> System.EventHandler<KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreErrorText.get -> string?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreErrorText.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreMode.get -> KumikoUI.Core.Data.KumikoLoadMoreMode
+KumikoUI.Uno.KumikoDataGrid.LoadMoreMode.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreRequested -> System.EventHandler<KumikoUI.Core.Data.KumikoLoadMoreRequestedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreState.get -> KumikoUI.Core.Data.KumikoLoadMoreState
+KumikoUI.Uno.KumikoDataGrid.LoadMoreThreshold.get -> int
+KumikoUI.Uno.KumikoDataGrid.LoadMoreThreshold.set -> void
+KumikoUI.Uno.KumikoDataGrid.ResetLoadMore() -> void
 KumikoUI.Uno.KumikoDataGrid.ShowColumnMenu(KumikoUI.Core.Models.KumikoColumn! column) -> bool
 KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButton.get -> bool
 KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButton.set -> void
 KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibility.set -> void
 static readonly KumikoUI.Uno.KumikoDataGrid.HorizontalScrollBarVisibilityProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.IncrementalSourceProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabledProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.IsLoadingMoreProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSizeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandParameterProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreErrorTextProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreModeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreStateProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreThresholdProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButtonProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibilityProperty -> Microsoft.UI.Xaml.DependencyProperty!

@@ -262,6 +262,7 @@ public partial class KumikoDataGrid
         if (_inputController.IsAnimating)
             StartFrameAnimation();
         OnFrameRendered();
+        UpdateLoadMoreIndicator(); // KumikoDataGrid.LoadMore.cs
     }
 
     /// <summary>

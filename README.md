@@ -60,6 +60,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 - [Custom Fonts](#custom-fonts)
 - [Icons](#icons)
 - [Scrolling](#scrolling)
+- [Incremental Loading](#incremental-loading)
 - [Performance](#performance)
 - [Live Data](#live-data)
 - [Native AOT and Trimming](#native-aot-and-trimming)
@@ -264,6 +265,7 @@ From here on, XAML uses the `kumiko` prefix for the host's namespace (as above) 
 using System.Collections.ObjectModel;
 using System.Globalization;
 using KumikoUI.Core.Components;
+using KumikoUI.Core.Data;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
@@ -1815,6 +1817,144 @@ kumiko.Scrolled += (_, e) =>
 
 ---
 
+## Incremental Loading
+
+A grid bound to a large remote list can load rows on demand: when the user scrolls near the end of the loaded rows, the
+grid asks for the next batch, draws a loading row after the last row while it waits, and appends the batch without
+moving the rows on screen. A failed batch shows its error with a **Retry** button instead of trying again on every
+scroll. One batch runs at a time, and replacing or resetting the items cancels it.
+
+The easiest source is `KumikoIncrementalCollection<T>`, an `ObservableCollection<T>` that fetches pages with a
+function you give it and appends each page with one notification:
+
+```csharp
+var http = new HttpClient { BaseAddress = new Uri("https://example.com/") };
+
+kumiko.ItemsSource = new KumikoIncrementalCollection<Employee>(FetchPageAsync);
+
+// Loads up to `count` employees after the first `start`. Returning fewer than `count` ends the data.
+async Task<IReadOnlyList<Employee>> FetchPageAsync(int start, int count, CancellationToken cancellationToken)
+{
+    using var stream = await http.GetStreamAsync($"api/employees?skip={start}&take={count}", cancellationToken);
+    return await System.Text.Json.JsonSerializer.DeserializeAsync<List<Employee>>(stream, cancellationToken: cancellationToken)
+        ?? new List<Employee>();
+}
+```
+
+Any collection can load more by implementing `IKumikoIncrementalSource` (`HasMoreItems` and
+`LoadMoreItemsAsync(count, cancellationToken)`), or a separate object can do it through the `IncrementalSource`
+property. `LoadMoreItemsAsync` is called on the UI thread and must append to the bound collection on the UI thread:
+await your I/O without `ConfigureAwait(false)`, then add the items. Appending them with one multi-item `Add`
+notification (as `KumikoIncrementalCollection<T>.AddRange` does) costs the grid one view change. Raise
+`PropertyChanged` for `HasMoreItems` when more items become available after the end, and the grid loads again.
+
+```csharp
+public sealed class OrderLoader(ObservableCollection<Employee> items) : IKumikoIncrementalSource
+{
+    public bool HasMoreItems { get; private set; } = true;
+
+    public async Task<int> LoadMoreItemsAsync(int count, CancellationToken cancellationToken)
+    {
+        await Task.Delay(500, cancellationToken); // the request
+        for (int i = 0; i < count; i++) items.Add(new Employee { Id = items.Count });
+        HasMoreItems = items.Count < 1_000;
+        return count;
+    }
+}
+```
+
+### With a view model command
+
+Without an incremental source the grid adapts `LoadMoreCommand`, like a `RefreshView`: its `CanExecute` says whether
+more rows exist, the grid sets `IsLoadingMore` to true and executes it, and the view model appends the rows, then
+sets `IsLoadingMore` back to false, or sets `LoadMoreErrorText` when the request failed. Bind both two-way.
+
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Orders}"
+                       LoadMoreCommand="{Binding LoadMoreCommand}"
+                       IsLoadingMore="{Binding IsLoadingMore, Mode=TwoWay}"
+                       LoadMoreErrorText="{Binding LoadMoreError, Mode=TwoWay}"
+                       LoadMoreMode="Automatic"
+                       LoadMoreThreshold="10"
+                       LoadMoreBatchSize="50" />
+```
+
+On Uno, an `ItemsSource` that implements WinUI's `ISupportIncrementalLoading` (such as the Windows Community
+Toolkit's `IncrementalLoadingCollection`) is used as well: `LoadMoreBatchSize` is passed as the page count, and a
+canceled batch cancels its `IAsyncOperation`. WinUI's `DataFetchSize` maps to `LoadMoreBatchSize`, and its
+`IncrementalLoadingThreshold` (viewports) to `LoadMoreThreshold` (rows: about that many viewports times the rows on
+screen). When several sources are present, the first wins: `IncrementalSource`, an `ItemsSource` that implements
+`IKumikoIncrementalSource`, an `ISupportIncrementalLoading` `ItemsSource` (Uno), then `LoadMoreCommand`.
+
+### Properties, events and methods
+
+| Member | Default | Meaning |
+|---|---|---|
+| `IncrementalSource` | null | The object that loads more items, taking precedence over the items and the command |
+| `LoadMoreCommand`, `LoadMoreCommandParameter` | null | The view model command and its parameter (above) |
+| `LoadMoreMode` | `Automatic` | `Automatic` loads near the end; `Manual` draws a **Load more** row after the last row that loads when tapped; `None` loads only from code |
+| `LoadMoreThreshold` | -1 | Rows left after the last row on screen when the next batch is requested; 0 when the last row comes into view, -1 one viewport ahead. Unlike `CollectionView.RemainingItemsThreshold`, -1 does not turn loading off: use `LoadMoreMode="None"` |
+| `LoadMoreBatchSize` | 0 | Items asked for per batch; 0 asks for twice the rows on screen, at least 20 |
+| `IsLoadingMore` | false | Two-way: whether a batch is loading |
+| `LoadMoreErrorText` | null | Two-way: the error row's message; null shows `KumikoStrings.LoadMoreFailed` |
+| `LoadMoreState` | `Idle` | Read-only: `Idle`, `Loading`, `Failed` or `Completed` (no more items) |
+| `LoadMoreRequested` | | Before a batch: its `Count`, `Trigger` (`NearEnd`, `Keyboard`, `Tap`, `Programmatic`) and `CancellationToken` |
+| `LoadMoreCompleted` | | After a batch: `ItemsLoaded`, `RowsAdded`, `State`, `Error`; a handler can set `ErrorText` for a failed batch |
+| `LoadMoreAsync(cancellationToken)` | | Loads the next batch now in any mode (or retries); joins a batch already loading |
+| `ResetLoadMore()` | | Cancels a batch, clears a failure or the end of the data, and evaluates again |
+
+```csharp
+kumiko.LoadMoreCompleted += (_, e) =>
+{
+    if (e.Error is HttpRequestException) e.ErrorText = "No connection. Check your network and tap Retry.";
+};
+```
+
+The same state machine is `kumiko.DataSource.IncrementalLoading` (a `KumikoIncrementalLoader`) for code that works
+with a `KumikoSource` directly.
+
+### The load-more row
+
+The row after the last row shows three animated dots and "Loading more..." while a batch loads (static when the
+platform asks for reduced motion), **Load more** in Manual mode, and the error with a **Retry** button after a failure.
+It is not a row of the data: it is never selected and is not counted in the rows. A tap anywhere on a Load more or
+error row loads or retries; with the keyboard, Down, Page Down or Ctrl+End on the last row does the same. The grid
+announces a batch the user started at once, an automatic batch still loading after a second, the rows each batch
+added, the end of the data and a failure (see [Accessibility](#accessibility)). Its look comes from `KumikoStyle`
+(`LoadMoreRowHeight`, `LoadMoreRowBackgroundColor`, `LoadMoreTextColor`, `LoadMoreFont`, `LoadMoreIndicatorColor`,
+`LoadMoreErrorTextColor`; unset ones follow the row height, background, cell text, cell font and accent color), its
+texts from `KumikoStrings` (`LoadMoreLoading`, `LoadMoreButton`, `LoadMoreFailed`, `LoadMoreRetry` and the
+`AnnounceLoadMore*` strings).
+
+### Sorting, filtering and totals
+
+Client-side sorting, filtering, grouping and summaries apply to the rows loaded so far: a new batch is sorted among
+them, and totals count only loaded rows. A filter that hides a whole batch stops automatic loading until the user
+scrolls down or changes the filter, so a filter that matches nothing does not download everything. When a sort or
+filter must apply to the whole remote data, re-query: handle `DataSource.SortColumnsChanging` or `FilterChanging`
+(set `Cancel` to keep the grid from sorting the loaded rows), then replace `ItemsSource`, clear the collection, or
+call `ResetLoadMore()` after changing the query in place.
+
+```csharp
+kumiko.DataSource.SortColumnsChanging += (_, e) =>
+{
+    e.Cancel = true; // the server sorts
+    kumiko.ItemsSource = new KumikoIncrementalCollection<Employee>((start, count, ct) =>
+        Task.FromResult<IReadOnlyList<Employee>>(new List<Employee>())); // a new query for the new order
+};
+```
+
+To scroll to an item that may not be loaded yet, load until it appears:
+
+```csharp
+var target = employees[^1];
+while (kumiko.DataSource.IndexOfItem(target) < 0 && kumiko.LoadMoreState != KumikoLoadMoreState.Completed)
+    if (await kumiko.LoadMoreAsync() == 0) break;
+kumiko.ScrollToItem(target, KumikoScrollPosition.Center);
+```
+
+---
+
 ## Performance
 
 ### What the grid does for you
@@ -2101,6 +2241,7 @@ Both samples have the same pages (`samples/README.md` has the run commands and a
 | **Images** | Image columns from app assets, `ImageSource`s or `BitmapImage`s and web URLs over 10,000 rows, with the bounded `ImageCache` |
 | **Styling** | An image column, switching the icon set (`KumikoStyle.IconProvider`), per-cell and per-row styles (`CellStyleResolver`, `RowStyleResolver`) and `AlternateRowBackground` |
 | **Events** | `CellTapped`, `HeaderTapped`, `ContextMenuRequested` and the other events in a log, the selection modes, a `CellValidator`, and saving and restoring the layout |
+| **Load More** | Orders loaded in batches from a simulated server (`KumikoIncrementalCollection<T>`), Automatic and Manual modes, a failed request and its retry row, sorting and totals over the loaded rows |
 
 - `samples/SampleApp.Maui`: .NET MAUI (iOS, Mac Catalyst, Android, Windows).
 - `samples/SampleApp.Uno`: Uno Platform (desktop, WebAssembly, iOS, Android, Windows App SDK).

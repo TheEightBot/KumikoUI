@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Models;
 /// from <see cref="KumikoStrings"/>, so it is localized with the rest of the grid's text. The class has no
 /// platform dependency; MAUI and Uno hosts share it. Call it only when the state changes, never per frame.
 /// </summary>
-public static class KumikoAnnouncements
+public static partial class KumikoAnnouncements
 {
     /// <summary>The accessible hint describing the grid's size and, when there is one, its current cell.</summary>
     /// <param name="strings">The text table.</param>

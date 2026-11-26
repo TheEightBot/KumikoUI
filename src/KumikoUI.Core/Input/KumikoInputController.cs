@@ -619,6 +619,8 @@ public sealed partial class KumikoInputController
 
         // ── Normal-mode key handling ──
 
+        TryLoadMoreFromKey(e, selection, dataSource); // past the last row: the load-more row (#318)
+
         // Group header row keyboard navigation
         if (selection.CurrentCell.IsValid && dataSource.IsGroupHeaderRow(selection.CurrentCell.Row))
         {
@@ -1193,7 +1195,7 @@ public sealed partial class KumikoInputController
         HitRegion.HeaderResizeGrip => KumikoCursor.ResizeHorizontal,
         HitRegion.HeaderFilterIcon or HitRegion.GroupChevron or HitRegion.GroupPanelChip or HitRegion.GroupPanelChipRemove
             or HitRegion.RowDragHandle or HitRegion.HeaderMenuButton => KumikoCursor.Hand,
-        HitRegion.Cell when !target.IsNone => KumikoCursor.Hand,
+        HitRegion.Cell or HitRegion.LoadMoreRow when !target.IsNone => KumikoCursor.Hand,
         _ => KumikoCursor.Default,
     };
 
@@ -1219,6 +1221,8 @@ public sealed partial class KumikoInputController
                 return new FeedbackTarget(region, -1, -1, group, -1);
             case HitRegion.GroupChevron or HitRegion.GroupHeaderRow:
                 return new FeedbackTarget(HitRegion.GroupHeaderRow, row, -1, -1, -1);
+            case HitRegion.LoadMoreRow when IsLoadMoreRowActionable(dataSource):
+                return new FeedbackTarget(HitRegion.LoadMoreRow, -1, -1, -1, -1);
             case HitRegion.Cell when column != null && row >= 0 && row < dataSource.RowCount && !dataSource.IsNonDataRow(row):
                 if (GetInteractiveRenderer(column) is { } interactive)
                 {
@@ -1397,6 +1401,12 @@ public sealed partial class KumikoInputController
         }
 
         if (TryHandleColumnMenuButtonRelease(e, hit, scroll, selection, style, dataSource)) return;
+        if (hit.Region == HitRegion.LoadMoreRow)
+        {
+            TapLoadMoreRow(dataSource); // load or retry (#318)
+            e.Handled = true;
+            return;
+        }
 
         if (hit.Region == HitRegion.HeaderFilterIcon && hit.Column != null)
         {
