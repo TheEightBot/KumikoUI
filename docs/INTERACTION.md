@@ -14,6 +14,7 @@ Every timing, distance and target size the grid uses to read a gesture or play f
 | Press and release on the same target | — | Core | Header sorts, filter icons, grouping chips, group headers and cell taps act on the release, only when the press started on the same target (a group header: the same header, chevron or row). |
 | Stale pointer | 1000 ms | Core (`StalePointerMs`), both hosts | While one pointer is down, others are ignored, unless it has been silent this long (its release was lost). |
 | Text box multi-click | 500 ms, 4 px | Core `DrawnTextBox` | Double click selects a word, triple click everything. |
+| Scroll bar track press | one page, then every 50 ms after 400 ms | Core `KumikoInputController` (`ScrollBarPageDelayMs`, `ScrollBarPageRepeatMs`) | Mouse or pen. The first page is at once; the press repeats while held until the thumb reaches the pointer, pauses while the pointer is off the bar. A page is the scrolling rows' height (or the scrolling columns' width). A press on the thumb drags it instead. Neither selects, pans or drags a row. |
 | Editor list drag | 6 px | Core `DrawnComboBox`, `DrawnFilterPopup`, `DrawnScrollPicker` | Movement before a press in a list scrolls it instead of picking. Year list in `DrawnDatePicker`: 4 px. |
 
 ## Targets
@@ -26,6 +27,7 @@ Every timing, distance and target size the grid uses to read a gesture or play f
 | Grouping panel chip | the chip as drawn, + 2 px each side | as tall as the panel | Measured by the renderer while drawing (`KumikoRenderer.InputController`). Its right end (the remove button and its padding, about 25 px) removes the grouping. |
 | Check box | 16 px box + 8 px each side | same | Inside the cell. |
 | Row drag handle | `KumikoStyle.RowDragHandleWidth` (32 px) | same | Full row height. |
+| Scroll bar | 10 px band (`KumikoStyle.ScrollBarExpandedThickness`) | none: a finger pans through it | Along the right edge of the scrolling rows and the bottom of the rows across the scrolling columns, over the cells (not the header, so resize grips stay reachable). Where both bars meet, each stops short of the other. `Never` leaves the band to the cells. |
 
 ## Scrolling and momentum
 
@@ -54,6 +56,8 @@ The MAUI grid picks the iOS preset on iPhone and iPad, Android on Android and De
 | Column header drop | 180 ms | The header settles from where it was released into its slot (back to its old one when the drag is canceled). |
 | Selection fade-in | 120 ms | The current row's highlight, when the current row shows another item. |
 | Easing | ease-out cubic | All transitions. `KumikoStyle.EnableAnimations` = false, or the platform's reduced-motion setting, shows every change at once. |
+| Scroll bar expand | 4 px to 10 px | `KumikoStyle.ScrollBarThickness`, `ScrollBarExpandedThickness`. Mouse and pen hover or a press on the bar; the track (`ScrollBarTrackColor`) shows while expanded. At once, no transition. |
+| Scroll bar (`Auto`) hold and fade | 1000 ms, then 250 ms | Shown while the grid scrolls (any cause) or a mouse rests over the bar, held for 1000 ms after the last scroll or after the pointer leaves, then faded out linearly. With animations off it hides at once after the hold. Frames during the hold are not redrawn. |
 | Haptics | drag start, drop, long press | `KumikoDataGrid.EnableHaptics` (off by default); finger and pen only. iOS `UIImpactFeedbackGenerator`, Android `PerformHapticFeedback`. |
 
 ## Editors and frame loop

@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Scroll bars: the grid draws a vertical bar at the right edge of the scrolling rows and a horizontal bar across the scrolling columns. `VerticalScrollBarVisibility` and `HorizontalScrollBarVisibility` (`KumikoScrollBarVisibility`: `Auto`, the default, an overlay shown while the grid scrolls or a mouse rests over it that then fades; `Always`; `Never`) on `KumikoStyle` and on both grids, plus `ScrollBarThickness`, `ScrollBarExpandedThickness`, `ScrollBarMinThumbLength`, `ScrollBarThumbColor` and `ScrollBarTrackColor`. With a mouse or a pen a bar expands on hover, its thumb drags and its track pages (repeating while held); a finger pans through it. New `HitRegion` values `VerticalScrollBarThumb`, `VerticalScrollBarTrack`, `HorizontalScrollBarThumb` and `HorizontalScrollBarTrack`. A mouse or pen press within 10 px of the rows' right or bottom edge now lands on the bar instead of the cell under it (#316).
+
 ### Fixed
 - A column's `HeaderCellStyle.TextAlignment` now aligns the header text (and the text of the column drag ghost) instead of being ignored: Center and Right align within the space left after the sort and filter glyphs, so the text never runs under them. The default is still Left.
 - Pressing OK in a column's filter popup no longer drops the conditions of a `FilterDescription` set from code. OK now updates only the value selection and keeps `Condition1`, `Condition2` and `Combination`; with every value checked it removes the value list but keeps the conditions (the filter is removed only when it has none), and a filter that has conditions and no value list opens with every value checked. Clear still removes the whole filter, conditions included.

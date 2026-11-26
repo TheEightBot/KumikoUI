@@ -33,6 +33,7 @@ host paint (MAUI: KumikoDataGrid.PaintSurface; Uno: the surface's render callbac
         ├─ DrawDragHandleColumn
         ├─ DrawTableSummaryRows        — the pinned footer (PinBottomSummaryRows)
         ├─ DrawColumnDragOverlay, DrawRowDragOverlay
+        ├─ ScrollBarRenderer.Draw      — the scroll bars (ScrollBarGeometry)
         └─ EditSession.PlaceEditor + DrawEditor, PopupManager.DrawPopups, the frame stats overlay
 ```
 
