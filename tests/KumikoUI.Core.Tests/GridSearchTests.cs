@@ -74,7 +74,7 @@ public class GridSearchTests
 
         Assert.Equal(5, source.RowCount);
         Assert.Equal(0, rebuilds);
-        // Bruno, Carla? no; Oslo ×2, Rome, Bruno, Olga → cells: Bruno(Name), Rome, Oslo, Oslo, Olga(Name)
+        // Oslo (twice), Bruno, Rome and Olga contain an "o" (ignoring case)
         Assert.Equal(5, source.SearchMatchCount);
         Assert.True(source.IsSearchActive);
     }
