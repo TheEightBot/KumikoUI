@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- A column's `HeaderCellStyle.TextAlignment` now aligns the header text (and the text of the column drag ghost) instead of being ignored: Center and Right align within the space left after the sort and filter glyphs, so the text never runs under them. The default is still Left.
+
 ## [1.0.0] - 2026-11-25
 
 The first stable release of all four packages. From this version on the public API follows Semantic Versioning: a breaking change waits for 2.0.0 ([docs/VERSIONING.md](docs/VERSIONING.md)). The changes below are those since 1.0.0-preview.1; coming from 0.2.0, read the [1.0.0-preview.1] section too. Follow-ups planned for 1.0.1 are in the [1.0.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/5).

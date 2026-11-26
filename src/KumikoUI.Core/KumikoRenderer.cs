@@ -955,7 +955,7 @@ public sealed class KumikoRenderer : IDisposable
                 style.HeaderHeight);
 
             ctx.DrawTextInRect(col.Header, cellRect, colPaint,
-                KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+                hStyle?.TextAlignment ?? KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
         }
     }
 
@@ -1852,7 +1852,7 @@ public sealed class KumikoRenderer : IDisposable
             dragScreenX + style.CellPadding, 0,
             col.Width - style.CellPadding * 2, style.HeaderHeight);
         ctx.DrawTextInRect(col.Header, textRect, _paintCache.HeaderText,
-            KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+            col.HeaderCellStyle?.TextAlignment ?? KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
     }
 
     /// <summary>
