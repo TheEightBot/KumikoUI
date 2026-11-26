@@ -339,6 +339,7 @@ internal sealed class KumikoRowLayout
         {
             _measuredSum -= entry.Height;
             _measuredCount--;
+            if (UpdateEstimate()) _version++;
         }
     }
 
@@ -350,6 +351,7 @@ internal sealed class KumikoRowLayout
         _measuredCount = 0;
         _stamp = NextStamp(_stamp);
         _mapDirty = true;
+        UpdateEstimate();
         _version++;
     }
 
@@ -381,6 +383,7 @@ internal sealed class KumikoRowLayout
     /// </summary>
     internal bool IsCurrent(int row)
     {
+        Refresh();
         if ((uint)row >= (uint)_count) return true;
         int stamp = _stamps[row];
         if (stamp == NonDataRow) return true;
@@ -399,7 +402,17 @@ internal sealed class KumikoRowLayout
     }
 
     /// <summary>Whether <paramref name="row"/> is a data row whose height was measured at least once.</summary>
-    internal bool IsMeasured(int row) => (uint)row < (uint)_count && _stamps[row] != NonDataRow && _heights[row] > 0;
+    internal bool IsMeasured(int row)
+    {
+        Refresh();
+        return (uint)row < (uint)_count && _stamps[row] != NonDataRow && _heights[row] > 0;
+    }
+
+    /// <summary>Brings the index up to date with the view for the last style queried (no-op while uniform).</summary>
+    private void Refresh()
+    {
+        if (_active && _style != null) EnsureIndex(_style);
+    }
 
     /// <summary>
     /// Records the height measured for data row <paramref name="row"/> showing <paramref name="item"/>, as current.
@@ -407,6 +420,7 @@ internal sealed class KumikoRowLayout
     /// </summary>
     internal bool SetMeasuredHeight(int row, object item, float height)
     {
+        Refresh();
         if ((uint)row >= (uint)_count || _stamps[row] == NonDataRow) return false;
         if (!(height >= 1f)) height = 1f;
         if (float.IsPositiveInfinity(height)) height = float.MaxValue / 4;

@@ -16,8 +16,10 @@ public sealed partial class KumikoRenderer
     // Times the measure-and-anchor step repeats when measuring changed which rows are visible.
     private const int MaxMeasurePasses = 3;
 
-    // Per-frame measuring budget: after this many measured cells or this much time, the remaining rows draw at
-    // their estimate and another frame is requested.
+    // Per-frame measuring budget: once a frame has measured MinMeasuredRowsPerFrame rows (a screenful, so the rows on
+    // screen are exact), it stops after this many measured cells or this much time; the remaining rows draw at their
+    // estimate and another frame is requested.
+    private const int MinMeasuredRowsPerFrame = 48;
     private const int MeasureCellBudget = 256;
     private static readonly long s_measureTimeBudget = Stopwatch.Frequency * 4 / 1000;
 
@@ -43,15 +45,23 @@ public sealed partial class KumikoRenderer
             int frozen = source.EffectiveFrozenRowCount;
             bool exhausted = false;
 
-            // Frozen rows are always exact: they are measured whenever they are stale.
-            for (int row = 0; row < frozen && !exhausted; row++)
-                measurer.Measure(row, ref exhausted);
-
             float offset = scroll.OffsetY;
             var pending = rows.PendingScrollTarget;
             rows.PendingScrollTarget = null;
             bool targeted = pending is { } p && p.OffsetY == scroll.OffsetY && p.Row >= frozen && p.Row < count;
 
+            // The anchor: the first visible scrolling row, as the last frame laid it out, stays where it is on screen
+            // while the rows above it change height (or the estimate they use changes).
+            int anchor = Math.Clamp(rows.GetScrollRowAt(offset, style), frozen, Math.Max(frozen, count - 1));
+            float anchorDelta = offset - rows.GetScrollTop(anchor, style);
+
+            // Frozen rows are always exact: they are measured whenever they are stale.
+            bool frozenChanged = false;
+            for (int row = 0; row < frozen && !exhausted; row++)
+                frozenChanged |= measurer.Measure(row, ref exhausted);
+            if (frozenChanged && !targeted) offset = rows.GetScrollTop(anchor, style) + anchorDelta;
+
+            bool settled = false;
             for (int pass = 0; pass < MaxMeasurePasses && !exhausted; pass++)
             {
                 if (targeted)
@@ -62,11 +72,11 @@ public sealed partial class KumikoRenderer
                 float viewport = KumikoScroller.GetScrollableRowsViewportHeight(scroll, style, source);
                 int first = Math.Max(frozen, rows.GetScrollRowAt(offset, style));
                 int last = Math.Min(count - 1, rows.GetScrollRowAt(offset + Math.Max(0, viewport), style));
-                if (first > last) break;
-
-                // The anchor: the first visible row stays where it is on screen while rows above it change height.
-                int anchor = first;
-                float anchorDelta = offset - rows.GetScrollTop(anchor, style);
+                if (first > last)
+                {
+                    settled = true;
+                    break;
+                }
 
                 bool changed = false;
                 int from = Math.Max(frozen, first - MeasureOverscanRows);
@@ -74,12 +84,17 @@ public sealed partial class KumikoRenderer
                 for (int row = from; row <= to && !exhausted; row++)
                     changed |= measurer.Measure(row, ref exhausted);
 
-                if (!changed) break;
+                if (!changed)
+                {
+                    settled = true;
+                    break;
+                }
                 if (!targeted) offset = rows.GetScrollTop(anchor, style) + anchorDelta;
             }
 
             if (offset != scroll.OffsetY) scroll.OffsetY = offset;
-            if (exhausted) RedrawRequested?.Invoke(this, EventArgs.Empty);
+            // Rows left at their estimate (budget spent, or the visible rows still changing): finish next frame.
+            if (exhausted || !settled) RedrawRequested?.Invoke(this, EventArgs.Empty);
         }
         finally
         {
@@ -130,6 +145,7 @@ public sealed partial class KumikoRenderer
         private KumikoStyle? _style;
         private long _start;
         private int _cells;
+        private int _rowsMeasured;
 
         public RowMeasurer(KumikoRenderer renderer) => _renderer = renderer;
 
@@ -140,6 +156,7 @@ public sealed partial class KumikoRenderer
             _style = style;
             _start = Stopwatch.GetTimestamp();
             _cells = 0;
+            _rowsMeasured = 0;
         }
 
         public void End()
@@ -158,12 +175,14 @@ public sealed partial class KumikoRenderer
             var source = _source!;
             var rows = source.RowLayout;
             if (rows.IsCurrent(row)) return false;
-            if (_cells >= MeasureCellBudget || Stopwatch.GetTimestamp() - _start > s_measureTimeBudget)
+            if (_rowsMeasured >= MinMeasuredRowsPerFrame &&
+                (_cells >= MeasureCellBudget || Stopwatch.GetTimestamp() - _start > s_measureTimeBudget))
             {
                 exhausted = true;
                 return false;
             }
 
+            _rowsMeasured++;
             object item = source.GetItem(row);
             return rows.SetMeasuredHeight(row, item, ComputeRowHeight(row, item));
         }
