@@ -2,7 +2,7 @@
 
 # KumikoUI.Uno
 
-[![NuGet](https://img.shields.io/nuget/vpre/KumikoUI.Uno.svg)](https://www.nuget.org/packages/KumikoUI.Uno)
+[![NuGet](https://img.shields.io/nuget/v/KumikoUI.Uno.svg)](https://www.nuget.org/packages/KumikoUI.Uno)
 [![Downloads](https://img.shields.io/nuget/dt/KumikoUI.Uno.svg)](https://www.nuget.org/packages/KumikoUI.Uno)
 [![License: MIT](https://img.shields.io/github/license/TheEightBot/KumikoUI.svg)](https://github.com/TheEightBot/KumikoUI/blob/main/LICENSE)
 
@@ -10,7 +10,7 @@ KumikoUI.Uno is a high-performance data grid control for the Uno Platform. The w
 
 It targets .NET 10 on Windows (WinUI), desktop (Windows, macOS, Linux), WebAssembly, Android and iOS.
 
-> **Preview.** This is `1.0.0-preview.1`, the first 1.0 prerelease of all four KumikoUI packages, and the API may still change before 1.0.0. KumikoUI.Uno is the least verified host. It shares its engine and API with KumikoUI.Maui, and its WebAssembly, iOS and Android heads have been run on the sample app, but not every head has been checked end to end: the desktop head has had no interactive pass, Windows and Linux have not been run, and several input and accessibility problems are open (issues #274 to #278 and #280). The per-head results and known issues are in the [Uno verification notes](https://github.com/TheEightBot/KumikoUI/blob/main/docs/uno/verification.md). Install a prerelease with `--prerelease` or an explicit version, and use the same version for every KumikoUI package.
+> **1.0.0** is the first stable release of all four KumikoUI packages. From this version on, the public API follows the compatibility rules in the [versioning policy](https://github.com/TheEightBot/KumikoUI/blob/main/docs/VERSIONING.md). Use the same version for every KumikoUI package. Release notes: [CHANGELOG](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md). What was run on each head, and the known limitations, are in the [Uno verification notes](https://github.com/TheEightBot/KumikoUI/blob/main/docs/uno/verification.md).
 
 ![KumikoUI data grid](https://raw.githubusercontent.com/TheEightBot/KumikoUI/main/images/main.png)
 
@@ -32,21 +32,21 @@ Installing KumikoUI.Uno brings in KumikoUI.Core and KumikoUI.SkiaSharp. All four
 Install the package in your Uno app project:
 
 ```
-dotnet add package KumikoUI.Uno --prerelease
+dotnet add package KumikoUI.Uno
 ```
 
 The app uses the Skia renderer and the SkiaSharp major that KumikoUI is built with (Uno.Sdk defaults to SkiaSharp 3.x, and an app must resolve one SkiaSharp major). In your app's `.csproj`, set `SkiaSharpVersion` and include `SkiaRenderer` in `UnoFeatures`:
 
 ```xml
 <PropertyGroup>
-  <SkiaSharpVersion>4.153.1</SkiaSharpVersion>
+  <SkiaSharpVersion>4.157.0</SkiaSharpVersion>
   <UnoFeatures>
     SkiaRenderer;
   </UnoFeatures>
 </PropertyGroup>
 ```
 
-On the Windows (WinAppSDK) head, also reference `SkiaSharp.Views.WinUI`, which the `SkiaRenderer` feature does not add there. `samples/SampleApp.Uno` shows the full project setup.
+SkiaSharp 4.157.0 needs Uno.Sdk 7. On the Windows (WinAppSDK) head, also reference `SkiaSharp.Views.WinUI`, which the `SkiaRenderer` feature does not add there. On Uno.Sdk 7.0.22 the app may also need explicit `HarfBuzzSharp.NativeAssets.*` references at 14.4.0.200, because the SDK adds them at 14.4.0.100 and restore fails with NU1605. `samples/SampleApp.Uno` shows the full project setup.
 
 Declare the grid and its columns in XAML:
 

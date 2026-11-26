@@ -2,6 +2,8 @@
 
 **Date:** 2026-10-22 · **Reviewed tree:** `feature/uno-platform-port` @ `4938125` (open PR #9) on top of `main` @ `59825e2` · **Published state:** KumikoUI.Core / .SkiaSharp / .Maui 0.1.10 on nuget.org; KumikoUI.Uno never published.
 
+> **Later status:** this evaluation is dated 2026-10-22. The current release state is in [../release/1.0-checklist-status.md](../release/1.0-checklist-status.md), and the device results in [../maui-verification.md](../maui-verification.md) and [../uno/verification.md](../uno/verification.md).
+
 This folder is the complete evaluation. This page is the summary and the decision list; the numbered files are the detailed per-area reports, each finding cited to `file:line`.
 
 | File | Area |

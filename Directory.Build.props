@@ -15,7 +15,7 @@
     <!-- Fixed year (not the build date) so package metadata is reproducible; bump when releasing in a new year. -->
     <Copyright>Copyright © Eight-Bot, Inc. 2026</Copyright>
 
-    <!-- Version from git tags (MinVer). Untagged builds before the first 1.0 tag become 1.0.0-alpha.0.N. -->
+    <!-- Version from git tags (MinVer). An untagged commit after v1.0.0 builds 1.0.1-alpha.0.N; the minimum keeps it at 1.0 or later. -->
     <MinVerTagPrefix>v</MinVerTagPrefix>
     <MinVerMinimumMajorMinor>1.0</MinVerMinimumMajorMinor>
 

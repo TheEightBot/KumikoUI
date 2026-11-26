@@ -32,15 +32,15 @@ read the [README](../../README.md); this guide does not repeat them. For a worki
 
 ## Supported heads
 
-`KumikoUI.Uno` targets .NET 10 and SkiaSharp 4.153.1. Every Uno head of the library uses the Skia renderer.
+`KumikoUI.Uno` targets .NET 10 and SkiaSharp 4.157.0 and is built with Uno.Sdk 7 (7.0.22). Every Uno head of the library uses the Skia renderer.
 
 | Head | Target framework | App build host | How it is verified |
 |---|---|---|---|
-| Desktop (Windows, macOS, Linux) | `net10.0-desktop` | any OS | CI build and unit tests; the sample runs on macOS |
-| WebAssembly | `net10.0-browserwasm` | any OS (`wasm-tools` workload) | CI build |
-| iOS | `net10.0-ios` | macOS with Xcode | CI build |
-| Android | `net10.0-android` | any OS (`android` workload) | CI build |
-| Windows App SDK | `net10.0-windows10.0.26100` | Windows | CI build |
+| Desktop (Windows, macOS, Linux) | `net10.0-desktop` | any OS | CI build and unit tests; sample checked by hand on Linux (X11) and on Windows up to the filter popup; on macOS it renders, input not yet checked (#274) |
+| WebAssembly | `net10.0-browserwasm` | any OS (`wasm-tools` workload) | CI build (trimmed publish); sample checked by hand in Chromium |
+| iOS | `net10.0-ios` | macOS with Xcode | CI build; sample checked by hand on an iPhone simulator |
+| Android | `net10.0-android` | any OS (`android` workload) | CI build; sample checked by hand on an Android 15 emulator, not yet on a physical phone (#276) |
+| Windows App SDK | `net10.0-windows10.0.26100` | Windows | CI build; not yet run on a device |
 
 "CI build" means the head is compiled and packed in CI; it does not mean the head was exercised by hand. Interactive
 verification on devices and in browsers is recorded per head in [verification.md](verification.md) (#67). There is no Mac Catalyst head: Uno serves macOS through the
@@ -53,17 +53,17 @@ desktop head. Minimum OS versions are in the README's "Supported platforms" tabl
 1. Add the package. It brings `KumikoUI.Core` and `KumikoUI.SkiaSharp` with it:
 
    ```shell
-   dotnet add package KumikoUI.Uno --prerelease
+   dotnet add package KumikoUI.Uno
    ```
 
-   The current version is the prerelease `1.0.0-preview.1`, so NuGet needs `--prerelease` (or `--version 1.0.0-preview.1`).
+   Use the same version for every KumikoUI package; they depend on each other at their exact version.
 
 2. Use the Skia renderer, and make Uno use the SkiaSharp major KumikoUI is built with. Uno.Sdk defaults to SkiaSharp
    3.x; an app must resolve one SkiaSharp major, so set `SkiaSharpVersion` to the version `KumikoUI.Uno` depends on:
 
    ```xml
    <PropertyGroup>
-     <SkiaSharpVersion>4.153.1</SkiaSharpVersion>
+     <SkiaSharpVersion>4.157.0</SkiaSharpVersion>
      <UnoFeatures>
        SkiaRenderer;
      </UnoFeatures>
@@ -74,9 +74,13 @@ desktop head. Minimum OS versions are in the README's "Supported platforms" tabl
 
    ```xml
    <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-     <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.153.1" />
+     <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.157.0" />
    </ItemGroup>
    ```
+
+   SkiaSharp 4.157.0 needs Uno.Sdk 7. On Uno.Sdk 7.0.22 the app may also need explicit `HarfBuzzSharp.NativeAssets.*`
+   references at 14.4.0.200 (Android, iOS, the desktop's Win32, macOS and Linux, WebAssembly), because the SDK adds them
+   at 14.4.0.100 and restore fails with NU1605; `samples/SampleApp.Uno/SampleApp.Uno.csproj` shows them.
 
 4. If your row types are reflected at run time, nothing more is needed on desktop, Windows, Android and iOS. For
    WebAssembly, Native AOT and trimmed builds, mark the row types with `[KumikoGridItem]` (from `KumikoUI.Core.Data`) so
@@ -91,7 +95,7 @@ Unlike MAUI, Uno needs no startup call: there is no `UseKumikoUI()` on the Uno h
 | Head | What to know |
 |---|---|
 | Desktop | Nothing beyond the steps above. `dotnet run --project <app> -f net10.0-desktop`. |
-| WebAssembly | Install the workload (`dotnet workload install wasm-tools`). SkiaSharp 4.153.1's WebAssembly native assets need a link-step workaround, see [Known limits](#known-limits). The grid keeps a hidden `TextBox` for keyboard input, which is what brings up the keyboard on a phone browser. |
+| WebAssembly | Install the workload (`dotnet workload install wasm-tools`). See [Known limits](#known-limits) for the WebAssembly link step. The grid keeps a hidden `TextBox` for keyboard input, which is what brings up the keyboard on a phone browser. |
 | iOS | Build on macOS with Xcode. The soft keyboard appears only while a cell editor or the filter popup's search box is open. |
 | Android | Set the activity's `WindowSoftInputMode` to `AdjustResize` so the window shrinks for the keyboard; the sample does. With `AdjustNothing` the grid still scrolls the edited cell above the keyboard (see [Keyboard](#keyboard-input-methods-and-focus)). |
 | Windows App SDK | Reference `SkiaSharp.Views.WinUI` (step 3). The grid uses the software surface here. |
@@ -302,17 +306,18 @@ nothing. Package images as `Content`. The README's "Images" section covers the c
 
 ## Known limits
 
-These hold today. The 1.0 plan is in [docs/ROADMAP.md](../ROADMAP.md).
+These hold in 1.0.0. Open Uno items are in the [1.0.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/5); the longer-term plan is in [docs/ROADMAP.md](../ROADMAP.md).
 
-- **Not every head has been exercised by hand.** CI compiles and packs all five heads and the unit tests run the
-  platform-independent code on the desktop head, but interactive verification on devices and in browsers is still open
-  (#67). Treat a head as "builds" until that pass reports on it.
+- **Verification differs per head.** CI compiles and packs all five heads and the unit tests run the
+  platform-independent code on the desktop head. What was checked by hand on each head is in
+  [verification.md](verification.md). Still open: pointer and keyboard on the macOS desktop head (#274), a touch column
+  reorder on a physical Android phone (#276), and the Windows App SDK head, which has not been run (#67).
 - **One element for screen readers.** Cells, headers, editors and popups are not exposed individually, so a screen reader
   cannot read or navigate cell contents. A per-cell accessibility tree is planned for 1.x.
 - **Screen readers on the desktop head depend on Uno's host.** Windows exposes the grid through UI Automation. On
-  macOS, Uno 6.7's accessibility bridge loses the whole window's tree, grid included, once the app navigates to another
+  macOS (#277), Uno's accessibility bridge (seen on Uno 6.7) loses the whole window's tree, grid included, once the app navigates to another
   page, and from launch in a Debug build that uses Hot Design (`UseStudio()`), so VoiceOver reaches the grid only on the
-  page the app opens with. Linux (X11) had no AT-SPI bridge in Uno 6.7. Uno 7.0.65 has one, and the grid is in the AT-SPI tree as a single `panel` with its name and description but no table, selection or action interface and no focus state, so Orca cannot navigate it as a grid yet. Details are in
+  page the app opens with. Linux (X11) had no AT-SPI bridge in Uno 6.7. Uno 7.0.65 has one, and the grid is in the AT-SPI tree as a single `panel` with its name and description but no table, selection or action interface and no focus state, so Orca cannot navigate it as a grid yet (#287). Details are in
   [verification.md](verification.md) (F4, F12).
 - **Right to left is not supported.** The grid always lays out and draws left to right, also inside a right-to-left page,
   and Hebrew or Arabic text is drawn without bidi reordering (#80).
@@ -321,8 +326,9 @@ These hold today. The 1.0 plan is in [docs/ROADMAP.md](../ROADMAP.md).
 - **Haptics only on iOS and Android**, and only when `EnableHaptics` is on.
 - **High-contrast and text-size settings of the operating system** are not followed.
 - **Fonts must be registered before the first grid renders.** Register them in `App.OnLaunched`.
-- **SkiaSharp 4.153.1 on WebAssembly** needs a link-step workaround in the app project (#184); the comment in
-  `samples/SampleApp.Uno/SampleApp.Uno.csproj` explains it, and SkiaSharp fixes it upstream from 4.156.
+- **WebAssembly link step.** SkiaSharp 4.153.1 needed a link-step workaround in the app project (#184). SkiaSharp fixes
+  it upstream from 4.156.0, but a 4.157.0 app without the workaround has not been tested; the sample still carries it, which
+  acts only when the link line has the flag (the comment in `samples/SampleApp.Uno/SampleApp.Uno.csproj` explains it).
 
 Report a problem with the package, version, head and a short reproduction through the
 [issue forms](https://github.com/TheEightBot/KumikoUI/issues/new/choose).

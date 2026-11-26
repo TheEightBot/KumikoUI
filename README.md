@@ -103,11 +103,11 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Package | Contains | Install it when |
 |---|---|---|
 | [`KumikoUI.Maui`](https://www.nuget.org/packages/KumikoUI.Maui) | `KumikoDataGrid` for .NET MAUI, `UseKumikoUI()`, `MauiActionButtonDefinition` | you build a .NET MAUI app |
-| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `UnoActionButtonDefinition`, `KumikoFonts` | you build an Uno Platform app (the least verified host, see [Supported platforms](#supported-platforms)) |
+| [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `UnoActionButtonDefinition`, `KumikoFonts` | you build an Uno Platform app |
 | [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | `SkiaDrawingContext`, `SkiaResourceCache`, `SkiaFontRegistrar` | you host the engine on your own SkiaSharp surface (the host packages reference it) |
 | [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Data, layout, rendering, input and editing engine; models and themes; the `[KumikoGridItem]` source generator | always (the other packages reference it); it has no UI framework or SkiaSharp dependency |
 
-All four packages share one version, and each depends on the exact version of the others. The current version is `1.0.0-preview.1`, the first 1.0 prerelease: the API may still change before 1.0.0. NuGet hides prerelease versions unless you ask for them; see [Getting Started](#getting-started). Release notes are in the [CHANGELOG](CHANGELOG.md) and [docs/release/1.0.0-preview.1-release-notes.md](docs/release/1.0.0-preview.1-release-notes.md).
+All four packages share one version, and each depends on the exact version of the others. The current version is `1.0.0`, the first stable release. From 1.0.0 on, the public API follows the compatibility rules in [docs/VERSIONING.md](docs/VERSIONING.md): a breaking change waits for the next major. Release notes are in the [CHANGELOG](CHANGELOG.md) and [docs/release/1.0.0-release-notes.md](docs/release/1.0.0-release-notes.md).
 
 ---
 
@@ -122,15 +122,15 @@ All packages target **.NET 10** and **SkiaSharp 4.157.0**.
 | KumikoUI.Maui | Mac Catalyst (`net10.0-maccatalyst`) | 17.0 (macOS 14+) | macOS (Xcode) | CI build; the device suite passes (106 of 106) on macOS 27 |
 | KumikoUI.Maui | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build; the device suite passes (106 of 106) on an Android 15 emulator, including the hardware (GPU) surface and Gboard composition; not yet run on a physical phone |
 | KumikoUI.Maui | Windows (`net10.0-windows10.0.19041.0`) | 10.0.19041 | Windows | CI build only; not yet run on a device |
-| KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; the sample renders and follows the system theme on macOS, but pointer and keyboard use of the desktop head has not been checked (#274), the grid is missing from the macOS accessibility tree (#277), and Windows and Linux have not been run |
+| KumikoUI.Uno | Desktop: Windows, macOS, Linux (`net10.0-desktop`) | as .NET 10 | any OS | CI build; checked interactively on Linux (X11) and on Windows up to the filter popup; renders and follows the system theme on macOS, where pointer and keyboard input has not been checked yet (#274). Screen readers: the grid is exposed through UI Automation on Windows, reaches VoiceOver on macOS only on the first page shown (#277, in Uno's macOS bridge), and is a plain panel on Linux AT-SPI (#287) |
 | KumikoUI.Uno | WebAssembly (`net10.0-browserwasm`) | current evergreen browsers | any OS (`wasm-tools` workload) | CI build (trimmed publish); checked interactively in Chromium, including 100,000 rows |
-| KumikoUI.Uno | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build; checked on an iPhone simulator; known issue: the sample shell sits under the system bars (#280) |
-| KumikoUI.Uno | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build; checked on an Android 15 emulator; known issues: the filter popup's search box gets no soft keyboard (#275), a touch column reorder does not work (#276), a Release build starts slowly (#278), and the sample shell sits under the system bars (#280) |
+| KumikoUI.Uno | iOS (`net10.0-ios`) | 17.0 | macOS (Xcode) | CI build; checked on an iPhone simulator |
+| KumikoUI.Uno | Android (`net10.0-android`) | API 24 (Android 7.0) | any OS | CI build; checked on an Android 15 emulator, including Gboard composition; touch column reorder is still to be confirmed on a physical phone (#276) |
 | KumikoUI.Uno | Windows App SDK (`net10.0-windows10.0.26100`) | 10.0.19041 | Windows | CI build only; not yet run on a device |
 
-"App build host" is where an app for that head can be built; the libraries themselves are compiled and packed for every head on Windows in CI. "CI build" means compiled and packed in CI. The device results come from the verification passes of 2026-11-13 and are written up, with their known issues, in [docs/maui-verification.md](docs/maui-verification.md) and [docs/uno/verification.md](docs/uno/verification.md). KumikoUI.Uno has no Mac Catalyst head: Uno serves macOS through the desktop head.
+"App build host" is where an app for that head can be built; the libraries themselves are compiled and packed for every head on Windows in CI. "CI build" means compiled and packed in CI. The device results come from the verification passes of 2026-11-13 (both hosts) and 2026-11-17 (Uno desktop) and are written up, with their known issues, in [docs/maui-verification.md](docs/maui-verification.md) and [docs/uno/verification.md](docs/uno/verification.md). KumikoUI.Uno has no Mac Catalyst head: Uno serves macOS through the desktop head.
 
-> **1.0.0-preview.1 is a prerelease of all four packages.** The API may still change before 1.0.0, and the compatibility promise of [docs/VERSIONING.md](docs/VERSIONING.md) starts with 1.0.0. **KumikoUI.Uno is the least verified host.** It shares its engine, its API and most of its input code with the MAUI host, and the sample app runs on its WebAssembly, iOS and Android heads, but its heads have not all been walked end to end: the desktop head has had no interactive pass (#274), Windows and Linux have not been run, and several input and accessibility problems on the desktop and mobile heads are open (#275 to #278, #280). See [docs/uno/verification.md](docs/uno/verification.md). KumikoUI.Core, KumikoUI.SkiaSharp and KumikoUI.Maui have had the device passes listed above.
+The open KumikoUI.Uno verification items are tracked in the [1.0.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/5): the macOS desktop hands-on pass (#274), touch column reorder on a physical Android phone (#276), the macOS accessibility tree (#277), the Linux AT-SPI table role (#287), the Android head build docs (#292) and the Uno device matrix (#67).
 
 **Minimum OS versions** are defined once in `Directory.Build.props` (`KumikoMin*Version`) and apply to every library, sample and head. They are re-baselined at each .NET major release, and every change is called out as breaking in the [CHANGELOG](CHANGELOG.md).
 
@@ -155,10 +155,10 @@ The grid, its columns and its options are the same on both hosts. What differs i
 1. Add the package (it brings in `KumikoUI.Core` and `KumikoUI.SkiaSharp`):
 
    ```shell
-   dotnet add package KumikoUI.Maui --prerelease
+   dotnet add package KumikoUI.Maui
    ```
 
-   While only prereleases exist, `--prerelease` (or `--version 1.0.0-preview.1`, or `Version="1.0.0-preview.1"` in a `PackageReference`) is required; without it NuGet finds no stable version. The packages depend on each other at their exact version, so a mismatched set does not restore.
+   The packages depend on each other at their exact version, so a mismatched set does not restore.
 
 2. Register KumikoUI in `MauiProgram.cs`:
 
@@ -211,10 +211,8 @@ The grid, its columns and its options are the same on both hosts. What differs i
 1. Add the package:
 
    ```shell
-   dotnet add package KumikoUI.Uno --prerelease
+   dotnet add package KumikoUI.Uno
    ```
-
-   While only prereleases exist, `--prerelease` (or `--version 1.0.0-preview.1`, or `Version="1.0.0-preview.1"` in a `PackageReference`) is required.
 
 2. In the app project, make Uno use the SkiaSharp major KumikoUI is built with, and turn on the SkiaSharp canvas (Uno.Sdk defaults to SkiaSharp 3.x, and the app must resolve one SkiaSharp major):
 
@@ -233,7 +231,7 @@ The grid, its columns and its options are the same on both hosts. What differs i
    </ItemGroup>
    ```
 
-   `samples/SampleApp.Uno/SampleApp.Uno.csproj` is a complete, working project file.
+   KumikoUI.Uno is built with Uno.Sdk 7 (`7.0.22` in `global.json`); SkiaSharp 4.157.0 needs Uno.Sdk 7. On Uno.Sdk 7.0.22 the app may also need explicit `HarfBuzzSharp.NativeAssets.*` references at 14.4.0.200 for its heads, because the SDK adds them at 14.4.0.100 and restore fails with NU1605. `samples/SampleApp.Uno/SampleApp.Uno.csproj` is a complete, working project file, these references included.
 
 3. Declare the grid. Uno needs no startup call:
 
@@ -970,7 +968,7 @@ public sealed class UpperCaseEditorDescriptor : EditorDescriptor
 }
 ```
 
-The precedence is `EditorFactory`, then `EditorDescriptor`, then a `CustomCellRenderer` that implements `ICellEditorProvider`, then a text box. Upgrading from a preview that had the `(value, bounds)` shapes: replace `CustomEditorFactory = (value, bounds) => ...` with `EditorFactory = context => ...`, read `context.Value` and `context.Bounds`, and override or implement `CreateEditor(CellEditorContext)` in place of `CreateEditor(object?, KumikoRect)` (see the [changelog](CHANGELOG.md)).
+The precedence is `EditorFactory`, then `EditorDescriptor`, then a `CustomCellRenderer` that implements `ICellEditorProvider`, then a text box. Upgrading from `1.0.0-preview.1` or earlier, which had the `(value, bounds)` shapes: replace `CustomEditorFactory = (value, bounds) => ...` with `EditorFactory = context => ...`, read `context.Value` and `context.Bounds`, and override or implement `CreateEditor(CellEditorContext)` in place of `CreateEditor(object?, KumikoRect)` (see the [changelog](CHANGELOG.md)).
 
 A custom editor's value is committed when it implements `IValueEditor` (`Value`, `HasValue`, `IsDirty`); all built-in editors do.
 

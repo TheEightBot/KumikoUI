@@ -10,19 +10,19 @@ KumikoUI follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html
 
 | Change | Before 1.0 (`0.y.z`) | From 1.0 |
 |---|---|---|
-| Breaking change to public API or documented behaviour | minor (`0.2.0` → `0.3.0`) | major |
+| Breaking change to public API or documented behavior | minor (`0.2.0` → `0.3.0`) | major |
 | New feature, backward compatible | minor or patch | minor |
 | Bug fix, backward compatible | patch | patch |
 | Raised minimum OS, .NET or SkiaSharp major | minor | major |
 
 Before 1.0 the API is still settling: breaking changes can land in any minor release and are always listed under **Changed** with a **Breaking:** prefix in the [CHANGELOG](../CHANGELOG.md).
 
-Prerelease versions (`1.0.0-preview.1`, `0.2.0-alpha.0.8`) carry no compatibility promise. A `-preview.N` package is a candidate for the stable version, not a stable API: public API, documented behavior and package dependencies can change between `1.0.0-preview.1`, later previews and `1.0.0`, and the "From 1.0" column above applies only from `1.0.0`. Changes between previews are listed in the [CHANGELOG](../CHANGELOG.md) (breaking ones with the **Breaking:** prefix), but a preview is not held to the deprecation rules below. Install a preview explicitly (`--prerelease` or `--version`); NuGet does not pick one when a stable version exists.
+Prerelease versions (`1.0.0-preview.1`, `0.2.0-alpha.0.8`, or a later `1.1.0-preview.1`) carry no compatibility promise. A `-preview.N` package is a candidate for its stable version, not a stable API: public API, documented behavior and package dependencies can change between previews and the stable version they lead to. The "From 1.0" column above applies to stable versions, starting with `1.0.0` (2026-11-25). Changes between previews are listed in the [CHANGELOG](../CHANGELOG.md) (breaking ones with the **Breaking:** prefix), but a preview is not held to the deprecation rules below. Install a preview explicitly (`--prerelease` or `--version`); NuGet does not pick one when a stable version exists.
 
 ## What counts as public API
 
 - Every public type and member in the four packages, including XAML-settable properties and events.
-- Documented behaviour: defaults, event order, rendering and input semantics described in the README or XML docs.
+- Documented behavior: defaults, event order, rendering and input semantics described in the README or XML docs.
 - The supported platforms and minimum versions in the README.
 
 Not covered: members marked internal or experimental, sample code, and pixel-exact rendering output (anti-aliasing can change with SkiaSharp updates).
@@ -31,11 +31,11 @@ From 1.0, the public surface is tracked with API analyzers and package validatio
 
 ## Deprecation
 
-From 1.0, a public API is removed only after it has been marked `[Obsolete]` with a message pointing to the replacement for at least one minor release; removal happens in the next major. Behaviour changes that cannot be deprecated are called out in the CHANGELOG and, where possible, kept behind an opt-in setting for one minor release.
+From 1.0, a public API is removed only after it has been marked `[Obsolete]` with a message pointing to the replacement for at least one minor release; removal happens in the next major. Behavior changes that cannot be deprecated are called out in the CHANGELOG and, where possible, kept behind an opt-in setting for one minor release.
 
 ## Support window
 
 - **.NET:** each KumikoUI major targets the current .NET LTS release (currently .NET 10, supported until November 2028). When .NET moves to a new LTS, the next KumikoUI major moves with it; the previous major gets security fixes for six months.
 - **Minimum OS versions** are re-baselined at each .NET major release; see the README's "Supported platforms".
-- **Fixes:** bug and security fixes ship in the latest minor of the current major. Before 1.0.0 (the `0.x` releases and the `1.0.0-preview.N` prereleases), only the latest release is supported (see [SECURITY.md](../SECURITY.md)).
+- **Fixes:** bug and security fixes ship in the latest minor of the current major, currently `1.0.x` (see [SECURITY.md](../SECURITY.md)). Before 1.0.0 (the `0.x` releases and the `1.0.0-preview.N` prereleases), only the latest release was supported, and those versions get no more fixes.
 - **SkiaSharp, .NET MAUI and Uno Platform:** KumikoUI moves to new majors of its dependencies in its own minor (before 1.0) or major (from 1.0) releases, and states the required versions in the CHANGELOG.
