@@ -18,11 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 - KumikoUI.Uno ignores a mouse press or release whose update kind names no button and with no left, right or middle button pressed, so a mouse wheel notch on Uno's X11 host no longer selects the cell under the pointer or opens its editor. Touch and pen are unaffected (#286). The cause is upstream: Uno's X11 host does not turn XInput2 buttons 4 to 7 into wheel deltas ([unoplatform/uno#26709](https://github.com/unoplatform/uno/issues/26709)), so the wheel itself still does not scroll there until that is fixed.
-
-### Fixed
 - The Uno sample's navigation shell no longer draws the pane's menu button over the page title on a phone, and its pane item labels are no longer clipped in landscape: the `NavigationView` now has a header row and switches directly from the minimal pane to the expanded one at 640 effective pixels (#291).
-
-### Fixed
 - On touch, a finger's header resize grip reaches at most a fifth of a column into it on each side of a border (at least 8 px, still at most half of `TouchColumnResizeGripWidth`), where it reached a quarter, so pressing near the right of a narrow header starts a reorder instead of a resize and the two grips that cut into a column leave at least 60 percent of it in the middle. The default `KumikoStyle.TouchColumnResizeGripWidth` is now 24 px (was 32), so a finger's grip reaches 12 px into a column instead of 16 and a press 16 px left of a header's right edge reorders the column. Set it back to 32 for the old touch grip. The mouse and pen grip is unchanged (#289).
 
 ## [1.0.0-preview.1] - 2026-11-14
