@@ -215,7 +215,7 @@ public class DrawnFilterPopupTests
     [Fact]
     public void Ok_WithoutChanges_KeepsConditionsSetFromCode()
     {
-        var (popup, manager, source, column) = Open(20);
+        var (_, manager, source, column) = Open(20);
         source.SetColumnFilter(column, ConditionFilter(column));
 
         Press(manager, OkX, ButtonsY);
@@ -231,7 +231,7 @@ public class DrawnFilterPopupTests
     [Fact]
     public void Ok_AfterChangingTheChecklist_KeepsConditionsAndSetsTheValues()
     {
-        var (popup, manager, source, column) = Open(20);
+        var (_, manager, source, column) = Open(20);
         source.SetColumnFilter(column, ConditionFilter(column));
 
         Press(manager, ItemX, RowY(0)); // uncheck V00000
@@ -247,7 +247,7 @@ public class DrawnFilterPopupTests
     [Fact]
     public void Ok_WithoutConditions_AllSelected_StillRemovesTheFilter()
     {
-        var (popup, manager, source, column) = Open(20);
+        var (_, manager, source, column) = Open(20);
         source.SetColumnFilter(column, new FilterDescription(column) { SelectedValues = Enumerable.Range(0, 20).Select(Value).ToHashSet() });
 
         Press(manager, OkX, ButtonsY);
@@ -258,7 +258,7 @@ public class DrawnFilterPopupTests
     [Fact]
     public void Clear_RemovesTheWholeFilter_IncludingConditions()
     {
-        var (popup, manager, source, column) = Open(20);
+        var (_, manager, source, column) = Open(20);
         source.SetColumnFilter(column, ConditionFilter(column));
 
         Press(manager, ClearX, ButtonsY);
