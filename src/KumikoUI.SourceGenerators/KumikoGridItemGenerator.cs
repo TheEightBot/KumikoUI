@@ -85,6 +85,8 @@ public sealed class KumikoGridItemGenerator : IIncrementalGenerator
             }
         }
 
+        var columns = AnalyzeColumns(type, ct);
+
         string sanitized = Sanitize(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", ""));
         return new GridItemModel(
             HintName: $"KumikoAccessors.{sanitized}.g.cs",
@@ -92,7 +94,136 @@ public sealed class KumikoGridItemGenerator : IIncrementalGenerator
             TypeName: typeName,
             IsValueType: type.IsValueType,
             Properties: new EquatableArray<PropertyModel>(properties.ToImmutableArray()),
+            Columns: columns,
             Diagnostic: null);
+    }
+
+    /// <summary>
+    /// The column metadata of the readable public properties, base type properties first in declaration order; an
+    /// override or 'new' member keeps the position of the member it replaces. DataAnnotations attributes are read here,
+    /// at compile time, so generating columns needs no reflection.
+    /// </summary>
+    private static EquatableArray<ColumnModel> AnalyzeColumns(INamedTypeSymbol type, CancellationToken ct)
+    {
+        var chain = new List<INamedTypeSymbol>();
+        for (INamedTypeSymbol? t = type; t != null && t.SpecialType is not (SpecialType.System_Object or SpecialType.System_ValueType); t = t.BaseType)
+            chain.Add(t);
+        chain.Reverse();
+
+        var columns = new List<ColumnModel>();
+        var index = new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
+        foreach (var t in chain)
+        {
+            ct.ThrowIfCancellationRequested();
+            foreach (var property in t.GetMembers().OfType<IPropertySymbol>().Where(p => IsSupported(p) && CanRead(p)))
+            {
+                var column = DescribeColumn(property);
+                if (index.TryGetValue(property.Name, out int at))
+                    columns[at] = column;
+                else
+                {
+                    index[property.Name] = columns.Count;
+                    columns.Add(column);
+                }
+            }
+        }
+        return new EquatableArray<ColumnModel>(columns.ToImmutableArray());
+    }
+
+    private static ColumnModel DescribeColumn(IPropertySymbol property)
+    {
+        var display = FindAttribute(property, "System.ComponentModel.DataAnnotations.DisplayAttribute");
+        var displayFormat = FindAttribute(property, "System.ComponentModel.DataAnnotations.DisplayFormatAttribute");
+        var editable = FindAttribute(property, "System.ComponentModel.DataAnnotations.EditableAttribute");
+        var readOnly = FindAttribute(property, "System.ComponentModel.ReadOnlyAttribute");
+        var browsable = FindAttribute(property, "System.ComponentModel.BrowsableAttribute");
+
+        var resourceType = Named(display, "ResourceType") as ITypeSymbol;
+        bool dynamic = property.Type.TypeKind == TypeKind.Dynamic;
+
+        bool isReadOnly = !CanWrite(property)
+                          || FirstArgument(editable) is false
+                          || FirstArgument(readOnly) is true;
+        bool autoGenerate = Named(display, "AutoGenerateField") is not false
+                            && FirstArgument(browsable) is not false;
+
+        return new ColumnModel(
+            Name: property.Name,
+            PropertyType: dynamic ? "object" : property.Type.ToDisplayString(TypeFormat),
+            DisplayName: Text(Named(display, "Name") as string, resourceType),
+            ShortName: Text(Named(display, "ShortName") as string, resourceType),
+            Description: Text(Named(display, "Description") as string, resourceType),
+            Order: Named(display, "Order") as int?,
+            Format: Named(displayFormat, "DataFormatString") is string format ? Literal(format) : null,
+            IsReadOnly: isReadOnly,
+            AutoGenerate: autoGenerate,
+            EnumValues: EnumValues(property.Type));
+    }
+
+    /// <summary>The attribute on the property or, for an override, on the member it overrides.</summary>
+    private static AttributeData? FindAttribute(IPropertySymbol property, string fullName)
+    {
+        for (IPropertySymbol? p = property; p != null; p = p.OverriddenProperty)
+        {
+            foreach (var attribute in p.GetAttributes())
+            {
+                if (attribute.AttributeClass?.ToDisplayString() == fullName)
+                    return attribute;
+            }
+        }
+        return null;
+    }
+
+    private static object? Named(AttributeData? attribute, string name)
+    {
+        if (attribute == null) return null;
+        foreach (var argument in attribute.NamedArguments)
+        {
+            if (argument.Key == name)
+                return argument.Value.Kind == TypedConstantKind.Error ? null : argument.Value.Value;
+        }
+        return null;
+    }
+
+    private static object? FirstArgument(AttributeData? attribute) =>
+        attribute is { ConstructorArguments.Length: > 0 } && attribute.ConstructorArguments[0].Kind != TypedConstantKind.Error
+            ? attribute.ConstructorArguments[0].Value
+            : null;
+
+    /// <summary>
+    /// A C# expression for a display string: with a <c>ResourceType</c> that has a static string property of that name,
+    /// a read of it (so a localized resource is read in the current culture), else the literal text.
+    /// </summary>
+    private static string? Text(string? value, ITypeSymbol? resourceType)
+    {
+        if (value == null) return null;
+        if (resourceType is INamedTypeSymbol resources
+            && resources.GetMembers(value).OfType<IPropertySymbol>().FirstOrDefault() is { IsStatic: true } property
+            && property.Type.SpecialType == SpecialType.System_String
+            && property.GetMethod is { } get && IsAccessible(get.DeclaredAccessibility) && IsAccessible(resources.DeclaredAccessibility))
+        {
+            return $"{resources.ToDisplayString(TypeFormat)}.{Identifier(property.Name)}";
+        }
+        return Literal(value);
+    }
+
+    private static string Literal(string value) => SymbolDisplay.FormatLiteral(value, quote: true);
+
+    /// <summary>For an enum or nullable enum, an array expression of its values (aliases once), else null.</summary>
+    private static string? EnumValues(ITypeSymbol type)
+    {
+        if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable)
+            type = nullable.TypeArguments[0];
+        if (type.TypeKind != TypeKind.Enum) return null;
+
+        string enumName = type.ToDisplayString(TypeFormat);
+        var seen = new HashSet<object>();
+        var values = new List<string>();
+        var fields = type.GetMembers().OfType<IFieldSymbol>()
+            .Where(f => f.HasConstantValue && f.ConstantValue != null && seen.Add(f.ConstantValue));
+        foreach (var field in fields)
+            values.Add($"{enumName}.{Identifier(field.Name)}");
+        return "new object[] { " + string.Join(", ", values) + " }";
     }
 
     private static bool CanRead(IPropertySymbol property) =>
@@ -146,7 +277,7 @@ public sealed class KumikoGridItemGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.AppendLine("    [global::System.CodeDom.Compiler.GeneratedCode(\"KumikoUI.SourceGenerators\", \"1.0\")]");
         sb.AppendLine("    [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]");
-        sb.AppendLine($"    internal sealed class {item.ClassName} : global::KumikoUI.Core.Data.IKumikoAccessorProvider");
+        sb.AppendLine($"    internal sealed class {item.ClassName} : global::KumikoUI.Core.Data.IKumikoAccessorProvider, global::KumikoUI.Core.Data.IKumikoColumnMetadataProvider");
         sb.AppendLine("    {");
         sb.AppendLine("        private static readonly global::System.Collections.Generic.Dictionary<string, global::KumikoUI.Core.Data.KumikoPropertyAccessor> s_accessors =");
         sb.AppendLine("            new global::System.Collections.Generic.Dictionary<string, global::KumikoUI.Core.Data.KumikoPropertyAccessor>(global::System.StringComparer.OrdinalIgnoreCase)");
@@ -171,11 +302,35 @@ public sealed class KumikoGridItemGenerator : IIncrementalGenerator
         sb.AppendLine("        public global::KumikoUI.Core.Data.KumikoPropertyAccessor? GetAccessor(global::System.Type itemType, string propertyName) =>");
         sb.AppendLine("            s_accessors.TryGetValue(propertyName, out var accessor) ? accessor : null;");
         sb.AppendLine();
+        // Built on each call: display texts read from resources follow the current culture.
+        sb.AppendLine("        public global::System.Collections.Generic.IReadOnlyList<global::KumikoUI.Core.Data.KumikoColumnMetadata>? GetColumns(global::System.Type itemType) =>");
+        sb.AppendLine("            new global::KumikoUI.Core.Data.KumikoColumnMetadata[]");
+        sb.AppendLine("            {");
+        foreach (var c in item.Columns)
+        {
+            var init = new List<string>();
+            if (c.DisplayName != null) init.Add($"DisplayName = {c.DisplayName}");
+            if (c.ShortName != null) init.Add($"ShortName = {c.ShortName}");
+            if (c.Description != null) init.Add($"Description = {c.Description}");
+            if (c.Order is int order) init.Add($"Order = {order.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+            if (c.Format != null) init.Add($"Format = {c.Format}");
+            if (c.IsReadOnly) init.Add("IsReadOnly = true");
+            if (!c.AutoGenerate) init.Add("AutoGenerate = false");
+            if (c.EnumValues != null) init.Add($"EnumValues = {c.EnumValues}");
+            string body = init.Count == 0 ? "" : " { " + string.Join(", ", init) + " }";
+            sb.AppendLine($"                new global::KumikoUI.Core.Data.KumikoColumnMetadata(\"{c.Name}\", typeof({c.PropertyType})){body},");
+        }
+        sb.AppendLine("            };");
+        sb.AppendLine();
         sb.AppendLine("#pragma warning disable CA2255 // registering accessors at module load is the intent");
         sb.AppendLine("        [global::System.Runtime.CompilerServices.ModuleInitializer]");
         sb.AppendLine("#pragma warning restore CA2255");
-        sb.AppendLine("        internal static void Register() =>");
-        sb.AppendLine($"            global::KumikoUI.Core.Data.KumikoAccessorRegistry.Register(typeof({item.TypeName}), new {item.ClassName}());");
+        sb.AppendLine("        internal static void Register()");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            var provider = new {item.ClassName}();");
+        sb.AppendLine($"            global::KumikoUI.Core.Data.KumikoAccessorRegistry.Register(typeof({item.TypeName}), provider);");
+        sb.AppendLine($"            global::KumikoUI.Core.Data.KumikoColumnMetadataRegistry.Register(typeof({item.TypeName}), provider);");
+        sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine("}");
         return sb.ToString();
@@ -188,10 +343,16 @@ internal sealed record GridItemModel(
     string TypeName,
     bool IsValueType,
     EquatableArray<PropertyModel> Properties,
+    EquatableArray<ColumnModel> Columns,
     DiagnosticInfo? Diagnostic)
 {
     public static GridItemModel Fail(DiagnosticInfo diagnostic) =>
-        new("", "", "", false, default, diagnostic);
+        new("", "", "", false, default, default, diagnostic);
 }
 
 internal sealed record PropertyModel(string Name, string Identifier, string PropertyType, string CastType, bool CanRead, bool CanWrite);
+
+/// <summary>Column metadata of one property; the text members are C# expressions (literals or resource reads).</summary>
+internal sealed record ColumnModel(
+    string Name, string PropertyType, string? DisplayName, string? ShortName, string? Description,
+    int? Order, string? Format, bool IsReadOnly, bool AutoGenerate, string? EnumValues);

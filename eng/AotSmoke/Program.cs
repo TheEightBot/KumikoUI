@@ -118,6 +118,15 @@ for (var y = 0; y < Height && distinct.Count < 8; y += 3)
 
 Check(distinct.Count > 1, "the rendered frame is not blank");
 
+// Generated columns (#315): metadata from the [KumikoGridItem] generator, DataAnnotations read at compile time.
+var generatedColumns = KumikoColumnFactory.FromType(typeof(Employee));
+Check(generatedColumns.Select(c => c.PropertyName).SequenceEqual(new[] { "Salary", "Name", "Department", "Hired", "Active" }),
+    "generated columns follow [Display(Order)], then declaration order");
+Check(generatedColumns[0].Header == "Pay" && generatedColumns[0].Format == "C0" && generatedColumns[0].ColumnType == KumikoColumnType.Numeric,
+    "generated Salary column uses [Display] and [DisplayFormat]");
+Check(generatedColumns[3].ColumnType == KumikoColumnType.Date && generatedColumns[4].ColumnType == KumikoColumnType.Boolean,
+    "generated Date and Boolean columns");
+
 Console.WriteLine($"AOT smoke OK: {source.RowCount} visible rows, {distinct.Count}+ distinct colors in the frame.");
 return 0;
 
@@ -138,6 +147,8 @@ internal sealed class Employee
 
     public string Department { get; set; } = "";
 
+    [System.ComponentModel.DataAnnotations.Display(Name = "Pay", Order = 0)]
+    [System.ComponentModel.DataAnnotations.DisplayFormat(DataFormatString = "{0:C0}")]
     public int Salary { get; set; }
 
     public DateTime Hired { get; set; }
