@@ -53,17 +53,98 @@ public class TouchColumnReorderTests
     }
 
     [Fact]
-    public void TouchLongPress_OnAHeader_IsAContextRequest_NotADragStart()
+    public void TouchLongPress_OnAHeader_ThenDrag_ReordersTheColumn_AndRaisesNoContextRequest()
     {
-        // The host fires LongPress after 500 ms without movement; a finger that holds the header that long gets the
-        // header menu, and the drag that follows the hold does not start a reorder.
+        // The host fires LongPress after 500 ms without movement; a finger that holds the header and then drags
+        // lifts the column like a row long press lifts a row, and the menu does not open (#288).
+        var g = new InputGrid();
+        int requests = 0;
+        var reordered = new List<KumikoColumnReorderedEventArgs>();
+        g.Input.ContextRequested += (_, _) => requests++;
+        g.Input.ColumnReordered += (_, e) => reordered.Add(e);
+
+        g.Pointer(InputAction.Pressed, 60, InputGrid.HeaderY, deviceType: Touch);
+        g.Pointer(InputAction.LongPress, 60, InputGrid.HeaderY, deviceType: Touch);
+        Assert.Equal(-1, g.Input.DragColumnIndex); // held, not yet dragging
+        g.Pointer(InputAction.Moved, 66, InputGrid.HeaderY, deviceType: Touch);
+        Assert.Equal(-1, g.Input.DragColumnIndex); // within the slop
+        g.Pointer(InputAction.Moved, 100, InputGrid.HeaderY, deviceType: Touch);
+        Assert.Equal(0, g.Input.DragColumnIndex);
+        g.Pointer(InputAction.Moved, 200, InputGrid.HeaderY, deviceType: Touch);
+        g.Pointer(InputAction.Released, 200, InputGrid.HeaderY, deviceType: Touch);
+
+        Assert.Equal(0, requests);
+        var e = Assert.Single(reordered);
+        Assert.Equal(0, e.OldIndex);
+        Assert.Same(g.Name, e.Column);
+        Assert.Equal(-1, g.Input.DragColumnIndex);
+        Assert.Equal(KumikoSortDirection.None, g.Name.SortDirection);
+    }
+
+    [Fact]
+    public void TouchLongPress_OnAHeader_ThenRelease_RaisesTheContextRequestOnRelease()
+    {
+        var g = new InputGrid();
+        var requests = new List<KumikoContextRequestedEventArgs>();
+        g.Input.ContextRequested += (_, e) => requests.Add(e);
+
+        g.Pointer(InputAction.Pressed, 60, InputGrid.HeaderY, deviceType: Touch);
+        g.Pointer(InputAction.LongPress, 60, InputGrid.HeaderY, deviceType: Touch);
+        Assert.Empty(requests); // not while the finger is down: it may still drag
+        g.Pointer(InputAction.Released, 61, InputGrid.HeaderY, deviceType: Touch);
+
+        var e = Assert.Single(requests);
+        Assert.Equal(KumikoContextTrigger.LongPress, e.Trigger);
+        Assert.True(e.IsHeader);
+        Assert.Same(g.Name, e.Column);
+        Assert.Equal(-1, g.Input.DragColumnIndex);
+        Assert.Equal(KumikoSortDirection.None, g.Name.SortDirection);
+    }
+
+    [Fact]
+    public void TouchLongPress_OnAHeader_ThenCancel_RaisesNothing()
+    {
         var g = new InputGrid();
         int requests = 0;
         g.Input.ContextRequested += (_, _) => requests++;
+
+        g.Pointer(InputAction.Pressed, 60, InputGrid.HeaderY, deviceType: Touch);
+        g.Pointer(InputAction.LongPress, 60, InputGrid.HeaderY, deviceType: Touch);
+        g.Pointer(InputAction.Cancelled, 60, InputGrid.HeaderY, deviceType: Touch);
+        // The next press is a plain tap again
+        g.Pointer(InputAction.Pressed, 60, InputGrid.HeaderY, deviceType: Touch);
+        g.Pointer(InputAction.Released, 60, InputGrid.HeaderY, deviceType: Touch);
+
+        Assert.Equal(0, requests);
+        Assert.NotEqual(KumikoSortDirection.None, g.Name.SortDirection);
+    }
+
+    [Fact]
+    public void TouchLongPress_OnAHeaderThatCannotReorder_RaisesTheContextRequestAtOnce()
+    {
+        var g = new InputGrid();
+        g.Name.AllowReorder = false;
+        int requests = 0;
+        g.Input.ContextRequested += (_, _) => requests++;
+
         g.Pointer(InputAction.Pressed, 60, InputGrid.HeaderY, deviceType: Touch);
         g.Pointer(InputAction.LongPress, 60, InputGrid.HeaderY, deviceType: Touch);
 
         Assert.Equal(1, requests);
         Assert.Equal(-1, g.Input.DragColumnIndex);
+    }
+
+    [Fact]
+    public void QuickTouchPressAndDrag_BeforeTheLongPress_StillReordersAsBefore()
+    {
+        var g = new InputGrid();
+        int requests = 0;
+        g.Input.ContextRequested += (_, _) => requests++;
+        g.Pointer(InputAction.Pressed, 60, InputGrid.HeaderY, deviceType: Touch);
+        g.Pointer(InputAction.Moved, 90, InputGrid.HeaderY, deviceType: Touch);
+
+        Assert.Equal(0, g.Input.DragColumnIndex);
+        g.Pointer(InputAction.Released, 90, InputGrid.HeaderY, deviceType: Touch);
+        Assert.Equal(0, requests);
     }
 }

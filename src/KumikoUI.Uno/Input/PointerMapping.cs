@@ -61,6 +61,31 @@ internal static class PointerMapping
     };
 
     /// <summary>
+    /// Whether a press or release is not a button event and the grid must ignore it. On Uno's X11 host a wheel notch
+    /// (XInput2 button 4 to 7) arrives as a mouse press whose update kind is <see cref="PointerUpdateKind.Other"/> with
+    /// no button pressed, which would otherwise be taken as a primary press. Touch and pen contacts never name a
+    /// button and are never ignored, nor are other actions.
+    /// </summary>
+    /// <param name="action">The Core action the event maps to.</param>
+    /// <param name="deviceType">The Core device type of the pointer.</param>
+    /// <param name="kind"><c>PointerPointProperties.PointerUpdateKind</c>.</param>
+    /// <param name="isLeftPressed"><c>PointerPointProperties.IsLeftButtonPressed</c>.</param>
+    /// <param name="isRightPressed"><c>PointerPointProperties.IsRightButtonPressed</c>.</param>
+    /// <param name="isMiddlePressed"><c>PointerPointProperties.IsMiddleButtonPressed</c>.</param>
+    /// <returns><see langword="true"/> for a mouse press or release that names no button.</returns>
+    public static bool IsUnnamedMouseButtonEvent(
+        InputAction action, KumikoPointerDeviceType deviceType, PointerUpdateKind kind,
+        bool isLeftPressed, bool isRightPressed, bool isMiddlePressed)
+    {
+        if (action is not (InputAction.Pressed or InputAction.Released)) return false;
+        if (deviceType != KumikoPointerDeviceType.Mouse) return false;
+        bool named = kind is PointerUpdateKind.LeftButtonPressed or PointerUpdateKind.LeftButtonReleased
+            or PointerUpdateKind.RightButtonPressed or PointerUpdateKind.RightButtonReleased
+            or PointerUpdateKind.MiddleButtonPressed or PointerUpdateKind.MiddleButtonReleased;
+        return !named && !isLeftPressed && !isRightPressed && !isMiddlePressed;
+    }
+
+    /// <summary>
     /// The button an event is about. The update kind names the button that changed, which is the only way to
     /// know it on a release (no button is pressed any more); otherwise the pressed buttons decide. Hover and
     /// exit carry no button; a contact with no named button (touch, pen) is <see cref="PointerButton.Primary"/>.

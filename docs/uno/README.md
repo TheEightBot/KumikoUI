@@ -312,7 +312,7 @@ These hold today. The 1.0 plan is in [docs/ROADMAP.md](../ROADMAP.md).
 - **Screen readers on the desktop head depend on Uno's host.** Windows exposes the grid through UI Automation. On
   macOS, Uno 6.7's accessibility bridge loses the whole window's tree, grid included, once the app navigates to another
   page, and from launch in a Debug build that uses Hot Design (`UseStudio()`), so VoiceOver reaches the grid only on the
-  page the app opens with. Linux (X11) has no AT-SPI bridge in Uno 6.7, so Orca sees nothing of the app. Details are in
+  page the app opens with. Linux (X11) had no AT-SPI bridge in Uno 6.7. Uno 7.0.65 has one, and the grid is in the AT-SPI tree as a single `panel` with its name and description but no table, selection or action interface and no focus state, so Orca cannot navigate it as a grid yet. Details are in
   [verification.md](verification.md) (F4, F12).
 - **Right to left is not supported.** The grid always lays out and draws left to right, also inside a right-to-left page,
   and Hebrew or Arabic text is drawn without bidi reordering (#80).
