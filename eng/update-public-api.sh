@@ -96,12 +96,19 @@ for name in "${projects[@]}"; do
   for tfm in $tfms; do
     mkdir -p "$dir/PublicAPI/$tfm"
     only="$dir/PublicAPI/$tfm/PublicAPI.Unshipped.txt"
-    { LC_ALL=C comm -23 "$work/$tfm.txt" "$common"; generated_for "$name" "$tfm"; } | LC_ALL=C sort -u > "$only"
+    shipped="$dir/PublicAPI/$tfm/PublicAPI.Shipped.txt"
+    # Generated members already recorded in the head's Shipped file must not be listed again (RS0025).
+    { grep -v '^#' "$shipped" 2>/dev/null || true; } | LC_ALL=C sort -u > "$work/$tfm.shipped.txt"
+    generated_for "$name" "$tfm" | LC_ALL=C sort -u | LC_ALL=C comm -23 - "$work/$tfm.shipped.txt" > "$work/$tfm.generated.txt"
+    { LC_ALL=C comm -23 "$work/$tfm.txt" "$common"; cat "$work/$tfm.generated.txt"; } | LC_ALL=C sort -u > "$only"
     if [ -s "$only" ]; then
-      [ -f "$dir/PublicAPI/$tfm/PublicAPI.Shipped.txt" ] || printf '#nullable enable\n' > "$dir/PublicAPI/$tfm/PublicAPI.Shipped.txt"
+      [ -f "$shipped" ] || printf '#nullable enable\n' > "$shipped"
       echo "   $tfm only: $(wc -l < "$only" | tr -d ' ') members"
+    elif [ -s "$work/$tfm.shipped.txt" ]; then
+      # Nothing new for this head, but its Shipped file still records members: keep the pair (normal after a release).
+      echo "   $tfm only: no new members"
     else
-      rm -f "$only" "$dir/PublicAPI/$tfm/PublicAPI.Shipped.txt"
+      rm -f "$only" "$shipped"
       rmdir "$dir/PublicAPI/$tfm" 2>/dev/null || true
     fi
   done
