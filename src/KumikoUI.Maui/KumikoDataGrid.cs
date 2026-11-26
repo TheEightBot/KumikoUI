@@ -128,6 +128,7 @@ public partial class KumikoDataGrid : ContentView
         _dataSource.ViewUpdated += OnDataSourceViewUpdated;
         // The source is the grid's own, so this never needs removing (KumikoDataGrid.Layout.cs)
         _dataSource.ColumnOrderChanged += OnDataSourceColumnOrderChanged;
+        _dataSource.GroupDescriptionsChanged += OnDataSourceGroupDescriptionsChanged;
 
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;
         _renderer.RedrawRequested += OnRendererRedrawRequested;
