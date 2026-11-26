@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Fixed
+- A column's `HeaderCellStyle.TextAlignment` now aligns the header text (and the text of the column drag ghost) instead of being ignored: Center and Right align within the space left after the sort and filter glyphs, so the text never runs under them. The default is still Left.
 - Pressing OK in a column's filter popup no longer drops the conditions of a `FilterDescription` set from code. OK now updates only the value selection and keeps `Condition1`, `Condition2` and `Combination`; with every value checked it removes the value list but keeps the conditions (the filter is removed only when it has none), and a filter that has conditions and no value list opens with every value checked. Clear still removes the whole filter, conditions included.
 
 ## [1.0.0] - 2026-11-25
