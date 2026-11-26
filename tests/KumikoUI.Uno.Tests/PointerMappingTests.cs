@@ -107,6 +107,33 @@ public class PointerMappingTests
         Assert.Equal(PointerButton.None, PointerMapping.ToPointerButton(action, PointerUpdateKind.RightButtonPressed, true, false));
     }
 
+    // ── IsUnnamedMouseButtonEvent (#286: an X11 wheel notch is a press with no named button) ──
+
+    [Theory]
+    [InlineData(InputAction.Pressed, KumikoPointerDeviceType.Mouse, PointerUpdateKind.Other, false, false, false, true)]
+    [InlineData(InputAction.Released, KumikoPointerDeviceType.Mouse, PointerUpdateKind.Other, false, false, false, true)]
+    [InlineData(InputAction.Pressed, KumikoPointerDeviceType.Mouse, PointerUpdateKind.LeftButtonPressed, true, false, false, false)]
+    [InlineData(InputAction.Pressed, KumikoPointerDeviceType.Mouse, PointerUpdateKind.RightButtonPressed, false, true, false, false)]
+    [InlineData(InputAction.Pressed, KumikoPointerDeviceType.Mouse, PointerUpdateKind.MiddleButtonPressed, false, false, true, false)]
+    [InlineData(InputAction.Released, KumikoPointerDeviceType.Mouse, PointerUpdateKind.LeftButtonReleased, false, false, false, false)]
+    [InlineData(InputAction.Released, KumikoPointerDeviceType.Mouse, PointerUpdateKind.RightButtonReleased, false, false, false, false)]
+    [InlineData(InputAction.Released, KumikoPointerDeviceType.Mouse, PointerUpdateKind.MiddleButtonReleased, false, false, false, false)]
+    [InlineData(InputAction.Pressed, KumikoPointerDeviceType.Mouse, PointerUpdateKind.Other, true, false, false, false)] // a button is down
+    [InlineData(InputAction.Pressed, KumikoPointerDeviceType.Mouse, PointerUpdateKind.Other, false, true, false, false)]
+    [InlineData(InputAction.Pressed, KumikoPointerDeviceType.Touch, PointerUpdateKind.Other, false, false, false, false)]
+    [InlineData(InputAction.Released, KumikoPointerDeviceType.Touch, PointerUpdateKind.Other, false, false, false, false)]
+    [InlineData(InputAction.Pressed, KumikoPointerDeviceType.Pen, PointerUpdateKind.Other, false, false, false, false)]
+    [InlineData(InputAction.Released, KumikoPointerDeviceType.Pen, PointerUpdateKind.Other, false, false, false, false)]
+    [InlineData(InputAction.Moved, KumikoPointerDeviceType.Mouse, PointerUpdateKind.Other, false, false, false, false)]
+    [InlineData(InputAction.Hover, KumikoPointerDeviceType.Mouse, PointerUpdateKind.Other, false, false, false, false)]
+    [InlineData(InputAction.Scroll, KumikoPointerDeviceType.Mouse, PointerUpdateKind.Other, false, false, false, false)]
+    public void IsUnnamedMouseButtonEvent_OnlyAMousePressOrReleaseWithNoButton(
+        InputAction action, KumikoPointerDeviceType device, PointerUpdateKind kind,
+        bool left, bool right, bool middle, bool expected)
+    {
+        Assert.Equal(expected, PointerMapping.IsUnnamedMouseButtonEvent(action, device, kind, left, right, middle));
+    }
+
     // ── ToDeviceType (#99: a touch drag scrolls, a touch long press drags a row) ──
 
     [Theory]

@@ -143,6 +143,10 @@ public partial class KumikoDataGrid
 
         var point = e.GetCurrentPoint(PointerOrigin);
 
+        // A mouse press that names no button is not a click (Uno's X11 host raises a wheel notch this way, F11): no
+        // capture, no click count, no focus change and nothing for Core, so no gesture starts.
+        if (IsUnnamedMousePress(e, point, InputAction.Pressed)) return;
+
         // A second finger while one is down: Core ignores it (and marks it handled); it must not touch the click
         // count or the focus of the press in progress.
         long nowMs = ToMillis(point.Timestamp);
@@ -181,6 +185,13 @@ public partial class KumikoDataGrid
             FocusKeyboardInput();
     }
 
+    private static bool IsUnnamedMousePress(PointerRoutedEventArgs e, PointerPoint point, InputAction action)
+    {
+        var props = point.Properties;
+        return PointerMapping.IsUnnamedMouseButtonEvent(action, PointerMapping.ToDeviceType(e.Pointer.PointerDeviceType),
+            props.PointerUpdateKind, props.IsLeftButtonPressed, props.IsRightButtonPressed, props.IsMiddleButtonPressed);
+    }
+
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
         // WinUI/Uno raises PointerMoved on every hover, even with no button pressed (desktop and WASM
@@ -208,6 +219,11 @@ public partial class KumikoDataGrid
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(PointerOrigin);
+
+        // The release of an ignored press (see OnPointerPressed) is ignored too. A pointer whose press is in progress
+        // always gets its release, so a gesture never stays half-started.
+        if (_pressedPointerId != e.Pointer.PointerId && IsUnnamedMousePress(e, point, InputAction.Released)) return;
+
         if (_pressedPointerId != e.Pointer.PointerId)
         {
             // Another finger lifting: Core ignores it by id. Not the end of the press in progress.

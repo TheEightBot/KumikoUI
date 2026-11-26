@@ -145,7 +145,7 @@ this work lists where.
     button 4 to 7. Uno 6.7's X11 host makes wheel deltas from smooth-scroll valuators only (its button-press branch
     matches detail values that buttons 4 to 7 never have) and raises the press as a pointer press with no named
     button, so nothing scrolls. The grid takes that press as a primary press: one notch selects the cell under the
-    pointer and two quick notches open its editor (F11). Real mice and touchpads send smooth-scroll valuators, which
+    pointer and two quick notches open its editor (F11, fixed in #286: the grid now ignores that press). Real mice and touchpads send smooth-scroll valuators, which
     Xvfb's test pointer cannot.
 22. **IME on Windows and Linux:** on Windows no composing input method was tried before the pass stopped (note 23).
     On Linux, IBus with the Mozc engine ran on the session bus (`org.freedesktop.portal.IBus` was there) and the app was
@@ -281,8 +281,10 @@ Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
 - **F11. A mouse press with no named button is taken as a primary press.** ([#286](https://github.com/TheEightBot/KumikoUI/issues/286)) On Uno's X11 host a wheel
   notch that arrives as an XInput2 press of button 4 to 7 reaches the grid as a pointer press whose update kind is
   `Other` and with no button pressed; `PointerMapping.ToPointerButton` maps that to `PointerButton.Primary`, so the
-  notch selects the cell under the pointer and two notches open its editor (note 21). A mouse press that names no
-  button should be ignored.
+  notch selects the cell under the pointer and two notches open its editor (note 21). **Fixed in #286:** the Uno host
+  ignores a mouse press or release that names no button and has no button pressed, so the notch does nothing. The wheel
+  itself still does not scroll on X11 until Uno turns buttons 4 to 7 into wheel deltas
+  ([unoplatform/uno#26709](https://github.com/unoplatform/uno/issues/26709)).
 - **F12. Linux: the app is not in the AT-SPI tree.** ([#287](https://github.com/TheEightBot/KumikoUI/issues/287)) Uno 6.7's X11 host has no AT-SPI bridge, so
   Orca sees nothing of the app, the grid included (note 27). **Rechecked on Uno 7.0.65 (note 33): the bridge now
   exists** (upstream [unoplatform/uno#24380](https://github.com/unoplatform/uno/issues/24380), PR
