@@ -744,9 +744,9 @@ public class ResizeAndReorderTests
         var reordered = new List<RowReorderedEventArgs>();
         g.Input.RowReordered += (_, e) => reordered.Add(e);
 
-        g.Press(290, g.RowY(2));
-        g.Move(290, g.RowY(2) + 16);
-        g.Release(290, g.RowY(0));
+        g.Press(280, g.RowY(2)); // the handle, left of the vertical scroll bar's band
+        g.Move(280, g.RowY(2) + 16);
+        g.Release(280, g.RowY(0));
 
         var e = Assert.Single(reordered);
         Assert.Equal(2, e.OldIndex);

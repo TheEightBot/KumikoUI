@@ -99,6 +99,8 @@ public static class KumikoTheme
             RowDragHandleHeaderBackgroundColor = new KumikoColor(42, 42, 45),
             HoverOverlayColor = new KumikoColor(255, 255, 255, 20),
             PressedOverlayColor = new KumikoColor(255, 255, 255, 41),
+            ScrollBarThumbColor = new KumikoColor(255, 255, 255, 110),
+            ScrollBarTrackColor = new KumikoColor(255, 255, 255, 20),
         };
     }
 
@@ -184,6 +186,8 @@ public static class KumikoTheme
             RowDragHandleHeaderBackgroundColor = new KumikoColor(0, 0, 80),
             HoverOverlayColor = new KumikoColor(0, 255, 255, 56),
             PressedOverlayColor = new KumikoColor(0, 255, 255, 110),
+            ScrollBarThumbColor = new KumikoColor(0, 255, 255),
+            ScrollBarTrackColor = new KumikoColor(255, 255, 255, 60),
         };
     }
 }

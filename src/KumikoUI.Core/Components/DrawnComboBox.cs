@@ -384,7 +384,7 @@ public sealed class DrawnComboBox : DrawnComponent, IValueEditor
         {
             var thumb = ScrollbarThumb(dropRect);
             byte alpha = _pressTarget == PressTarget.Scrollbar ? (byte)220 : (byte)150;
-            ctx.FillRoundRect(new KumikoRect(dropRect.Right - 5, thumb.Y, 4, thumb.Height), 2,
+            ScrollThumb.Fill(ctx, new KumikoRect(dropRect.Right - 5, thumb.Y, 4, thumb.Height),
                 Paints.Get(color: ArrowColor.WithAlpha(alpha)));
         }
 
@@ -755,19 +755,18 @@ public sealed class DrawnComboBox : DrawnComponent, IValueEditor
     private KumikoRect ScrollbarThumb(KumikoRect dropBounds)
     {
         float content = GetVisibleItems().Count * ItemHeight;
-        float max = MaxDropdownScrollOffset;
-        float thumbHeight = content > 0
-            ? Math.Min(dropBounds.Height, Math.Max(MinThumbHeight, dropBounds.Height * (dropBounds.Height / content)))
-            : dropBounds.Height;
-        float thumbY = dropBounds.Y + (max > 0 ? DropdownScrollOffset / max : 0) * (dropBounds.Height - thumbHeight);
+        float thumbHeight = ScrollThumb.Length(dropBounds.Height, dropBounds.Height, content, MinThumbHeight);
+        float thumbY = ScrollThumb.Start(dropBounds.Y, dropBounds.Height, thumbHeight, DropdownScrollOffset,
+            MaxDropdownScrollOffset);
         return new KumikoRect(dropBounds.Right - ScrollbarHitWidth, thumbY, ScrollbarHitWidth, thumbHeight);
     }
 
     private void ScrollThumbTo(KumikoRect dropBounds, float thumbTop)
     {
-        float track = dropBounds.Height - ScrollbarThumb(dropBounds).Height;
-        if (track <= 0) return;
-        ScrollDropdownTo((thumbTop - dropBounds.Y) / track * MaxDropdownScrollOffset);
+        float offset = ScrollThumb.OffsetAt(thumbTop, dropBounds.Y, dropBounds.Height, ScrollbarThumb(dropBounds).Height,
+            MaxDropdownScrollOffset);
+        if (float.IsNaN(offset)) return;
+        ScrollDropdownTo(offset);
     }
 
     /// <summary>The index in the visible list of the item at viewport y <paramref name="y"/>, or -1.</summary>

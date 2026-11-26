@@ -311,6 +311,49 @@ public sealed class KumikoStyle
     /// </summary>
     public bool EnableAnimations { get; set => Set(ref field, value); } = true;
 
+    // ── Scroll bars ──────────────────────────────────────────────
+    /// <summary>
+    /// When the vertical scroll bar is drawn, at the right edge of the scrolling rows (below the header, the top
+    /// summaries and the frozen rows, above a pinned summary footer). Default: <see cref="KumikoScrollBarVisibility.Auto"/>,
+    /// an overlay shown while the grid scrolls or a mouse rests over it.
+    /// </summary>
+    public KumikoScrollBarVisibility VerticalScrollBarVisibility { get; set => Set(ref field, value); }
+
+    /// <summary>
+    /// When the horizontal scroll bar is drawn, at the bottom of the rows (above a pinned summary footer), across the
+    /// scrolling columns between the left- and right-frozen panes. Default: <see cref="KumikoScrollBarVisibility.Auto"/>.
+    /// </summary>
+    public KumikoScrollBarVisibility HorizontalScrollBarVisibility { get; set => Set(ref field, value); }
+
+    /// <summary>
+    /// Thickness in pixels of a scroll bar's thumb at rest and while a finger scrolls. Default: 4.
+    /// </summary>
+    public float ScrollBarThickness { get; set => Set(ref field, value); } = 4f;
+
+    /// <summary>
+    /// Thickness in pixels of a scroll bar while a mouse or pen hovers or drags it: its track is drawn this thick, and
+    /// this is the width of the edge band a mouse or pen can press (a finger pans through it). Default: 10.
+    /// </summary>
+    public float ScrollBarExpandedThickness { get; set => Set(ref field, value); } = 10f;
+
+    /// <summary>
+    /// The shortest a scroll bar's thumb gets, in pixels, however long the content (never longer than the track).
+    /// Default: 32.
+    /// </summary>
+    public float ScrollBarMinThumbLength { get; set => Set(ref field, value); } = 32f;
+
+    /// <summary>
+    /// Color of a scroll bar's thumb; a fading bar scales its alpha. Default: black at 43% opacity (the Dark theme
+    /// uses white).
+    /// </summary>
+    public KumikoColor ScrollBarThumbColor { get; set => Set(ref field, value); } = new(0, 0, 0, 110);
+
+    /// <summary>
+    /// Color of a scroll bar's track, drawn only while a mouse or pen hovers or drags the bar. Default: black at 8%
+    /// opacity (the Dark theme uses white).
+    /// </summary>
+    public KumikoColor ScrollBarTrackColor { get; set => Set(ref field, value); } = new(0, 0, 0, 20);
+
     // ── Icons ────────────────────────────────────────────────────
     /// <summary>
     /// Draws every built-in glyph of the grid (group chevrons, sort arrows, filter buttons, grouping chip buttons,
