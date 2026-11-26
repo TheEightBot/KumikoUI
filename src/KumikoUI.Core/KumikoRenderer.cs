@@ -11,7 +11,7 @@ namespace KumikoUI.Core;
 /// Renders the entire grid (header, rows, grid lines, selection, frozen columns)
 /// using the platform-independent IDrawingContext.
 /// </summary>
-public sealed class KumikoRenderer : IDisposable
+public sealed partial class KumikoRenderer : IDisposable
 {
     private readonly KumikoLayoutEngine _layout = new();
     private readonly PaintCache _paintCache = new();
@@ -280,8 +280,9 @@ public sealed class KumikoRenderer : IDisposable
         // Frozen panes that do not fit the viewport give columns back to the scrolling pane (#268).
         FrozenPanes.Resolve(columns, style, scroll.ViewportWidth);
         scroll.ContentWidth = _layout.GetContentWidth(columns) + handleOffset + rightHandleWidth;
+        float loadMoreHeight = LoadMoreRowLayout.GetHeight(dataSource, style); // the load-more row (#318)
         scroll.ContentHeight = _layout.GetContentHeight(dataSource.RowCount, style)
-            + groupPanelOffset + topSummaryHeight + bottomSummaryHeight;
+            + groupPanelOffset + topSummaryHeight + bottomSummaryHeight + loadMoreHeight;
         scroll.ClampOffset();
 
         _paintCache.Update(style);
@@ -461,7 +462,7 @@ public sealed class KumikoRenderer : IDisposable
         if (dataSource.BottomSummaryCount > 0 && !style.PinBottomSummaryRows)
         {
             float bottomSummaryY = dataAreaTop + dataSource.RowCount * style.RowHeight - scroll.OffsetY
-                + RowShift(dataSource.RowCount);
+                + RowShift(dataSource.RowCount) + loadMoreHeight;
             DrawTableSummaryRows(ctx, dataSource, allCols, scroll, style, frozenWidth,
                 dataSource.ComputedBottomSummaries, bottomSummaryY, handleOffset);
         }
@@ -495,6 +496,8 @@ public sealed class KumikoRenderer : IDisposable
                 }
             }
             if (_slideAnchor >= 0 && _slideAnchor + 1 >= firstRow && _slideAnchor + 1 <= lastRow) ctx.Restore();
+
+            DrawLoadMoreRow(ctx, dataSource, scroll, style, dataAreaTop, loadMoreHeight, handleOffset, rightHandleWidth);
 
             ctx.Restore();
         }
@@ -570,6 +573,8 @@ public sealed class KumikoRenderer : IDisposable
 
         // Draw any popups (filter, etc.) on top of everything
         popupManager?.DrawPopups(ctx);
+
+        ObserveLoadMore(dataSource, scroll, style); // after the frame: may schedule the next batch (#318)
 
         if (stats != null)
         {

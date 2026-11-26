@@ -5,7 +5,7 @@ namespace KumikoUI.Core.Models;
 /// <summary>
 /// Theme / style settings for the grid renderer.
 /// </summary>
-public sealed class KumikoStyle
+public sealed partial class KumikoStyle
 {
     /// <summary>
     /// A counter incremented whenever a property of this style is set to a different value. The renderer

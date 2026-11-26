@@ -72,20 +72,24 @@ public class KumikoSourceCollectionTests
     }
 
     [Fact]
-    public void Add_OfSeveralItemsAtOnce_RebuildsInsteadOfInsertingOneRow()
+    public void Add_OfSeveralItemsAtOnce_InsertsTheRowsInOneChange()
     {
         var items = new ScriptedList();
         items.AddRange(Rows());
         var source = MakeSource(items);
-        var kinds = new List<KumikoViewChangeKind>();
-        source.ViewChanged += (_, e) => kinds.Add(e.Kind);
+        var changes = new List<KumikoViewChangedEventArgs>();
+        source.ViewChanged += (_, e) => changes.Add(e);
 
         var batch = new List<Row> { new() { Id = "x" }, new() { Id = "y" } };
         items.InsertRange(1, batch);
         items.Raise(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, batch, 1));
 
         Assert.Equal(new[] { "a", "x", "y", "b", "c", "d" }, Ids(source));
-        Assert.Equal(new[] { KumikoViewChangeKind.Rebuild }, kinds);
+        var change = Assert.Single(changes);
+        Assert.Equal(KumikoViewChangeKind.Insert, change.Kind);
+        Assert.Equal(1, change.ViewIndex);
+        Assert.Equal(2, change.Count);
+        Assert.Equal(4, change.MapRow(2)); // "c" moved down by two
     }
 
     [Fact]

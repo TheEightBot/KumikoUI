@@ -32,5 +32,10 @@ public enum HitRegion
     /// <summary>A group summary row.</summary>
     GroupSummaryRow,
     /// <summary>A table summary row.</summary>
-    TableSummaryRow
+    TableSummaryRow,
+    /// <summary>
+    /// The load-more row after the last row (#318): loading, "Load more" or a failed load's retry. It is not a row of
+    /// the view, so the hit's row index is -1.
+    /// </summary>
+    LoadMoreRow
 }

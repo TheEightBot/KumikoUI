@@ -614,6 +614,8 @@ public sealed partial class KumikoSource : IDisposable
             col.TextCache = null;
 
         RequestRebuild();
+        if (_incremental != null || items is Data.IKumikoIncrementalSource)
+            IncrementalLoading.OnItemsReplaced(items); // cancels a batch in flight (#318)
     }
 
     // ── Observable collection support ────────────────────────────
@@ -639,6 +641,7 @@ public sealed partial class KumikoSource : IDisposable
         UnsubscribeFromColumns();
         UnsubscribeFromCollection();
         UnsubscribeFromItemPropertyChanged();
+        _incremental?.OnDetached(); // cancels a batch in flight (#318)
     }
 
     /// <summary>
@@ -673,6 +676,7 @@ public sealed partial class KumikoSource : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _incremental?.OnDisposed(); // cancels a batch in flight (#318)
         UnsubscribeFromColumns();
         UnsubscribeFromCollection();
         UnsubscribeFromItemPropertyChanged();
@@ -819,6 +823,7 @@ public sealed partial class KumikoSource : IDisposable
                 UnsubscribeFromItemPropertyChanged();
                 SubscribeToItemPropertyChanged();
                 InvalidateCellText(); // the same items may now hold anything
+                _incremental?.OnItemsReset(); // cancels a batch in flight (#318)
                 break;
         }
 
@@ -829,15 +834,16 @@ public sealed partial class KumikoSource : IDisposable
         // The collection has already changed, so the old rows come from the record kept since the last
         // notification, not from the (now stale) view.
         var oldRowKeys = _rowKeys;
-        int viewIndex = -1;
+        int viewIndex = -1, rowCountChanged = 1;
         bool rowsChanged = true;
         // A view over a copy follows a single add or remove only while no rebuild is pending, which would not
         // include the change.
         bool incremental = !_viewStale && !(copyView && (IsViewUpdatePending || _pendingRebuild)) &&
-                           TryIncrementalUpdate(e, out viewIndex, out rowsChanged);
+                           TryIncrementalUpdate(e, out viewIndex, out rowCountChanged, out rowsChanged);
         if (incremental)
         {
             _view.RowKeyIndex = null; // the rows move; the index is rebuilt on the next lookup
+            if (rowsChanged) ViewVersion++;
         }
         else if (copyView)
         {
@@ -873,7 +879,7 @@ public sealed partial class KumikoSource : IDisposable
             RaiseStructural(newRowKeys, !incremental
                 ? KumikoViewChangedEventArgs.Rebuild(oldRowKeys!, newRowKeys)
                 : e.Action == NotifyCollectionChangedAction.Add
-                    ? KumikoViewChangedEventArgs.Insert(viewIndex, 1, newRowKeys)
+                    ? KumikoViewChangedEventArgs.Insert(viewIndex, rowCountChanged, newRowKeys)
                     : KumikoViewChangedEventArgs.Remove(viewIndex, 1, newRowKeys));
         }
     }
@@ -2202,19 +2208,22 @@ public sealed partial class KumikoSource : IDisposable
     }
 
     /// <summary>
-    /// Attempts an incremental update of the view indices for a single-item Add or Remove event when no
-    /// sort, grouping or summary is active. Column filters and the filter predicate do not prevent it: an added
-    /// item is tested against them and gets a row only if it passes, and a removed item that has no row only
-    /// shifts the source indices after it. Returns false if a full rebuild is needed.
-    /// <paramref name="viewIndex"/> is the visible row that was inserted or removed; <paramref name="rowsChanged"/>
-    /// is false when the view's rows are the same (the item was filtered out), though source indices moved.
-    /// A view over a copy of the items applies the change to its copy too, so the copy keeps matching the collection.
+    /// Attempts an incremental update of the view indices for an Add (of one item or several contiguous items) or a
+    /// single-item Remove when no sort, grouping or summary is active. Column filters and the filter predicate do not
+    /// prevent it: an added item is tested against them and gets a row only if it passes, and a removed item that has
+    /// no row only shifts the source indices after it. Returns false if a full rebuild is needed.
+    /// <paramref name="viewIndex"/> is the first visible row that was inserted or removed and <paramref name="count"/>
+    /// how many (the visible rows of a multi-item Add are always contiguous); <paramref name="rowsChanged"/> is false
+    /// when the view's rows are the same (every item was filtered out), though source indices moved. An append at the
+    /// end shifts no existing index. A view over a copy of the items applies the change to its copy too, so the copy
+    /// keeps matching the collection.
     /// </summary>
-    private bool TryIncrementalUpdate(NotifyCollectionChangedEventArgs e, out int viewIndex, out bool rowsChanged)
+    private bool TryIncrementalUpdate(NotifyCollectionChangedEventArgs e, out int viewIndex, out int count, out bool rowsChanged)
     {
         viewIndex = -1;
+        count = 1;
         rowsChanged = true;
-        // Only handle single-item Add or Remove
+        // Only handle Add or a single-item Remove
         if (e.Action != NotifyCollectionChangedAction.Add &&
             e.Action != NotifyCollectionChangedAction.Remove)
             return false;
@@ -2240,48 +2249,51 @@ public sealed partial class KumikoSource : IDisposable
             return false;
 
         var indices = _view.ViewIndices;
-        if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems is { Count: 1 })
+        if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems is { Count: > 0 } newItems)
         {
             int sourceIndex = e.NewStartingIndex;
+            int added = newItems.Count;
             if (sourceIndex < 0) return false; // Index not provided — fall back
             if (copy != null)
             {
                 if (sourceIndex > copy.Count) return false;
-                copy.InsertItem(sourceIndex, e.NewItems[0]);
+                for (int i = 0; i < added; i++)
+                    copy.InsertItem(sourceIndex + i, newItems[i]);
                 _view.CollectionVersion = _collectionVersion;
                 _view.SourceIndexByItem = null;
             }
 
-            // The new item gets a row only if it passes the filter predicate and the column filters.
-            bool visible = e.NewItems[0] is { } added && PassesFilters(added, PrepareFilters(comparer: _comparer));
-
-            // Shift existing view indices that are >= the inserted position
-            for (int i = 0; i < indices.Count; i++)
+            // Shift existing view indices that are >= the inserted position. Without a sort the indices ascend, so an
+            // append at the end (every index below the insertion) shifts nothing.
+            int insertAt = indices.Count;
+            if (indices.Count > 0 && indices[indices.Count - 1] >= sourceIndex)
             {
-                if (indices[i] >= sourceIndex)
-                    indices[i]++;
+                insertAt = -1;
+                for (int i = 0; i < indices.Count; i++)
+                {
+                    if (indices[i] < sourceIndex) continue;
+                    if (insertAt < 0) insertAt = i; // the new rows go before the first row after the insertion
+                    indices[i] += added;
+                }
             }
 
-            if (!visible)
+            // The new items get rows, in source order, only if they pass the filter predicate and the column filters.
+            var filters = PrepareFilters(comparer: _comparer);
+            int visible = 0;
+            for (int i = 0; i < added; i++)
+            {
+                if (newItems[i] is { } item && PassesFilters(item, filters))
+                    indices.Insert(insertAt + visible++, sourceIndex + i);
+            }
+
+            if (visible == 0)
             {
                 rowsChanged = false;
                 return true;
             }
 
-            // No sort, so the new row goes at the insertion position: find where to insert in
-            // the view indices to maintain source-order
-            int insertAt = indices.Count;
-            for (int i = 0; i < indices.Count; i++)
-            {
-                if (indices[i] > sourceIndex)
-                {
-                    insertAt = i;
-                    break;
-                }
-            }
-            indices.Insert(insertAt, sourceIndex);
             viewIndex = insertAt;
-
+            count = visible;
             return true;
         }
 
@@ -2337,6 +2349,7 @@ public sealed partial class KumikoSource : IDisposable
     {
         _view = view;
         _viewStale = false;
+        ViewVersion++;
         InvalidateCellText();
     }
 

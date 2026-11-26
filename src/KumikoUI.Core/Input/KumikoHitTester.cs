@@ -173,10 +173,20 @@ public sealed class KumikoHitTester
             }
         }
 
+        // The load-more row (#318) scrolls with the content right after the last row, and the unpinned bottom summary
+        // rows come after it.
+        float loadMoreHeight = dataSource != null ? LoadMoreRowLayout.GetHeight(dataSource, style) : 0;
+        if (loadMoreHeight > 0 && adjustedY >= scrollingRowsTop)
+        {
+            float loadMoreTop = LoadMoreRowLayout.GetTop(dataSource!, style, dataAreaTop, scroll.OffsetY);
+            if (adjustedY >= loadMoreTop && adjustedY < loadMoreTop + loadMoreHeight)
+                return new KumikoHitInfo { Region = HitRegion.LoadMoreRow, ContentX = effectiveContentX, ContentY = contentY };
+        }
+
         // Unpinned bottom summary rows scroll with the content, directly after the last row.
         if (pinnedFooterHeight == 0 && bottomSummaryCount > 0)
         {
-            float bottomSummaryTop = dataAreaTop + totalRows * style.RowHeight - scroll.OffsetY;
+            float bottomSummaryTop = dataAreaTop + totalRows * style.RowHeight - scroll.OffsetY + loadMoreHeight;
             if (adjustedY >= bottomSummaryTop && adjustedY < bottomSummaryTop + bottomSummaryCount * style.SummaryRowHeight)
             {
                 return new KumikoHitInfo { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };

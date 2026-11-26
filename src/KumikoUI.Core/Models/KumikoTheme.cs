@@ -89,6 +89,7 @@ public static class KumikoTheme
             GroupSummaryRowBackgroundColor = new KumikoColor(42, 45, 52),
             GroupSummaryRowTextColor = new KumikoColor(190, 190, 190),
             CaptionSummaryTextColor = new KumikoColor(140, 140, 140),
+            LoadMoreErrorTextColor = new KumikoColor(255, 128, 115),
 
             // ── Row drag & drop ──────────────────────────────────────
             RowDragOverlayColor = new KumikoColor(40, 40, 40, 200),
@@ -174,6 +175,7 @@ public static class KumikoTheme
             GroupSummaryRowBackgroundColor = new KumikoColor(0, 0, 60),
             GroupSummaryRowTextColor = KumikoColor.White,
             CaptionSummaryTextColor = new KumikoColor(0, 255, 255),
+            LoadMoreErrorTextColor = new KumikoColor(255, 128, 128),
 
             // ── Row drag & drop ──────────────────────────────────────
             RowDragOverlayColor = new KumikoColor(0, 0, 0, 200),

@@ -282,7 +282,8 @@ public static class KumikoScroller
     {
         float groupPanel = source.IsGroupingActive ? style.GroupPanelHeight : 0;
         float summaries = (source.TopSummaryCount + source.BottomSummaryCount) * style.SummaryRowHeight;
-        scroll.ContentHeight = style.HeaderHeight + source.RowCount * style.RowHeight + groupPanel + summaries;
+        scroll.ContentHeight = style.HeaderHeight + source.RowCount * style.RowHeight + groupPanel + summaries
+            + LoadMoreRowLayout.GetHeight(source, style);
 
         var (leftHandle, rightHandle) = GetHandleWidths(style);
         float width = 0;

@@ -13,7 +13,7 @@ namespace KumikoUI.Core.Models;
 /// <remarks>
 /// A property holding a <c>{0}</c> placeholder is a format string; keep the placeholder in a translation.
 /// </remarks>
-public sealed record KumikoStrings
+public sealed partial record KumikoStrings
 {
     /// <summary>The English strings. Start a translation from this instance with <c>with</c>.</summary>
     public static KumikoStrings Default { get; } = new();
