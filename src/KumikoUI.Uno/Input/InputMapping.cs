@@ -51,6 +51,9 @@ internal static class InputMapping
         VirtualKey.Z => KumikoKey.Z,
         VirtualKey.Y => KumikoKey.Y,
 
+        // ── Grid-wide search (#317): Ctrl/Cmd+F ──
+        VirtualKey.F => KumikoKey.F,
+
         _ => KumikoKey.None
     };
 

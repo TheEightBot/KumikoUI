@@ -87,6 +87,12 @@ public class LocalizationTests
         AnnounceLoadMoreCompleted = "{0} weitere Zeilen geladen.",
         AnnounceAllRowsLoaded = "Alle Zeilen geladen.",
         AnnounceLoadMoreFailed = "Weitere Zeilen konnten nicht geladen werden. {0}",
+        SearchPlaceholder = "Im Raster suchen",
+        SearchMatchCount = "{0} von {1}",
+        SearchMatchTotal = "{0} Treffer",
+        SearchNoMatches = "Keine Treffer",
+        SearchCountPending = "…",
+        AnnounceSearchMatch = "{0}: {1}, Zeile {2}",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>

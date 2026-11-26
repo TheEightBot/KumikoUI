@@ -186,6 +186,32 @@ public interface IDrawingContext
     KumikoSize MeasureText(string text, KumikoPaint paint);
 
     /// <summary>
+    /// Measures part of a string, <paramref name="length"/> UTF-16 code units from <paramref name="start"/>, on one
+    /// line as it is drawn within the whole string (for example the width of the text before a search match, to
+    /// place a highlight behind it).
+    /// </summary>
+    /// <remarks>
+    /// This is a default interface member so existing implementers keep compiling: the default measures a substring
+    /// through <see cref="MeasureText(string, KumikoPaint)"/>, which allocates the substring on every call. An
+    /// implementation used in the render loop should override it; the SkiaSharp context caches the widths.
+    /// </remarks>
+    /// <param name="text">The whole text.</param>
+    /// <param name="start">The index of the first code unit to measure.</param>
+    /// <param name="length">The number of code units to measure.</param>
+    /// <param name="paint">The paint whose font settings determine text size.</param>
+    /// <returns>The width and height of that part of the text; <see cref="KumikoSize.Empty"/> when it is empty.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The range is not within <paramref name="text"/>.</exception>
+    KumikoSize MeasureText(string text, int start, int length, KumikoPaint paint)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfNegative(start);
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(start + length, text.Length, nameof(length));
+        if (length == 0) return KumikoSize.Empty;
+        return MeasureText(start == 0 && length == text.Length ? text : text.Substring(start, length), paint);
+    }
+
+    /// <summary>
     /// Measures text as
     /// <see cref="DrawTextInRect(string, KumikoRect, KumikoPaint, KumikoTextAlignment, KumikoVerticalAlignment, bool, KumikoTextWrap)"/>
     /// lays it out in a rectangle <paramref name="maxWidth"/> wide and tall enough for every line: the width of

@@ -36,6 +36,8 @@ public partial class KumikoDataGrid
             Alpha = 0f,
             // Tab past the last (first) tab stop is left to UIKit so focus can leave the grid.
             CanHandleTab = backwards => _inputController.WouldHandleTab(_selection, _dataSource, backwards),
+            // Command+F opens the search panel only when the grid allows it (#317)
+            CanHandleFind = () => _inputController.AllowSearchPanel || _inputController.IsSearchPanelOpen,
         };
         return responder;
     }

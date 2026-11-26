@@ -1,5 +1,10 @@
 #nullable enable
+KumikoUI.Maui.KumikoDataGrid.AllowSearchPanel.get -> bool
+KumikoUI.Maui.KumikoDataGrid.AllowSearchPanel.set -> void
+KumikoUI.Maui.KumikoDataGrid.CloseSearchPanel() -> void
 KumikoUI.Maui.KumikoDataGrid.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.FindNext() -> bool
+KumikoUI.Maui.KumikoDataGrid.FindPrevious() -> bool
 KumikoUI.Maui.KumikoDataGrid.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Maui.KumikoDataGrid.HorizontalScrollBarVisibility.set -> void
 KumikoUI.Maui.KumikoDataGrid.IncrementalSource.get -> KumikoUI.Core.Data.IKumikoIncrementalSource?
@@ -25,11 +30,19 @@ KumikoUI.Maui.KumikoDataGrid.LoadMoreState.get -> KumikoUI.Core.Data.KumikoLoadM
 KumikoUI.Maui.KumikoDataGrid.LoadMoreThreshold.get -> int
 KumikoUI.Maui.KumikoDataGrid.LoadMoreThreshold.set -> void
 KumikoUI.Maui.KumikoDataGrid.ResetLoadMore() -> void
+KumikoUI.Maui.KumikoDataGrid.SearchChanged -> System.EventHandler?
+KumikoUI.Maui.KumikoDataGrid.SearchFiltersRows.get -> bool
+KumikoUI.Maui.KumikoDataGrid.SearchFiltersRows.set -> void
+KumikoUI.Maui.KumikoDataGrid.SearchMatchCount.get -> int
+KumikoUI.Maui.KumikoDataGrid.SearchText.get -> string!
+KumikoUI.Maui.KumikoDataGrid.SearchText.set -> void
 KumikoUI.Maui.KumikoDataGrid.ShowColumnMenu(KumikoUI.Core.Models.KumikoColumn! column) -> bool
 KumikoUI.Maui.KumikoDataGrid.ShowColumnMenuButton.get -> bool
 KumikoUI.Maui.KumikoDataGrid.ShowColumnMenuButton.set -> void
+KumikoUI.Maui.KumikoDataGrid.ShowSearchPanel() -> void
 KumikoUI.Maui.KumikoDataGrid.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Maui.KumikoDataGrid.VerticalScrollBarVisibility.set -> void
+static readonly KumikoUI.Maui.KumikoDataGrid.AllowSearchPanelProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.HorizontalScrollBarVisibilityProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.IncrementalSourceProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.IsColumnMenuEnabledProperty -> Microsoft.Maui.Controls.BindableProperty!
@@ -41,5 +54,7 @@ static readonly KumikoUI.Maui.KumikoDataGrid.LoadMoreErrorTextProperty -> Micros
 static readonly KumikoUI.Maui.KumikoDataGrid.LoadMoreModeProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.LoadMoreStateProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.LoadMoreThresholdProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SearchFiltersRowsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SearchTextProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.ShowColumnMenuButtonProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.VerticalScrollBarVisibilityProperty -> Microsoft.Maui.Controls.BindableProperty!

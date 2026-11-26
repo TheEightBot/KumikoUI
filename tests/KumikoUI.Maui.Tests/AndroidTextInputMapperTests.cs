@@ -508,6 +508,7 @@ public class AndroidTextInputMapperTests
     [InlineData(M.KeycodeX, KumikoKey.X)]
     [InlineData(M.KeycodeY, KumikoKey.Y)]
     [InlineData(M.KeycodeZ, KumikoKey.Z)]
+    [InlineData(M.KeycodeF, KumikoKey.F)] // Ctrl+F: the search panel (#317)
     public void Shortcuts_WithControlOrMeta_AreKeys_PlainTheyAreText(int keyCode, KumikoKey expected)
     {
         var m = new M();

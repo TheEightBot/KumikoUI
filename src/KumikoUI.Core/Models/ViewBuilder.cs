@@ -82,6 +82,9 @@ internal sealed class ViewBuildSettings
     public required KumikoStrings Strings { get; init; }
     public Func<object, bool>? Predicate { get; init; }
     public required FilterSpec[] Filters { get; init; }
+
+    /// <summary>The grid-wide search, when it hides rows that do not match (#317); null otherwise.</summary>
+    public SearchSpec? Search { get; init; }
     public required SortSpec[] Sorts { get; init; }
     public required GroupSpec[] Groups { get; init; }
     public required IReadOnlyDictionary<GroupKeyPath, bool> ExpandedState { get; init; }
@@ -172,20 +175,25 @@ internal sealed class ViewBuilder
         var indices = _view.ViewIndices;
         var filters = _s.Filters;
         var predicate = _s.Predicate;
+        var search = _s.Search;
         for (int i = 0; i < _items.Count; i++)
         {
             Check(i);
             if (_items[i] is not { } item)
                 continue; // null items never become rows
-            if (predicate == null && filters.Length == 0 || Passes(item, predicate, filters, _s.Comparer))
+            if (predicate == null && filters.Length == 0 && search == null || Passes(item, predicate, filters, _s.Comparer, search))
                 indices.Add(i);
         }
     }
 
-    /// <summary>Whether an item passes the filter predicate and the column filters.</summary>
-    public static bool Passes(object item, Func<object, bool>? predicate, FilterSpec[] filters, KumikoComparer comparer)
+    /// <summary>Whether an item passes the filter predicate, the grid-wide search (in filter mode) and the column filters.</summary>
+    public static bool Passes(object item, Func<object, bool>? predicate, FilterSpec[] filters, KumikoComparer comparer,
+        SearchSpec? search = null)
     {
         if (predicate != null && !predicate(item))
+            return false;
+
+        if (search != null && !search.Matches(item))
             return false;
 
         foreach (var spec in filters)
@@ -292,6 +300,7 @@ internal sealed class ViewBuilder
 
         PrepareGroupSummaries();
         BuildLevel(0, n, 0, null, -1);
+        view.GroupOrder = _segment; // the rows in group order, for the grid-wide search (#317)
     }
 
     /// <summary>

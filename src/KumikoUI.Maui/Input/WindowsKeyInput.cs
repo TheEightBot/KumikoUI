@@ -16,6 +16,8 @@ internal static class WindowsKeyInput
 
     // ── Context-menu key (#319): the Menu (Application) key, and F10 with Shift ──
     internal const int Apps = 93, F10 = 121;
+    // Ctrl+F: the grid-wide search (#317)
+    internal const int F = 70;
 
     /// <summary>
     /// The Core key for a WinUI virtual key, or <see cref="KumikoKey.None"/> for a key that is text (it arrives
@@ -48,6 +50,7 @@ internal static class WindowsKeyInput
         // ── Context-menu key (#319) ──
         Apps => KumikoKey.ContextMenu,
         F10 when (modifiers & InputModifiers.Shift) != 0 => KumikoKey.ContextMenu,
+        F when IsShortcut(modifiers) => KumikoKey.F, // #317
         _ => KumikoKey.None,
     };
 

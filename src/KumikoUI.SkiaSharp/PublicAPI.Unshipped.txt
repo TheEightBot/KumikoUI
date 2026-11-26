@@ -1,0 +1,1 @@
+KumikoUI.SkiaSharp.SkiaDrawingContext.MeasureText(string! text, int start, int length, KumikoUI.Core.Rendering.KumikoPaint! paint) -> KumikoUI.Core.Rendering.KumikoSize

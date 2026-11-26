@@ -30,6 +30,30 @@ public class SkiaTextMeasurementTests : IDisposable
     private static KumikoPaint TextPaint(float size = 13) =>
         new() { Color = Ink, Font = new KumikoFont(Family, size) };
 
+    // ── Part of a text (#317) ─────────────────────────────────────
+
+    [Fact]
+    public void Part_of_a_text_measures_as_that_part_and_is_cached()
+    {
+        using var cache = new SkiaResourceCache();
+        using var bitmap = new SKBitmap(100, 100);
+        using var canvas = new SKCanvas(bitmap);
+        using var ctx = new SkiaDrawingContext(canvas, cache);
+        var paint = TextPaint();
+        const string text = "Hello world";
+
+        float part = ctx.MeasureText(text, 6, 5, paint).Width;
+        long measured = cache.NativeTextMeasureCount;
+        float again = ctx.MeasureText(text, 6, 5, paint).Width;
+
+        Assert.Equal(ctx.MeasureText("world", paint).Width, part, 2);
+        Assert.Equal(part, again);
+        Assert.Equal(measured + 1, cache.NativeTextMeasureCount); // only "world" alone was measured since
+        Assert.Equal(ctx.MeasureText(text, paint).Width, ctx.MeasureText(text, 0, text.Length, paint).Width);
+        Assert.Equal(KumikoSize.Empty, ctx.MeasureText(text, 3, 0, paint));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ctx.MeasureText(text, 6, 6, paint));
+    }
+
     // ── Cross-frame cache ─────────────────────────────────────────
 
     [Fact]

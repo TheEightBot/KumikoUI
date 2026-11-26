@@ -45,6 +45,8 @@ public static class KumikoTheme
             CurrentCellBorderColor = new KumikoColor(0, 122, 204),
             CurrentCellBorderWidth = 2f,
             AccentColor = new KumikoColor(0, 122, 204),
+            SearchHighlightColor = new KumikoColor(190, 150, 0, 120),
+            SearchCurrentHighlightColor = new KumikoColor(230, 120, 0, 190),
 
             // ── Header ───────────────────────────────────────────────
             HeaderBorderColor = new KumikoColor(60, 60, 60),
@@ -127,6 +129,8 @@ public static class KumikoTheme
             CurrentCellBorderColor = new KumikoColor(255, 255, 0),
             CurrentCellBorderWidth = 3f,
             AccentColor = new KumikoColor(0, 255, 255),
+            SearchHighlightColor = new KumikoColor(255, 0, 255, 150),
+            SearchCurrentHighlightColor = new KumikoColor(255, 128, 0, 220),
 
             // ── Header ───────────────────────────────────────────────
             HeaderBorderColor = new KumikoColor(0, 255, 0),

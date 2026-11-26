@@ -59,6 +59,7 @@ public sealed class SkiaResourceCache : IDisposable
     private readonly LruMap<TypefaceKey, TypefaceEntry> _typefaces;
     private readonly LruMap<TextKey, TextMeasurement> _textWidths;
     private readonly LruMap<TextLayoutKey, TextLayoutEntry> _textLayouts;
+    private readonly LruMap<TextSpanKey, float> _spanWidths; // part of a text, e.g. before a search match (#317)
 
     // Font fallback. Faces are never evicted on their own: runs cached with text measurements refer to them by
     // index, so the table is emptied only together with the text entries (ClearTextLocked).
@@ -122,6 +123,7 @@ public sealed class SkiaResourceCache : IDisposable
         _typefaces = new LruMap<TypefaceKey, TypefaceEntry>(maxTypefaces);
         _textWidths = new LruMap<TextKey, TextMeasurement>(maxTextMeasurements);
         _textLayouts = new LruMap<TextLayoutKey, TextLayoutEntry>(maxTextMeasurements);
+        _spanWidths = new LruMap<TextSpanKey, float>(maxTextMeasurements);
         _fallbackFonts = new LruMap<FallbackFontKey, SKFont>(maxFonts);
         SkiaFontRegistrar.Attach(this);
     }
@@ -464,6 +466,35 @@ public sealed class SkiaResourceCache : IDisposable
     }
 
     /// <summary>
+    /// The advance width of the part of <paramref name="text"/> from <paramref name="start"/> for
+    /// <paramref name="length"/> code units (a valid, non-empty range) in <paramref name="font"/>, drawn run by run as
+    /// the whole text is; measured once and then read from the cache, so a frame that measures it again allocates
+    /// nothing.
+    /// </summary>
+    internal float MeasureTextWidth(string text, int start, int length, KumikoFont? font)
+    {
+        if (start == 0 && length == text.Length) return MeasureTextWidth(text, font, out _);
+
+        var key = new TextSpanKey(text, start, length, ToFontKey(font));
+        long generation;
+        lock (_gate)
+        {
+            if (_spanWidths.TryGet(key, out float cached)) return cached;
+            ThrowIfDisposed();
+            generation = _textGeneration;
+        }
+
+        float width = MeasureRuns(text.AsSpan(start, length), font, GetFont(font), generation);
+
+        lock (_gate)
+        {
+            if (generation == _textGeneration && !_spanWidths.TryGet(key, out _))
+                _spanWidths.Add(key, width, out _);
+        }
+        return width;
+    }
+
+    /// <summary>
     /// The lines <paramref name="text"/> (not empty) is drawn as in <paramref name="font"/> within
     /// <paramref name="maxWidth"/> (see <see cref="KumikoTextLayout.LayOut"/>), laid out once and then read from
     /// the cache.
@@ -580,6 +611,7 @@ public sealed class SkiaResourceCache : IDisposable
         _textWidths.Clear(measurements);
         foreach (var measurement in measurements)
             Retire(measurement.Runs);
+        _spanWidths.Clear();
         var layouts = new List<TextLayoutEntry>();
         _textLayouts.Clear(layouts);
         foreach (var layout in layouts)
@@ -1127,6 +1159,9 @@ public sealed class SkiaResourceCache : IDisposable
 
     /// <summary>Cache key for text widths: the text and the font it is measured in.</summary>
     private readonly record struct TextKey(string Text, FontKey Font);
+
+    /// <summary>Cache key for the width of part of a text: the text, the range and the font.</summary>
+    private readonly record struct TextSpanKey(string Text, int Start, int Length, FontKey Font);
 
     /// <summary>Cache key for text layouts.</summary>
     private readonly record struct TextLayoutKey(string Text, FontKey Font, float MaxWidth, KumikoTextWrap Wrap, int MaxLines);

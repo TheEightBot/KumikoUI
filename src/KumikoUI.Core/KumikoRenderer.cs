@@ -28,6 +28,7 @@ public sealed partial class KumikoRenderer : IDisposable
     private readonly List<(KumikoColumn Column, float X, int OriginalIndex)> _allCols = new();
 
     private readonly HashSet<IInteractiveCellRenderer> _interactiveRenderers = new();
+    private readonly SearchHighlighter _search = new(); // grid-wide search matches (#317)
 
     /// <summary>
     /// Raised when an interactive cell renderer (<see cref="IInteractiveCellRenderer"/>) changed its look
@@ -287,6 +288,7 @@ public sealed partial class KumikoRenderer : IDisposable
         scroll.ClampOffset();
 
         _paintCache.Update(style);
+        _search.BeginFrame(dataSource, selection);
         CaptureFeedback(scroll, style, groupPanelOffset);
 
         ctx.FillRect(new KumikoRect(0, 0, scroll.ViewportWidth, scroll.ViewportHeight),
@@ -1124,6 +1126,7 @@ public sealed partial class KumikoRenderer : IDisposable
                 colCellStyle?.TextAlignment ?? col.TextAlignment, ImageResolver);
             if (row == _pointerCellRow && origIdx == _pointerCellColumn)
                 cell = cell with { PointerPosition = _pointerInRows, IsPointerPressed = _pointerCellPressed };
+            if (_search.IsActive) cell = _search.Apply(in cell, origIdx);
             renderer.Render(ctx, in cell);
         }
     }

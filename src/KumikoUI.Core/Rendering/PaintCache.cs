@@ -128,6 +128,18 @@ public sealed class PaintCache
     /// </summary>
     public KumikoPaint PressedOverlay { get; private set; } = new();
 
+    /// <summary>
+    /// Fill behind the part of a cell's text that matches the grid-wide search
+    /// (<see cref="KumikoStyle.SearchHighlightColor"/>); see <see cref="CellRenderContext.SearchMatchLength"/>.
+    /// </summary>
+    public KumikoPaint SearchHighlight { get; private set; } = new();
+
+    /// <summary>
+    /// Fill behind the search match in the current cell (<see cref="KumikoStyle.SearchCurrentHighlightColor"/>); see
+    /// <see cref="CellRenderContext.IsCurrentSearchMatch"/>.
+    /// </summary>
+    public KumikoPaint SearchCurrentHighlight { get; private set; } = new();
+
     // ── Grid chrome (drawn by KumikoRenderer only) ───────────────
     internal KumikoPaint SortOrderBadge { get; private set; } = new();
     internal KumikoPaint GroupPanelLabel { get; private set; } = new();
@@ -265,6 +277,10 @@ public sealed class PaintCache
             StrokeWidth = 2f,
             IsAntiAlias = true
         };
+
+        // Search highlights (#317)
+        SearchHighlight = new KumikoPaint { Color = style.SearchHighlightColor, IsAntiAlias = true };
+        SearchCurrentHighlight = new KumikoPaint { Color = style.SearchCurrentHighlightColor, IsAntiAlias = true };
 
         // Sort / Filter icons
         SortIndicator = new KumikoPaint

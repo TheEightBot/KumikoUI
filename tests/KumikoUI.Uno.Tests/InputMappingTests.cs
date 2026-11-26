@@ -69,6 +69,7 @@ public class InputMappingTests
     [InlineData(VirtualKey.X, KumikoKey.X)]
     [InlineData(VirtualKey.Z, KumikoKey.Z)]
     [InlineData(VirtualKey.Y, KumikoKey.Y)]
+    [InlineData(VirtualKey.F, KumikoKey.F)] // Ctrl/Cmd+F: the search panel (#317)
     public void ToGridKey_ShortcutLetters_MapToMatchingGridKey(VirtualKey key, KumikoKey expected)
     {
         Assert.Equal(expected, InputMapping.ToGridKey(key));
@@ -131,6 +132,7 @@ public class InputMappingTests
             [VirtualKey.X] = KumikoKey.X,
             [VirtualKey.Z] = KumikoKey.Z,
             [VirtualKey.Y] = KumikoKey.Y,
+            [VirtualKey.F] = KumikoKey.F,
         };
 
         foreach (VirtualKey key in Enum.GetValues<VirtualKey>())
