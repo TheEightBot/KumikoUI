@@ -56,6 +56,12 @@
             Route="StylingPage" />
 
         <ShellContent
+            Title="Load More"
+            Icon="icon_data.png"
+            ContentTemplate="{DataTemplate local:LoadMorePage}"
+            Route="LoadMorePage" />
+
+        <ShellContent
             Title="Events"
             Icon="icon_events.png"
             ContentTemplate="{DataTemplate local:EventsPage}"
