@@ -161,6 +161,34 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_AGridWideSearch_HighlightsWithoutAllocating()
+    {
+        // A search active (#317): every visible searchable cell looks for the match, and the matching cells (in the
+        // frozen, scrolling and right-frozen panes) draw a highlight, with the current cell on a match.
+        var grid = CreateGrid(featured: true);
+        grid.Source.SearchText = "o";
+        grid.Selection.CurrentCell = new CellPosition(0, 0);
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
+    public void SteadyState_AnOpenSearchPanel_AllocatesNothing()
+    {
+        // The drawn search panel over a grid with a search: its box, the count text (composed when it changes, not
+        // per frame) and its buttons.
+        var grid = CreateGrid(featured: true);
+        var input = new KumikoUI.Core.Input.KumikoInputController { SearchDebounceMs = 0 };
+        grid.Source.SearchText = "Oslo";
+        input.ShowSearchPanel(grid.Scroll, grid.Selection, grid.Style, grid.Source);
+        input.FindNext(grid.Scroll, grid.Selection, grid.Style, grid.Source);
+
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+            grid.Renderer.RenderFrame(ctx, grid.Source, grid.Scroll, grid.Selection, grid.Style, -1, 0, -1, 0,
+                null, input.PopupManager)));
+    }
+
+    [Fact]
     public void SteadyState_ScrollingBackAndForthOverCachedRows_AllocatesNothing()
     {
         var grid = CreateGrid(featured: false);

@@ -54,5 +54,9 @@ public enum KumikoKey
     Y,
     // Generic character input
     /// <summary>Generic character input for text entry.</summary>
-    Character
+    Character,
+
+    // ── Grid-wide search (#317) ──
+    /// <summary>F key (Ctrl/Cmd+F opens the grid's search panel when it is allowed).</summary>
+    F,
 }

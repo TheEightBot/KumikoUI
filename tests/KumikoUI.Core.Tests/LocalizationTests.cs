@@ -69,6 +69,12 @@ public class LocalizationTests
         AnnounceEditCommitted = "{0} geändert in {1}",
         AnnounceEditCanceled = "Bearbeitung von {0} beendet",
         AnnounceValidationFailed = "{0} ist ungültig: {1}",
+        SearchPlaceholder = "Im Raster suchen",
+        SearchMatchCount = "{0} von {1}",
+        SearchMatchTotal = "{0} Treffer",
+        SearchNoMatches = "Keine Treffer",
+        SearchCountPending = "…",
+        AnnounceSearchMatch = "{0}: {1}, Zeile {2}",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>

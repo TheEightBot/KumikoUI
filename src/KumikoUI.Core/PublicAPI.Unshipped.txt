@@ -1,0 +1,45 @@
+KumikoUI.Core.Input.KumikoInputController.AllowSearchPanel.get -> bool
+KumikoUI.Core.Input.KumikoInputController.AllowSearchPanel.set -> void
+KumikoUI.Core.Input.KumikoInputController.CloseSearchPanel() -> void
+KumikoUI.Core.Input.KumikoInputController.FindNext(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
+KumikoUI.Core.Input.KumikoInputController.FindPrevious(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
+KumikoUI.Core.Input.KumikoInputController.IsSearchPanelOpen.get -> bool
+KumikoUI.Core.Input.KumikoInputController.ShowSearchPanel(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> void
+KumikoUI.Core.Input.KumikoKey.F = 23 -> KumikoUI.Core.Input.KumikoKey
+KumikoUI.Core.Models.KumikoColumn.AllowSearching.get -> bool
+KumikoUI.Core.Models.KumikoColumn.AllowSearching.set -> void
+KumikoUI.Core.Models.KumikoSource.IsSearchActive.get -> bool
+KumikoUI.Core.Models.KumikoSource.SearchChanged -> System.EventHandler?
+KumikoUI.Core.Models.KumikoSource.SearchFiltersRows.get -> bool
+KumikoUI.Core.Models.KumikoSource.SearchFiltersRows.set -> void
+KumikoUI.Core.Models.KumikoSource.SearchMatchCount.get -> int
+KumikoUI.Core.Models.KumikoSource.SearchText.get -> string!
+KumikoUI.Core.Models.KumikoSource.SearchText.set -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceSearchMatch.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceSearchMatch.init -> void
+KumikoUI.Core.Models.KumikoStrings.SearchCountPending.get -> string!
+KumikoUI.Core.Models.KumikoStrings.SearchCountPending.init -> void
+KumikoUI.Core.Models.KumikoStrings.SearchMatchCount.get -> string!
+KumikoUI.Core.Models.KumikoStrings.SearchMatchCount.init -> void
+KumikoUI.Core.Models.KumikoStrings.SearchMatchTotal.get -> string!
+KumikoUI.Core.Models.KumikoStrings.SearchMatchTotal.init -> void
+KumikoUI.Core.Models.KumikoStrings.SearchNoMatches.get -> string!
+KumikoUI.Core.Models.KumikoStrings.SearchNoMatches.init -> void
+KumikoUI.Core.Models.KumikoStrings.SearchPlaceholder.get -> string!
+KumikoUI.Core.Models.KumikoStrings.SearchPlaceholder.init -> void
+KumikoUI.Core.Models.KumikoStyle.SearchCurrentHighlightColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Models.KumikoStyle.SearchCurrentHighlightColor.set -> void
+KumikoUI.Core.Models.KumikoStyle.SearchHighlightColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Models.KumikoStyle.SearchHighlightColor.set -> void
+KumikoUI.Core.Rendering.CellRenderContext.IsCurrentSearchMatch.get -> bool
+KumikoUI.Core.Rendering.CellRenderContext.IsCurrentSearchMatch.init -> void
+KumikoUI.Core.Rendering.CellRenderContext.SearchMatchLength.get -> int
+KumikoUI.Core.Rendering.CellRenderContext.SearchMatchLength.init -> void
+KumikoUI.Core.Rendering.CellRenderContext.SearchMatchStart.get -> int
+KumikoUI.Core.Rendering.CellRenderContext.SearchMatchStart.init -> void
+KumikoUI.Core.Rendering.IDrawingContext.MeasureText(string! text, int start, int length, KumikoUI.Core.Rendering.KumikoPaint! paint) -> KumikoUI.Core.Rendering.KumikoSize
+KumikoUI.Core.Rendering.PaintCache.SearchCurrentHighlight.get -> KumikoUI.Core.Rendering.KumikoPaint!
+KumikoUI.Core.Rendering.PaintCache.SearchHighlight.get -> KumikoUI.Core.Rendering.KumikoPaint!
+static KumikoUI.Core.Models.KumikoAnnouncements.SearchMatch(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Models.KumikoColumn! column, int columnIndex, int rowIndex, string? cellText) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.SearchMatchCount(KumikoUI.Core.Models.KumikoStrings! strings, int matchCount) -> string!
+static KumikoUI.Core.Rendering.TextCellRenderer.DrawSearchHighlight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> void

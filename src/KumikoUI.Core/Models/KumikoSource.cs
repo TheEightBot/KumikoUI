@@ -974,6 +974,10 @@ public sealed partial class KumikoSource : IDisposable
         if (string.IsNullOrEmpty(propName) || _filterPredicate != null)
             return PropertyImpact.Rows;
 
+        // A searched column while the search hides rows (#317)
+        if (SearchFilterReads(propName))
+            return PropertyImpact.Rows;
+
         // A sorted or filtered column (several columns can share a property)
         foreach (var col in _columns)
         {
@@ -1043,6 +1047,11 @@ public sealed partial class KumikoSource : IDisposable
     {
         if (_disposed || _detached) return;
         VerifyAccess(); // column settings follow the source's UI-thread contract
+        if (SearchFilterAffectedBy(e.PropertyName)) // which rows the search keeps (#317)
+        {
+            RequestRebuild();
+            return;
+        }
         if (sender is KumikoColumn column &&
             e.PropertyName is nameof(KumikoColumn.PropertyName) or nameof(KumikoColumn.ValueAccessor)
                 or nameof(KumikoColumn.CustomComparer) or nameof(KumikoColumn.ColumnType) &&
@@ -1647,6 +1656,7 @@ public sealed partial class KumikoSource : IDisposable
         // The same text rules as filtering: values that compare equal are one entry.
         var values = new HashSet<string>(_comparer.TextComparer);
         var filters = PrepareFilters(column);
+        var search = CaptureSearchFilter(_comparer);
         for (int i = 0; i < _sourceItems.Count; i++)
         {
             if (_sourceItems[i] is not { } item)
@@ -1654,7 +1664,7 @@ public sealed partial class KumikoSource : IDisposable
 
             // Apply other column filters (exclude this column) so the value list
             // only shows values that are reachable with other filters applied
-            if (!PassesFilters(item, filters))
+            if (!PassesFilters(item, filters, search))
                 continue;
 
             var cellValue = ReadColumnValue(item, column);
@@ -2073,8 +2083,8 @@ public sealed partial class KumikoSource : IDisposable
     /// <summary>
     /// Check if an item passes the global filter predicate and the prepared per-column filters.
     /// </summary>
-    private bool PassesFilters(object item, FilterSpec[] filters) =>
-        ViewBuilder.Passes(item, _filterPredicate, filters, _comparer);
+    private bool PassesFilters(object item, FilterSpec[] filters, SearchSpec? search) =>
+        ViewBuilder.Passes(item, _filterPredicate, filters, _comparer, search);
 
     /// <summary>
     /// Read a column's value from an item: <see cref="KumikoColumn.ValueAccessor"/> when it is set,
@@ -2253,7 +2263,7 @@ public sealed partial class KumikoSource : IDisposable
             }
 
             // The new item gets a row only if it passes the filter predicate and the column filters.
-            bool visible = e.NewItems[0] is { } added && PassesFilters(added, PrepareFilters(comparer: _comparer));
+            bool visible = e.NewItems[0] is { } added && PassesFilters(added, PrepareFilters(comparer: _comparer), CaptureSearchFilter(_comparer));
 
             // Shift existing view indices that are >= the inserted position
             for (int i = 0; i < indices.Count; i++)
@@ -2418,6 +2428,7 @@ public sealed partial class KumikoSource : IDisposable
             Strings = _strings,
             Predicate = _filterPredicate,
             Filters = PrepareFilters(comparer: comparer, forWorker: forWorker),
+            Search = CaptureSearchFilter(comparer), // #317
             // A first background build allocates the buffer the next copy reuses (see CopyItems).
             AllocateSpareItems = forWorker && _spareItems == null && _view.Items is not ItemBuffer,
             Sorts = sorts,

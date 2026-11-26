@@ -149,4 +149,25 @@ public readonly struct CellRenderContext
     /// is still over it). False when <see cref="PointerPosition"/> is null.
     /// </summary>
     public bool IsPointerPressed { get; init; }
+
+    /// <summary>
+    /// Where the grid-wide search (<see cref="KumikoSource.SearchText"/>) matches <see cref="DisplayText"/>: the index
+    /// of the first matching UTF-16 code unit. Meaningful only when <see cref="SearchMatchLength"/> is greater than 0.
+    /// <see cref="TextCellRenderer"/> draws <see cref="PaintCache.SearchHighlight"/> behind that part of the text
+    /// (see <see cref="TextCellRenderer.DrawSearchHighlight"/>); a custom renderer can do the same.
+    /// </summary>
+    public int SearchMatchStart { get; init; }
+
+    /// <summary>
+    /// The length, in UTF-16 code units of <see cref="DisplayText"/>, of the first search match in the cell; 0 (the
+    /// default) when the search is off, the column is not searched or the text does not match. Under the source's
+    /// culture rules it can differ from the length of the search text.
+    /// </summary>
+    public int SearchMatchLength { get; init; }
+
+    /// <summary>
+    /// Whether the cell is the current cell and a search match: the match <c>FindNext</c> and <c>FindPrevious</c>
+    /// moved to, drawn with <see cref="PaintCache.SearchCurrentHighlight"/>.
+    /// </summary>
+    public bool IsCurrentSearchMatch { get; init; }
 }

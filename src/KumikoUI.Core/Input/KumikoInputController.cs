@@ -280,7 +280,7 @@ public sealed partial class KumikoInputController
     /// filter popup's search box, else the active editor's, else null.
     /// </summary>
     public ITextInputSession? ActiveTextInput =>
-        _activeFilterPopup?.SearchTextInput ?? _editSession?.ActiveTextInput;
+        _activeFilterPopup?.SearchTextInput ?? SearchPanelTextInput ?? _editSession?.ActiveTextInput;
 
     /// <summary>
     /// Raised when a column edge is double-clicked, requesting auto-fit width. The built-in hosts answer it with
@@ -388,6 +388,7 @@ public sealed partial class KumikoInputController
         }
 
         // ── Popup priority: popups always get first crack at input ──
+        BlurSearchPanelOnPress(e, action); // a press on the grid takes the keyboard from the search panel (#317)
         if (_popupManager.HandlePointer(e))
         {
             if (action == InputAction.Hover) SetCursor(KumikoCursor.Default);
@@ -523,6 +524,8 @@ public sealed partial class KumikoInputController
 
         // ── Popup priority: popups always get first crack at keyboard ──
         if (_popupManager.HandleKey(e))
+            return;
+        if (TryHandleSearchKey(e, scroll, selection, style, dataSource)) // Ctrl/Cmd+F (#317)
             return;
 
         int totalRows = dataSource.RowCount;
@@ -1980,6 +1983,7 @@ public sealed partial class KumikoInputController
 
     private void OnPopupClosed(DrawnComponent popup)
     {
+        if (popup == _searchPanel) OnSearchPanelClosed(); // #317
         if (popup != _activeFilterPopup) return;
         _activeFilterPopup = null;
         popup.IsFocused = false;

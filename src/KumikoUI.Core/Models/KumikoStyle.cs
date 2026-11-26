@@ -71,6 +71,18 @@ public sealed class KumikoStyle
     /// <summary>General accent color used for interactive elements (checkmarks, etc.).</summary>
     public KumikoColor AccentColor { get; set => Set(ref field, value); } = new(0, 120, 215);
 
+    // ── Search (#317) ────────────────────────────────────────────
+    /// <summary>
+    /// Fill drawn behind the part of a cell's text that matches <see cref="KumikoSource.SearchText"/>. Default: a
+    /// translucent yellow; the dark and high-contrast presets use their own.
+    /// </summary>
+    public KumikoColor SearchHighlightColor { get; set => Set(ref field, value); } = new(255, 214, 0, 110);
+    /// <summary>
+    /// Fill drawn behind the match in the current cell, the one <c>FindNext</c> and <c>FindPrevious</c> moved to.
+    /// Default: a translucent orange.
+    /// </summary>
+    public KumikoColor SearchCurrentHighlightColor { get; set => Set(ref field, value); } = new(255, 140, 0, 170);
+
     // ── Fonts ────────────────────────────────────────────────────
     /// <summary>Font used for header cell text.</summary>
     public KumikoFont HeaderFont { get; set => Set(ref field, value); } = new("Default", 14, bold: true);
