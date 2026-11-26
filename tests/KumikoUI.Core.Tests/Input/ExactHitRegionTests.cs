@@ -131,10 +131,10 @@ public class ExactHitRegionTests
     }
 
     [Theory]
-    [InlineData(184f, true)]
-    [InlineData(216f, true)]
-    [InlineData(183f, false)]
-    [InlineData(217f, false)]
+    [InlineData(188f, true)]
+    [InlineData(212f, true)]
+    [InlineData(187f, false)]
+    [InlineData(213f, false)]
     public void ResizeGrip_ForAFinger_IsTheTouchWidth(float x, bool onGrip)
     {
         var g = new InputGrid(configure: x => x.Age.AllowFiltering = false); // the drawn filter icon wins over the grip
@@ -160,11 +160,50 @@ public class ExactHitRegionTests
 
         var middle = g.Tester.HitTest(140, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
             g.Source, KumikoPointerDeviceType.Touch);
-        var nearEdge = g.Tester.HitTest(151, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
+        var nearEdge = g.Tester.HitTest(153, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
             g.Source, KumikoPointerDeviceType.Touch);
 
         Assert.Equal(HitRegion.HeaderCell, middle.Region);
-        Assert.Equal(HitRegion.HeaderResizeGrip, nearEdge.Region); // a quarter of 40 px inside the edge
+        Assert.Equal(HitRegion.HeaderResizeGrip, nearEdge.Region); // 7 px inside the edge, within the 8 px floor
+    }
+
+    // Age spans 120..(120 + width); the point is `inside` px left of its right edge. A finger's grip reaches the
+    // smaller of 12 px (half the default 24 px touch grip) and a fifth of the column (at least 8 px) into it.
+    [Theory]
+    [InlineData(40f, 8f, true)]
+    [InlineData(40f, 9f, false)]
+    [InlineData(60f, 12f, true)]
+    [InlineData(60f, 13f, false)] // a quarter would still be a resize here
+    [InlineData(100f, 12f, true)]
+    [InlineData(100f, 13f, false)]
+    [InlineData(100f, 16f, false)] // #289: 16 px inside a wide column is a reorder press, not a resize
+    public void ResizeGrip_ForAFinger_ReachesAtMostAFifthIntoAColumn(float width, float inside, bool onGrip)
+    {
+        var g = new InputGrid(configure: c => { c.Age.Width = width; c.Age.AllowFiltering = false; });
+
+        Assert.Equal(onGrip, g.Tester.HitTest(120 + width - inside, InputGrid.HeaderY, g.Scroll, g.Style,
+            g.Source.Columns, g.Source.RowCount, g.Source, KumikoPointerDeviceType.Touch).Region == HitRegion.HeaderResizeGrip);
+    }
+
+    [Fact]
+    public void ResizeGrip_ForAFinger_InANarrowColumn_ReorderPressNearTheRightIsAHeaderCell()
+    {
+        var g = new InputGrid(configure: c => { c.Age.Width = 60; c.Age.AllowFiltering = false; }); // Age: 120..180
+
+        var hit = g.Tester.HitTest(167, InputGrid.HeaderY, g.Scroll, g.Style, g.Source.Columns, g.Source.RowCount,
+            g.Source, KumikoPointerDeviceType.Touch); // 13 px left of the border: a quarter-wide grip (15 px) made this a resize
+
+        Assert.Equal(HitRegion.HeaderCell, hit.Region);
+        Assert.Same(g.Age, hit.Column);
+    }
+
+    [Fact]
+    public void ResizeGrip_ForAMouse_StillReachesAQuarterOfANarrowColumn()
+    {
+        var g = new InputGrid(configure: c => { c.Style.ColumnResizeGripWidth = 40; c.Age.Width = 40; c.Age.AllowFiltering = false; }); // Age: 120..160
+
+        Assert.Equal(HitRegion.HeaderResizeGrip, g.Hit(150, InputGrid.HeaderY).Region); // 10 px inside: a quarter of 40
+        Assert.Equal(HitRegion.HeaderCell, g.Hit(149, InputGrid.HeaderY).Region);
     }
 
     [Fact]
@@ -172,9 +211,9 @@ public class ExactHitRegionTests
     {
         var g = new InputGrid(configure: x => x.Age.AllowFiltering = false);
 
-        g.Pointer(InputAction.Pressed, 186, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
-        g.Pointer(InputAction.Moved, 226, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
-        g.Pointer(InputAction.Released, 226, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
+        g.Pointer(InputAction.Pressed, 190, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
+        g.Pointer(InputAction.Moved, 230, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
+        g.Pointer(InputAction.Released, 230, InputGrid.HeaderY, deviceType: KumikoPointerDeviceType.Touch);
 
         Assert.Equal(120, g.Age.Width);
     }

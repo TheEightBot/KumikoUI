@@ -22,22 +22,26 @@ internal static class InteractionGeometry
 
     /// <summary>
     /// Half of the column resize grip (see <see cref="KumikoStyle.ColumnResizeGripWidth"/>) for
-    /// <paramref name="device"/>, at most a quarter of the column's width (at least 3 px) so a press in the middle of
-    /// a narrow header still sorts.
+    /// <paramref name="device"/>, capped by the column's width (see <see cref="ResizeGripReach"/>) so a press in the
+    /// middle of a narrow header still sorts or reorders.
     /// </summary>
     public static float ResizeGripHalfWidth(KumikoColumn column, KumikoStyle style, KumikoPointerDeviceType device) =>
         ResizeGripReach(column.Width, style, device);
 
     /// <summary>
     /// How far the resize grip reaches into a column <paramref name="columnWidth"/> wide on one side of the edge: half
-    /// the grip for <paramref name="device"/>, at most a quarter of that column (at least 3 px). The grip reaches into
-    /// the column on its right by that column's width, so a narrow neighbor keeps its middle too.
+    /// the grip for <paramref name="device"/>. A mouse or pen reaches at most a quarter of that column (at least 3 px);
+    /// a finger at most a fifth (at least 8 px), so the two grips that cut into a column leave at least 60 percent of
+    /// it in the middle for a reorder or sort press. The grip reaches into the column on its right by that column's
+    /// width, so a narrow neighbor keeps its middle too.
     /// </summary>
     public static float ResizeGripReach(float columnWidth, KumikoStyle style, KumikoPointerDeviceType device)
     {
-        float width = device == KumikoPointerDeviceType.Touch ? style.TouchColumnResizeGripWidth : style.ColumnResizeGripWidth;
+        bool touch = device == KumikoPointerDeviceType.Touch;
+        float width = touch ? style.TouchColumnResizeGripWidth : style.ColumnResizeGripWidth;
         float half = Math.Max(0f, width) / 2f;
-        return Math.Min(half, Math.Max(3f, columnWidth / 4f));
+        float cap = touch ? Math.Max(8f, columnWidth / 5f) : Math.Max(3f, columnWidth / 4f);
+        return Math.Min(half, cap);
     }
 
     /// <summary>Space the header's right edge keeps for the sort arrow when the column is sorted.</summary>
