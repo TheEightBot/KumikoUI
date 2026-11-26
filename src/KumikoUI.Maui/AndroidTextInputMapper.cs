@@ -35,6 +35,7 @@ internal sealed class AndroidTextInputMapper
     internal const int KeycodeDpadRight = 22;
     internal const int KeycodeA = 29;
     internal const int KeycodeC = 31;
+    internal const int KeycodeF = 34; // Ctrl+F: the grid-wide search (#317)
     internal const int KeycodeV = 50;
     internal const int KeycodeX = 52;
     internal const int KeycodeY = 53;
@@ -455,6 +456,7 @@ internal sealed class AndroidTextInputMapper
         KeycodeX when command => KumikoKey.X,
         KeycodeY when command => KumikoKey.Y,
         KeycodeZ when command => KumikoKey.Z,
+        KeycodeF when command => KumikoKey.F, // #317
         _ => null,
     };
 

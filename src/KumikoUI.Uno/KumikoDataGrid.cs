@@ -92,6 +92,7 @@ public partial class KumikoDataGrid : UserControl
         InitializeOptions();
         InitializeScrolling(); // KumikoDataGrid.Scrolling.cs
         InitializeImages(); // KumikoDataGrid.Images.cs
+        InitializeSearch(); // grid-wide search, its panel and announcements (KumikoDataGrid.Search.cs, #317)
 
         // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
         InitializeAccessibility();

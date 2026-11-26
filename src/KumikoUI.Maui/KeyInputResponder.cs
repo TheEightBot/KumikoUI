@@ -61,6 +61,9 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
             cmds.Add(UIKeyCommand.Create((NSString)letter, UIKeyModifierFlags.Command, _navKeySelector));
         cmds.Add(UIKeyCommand.Create((NSString)"z", UIKeyModifierFlags.Command | UIKeyModifierFlags.Shift, _navKeySelector));
 
+        // Command+F: the grid-wide search panel (#317), claimed only while the grid wants it (CanHandleFind)
+        cmds.Add(UIKeyCommand.Create((NSString)"f", UIKeyModifierFlags.Command, new Selector("handleFindKey:")));
+
         // The grid's commands come before the text system's own handling of these keys (which would move a caret
         // in an empty document, or select all of it): while an input method composes, CanPerform declines them.
         foreach (var cmd in cmds)
@@ -95,12 +98,19 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
     /// </summary>
     public Func<bool, bool>? CanHandleTab { get; set; }
 
+    /// <summary>
+    /// Asked before Command+F is claimed (#317). Returning false (or null) leaves the key to UIKit, so the app's own
+    /// find command still works when the grid's search panel is not allowed.
+    /// </summary>
+    public Func<bool>? CanHandleFind { get; set; }
+
     /// <summary>Stops following the bridge; call before dropping the responder.</summary>
     public void Detach()
     {
         _bridge.Invalidated -= OnBridgeInvalidated;
         _bridge.Detach();
         CanHandleTab = null;
+        CanHandleFind = null;
     }
 
     private bool ClaimsTab(bool shift) => CanHandleTab?.Invoke(shift) ?? true;
@@ -115,6 +125,7 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
             return false;
         if (action.Name == "handleTabKey:") return ClaimsTab(false);
         if (action.Name == "handleShiftTabKey:") return ClaimsTab(true);
+        if (action.Name == "handleFindKey:") return !_bridge.HasMarkedText && (CanHandleFind?.Invoke() ?? false);
         return base.CanPerform(action, withSender);
     }
 
@@ -123,6 +134,9 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
 
     [Export("handleShiftTabKey:")]
     private void HandleShiftTabKey(UIKeyCommand cmd) => _sendKey(KumikoKey.Tab, InputModifiers.Shift);
+
+    [Export("handleFindKey:")]
+    private void HandleFindKey(UIKeyCommand cmd) => _sendKey(KumikoKey.F, InputModifiers.Control); // #317
 
     [Export("handleNavKey:")]
     private void HandleNavKey(UIKeyCommand cmd)

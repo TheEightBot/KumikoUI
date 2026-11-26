@@ -57,6 +57,7 @@ public class WindowsKeyInputTests
         Assert.Equal('Y', WindowsKeyInput.Y);
         Assert.Equal('Z', WindowsKeyInput.Z);
         Assert.Equal(0x71, WindowsKeyInput.F2);
+        Assert.Equal('F', WindowsKeyInput.F);
     }
 
     [Theory]
@@ -66,6 +67,7 @@ public class WindowsKeyInputTests
     [InlineData(WindowsKeyInput.X, KumikoKey.X)]
     [InlineData(WindowsKeyInput.Y, KumikoKey.Y)]
     [InlineData(WindowsKeyInput.Z, KumikoKey.Z)]
+    [InlineData(WindowsKeyInput.F, KumikoKey.F)] // Ctrl+F: the search panel (#317)
     public void ToKumikoKey_ShortcutLetters_AreKeysOnlyWithControl(int virtualKey, KumikoKey expected)
     {
         Assert.Equal(expected, WindowsKeyInput.ToKumikoKey(virtualKey, InputModifiers.Control));

@@ -14,6 +14,9 @@ internal static class WindowsKeyInput
         End = 35, Home = 36, Left = 37, Up = 38, Right = 39, Down = 40, Delete = 46,
         A = 65, C = 67, V = 86, X = 88, Y = 89, Z = 90, F2 = 113;
 
+    // Ctrl+F: the grid-wide search (#317)
+    internal const int F = 70;
+
     /// <summary>
     /// The Core key for a WinUI virtual key, or <see cref="KumikoKey.None"/> for a key that is text (it arrives
     /// through the text services or <c>CharacterReceived</c>) or that the grid does not use. A, C, V, X, Y and Z
@@ -42,6 +45,7 @@ internal static class WindowsKeyInput
         X when IsShortcut(modifiers) => KumikoKey.X,
         Y when IsShortcut(modifiers) => KumikoKey.Y,
         Z when IsShortcut(modifiers) => KumikoKey.Z,
+        F when IsShortcut(modifiers) => KumikoKey.F, // #317
         _ => KumikoKey.None,
     };
 

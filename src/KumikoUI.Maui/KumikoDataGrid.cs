@@ -120,6 +120,9 @@ public partial class KumikoDataGrid : ContentView
         // Image cells load through the grid's image cache (KumikoDataGrid.Images.cs)
         InitializeImages();
 
+        // Grid-wide search, its panel and its announcements (KumikoDataGrid.Search.cs, #317)
+        InitializeSearch();
+
         // Large sources sort, filter and group on a worker; the new view is swapped in on the UI thread, which raises
         // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous. The property's
         // default is not applied through its change callback, so give the source the default here.

@@ -368,7 +368,8 @@ internal sealed class KumikoTextInputAdapter
         if (key == KumikoKey.None || _composing) return null;
 
         var modifiers = _target.Modifiers;
-        if ((key is KumikoKey.A or KumikoKey.C or KumikoKey.V or KumikoKey.X or KumikoKey.Z or KumikoKey.Y) &&
+        if ((key is KumikoKey.A or KumikoKey.C or KumikoKey.V or KumikoKey.X or KumikoKey.Z or KumikoKey.Y
+                or KumikoKey.F) &&
             (modifiers & (InputModifiers.Control | InputModifiers.Meta)) == 0)
             return null; // a plain letter: typed
 

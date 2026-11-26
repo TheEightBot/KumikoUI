@@ -175,6 +175,95 @@ public class KumikoDataGridMappingTests
 
     // ── Data source ──────────────────────────────────────────────
 
+    // ── Grid-wide search (#317) ─────────────────────────────────
+
+    private static KumikoDataGrid SearchGrid()
+    {
+        // No screen reader in the portable MAUI assembly the tests run against
+        var grid = new KumikoDataGrid { ItemsSource = People(12), AnnounceChanges = false };
+        grid.Columns.Add(new KumikoColumn { Header = "Name", PropertyName = "Name" });
+        grid.Columns.Add(new KumikoColumn { Header = "Age", PropertyName = "Age", ColumnType = KumikoColumnType.Numeric });
+        return grid;
+    }
+
+    [Fact]
+    public void SearchProperties_ReachTheDataSourceAndTheInputController()
+    {
+        var grid = SearchGrid();
+        Assert.Equal(string.Empty, grid.SearchText);
+        Assert.False(grid.SearchFiltersRows);
+        Assert.False(grid.AllowSearchPanel);
+
+        grid.SearchText = "P1";
+        grid.SearchFiltersRows = true;
+        grid.AllowSearchPanel = true;
+
+        Assert.Equal("P1", grid.DataSource.SearchText);
+        Assert.True(grid.DataSource.SearchFiltersRows);
+        Assert.True(grid.InputController.AllowSearchPanel);
+        Assert.Equal(3, grid.DataSource.RowCount); // P1, P10, P11
+        Assert.Equal(3, grid.SearchMatchCount);
+    }
+
+    [Fact]
+    public void SearchText_FollowsTheDataSource_AndSearchChangedIsRaised()
+    {
+        var grid = SearchGrid();
+        int changes = 0;
+        grid.SearchChanged += (_, _) => changes++;
+
+        grid.DataSource.SearchText = "P3";
+
+        Assert.Equal("P3", grid.SearchText);
+        Assert.Equal(1, changes);
+    }
+
+    [Fact]
+    public void FindNext_And_FindPrevious_MoveTheCurrentCellBetweenMatches()
+    {
+        var grid = SearchGrid();
+        grid.SearchText = "1"; // P1 and Age 21, then P10, P11 and Age 31
+
+        Assert.True(grid.FindNext());
+        Assert.Equal(new CellPosition(1, 0), grid.Selection.CurrentCell);
+        Assert.True(grid.FindNext());
+        Assert.Equal(new CellPosition(1, 1), grid.Selection.CurrentCell);
+        Assert.True(grid.FindPrevious());
+        Assert.Equal(new CellPosition(1, 0), grid.Selection.CurrentCell);
+    }
+
+    [Fact]
+    public void ShowSearchPanel_OpensIt_AndCloseSearchPanelClearsTheSearch()
+    {
+        var grid = SearchGrid();
+        grid.SearchText = "P1";
+
+        grid.ShowSearchPanel();
+        Assert.True(grid.InputController.IsSearchPanelOpen);
+        Assert.NotNull(grid.InputController.ActiveTextInput);
+
+        grid.CloseSearchPanel();
+        Assert.False(grid.InputController.IsSearchPanelOpen);
+        Assert.Equal(string.Empty, grid.SearchText);
+    }
+
+    [Fact]
+    public void CtrlF_OpensThePanel_OnlyWhenAllowed()
+    {
+        var grid = SearchGrid();
+        var key = new KumikoKeyEventArgs { Key = KumikoKey.F, Modifiers = InputModifiers.Control };
+        grid.InputController.HandleKey(key, new ScrollState { ViewportWidth = 600, ViewportHeight = 400 }, grid.Selection,
+            grid.GridStyle, grid.DataSource);
+        Assert.False(key.Handled);
+
+        grid.AllowSearchPanel = true;
+        key = new KumikoKeyEventArgs { Key = KumikoKey.F, Modifiers = InputModifiers.Control };
+        grid.InputController.HandleKey(key, new ScrollState { ViewportWidth = 600, ViewportHeight = 400 }, grid.Selection,
+            grid.GridStyle, grid.DataSource);
+        Assert.True(key.Handled);
+        Assert.True(grid.InputController.IsSearchPanelOpen);
+    }
+
     [Fact]
     public void FrozenRowCount_Set_ReachesTheDataSource()
     {

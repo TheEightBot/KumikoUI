@@ -1,0 +1,15 @@
+KumikoUI.Uno.KumikoDataGrid.AllowSearchPanel.get -> bool
+KumikoUI.Uno.KumikoDataGrid.AllowSearchPanel.set -> void
+KumikoUI.Uno.KumikoDataGrid.CloseSearchPanel() -> void
+KumikoUI.Uno.KumikoDataGrid.FindNext() -> bool
+KumikoUI.Uno.KumikoDataGrid.FindPrevious() -> bool
+KumikoUI.Uno.KumikoDataGrid.SearchChanged -> System.EventHandler?
+KumikoUI.Uno.KumikoDataGrid.SearchFiltersRows.get -> bool
+KumikoUI.Uno.KumikoDataGrid.SearchFiltersRows.set -> void
+KumikoUI.Uno.KumikoDataGrid.SearchMatchCount.get -> int
+KumikoUI.Uno.KumikoDataGrid.SearchText.get -> string!
+KumikoUI.Uno.KumikoDataGrid.SearchText.set -> void
+KumikoUI.Uno.KumikoDataGrid.ShowSearchPanel() -> void
+static readonly KumikoUI.Uno.KumikoDataGrid.AllowSearchPanelProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SearchFiltersRowsProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SearchTextProperty -> Microsoft.UI.Xaml.DependencyProperty!

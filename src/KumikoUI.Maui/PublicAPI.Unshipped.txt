@@ -1,0 +1,15 @@
+KumikoUI.Maui.KumikoDataGrid.AllowSearchPanel.get -> bool
+KumikoUI.Maui.KumikoDataGrid.AllowSearchPanel.set -> void
+KumikoUI.Maui.KumikoDataGrid.CloseSearchPanel() -> void
+KumikoUI.Maui.KumikoDataGrid.FindNext() -> bool
+KumikoUI.Maui.KumikoDataGrid.FindPrevious() -> bool
+KumikoUI.Maui.KumikoDataGrid.SearchChanged -> System.EventHandler?
+KumikoUI.Maui.KumikoDataGrid.SearchFiltersRows.get -> bool
+KumikoUI.Maui.KumikoDataGrid.SearchFiltersRows.set -> void
+KumikoUI.Maui.KumikoDataGrid.SearchMatchCount.get -> int
+KumikoUI.Maui.KumikoDataGrid.SearchText.get -> string!
+KumikoUI.Maui.KumikoDataGrid.SearchText.set -> void
+KumikoUI.Maui.KumikoDataGrid.ShowSearchPanel() -> void
+static readonly KumikoUI.Maui.KumikoDataGrid.AllowSearchPanelProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SearchFiltersRowsProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SearchTextProperty -> Microsoft.Maui.Controls.BindableProperty!
