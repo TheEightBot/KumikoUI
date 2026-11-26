@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The public API files now declare the members the compiler synthesizes for records, record structs and delegates (`Equals`, `GetHashCode`, `ToString`, `==`, `!=`, `Deconstruct`, `Invoke`), which Microsoft.CodeAnalysis.PublicApiAnalyzers 5.x requires. No behavior change.
 
 ### Fixed
-- On touch, a finger's header resize grip reaches at most a fifth of a column into it on each side of a border (at least 8 px, still at most half of `TouchColumnResizeGripWidth`), where it reached a quarter, so pressing near the right of a narrow header starts a reorder instead of a resize and the two grips that cut into a column leave at least 60 percent of it in the middle. The mouse and pen grip is unchanged (#289).
+- On touch, a finger's header resize grip reaches at most a fifth of a column into it on each side of a border (at least 8 px, still at most half of `TouchColumnResizeGripWidth`), where it reached a quarter, so pressing near the right of a narrow header starts a reorder instead of a resize and the two grips that cut into a column leave at least 60 percent of it in the middle. The default `KumikoStyle.TouchColumnResizeGripWidth` is now 24 px (was 32), so a finger's grip reaches 12 px into a column instead of 16 and a press 16 px left of a header's right edge reorders the column. Set it back to 32 for the old touch grip. The mouse and pen grip is unchanged (#289).
 
 ## [1.0.0-preview.1] - 2026-11-14
 
