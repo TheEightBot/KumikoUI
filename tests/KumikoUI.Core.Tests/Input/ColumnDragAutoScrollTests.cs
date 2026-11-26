@@ -168,6 +168,89 @@ public class ColumnDragAutoScrollTests
     }
 
     [Fact]
+    public void WithAFrozenColumn_TheLeftBandStartsAtTheFrozenEdge_NotTheGridEdge()
+    {
+        // Name is frozen (0..120): the scrolling pane is 120..300 and its left band 120..160 (#290).
+        InputGrid Held(float toX)
+        {
+            var g = new InputGrid(configure: x => x.Name.IsFrozen = true);
+            g.Scroll.OffsetX = 50;
+            Hold(g, 200, toX);
+            return g;
+        }
+
+        Assert.True(Held(125).Input.IsAutoScrolling);   // inside the band, just right of the frozen edge
+        Assert.True(Held(159).Input.IsAutoScrolling);   // the band's inner edge
+        Assert.False(Held(165).Input.IsAutoScrolling);  // past the band: choosing a drop slot scrolls nothing
+        Assert.False(Held(200).Input.IsAutoScrolling);
+        // A band measured from the grid's left edge (0..40) would have missed 125 and caught nothing here; the
+        // pane's own left edge decides.
+    }
+
+    [Fact]
+    public void WithAFrozenColumn_TheBandSpeedGrowsFromTheFrozenEdge()
+    {
+        InputGrid Held(float toX)
+        {
+            var g = new InputGrid(configure: x => x.Name.IsFrozen = true);
+            g.Scroll.OffsetX = 150;
+            Hold(g, 200, toX);
+            g.Input.UpdateAutoScroll(g.Scroll, 100f);
+            return g;
+        }
+
+        float shallow = 150 - Held(155).Scroll.OffsetX; // distance scrolled back
+        float deep = 150 - Held(121).Scroll.OffsetX;
+
+        Assert.True(shallow > 0);
+        Assert.True(deep > shallow);
+    }
+
+    [Fact]
+    public void WithAFrozenColumn_TheLeftBandDoesNotAutoscrollAtTheContentStart()
+    {
+        var g = new InputGrid(configure: x => x.Name.IsFrozen = true);
+        Hold(g, 250, 125);
+
+        Assert.False(g.Input.IsAutoScrolling); // OffsetX is 0: nothing to scroll back to
+    }
+
+    [Fact]
+    public void WithARightFrozenColumn_TheRightBandEndsAtTheFrozenEdge()
+    {
+        // Score is frozen right (200..300): the scrolling pane is 0..200 and its right band 160..200.
+        InputGrid Held(float toX)
+        {
+            var g = new InputGrid(configure: x => x.Score.IsFrozenRight = true);
+            Hold(g, 60, toX);
+            return g;
+        }
+
+        Assert.True(Held(165).Input.IsAutoScrolling);
+        Assert.True(Held(195).Input.IsAutoScrolling);
+        Assert.False(Held(140).Input.IsAutoScrolling);
+        Assert.False(Held(0).Input.IsAutoScrolling); // the pane's left band: no scroll back at the content start
+    }
+
+    [Fact]
+    public void WithoutFrozenColumns_TheBandsKeepTheGridEdges()
+    {
+        var left = new InputGrid();
+        left.Scroll.OffsetX = 100;
+        Hold(left, 250, 39);
+        Assert.True(left.Input.IsAutoScrolling);
+
+        var past = new InputGrid();
+        past.Scroll.OffsetX = 100;
+        Hold(past, 250, 45);
+        Assert.False(past.Input.IsAutoScrolling);
+
+        var right = new InputGrid();
+        Hold(right, 60, 261);
+        Assert.True(right.Input.IsAutoScrolling);
+    }
+
+    [Fact]
     public void ADragWithAutoscrollTurnedOff_DoesNotScroll()
     {
         var g = new InputGrid(configure: x => x.Input.ScrollSettings.AutoScrollMaxSpeed = 0);
