@@ -210,7 +210,7 @@ Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
   to the filter popup (notes 18 to 26). Still open: every interactive row on macOS (the app has to be in front, note
   3), the rest of Windows (note 23), the Windows App SDK head (note 20), and IME, theme follow and DPI change on a
   real desktop.
-- **F2. Android: the filter popup's search box gets no soft keyboard.** *Not reproduced on 1.0.0-preview.1*
+- **F2. Android: the filter popup's search box gets no soft keyboard.** *Closed: not reproduced on 1.0.0-preview.1*
   ([#275](https://github.com/TheEightBot/KumikoUI/issues/275)). On the Android emulator and the iOS simulator the
   keyboard appears when the popup opens and again when the search box is tapped after the keyboard was dismissed,
   and typing filters the list. A defensive change repeats the explicit show once the press has settled
@@ -293,28 +293,33 @@ Each open item has an issue; repro steps are against `samples/SampleApp.Uno`.
   action interface, its description does not follow the current cell, and it did not report a focus state in the
   probe (note 33).
 
-## Recommendation: ship KumikoUI.Uno as 1.0.0-preview
+## Recommendation and decision: KumikoUI.Uno ships in 1.0.0
 
-Ship the Uno package as `1.0.0-preview` alongside the 1.0.0 Core, SkiaSharp and MAUI packages, and move it to 1.0.0
-once the follow-ups above are closed and the matrix is green on every head.
+The first recommendation (2026-11-13) was to ship the Uno package as `1.0.0-preview` beside a stable Core, SkiaSharp and
+MAUI. The packages ship in lockstep with exact sibling pins (#112), so an Uno-only preview version was not possible
+without splitting the versioning, and the first 1.0 release was `1.0.0-preview.1` for all four packages.
 
-**Outcome:** the packages ship in lockstep with exact sibling pins (#112), so an Uno-only preview version is not
-possible without splitting the versioning. The first 1.0 release is therefore `1.0.0-preview.1` for all four packages.
-KumikoUI.Uno stays the least verified host until the issues above are closed.
+**Decision for `1.0.0` (maintainer, 2026-11-25):** KumikoUI.Uno ships in the stable `1.0.0` with the other three
+packages and is fully supported. The follow-ups that are still open are tracked in the
+[1.0.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/5): F1 (#274), F3 (#276), F4 (#277), F12 (#287),
+the Android head build docs (#292) and this matrix (#67).
 
-- **Text entry on the two mobile heads was broken until this pass** (an app crash on Android, lost and misplaced
-  characters on iOS) and nothing had caught it: the unit tests modeled a text box that behaves better than Uno's.
-  Android is fixed and has had one emulator run; iOS replaces a selected value in later simulator runs (F9 is closed).
-- **The desktop head has had no interactive run on macOS** (F1). Linux (X11) passed every row a container can check
-  and Windows the rows it got to before the pass stopped; one input bug turned up there (F11). Desktop is the head
-  most Uno apps ship first.
-- **Accessibility is uneven:** Windows exposes the grid through UI Automation, macOS only until the user navigates
-  (F4), and Linux only as a plain panel with no cell content (F12, Uno 7.0.65 note 33); the macOS gap is in Uno's desktop host. The filter search cannot be typed into on
-  Android (F2).
-- **What is solid:** rendering on every head that ran, the trimmed WebAssembly build CI produces (so the
-  `continue-on-error` on that job can go), scrolling and momentum, selection, keyboard navigation and Tab exit,
-  keyboard avoidance on iOS and Android, theme following, grouping, filtering, column and row drag where exercised,
-  100,000-row data in the browser, and fonts.
+What the decision rests on:
 
-A preview label tells users the package works and what to expect, without promising the stability guarantees that
-1.0.0 carries in [VERSIONING.md](../VERSIONING.md) for heads that have not been walked end to end.
+- **Text entry on the mobile heads works.** The crash on Android and the lost and misplaced characters on iOS were
+  fixed in this pass; iOS replaces a selected value in later simulator runs (F9 is closed), and the filter search box
+  gets the soft keyboard on Android (F2 is closed).
+- **The desktop head has been walked on Linux (X11) and on Windows**, every row a container allows on Linux and the rows
+  up to the filter popup on Windows. The one input bug found there (F11) is fixed. macOS still needs a pass with the
+  app in front (F1).
+- **What is solid:** rendering on every head that ran, the trimmed WebAssembly build CI produces, scrolling and
+  momentum, selection, keyboard navigation and Tab exit, keyboard avoidance on iOS and Android, theme following,
+  grouping, filtering, column and row drag where exercised, 100,000-row data in the browser and on Linux, and fonts.
+
+Known limitations in `1.0.0`:
+
+- **Accessibility is uneven across the desktop hosts.** Windows exposes the grid through UI Automation. macOS loses it
+  after the first navigation and in Debug builds that use Hot Design, in Uno's macOS bridge (F4). Linux exposes it as a
+  plain panel with no table role or current cell (F12, Uno 7.0.65, note 33).
+- **Not run:** the Windows App SDK head (note 20), and no head on a physical phone (F3).
+- **Wheel on Uno's X11 host** does not scroll until Uno turns XInput2 buttons 4 to 7 into wheel deltas (note 21).

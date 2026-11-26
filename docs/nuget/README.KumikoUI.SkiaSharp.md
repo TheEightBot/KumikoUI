@@ -2,7 +2,7 @@
 
 # KumikoUI.SkiaSharp
 
-[![NuGet](https://img.shields.io/nuget/vpre/KumikoUI.SkiaSharp.svg)](https://www.nuget.org/packages/KumikoUI.SkiaSharp)
+[![NuGet](https://img.shields.io/nuget/v/KumikoUI.SkiaSharp.svg)](https://www.nuget.org/packages/KumikoUI.SkiaSharp)
 [![Downloads](https://img.shields.io/nuget/dt/KumikoUI.SkiaSharp.svg)](https://www.nuget.org/packages/KumikoUI.SkiaSharp)
 [![License: MIT](https://img.shields.io/github/license/TheEightBot/KumikoUI.svg)](https://github.com/TheEightBot/KumikoUI/blob/main/LICENSE)
 
@@ -10,7 +10,7 @@ KumikoUI.SkiaSharp is the SkiaSharp rendering backend for the KumikoUI data grid
 
 The MAUI and Uno host packages build on it. Install this package directly when you write your own host, or when you want to render a grid to an image, for example a PNG on a server.
 
-> **Preview.** This is `1.0.0-preview.1`, the first 1.0 prerelease of all four KumikoUI packages. The API may still change before 1.0.0. Install a prerelease with `--prerelease` or an explicit version (`dotnet add package KumikoUI.SkiaSharp --version 1.0.0-preview.1`), and use the same version for every KumikoUI package. Release notes: [CHANGELOG](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md).
+> **1.0.0** is the first stable release of all four KumikoUI packages. From this version on, the public API follows the compatibility rules in the [versioning policy](https://github.com/TheEightBot/KumikoUI/blob/main/docs/VERSIONING.md). Use the same version for every KumikoUI package. Release notes: [CHANGELOG](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md).
 
 ![KumikoUI data grid](https://raw.githubusercontent.com/TheEightBot/KumikoUI/main/images/main.png)
 

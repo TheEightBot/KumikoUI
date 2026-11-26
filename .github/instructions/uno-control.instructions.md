@@ -32,7 +32,7 @@ notes in `docs/uno/plan/` are history, not instructions.
 There is no `UseKumikoUI()` on Uno. The app project turns on the Skia renderer and pins SkiaSharp:
 
 ```xml
-<SkiaSharpVersion>4.153.1</SkiaSharpVersion>
+<SkiaSharpVersion>4.157.0</SkiaSharpVersion>
 <UnoFeatures>
   SkiaRenderer;
 </UnoFeatures>

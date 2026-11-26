@@ -2,7 +2,7 @@
 
 # KumikoUI.Maui
 
-[![NuGet](https://img.shields.io/nuget/vpre/KumikoUI.Maui.svg)](https://www.nuget.org/packages/KumikoUI.Maui)
+[![NuGet](https://img.shields.io/nuget/v/KumikoUI.Maui.svg)](https://www.nuget.org/packages/KumikoUI.Maui)
 [![Downloads](https://img.shields.io/nuget/dt/KumikoUI.Maui.svg)](https://www.nuget.org/packages/KumikoUI.Maui)
 [![License: MIT](https://img.shields.io/github/license/TheEightBot/KumikoUI.svg)](https://github.com/TheEightBot/KumikoUI/blob/main/LICENSE)
 
@@ -10,7 +10,7 @@ KumikoUI.Maui is a high-performance data grid control for .NET MAUI. The whole g
 
 It targets .NET 10 on Android, iOS, Mac Catalyst and Windows. An automated device suite passes on an Android emulator, iPhone and iPad simulators and Mac Catalyst; the Windows head is built in CI but has not been run on a device yet ([MAUI verification notes](https://github.com/TheEightBot/KumikoUI/blob/main/docs/maui-verification.md)).
 
-> **Preview.** This is `1.0.0-preview.1`, the first 1.0 prerelease of all four KumikoUI packages. The API may still change before 1.0.0. Install a prerelease with `--prerelease` or an explicit version (`dotnet add package KumikoUI.Maui --version 1.0.0-preview.1`), and use the same version for every KumikoUI package. Release notes: [CHANGELOG](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md).
+> **1.0.0** is the first stable release of all four KumikoUI packages. From this version on, the public API follows the compatibility rules in the [versioning policy](https://github.com/TheEightBot/KumikoUI/blob/main/docs/VERSIONING.md). Use the same version for every KumikoUI package. Release notes: [CHANGELOG](https://github.com/TheEightBot/KumikoUI/blob/main/CHANGELOG.md).
 
 ![KumikoUI data grid](https://raw.githubusercontent.com/TheEightBot/KumikoUI/main/images/main.png)
 
@@ -32,7 +32,7 @@ Installing KumikoUI.Maui brings in KumikoUI.Core and KumikoUI.SkiaSharp. All fou
 Install the package in your MAUI app project:
 
 ```
-dotnet add package KumikoUI.Maui --prerelease
+dotnet add package KumikoUI.Maui
 ```
 
 Register the grid in `MauiProgram.cs`. `UseKumikoUI()` also registers SkiaSharp.

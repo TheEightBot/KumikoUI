@@ -2,14 +2,15 @@
 
 ## Supported versions
 
-KumikoUI has not reached 1.0.0 yet. The current release is the prerelease `1.0.0-preview.1`. Security fixes go into the latest release only; there are no maintained release branches yet (see the support window in [docs/VERSIONING.md](docs/VERSIONING.md#support-window)).
+The current release line is `1.0.x`. Security fixes ship as a patch release of the latest minor of the current major; there are no other maintained release branches (see the support window in [docs/VERSIONING.md](docs/VERSIONING.md#support-window)).
 
 | Version | Supported |
 |---|---|
-| Latest release on NuGet.org (currently `1.0.0-preview.1`) | ✅ |
+| `1.0.x` | ✅ |
+| `1.0.0-preview.N` prereleases | ❌ — please upgrade to `1.0.x` |
 | `0.2.x` and older `0.x` releases | ❌ — please upgrade |
 
-A fix for a 1.0 prerelease ships as the next prerelease or as `1.0.0`. From 1.0.0 on, this table will list the supported release lines.
+When a new minor or major ships, this table moves to it; the support window in VERSIONING.md says how long the previous major gets security fixes.
 
 ## Reporting a vulnerability
 

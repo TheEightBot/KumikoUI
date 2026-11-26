@@ -85,7 +85,7 @@ dotnet run --project samples/SampleApp.Uno -f net10.0-desktop
 Package versions come from git tags through [MinVer](https://github.com/adamralph/minver); no project file contains a version.
 
 - A commit tagged `vX.Y.Z` (or `vX.Y.Z-suffix`) builds exactly that version for all four packages.
-- Any other commit builds the next version as a prerelease, for example `1.0.0-alpha.0.8`: eight commits after the last tag. After a prerelease tag it is that version with the commit count appended (`1.0.0-preview.1.5`). `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 1.0; it only affects builds whose computed version would be lower, so untagged commits after `v0.2.0` build `1.0.0-alpha.0.N`, which sorts below `1.0.0-preview.1`).
+- Any other commit builds the next version as a prerelease, for example `1.0.1-alpha.0.8`: eight commits after the `v1.0.0` tag. After a prerelease tag it is that version with the commit count appended (`1.1.0-preview.1.5`). `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 1.0; it only affects builds whose computed version would be lower).
 - Clones need tags and history (`git fetch --tags`, no shallow clone) or MinVer falls back to `0.2.0-alpha.0`.
 
 To release:
@@ -94,14 +94,14 @@ To release:
 2. Push a version tag on that commit on `main`:
 
 ```bash
-git tag v1.0.0-preview.1   # a prerelease: published as a NuGet prerelease and a GitHub prerelease
-git push origin v1.0.0-preview.1
+git tag v1.0.1             # a stable release
+git push origin v1.0.1
 
-git tag v1.0.0             # a stable release
-git push origin v1.0.0
+git tag v1.1.0-preview.1   # a prerelease: published as a NuGet prerelease and a GitHub prerelease
+git push origin v1.1.0-preview.1
 ```
 
-A tag with a suffix (`v1.0.0-preview.1`) is a prerelease on NuGet.org and on GitHub; NuGet hides it from consumers unless they ask for prereleases (`dotnet add package KumikoUI.Maui --prerelease`). The heading of its CHANGELOG section is `## [1.0.0-preview.1] - YYYY-MM-DD`.
+A tag with a suffix (`v1.1.0-preview.1`) is a prerelease on NuGet.org and on GitHub; NuGet hides it from consumers unless they ask for prereleases (`dotnet add package KumikoUI.Maui --prerelease`). The heading of its CHANGELOG section is `## [1.1.0-preview.1] - YYYY-MM-DD`.
 
 The section becomes the GitHub release notes, and every package links to the CHANGELOG. Versioning rules (SemVer, lockstep packages, deprecation, support window) are in [docs/VERSIONING.md](docs/VERSIONING.md).
 
@@ -171,7 +171,7 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 
 ### Public API and formatting
 
-**Recording an API change.** The public surface of the four shipped libraries (Core, SkiaSharp, Maui, Uno) is recorded in `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to each project and checked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Adding, changing or removing a public or protected member without updating those files fails the build (RS0016 for an unrecorded member, RS0017 for a recorded one that no longer exists). RS0026 and RS0027 are errors as well: only one overload of a method may have optional parameters, and it must be the one with the most parameters, so a later optional parameter can be added without a break. Nothing has shipped as a stable release yet, so every `Shipped` file is empty and the whole surface is in the `Unshipped` files; at the first stable release the maintainer moves the `Unshipped` lines into `Shipped` (the exact steps are in [the 1.0 API review](docs/release-readiness/api-review-1.0.md#steps-at-the-10-tag)), and from then on a removal or change of a shipped line is a breaking change that must be called out in the CHANGELOG.
+**Recording an API change.** The public surface of the four shipped libraries (Core, SkiaSharp, Maui, Uno) is recorded in `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to each project and checked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Adding, changing or removing a public or protected member without updating those files fails the build (RS0016 for an unrecorded member, RS0017 for a recorded one that no longer exists). RS0026 and RS0027 are errors as well: only one overload of a method may have optional parameters, and it must be the one with the most parameters, so a later optional parameter can be added without a break. The `Shipped` files hold the surface of the last stable release (`1.0.0`, frozen in #112); a new member goes into `Unshipped` and moves into `Shipped` when the next release is cut (the steps are in [the 1.0 API review](docs/release/api-review-1.0.md#steps-at-the-10-tag)). A removed or changed `Shipped` line is a breaking change: it needs a new major version (or a documented exception) and a **Breaking:** entry in the CHANGELOG. `eng/update-public-api.sh` never removes a `Shipped` line; that stays a deliberate edit by hand.
 
 To record a change, either:
 
