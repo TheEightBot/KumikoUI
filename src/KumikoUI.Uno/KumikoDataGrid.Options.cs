@@ -51,6 +51,7 @@ public partial class KumikoDataGrid
     {
         if (_styleOptions.HasOverrides)
             _styleOptions.Apply(_style);
+        _rowHeightOptions.Apply(_style);
     }
 
     // ── Invalidate ──

@@ -1,0 +1,17 @@
+KumikoUI.Maui.KumikoDataGrid.CellVerticalPadding.get -> double
+KumikoUI.Maui.KumikoDataGrid.CellVerticalPadding.set -> void
+KumikoUI.Maui.KumikoDataGrid.InvalidateRowHeight(object! item) -> void
+KumikoUI.Maui.KumikoDataGrid.InvalidateRowHeights() -> void
+KumikoUI.Maui.KumikoDataGrid.MaxRowHeight.get -> double
+KumikoUI.Maui.KumikoDataGrid.MaxRowHeight.set -> void
+KumikoUI.Maui.KumikoDataGrid.MinRowHeight.get -> double
+KumikoUI.Maui.KumikoDataGrid.MinRowHeight.set -> void
+KumikoUI.Maui.KumikoDataGrid.RowHeightMode.get -> KumikoUI.Core.Models.KumikoRowHeightMode
+KumikoUI.Maui.KumikoDataGrid.RowHeightMode.set -> void
+KumikoUI.Maui.KumikoDataGrid.RowHeightResolver.get -> KumikoUI.Core.Models.KumikoRowHeightResolver?
+KumikoUI.Maui.KumikoDataGrid.RowHeightResolver.set -> void
+static readonly KumikoUI.Maui.KumikoDataGrid.CellVerticalPaddingProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.MaxRowHeightProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.MinRowHeightProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.RowHeightModeProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.RowHeightResolverProperty -> Microsoft.Maui.Controls.BindableProperty!

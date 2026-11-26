@@ -1,0 +1,17 @@
+KumikoUI.Uno.KumikoDataGrid.CellVerticalPadding.get -> double
+KumikoUI.Uno.KumikoDataGrid.CellVerticalPadding.set -> void
+KumikoUI.Uno.KumikoDataGrid.InvalidateRowHeight(object! item) -> void
+KumikoUI.Uno.KumikoDataGrid.InvalidateRowHeights() -> void
+KumikoUI.Uno.KumikoDataGrid.MaxRowHeight.get -> double
+KumikoUI.Uno.KumikoDataGrid.MaxRowHeight.set -> void
+KumikoUI.Uno.KumikoDataGrid.MinRowHeight.get -> double
+KumikoUI.Uno.KumikoDataGrid.MinRowHeight.set -> void
+KumikoUI.Uno.KumikoDataGrid.RowHeightMode.get -> KumikoUI.Core.Models.KumikoRowHeightMode
+KumikoUI.Uno.KumikoDataGrid.RowHeightMode.set -> void
+KumikoUI.Uno.KumikoDataGrid.RowHeightResolver.get -> KumikoUI.Core.Models.KumikoRowHeightResolver?
+KumikoUI.Uno.KumikoDataGrid.RowHeightResolver.set -> void
+static readonly KumikoUI.Uno.KumikoDataGrid.CellVerticalPaddingProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.MaxRowHeightProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.MinRowHeightProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.RowHeightModeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.RowHeightResolverProperty -> Microsoft.UI.Xaml.DependencyProperty!
