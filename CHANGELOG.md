@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- `KumikoDataGrid.GroupDescriptions` (MAUI and Uno) follows a grouping change made in the grid: removing a level with the grouping panel chip's remove button now removes it from the bound collection too, so a view model no longer keeps the removed group and brings it back the next time it changes the collection.
+
 ## [1.0.0] - 2026-11-25
 
 The first stable release of all four packages. From this version on the public API follows Semantic Versioning: a breaking change waits for 2.0.0 ([docs/VERSIONING.md](docs/VERSIONING.md)). The changes below are those since 1.0.0-preview.1; coming from 0.2.0, read the [1.0.0-preview.1] section too. Follow-ups planned for 1.0.1 are in the [1.0.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/5).

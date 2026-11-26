@@ -57,6 +57,10 @@ public partial class KumikoDataGrid
         }
     }
 
+    // The user removed a grouping level in the grouping panel (or the source changed its grouping any other way):
+    // the bound collection follows, so a view model never keeps a group the user removed.
+    private void OnDataSourceGroupDescriptionsChanged(object? sender, EventArgs e) => SyncGroupDescriptionsFromSource();
+
     private void SyncGroupDescriptionsFromSource()
     {
         var groups = GroupDescriptions;
