@@ -30,6 +30,48 @@ public sealed class KumikoStyle
     /// <summary>Horizontal padding inside data cells in pixels. Default: 8.</summary>
     public float CellPadding { get; set => Set(ref field, value); } = 8f;
 
+    // ── Row height (#320) ────────────────────────────────────────
+    /// <summary>
+    /// How data row heights are determined. <see cref="KumikoRowHeightMode.Fixed"/> (the default) makes every data row
+    /// <see cref="RowHeight"/> tall; <see cref="KumikoRowHeightMode.Auto"/> makes a data row as tall as its tallest
+    /// wrapped cell (<see cref="KumikoColumn.TextWrap"/>) or measurable cell (<see cref="IMeasurableCellRenderer"/>) plus
+    /// <see cref="CellVerticalPadding"/> above and below, within <see cref="MinRowHeight"/> and
+    /// <see cref="MaxRowHeight"/>. Group header, group summary, table summary and header rows keep their fixed heights
+    /// in both modes. A <see cref="RowHeightResolver"/> can set or adjust any data row's height in either mode.
+    /// </summary>
+    public KumikoRowHeightMode RowHeightMode { get; set => Set(ref field, value); } = KumikoRowHeightMode.Fixed;
+
+    /// <summary>
+    /// <see cref="KumikoRowHeightMode.Auto"/> mode: the shortest a data row is laid out, in pixels. <c>null</c> (the
+    /// default) means <see cref="RowHeight"/>, so rows without wrapped content look exactly as in
+    /// <see cref="KumikoRowHeightMode.Fixed"/> mode. Values below 1 are treated as 1.
+    /// </summary>
+    public float? MinRowHeight { get; set => Set(ref field, value); }
+
+    /// <summary>
+    /// <see cref="KumikoRowHeightMode.Auto"/> mode: the tallest a data row is laid out, in pixels; wrapped text that
+    /// needs more ends with an ellipsis on the last line that fits. <c>null</c> (the default) means no limit. A value
+    /// below the minimum height is raised to it.
+    /// </summary>
+    public float? MaxRowHeight { get; set => Set(ref field, value); }
+
+    /// <summary>
+    /// <see cref="KumikoRowHeightMode.Auto"/> mode: the space in pixels above and below the tallest cell content of a
+    /// data row. Default: 6.
+    /// </summary>
+    public float CellVerticalPadding { get; set => Set(ref field, value); } = 6f;
+
+    /// <summary>
+    /// Sets or adjusts the height of data rows, in either <see cref="RowHeightMode"/>: return a height in pixels, or
+    /// <c>null</c> for the height the mode gives the row. The resolver is called only while a frame is drawn, on the
+    /// render thread, once per item and content version (not every frame), so it must be fast, must not change the
+    /// source, and should depend only on the item: call <see cref="KumikoSource.InvalidateRowHeight(object)"/> or
+    /// <see cref="KumikoSource.InvalidateRowHeights"/> when what it reads changes. A result that is NaN, infinite or
+    /// below 1 counts as <c>null</c>; a valid result is not clamped to <see cref="MinRowHeight"/> and
+    /// <see cref="MaxRowHeight"/>. Exceptions it throws propagate, as for <see cref="CellStyleResolver"/>.
+    /// </summary>
+    public KumikoRowHeightResolver? RowHeightResolver { get; set => Set(ref field, value); }
+
     // ── Colors ───────────────────────────────────────────────────
     /// <summary>Background color of the grid canvas.</summary>
     public KumikoColor BackgroundColor { get; set => Set(ref field, value); } = KumikoColor.White;

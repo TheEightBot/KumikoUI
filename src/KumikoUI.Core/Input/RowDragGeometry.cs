@@ -11,7 +11,9 @@ namespace KumikoUI.Core.Input;
 /// The drop target is the row under the middle of the ghost (move semantics: the dragged row ends up at that index
 /// and the rows in between shift by one). The ghost's middle is kept within the rows area, between the top of the
 /// data area (below the grouping panel, header and top summaries) and the pinned summary footer, so the ghost never
-/// covers the header and the target is always a row on screen.
+/// covers the header and the target is always a row on screen. Rows come from the source's row layout, so with rows
+/// of varying height (#320) the ghost is as tall as the dragged row and a drop splits at the real boundary between
+/// rows.
 /// </remarks>
 internal static class RowDragGeometry
 {
@@ -22,25 +24,28 @@ internal static class RowDragGeometry
 
     /// <summary>The top of the scrolling rows: below the frozen rows.</summary>
     public static float ScrollableTop(KumikoStyle style, KumikoSource dataSource) =>
-        DataAreaTop(style, dataSource) + dataSource.EffectiveFrozenRowCount * style.RowHeight;
+        DataAreaTop(style, dataSource) + dataSource.RowLayout.GetFrozenHeight(style);
 
     /// <summary>The bottom of the rows area: the viewport bottom, or the top of the pinned summary footer.</summary>
     public static float RowsBottom(ScrollState scroll, KumikoStyle style, KumikoSource dataSource) =>
         scroll.ViewportHeight - style.GetPinnedBottomSummaryHeight(dataSource.BottomSummaryCount);
 
     /// <summary>The top of visible row <paramref name="row"/>: fixed for a frozen row, scrolled otherwise.</summary>
-    public static float RowTop(int row, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
-    {
-        float top = DataAreaTop(style, dataSource) + row * style.RowHeight;
-        return row < dataSource.EffectiveFrozenRowCount ? top : top - scroll.OffsetY;
-    }
+    public static float RowTop(int row, ScrollState scroll, KumikoStyle style, KumikoSource dataSource) =>
+        dataSource.RowLayout.GetRowY(row, DataAreaTop(style, dataSource), scroll.OffsetY, style);
+
+    /// <summary>The height of the ghost of <paramref name="dragRow"/>: the row's height (<see cref="KumikoStyle.RowHeight"/> when unknown).</summary>
+    public static float GhostHeight(int dragRow, KumikoStyle style, KumikoSource dataSource) =>
+        dragRow >= 0 && dragRow < dataSource.RowCount ? dataSource.RowLayout.GetRowHeight(dragRow, style) : style.RowHeight;
 
     /// <summary>
-    /// Keeps a ghost top so that the ghost's middle stays within the rows area (see the remarks).
+    /// Keeps a ghost top so that the ghost's middle stays within the rows area (see the remarks). The ghost is as tall
+    /// as <paramref name="dragRow"/> (<see cref="KumikoStyle.RowHeight"/> when it is -1).
     /// </summary>
-    public static float ClampGhostTop(float ghostTop, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
+    public static float ClampGhostTop(float ghostTop, ScrollState scroll, KumikoStyle style, KumikoSource dataSource,
+        int dragRow = -1)
     {
-        float half = style.RowHeight / 2;
+        float half = GhostHeight(dragRow, style, dataSource) / 2;
         float min = DataAreaTop(style, dataSource) - half;
         float max = Math.Max(min, RowsBottom(scroll, style, dataSource) - half - 1);
         return Math.Clamp(ghostTop, min, max);
@@ -55,18 +60,18 @@ internal static class RowDragGeometry
         int rowCount = dataSource.RowCount;
         if (rowCount == 0 || style.RowHeight <= 0) return -1;
 
-        float top = DataAreaTop(style, dataSource);
-        int frozen = dataSource.EffectiveFrozenRowCount;
-        float frozenHeight = frozen * style.RowHeight;
-        int row = frozen > 0 && y < top + frozenHeight
-            ? Math.Clamp((int)MathF.Floor((y - top) / style.RowHeight), 0, frozen - 1)
-            : frozen + (int)MathF.Floor((y - top - frozenHeight + scroll.OffsetY) / style.RowHeight);
+        int row = dataSource.RowLayout.GetRowAtY(y, DataAreaTop(style, dataSource), scroll.OffsetY, style);
         return Math.Clamp(row, 0, rowCount - 1);
     }
 
-    /// <summary>The drop target for a ghost whose top is at <paramref name="ghostTop"/>: the row under its middle.</summary>
-    public static int DropTarget(float ghostTop, ScrollState scroll, KumikoStyle style, KumikoSource dataSource) =>
-        RowAt(ClampGhostTop(ghostTop, scroll, style, dataSource) + style.RowHeight / 2, scroll, style, dataSource);
+    /// <summary>
+    /// The drop target for a ghost of <paramref name="dragRow"/> whose top is at <paramref name="ghostTop"/>: the row
+    /// under its middle.
+    /// </summary>
+    public static int DropTarget(float ghostTop, ScrollState scroll, KumikoStyle style, KumikoSource dataSource,
+        int dragRow = -1) =>
+        RowAt(ClampGhostTop(ghostTop, scroll, style, dataSource, dragRow) + GhostHeight(dragRow, style, dataSource) / 2,
+            scroll, style, dataSource);
 
     /// <summary>
     /// Whether a drop of <paramref name="dragRow"/> on <paramref name="target"/> can move it: a different data row
@@ -83,7 +88,8 @@ internal static class RowDragGeometry
     /// </summary>
     public static float IndicatorY(int dragRow, int target, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
     {
-        float y = RowTop(target, scroll, style, dataSource) + (target > dragRow ? style.RowHeight : 0);
+        float y = RowTop(target, scroll, style, dataSource)
+            + (target > dragRow ? dataSource.RowLayout.GetRowHeight(target, style) : 0);
         float top = target < dataSource.EffectiveFrozenRowCount
             ? DataAreaTop(style, dataSource)
             : ScrollableTop(style, dataSource);

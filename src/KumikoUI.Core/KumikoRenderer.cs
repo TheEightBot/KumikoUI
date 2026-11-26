@@ -11,7 +11,7 @@ namespace KumikoUI.Core;
 /// Renders the entire grid (header, rows, grid lines, selection, frozen columns)
 /// using the platform-independent IDrawingContext.
 /// </summary>
-public sealed class KumikoRenderer : IDisposable
+public sealed partial class KumikoRenderer : IDisposable
 {
     private readonly KumikoLayoutEngine _layout = new();
     private readonly PaintCache _paintCache = new();
@@ -274,13 +274,15 @@ public sealed class KumikoRenderer : IDisposable
         dataSource.SyncCellTextCulture();
         int frozenRowCount = dataSource.EffectiveFrozenRowCount;
         var (firstRow, lastRow) = _layout.GetVisibleRowRangeWithOffset(
-            scroll, style, dataSource.RowCount, topSummaryHeight, frozenRowCount);
+            scroll, style, dataSource, topSummaryHeight);
 
         _layout.ComputeColumnWidths(columns, effectiveViewportWidth, ctx, style, dataSource, firstRow, lastRow);
         // Frozen panes that do not fit the viewport give columns back to the scrolling pane (#268).
         FrozenPanes.Resolve(columns, style, scroll.ViewportWidth);
         scroll.ContentWidth = _layout.GetContentWidth(columns) + handleOffset + rightHandleWidth;
-        scroll.ContentHeight = _layout.GetContentHeight(dataSource.RowCount, style)
+        // Rows of varying height (#320) are measured now, with the frame's widths, before the extent is known.
+        MeasureRowHeights(ctx, dataSource, scroll, style, groupPanelOffset, topSummaryHeight, bottomSummaryHeight);
+        scroll.ContentHeight = _layout.GetContentHeight(dataSource, style)
             + groupPanelOffset + topSummaryHeight + bottomSummaryHeight;
         scroll.ClampOffset();
 
@@ -333,13 +335,14 @@ public sealed class KumikoRenderer : IDisposable
         }
 
         // Compute frozen rows
-        float frozenRowHeight = _layout.GetFrozenRowHeight(frozenRowCount, style);
+        var rows = dataSource.RowLayout;
+        float frozenRowHeight = _layout.GetFrozenRowHeight(dataSource, style);
 
         // Data rows start after header + top summaries + frozen rows. The vertical offset may have been clamped
         // since the range was first computed (the row count or viewport changed), so compute it again.
         float dataAreaTop = style.HeaderHeight + topSummaryHeight;
         (firstRow, lastRow) = _layout.GetVisibleRowRangeWithOffset(
-            scroll, style, dataSource.RowCount, topSummaryHeight, frozenRowCount);
+            scroll, style, dataSource, topSummaryHeight);
         _lastFirstRow = firstRow;
         _lastLastRow = lastRow;
         bool isMultiSort = dataSource.IsMultiSortActive;
@@ -353,7 +356,10 @@ public sealed class KumikoRenderer : IDisposable
         // Transitions (#101): a group sliding open draws rows from below the viewport too, while they slide up into it
         CaptureTransitions(dataSource, selection, scroll, style, frozenRowCount, scrollingRowsTop, dataClipBottom);
         if (_slideShift < 0)
-            lastRow = Math.Min(dataSource.RowCount - 1, lastRow + (int)MathF.Ceiling(-_slideShift / style.RowHeight) + 1);
+            lastRow = rows.IsUniform(style)
+                ? Math.Min(dataSource.RowCount - 1, lastRow + (int)MathF.Ceiling(-_slideShift / style.RowHeight) + 1)
+                : Math.Min(dataSource.RowCount - 1, Math.Max(lastRow,
+                    rows.GetScrollRowAt(rows.GetScrollTop(lastRow + 1, style) - _slideShift, style)) + 1);
         dataSource.PrepareCellTextCache(frozenRowCount, Math.Max(0, lastRow - firstRow + 1));
 
         // Sticky group headers (#174): pinned below the frozen rows, over the scrolling rows.
@@ -460,7 +466,7 @@ public sealed class KumikoRenderer : IDisposable
 
         if (dataSource.BottomSummaryCount > 0 && !style.PinBottomSummaryRows)
         {
-            float bottomSummaryY = dataAreaTop + dataSource.RowCount * style.RowHeight - scroll.OffsetY
+            float bottomSummaryY = dataAreaTop + RowsHeight(dataSource, style) - scroll.OffsetY
                 + RowShift(dataSource.RowCount);
             DrawTableSummaryRows(ctx, dataSource, allCols, scroll, style, frozenWidth,
                 dataSource.ComputedBottomSummaries, bottomSummaryY, handleOffset);
@@ -482,7 +488,7 @@ public sealed class KumikoRenderer : IDisposable
                     ctx.ClipRect(new KumikoRect(0, _slideTop, scroll.ViewportWidth, Math.Max(0, adjustedViewportHeight - _slideTop)));
                 }
 
-                float rowY = style.HeaderHeight + topSummaryHeight + frozenRowHeight + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY
+                float rowY = rows.GetRowY(row, style.HeaderHeight + topSummaryHeight, scroll.OffsetY, style)
                     + RowShift(row);
 
                 if (dataSource.IsGroupHeaderRow(row))
@@ -562,7 +568,7 @@ public sealed class KumikoRenderer : IDisposable
         if (editSession is { IsEditing: true })
         {
             float pinnedFooterHeight = style.PinBottomSummaryRows ? bottomSummaryHeight : 0;
-            editSession.PlaceEditor(GetEditorCellBounds(editSession.EditCell, scroll, style,
+            editSession.PlaceEditor(GetEditorCellBounds(editSession.EditCell, rows, scroll, style,
                 groupPanelOffset, dataAreaTop, frozenRowCount, frozenRowHeight, pinnedBandBottom,
                 scrollClipLeft, scrollClipLeft + scrollClipWidth, adjustedViewportHeight - pinnedFooterHeight));
         }
@@ -586,7 +592,7 @@ public sealed class KumikoRenderer : IDisposable
     /// The edited cell's screen rectangle this frame (absolute coordinates), or null when the cell is
     /// scrolled out of its pane or band, or its column is not laid out.
     /// </summary>
-    private KumikoRect? GetEditorCellBounds(CellPosition cell, ScrollState scroll, KumikoStyle style,
+    private KumikoRect? GetEditorCellBounds(CellPosition cell, KumikoRowLayout rows, ScrollState scroll, KumikoStyle style,
         float groupPanelOffset, float dataAreaTop, int frozenRowCount, float frozenRowHeight, float scrollingRowsTop,
         float scrollPaneLeft, float scrollPaneRight, float dataAreaBottom)
     {
@@ -601,21 +607,17 @@ public sealed class KumikoRenderer : IDisposable
         if (found.Column.Pane == ColumnFreezeMode.None && (x + width <= scrollPaneLeft || x >= scrollPaneRight))
             return null;
 
-        float y;
-        if (cell.Row < frozenRowCount)
+        float y = rows.GetRowY(cell.Row, dataAreaTop, scroll.OffsetY, style);
+        float height = rows.GetRowHeight(cell.Row, style);
+        if (cell.Row >= frozenRowCount)
         {
-            y = dataAreaTop + cell.Row * style.RowHeight;
-        }
-        else
-        {
-            y = dataAreaTop + frozenRowHeight + (cell.Row - frozenRowCount) * style.RowHeight - scroll.OffsetY;
             // Hidden once the row is entirely above the scrolling rows' top: the frozen rows, or the sticky group
             // headers pinned over it (#174).
-            if (y + style.RowHeight <= scrollingRowsTop || y >= dataAreaBottom)
+            if (y + height <= scrollingRowsTop || y >= dataAreaBottom)
                 return null;
         }
 
-        return new KumikoRect(x, y + groupPanelOffset, width, style.RowHeight);
+        return new KumikoRect(x, y + groupPanelOffset, width, height);
     }
 
     private static (KumikoColumn Column, float X, int OriginalIndex)? Find(
@@ -734,14 +736,15 @@ public sealed class KumikoRenderer : IDisposable
         int anchor = animations.GroupAnchorRow;
         if (animations.IsGroupSliding && anchor >= frozenRowCount && anchor < dataSource.RowCount)
         {
-            float headerBottom = scrollingRowsTop + (anchor - frozenRowCount + 1) * style.RowHeight - scroll.OffsetY;
+            var rows = dataSource.RowLayout;
+            float headerBottom = scrollingRowsTop + rows.GetScrollTop(anchor + 1, style) - scroll.OffsetY;
             float top = Math.Max(headerBottom, scrollingRowsTop);
             float room = dataClipBottom - top;
             if (room > 0)
             {
                 // Expanding: the new rows come out from under the header, pushing the rest down. Collapsing: the rows
                 // after the group close up under it. At most the height left below the header slides.
-                float distance = Math.Min(Math.Abs(animations.GroupRowDelta) * style.RowHeight, room);
+                float distance = Math.Min(SlideDistance(dataSource, style, anchor, animations.GroupRowDelta), room);
                 float remaining = (1f - animations.GroupProgress) * distance;
                 _slideAnchor = anchor;
                 _slideTop = top;
@@ -1002,13 +1005,12 @@ public sealed class KumikoRenderer : IDisposable
 
         bool hasCurrentRow = selection.CurrentCell.IsValid;
         int currentRow = selection.CurrentCell.Row;
-        float frozenRowHeight = frozenRowCount * style.RowHeight;
+        var rows = dataSource.RowLayout;
 
         for (int row = firstRow; row <= lastRow; row++)
         {
             // Account for frozen rows: scrollable rows start after frozen rows in screen space
-            float rowY = style.HeaderHeight + topSummaryHeight + frozenRowHeight
-                + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY + RowShift(row);
+            float rowY = rows.GetRowY(row, style.HeaderHeight + topSummaryHeight, scroll.OffsetY, style) + RowShift(row);
 
             // Skip group headers and group summaries — they are drawn in a separate full-width pass
             if (dataSource.IsGroupHeaderRow(row))
@@ -1050,12 +1052,13 @@ public sealed class KumikoRenderer : IDisposable
                 : unselectedPaint;
 
             // Row background fill area depends on freeze mode — but when inside a clip, fill entire clip
-            var rowRect = new KumikoRect(0, rowY, scroll.ViewportWidth, style.RowHeight);
+            float rowHeight = rows.GetRowHeight(row, style);
+            var rowRect = new KumikoRect(0, rowY, scroll.ViewportWidth, rowHeight);
             ctx.FillRect(rowRect, rowBgPaint);
             if (row == _fadeRow && (isSelected || isFocused))
                 FadeInHighlight(ctx, rowRect, unselectedPaint);
 
-            DrawRowCells(ctx, dataSource, visibleCols, row, rowY, dataItem, dynamicRowStyle, scroll, style,
+            DrawRowCells(ctx, dataSource, visibleCols, row, rowY, rowHeight, dataItem, dynamicRowStyle, scroll, style,
                 isSelected, editSession);
         }
     }
@@ -1070,6 +1073,7 @@ public sealed class KumikoRenderer : IDisposable
         List<(KumikoColumn Column, float X, int OriginalIndex)> visibleCols,
         int row,
         float rowY,
+        float rowHeight,
         object dataItem,
         KumikoRowStyle? dynamicRowStyle,
         ScrollState scroll,
@@ -1090,14 +1094,14 @@ public sealed class KumikoRenderer : IDisposable
             if (colCellStyle?.BackgroundColor != null)
             {
                 _cellBackground.Color = colCellStyle.BackgroundColor.Value;
-                ctx.FillRect(new KumikoRect(screenX, rowY, col.Width, style.RowHeight), _cellBackground);
+                ctx.FillRect(new KumikoRect(screenX, rowY, col.Width, rowHeight), _cellBackground);
             }
 
             var cellRect = new KumikoRect(
                 screenX + cellPadding,
                 rowY,
                 col.Width - cellPadding * 2,
-                style.RowHeight);
+                rowHeight);
 
             // Skip rendering content for the cell being edited (editor draws on top)
             if (editSession != null && editSession.IsCellBeingEdited(row, origIdx))
@@ -1155,10 +1159,12 @@ public sealed class KumikoRenderer : IDisposable
         bool hasCurrentRow = selection.CurrentCell.IsValid;
         int currentRow = selection.CurrentCell.Row;
 
+        var rows = dataSource.RowLayout;
         for (int row = 0; row < frozenRowCount && row < dataSource.RowCount; row++)
         {
             // Frozen rows are at fixed Y positions, unaffected by scroll.OffsetY
-            float rowY = style.HeaderHeight + topSummaryHeight + row * style.RowHeight;
+            float rowY = rows.GetRowY(row, style.HeaderHeight + topSummaryHeight, scroll.OffsetY, style);
+            float rowHeight = rows.GetRowHeight(row, style);
 
             // Skip group headers/summaries in frozen rows (shouldn't normally happen)
             if (dataSource.IsGroupHeaderRow(row) || dataSource.IsGroupSummaryRow(row))
@@ -1191,18 +1197,18 @@ public sealed class KumikoRenderer : IDisposable
                 : isFocused ? _paintCache.FocusedRowBackground
                 : unselectedPaint;
 
-            var rowRect = new KumikoRect(0, rowY, scroll.ViewportWidth, style.RowHeight);
+            var rowRect = new KumikoRect(0, rowY, scroll.ViewportWidth, rowHeight);
             ctx.FillRect(rowRect, rowBgPaint);
             if (row == _fadeRow && (isSelected || isFocused))
                 FadeInHighlight(ctx, rowRect, unselectedPaint);
 
-            DrawRowCells(ctx, dataSource, visibleCols, row, rowY, dataItem, dynamicRowStyle, scroll, style,
+            DrawRowCells(ctx, dataSource, visibleCols, row, rowY, rowHeight, dataItem, dynamicRowStyle, scroll, style,
                 isSelected, editSession);
 
             // The row fill covers the grid lines drawn before it, so a frozen row gets its own
             if (style.ShowHorizontalGridLines)
             {
-                float lineY = rowY + style.RowHeight;
+                float lineY = rowY + rowHeight;
                 ctx.DrawLine(0, lineY, scroll.ViewportWidth, lineY, _paintCache.GridLine);
             }
         }
@@ -1318,15 +1324,13 @@ public sealed class KumikoRenderer : IDisposable
         float rightFrozenWidth = 0)
     {
         var linePaint = _paintCache.GridLine;
-
-        float frozenRowHeight = frozenRowCount * style.RowHeight;
+        var rows = dataSource?.RowLayout ?? KumikoRowLayout.Detached;
 
         if (style.ShowHorizontalGridLines)
         {
             for (int row = firstRow; row <= lastRow + 1; row++)
             {
-                float y = style.HeaderHeight + topSummaryHeight + frozenRowHeight
-                    + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY + RowShift(row);
+                float y = rows.GetRowY(row, style.HeaderHeight + topSummaryHeight, scroll.OffsetY, style) + RowShift(row);
                 // Let the clip region handle the horizontal extent
                 ctx.DrawLine(0, y, scroll.ViewportWidth, y, linePaint);
             }
@@ -1335,7 +1339,9 @@ public sealed class KumikoRenderer : IDisposable
         if (style.ShowVerticalGridLines)
         {
             float maxY = Math.Min(
-                style.HeaderHeight + topSummaryHeight + totalRows * style.RowHeight - scroll.OffsetY,
+                style.HeaderHeight + topSummaryHeight
+                    + (rows.IsUniform(style) ? totalRows * style.RowHeight : (float)rows.GetTotalHeight(style))
+                    - scroll.OffsetY,
                 scroll.ViewportHeight);
 
             foreach (var (col, colX, _) in visibleCols)
@@ -1383,26 +1389,17 @@ public sealed class KumikoRenderer : IDisposable
         // Don't draw cell border on group header or group summary rows
         if (dataSource != null && dataSource.IsNonDataRow(row)) return;
 
-        float frozenRowHeight = frozenRowCount * style.RowHeight;
+        var rows = dataSource?.RowLayout ?? KumikoRowLayout.Detached;
 
         foreach (var (col, colX, origIdx) in visibleCols)
         {
             if (origIdx == targetOrigIdx)
             {
                 float screenX = ColumnScreenX(colX, scroll, col.Pane);
-                float rowY;
-                if (row < frozenRowCount)
-                {
-                    // Frozen row: fixed position
-                    rowY = style.HeaderHeight + topSummaryHeight + row * style.RowHeight;
-                }
-                else
-                {
-                    // Scrollable row
-                    rowY = style.HeaderHeight + topSummaryHeight + frozenRowHeight
-                        + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY + RowShift(row);
-                }
-                var cellRect = new KumikoRect(screenX, rowY, col.Width, style.RowHeight);
+                // A frozen row has a fixed position; a scrollable row moves with the offset (and a sliding group)
+                float rowY = rows.GetRowY(row, style.HeaderHeight + topSummaryHeight, scroll.OffsetY, style);
+                if (row >= frozenRowCount) rowY += RowShift(row);
+                var cellRect = new KumikoRect(screenX, rowY, col.Width, rows.GetRowHeight(row, style));
 
                 ctx.DrawRect(cellRect, _paintCache.CurrentCellBorder);
                 return;
@@ -1889,11 +1886,12 @@ public sealed class KumikoRenderer : IDisposable
         ctx.FillRect(new KumikoRect(handleX, dataAreaTop, handleWidth, adjustedViewportHeight - dataAreaTop), handleBgPaint);
 
         // Draw grip icons for frozen rows
+        var rows = dataSource.RowLayout;
         for (int row = 0; row < frozenRowCount && row < dataSource.RowCount; row++)
         {
             if (dataSource.IsNonDataRow(row)) continue;
-            float rowY = dataAreaTop + row * style.RowHeight;
-            DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
+            float rowY = rows.GetRowY(row, dataAreaTop, scroll.OffsetY, style);
+            DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, rows.GetRowHeight(row, style), gripPaint);
         }
 
         // Draw grip icons for scrollable visible rows (clipped below frozen rows)
@@ -1904,14 +1902,14 @@ public sealed class KumikoRenderer : IDisposable
         for (int row = firstRow; row <= lastRow; row++)
         {
             if (dataSource.IsNonDataRow(row)) continue;
-            float rowY = dataAreaTop + frozenRowHeight + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY
-                + RowShift(row);
-            if (rowY + style.RowHeight <= scrollableAreaTop || rowY > adjustedViewportHeight) continue;
+            float rowY = rows.GetRowY(row, dataAreaTop, scroll.OffsetY, style) + RowShift(row);
+            float rowHeight = rows.GetRowHeight(row, style);
+            if (rowY + rowHeight <= scrollableAreaTop || rowY > adjustedViewportHeight) continue;
             // A row sliding out from under a group header shows its grip only below the header (#101)
-            if (row > _slideAnchor && _slideAnchor >= 0 && rowY + style.RowHeight / 2 < _slideTop) continue;
+            if (row > _slideAnchor && _slideAnchor >= 0 && rowY + rowHeight / 2 < _slideTop) continue;
             // No grip for a row whose middle is under the sticky group headers (#174)
-            if (rowY + style.RowHeight / 2 < pinnedBandBottom) continue;
-            DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, style.RowHeight, gripPaint);
+            if (rowY + rowHeight / 2 < pinnedBandBottom) continue;
+            DrawGripIcon(ctx, style.IconProvider, handleX, rowY, handleWidth, rowHeight, gripPaint);
         }
         ctx.Restore();
 
@@ -1953,8 +1951,9 @@ public sealed class KumikoRenderer : IDisposable
         if (dragRowIndex < 0 || dragRowIndex >= dataSource.RowCount || dataSource.IsNonDataRow(dragRowIndex)) return;
 
         float rowWidth = scroll.ViewportWidth;
-        float rowHeight = style.RowHeight;
-        float ghostTop = RowDragGeometry.ClampGhostTop(dragScreenY, scroll, style, dataSource);
+        float rowHeight = RowDragGeometry.GhostHeight(dragRowIndex, style, dataSource);
+        float ghostTop = RowDragGeometry.ClampGhostTop(dragScreenY, scroll, style, dataSource, dragRowIndex);
+        bool wrapGhost = !dataSource.RowLayout.IsUniform(style);
         float ghostY = ghostTop - groupPanelOffset;
 
         // ── Ghost row ──
@@ -1977,7 +1976,8 @@ public sealed class KumikoRenderer : IDisposable
                     cellX + style.CellPadding, ghostY,
                     colWidth - style.CellPadding * 2, rowHeight);
                 ctx.DrawTextInRect(cellText, textRect, _paintCache.RowDragText,
-                    KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+                    KumikoTextAlignment.Left, KumikoVerticalAlignment.Center, clip: true,
+                    wrapGhost ? columns[c].TextWrap : KumikoTextWrap.None);
             }
 
             cellX += colWidth;
@@ -1986,7 +1986,7 @@ public sealed class KumikoRenderer : IDisposable
         // ── Drop indicator line ──
         // Where the drop lands: the row under the ghost's middle, the same computation the input controller drops on.
         // No line when the drop would not move the row (onto itself, a group row or another group).
-        int target = RowDragGeometry.DropTarget(ghostTop, scroll, style, dataSource);
+        int target = RowDragGeometry.DropTarget(ghostTop, scroll, style, dataSource, dragRowIndex);
         if (!RowDragGeometry.IsDroppable(dragRowIndex, target, dataSource)) return;
 
         float indicatorY = RowDragGeometry.IndicatorY(dragRowIndex, target, scroll, style, dataSource) - groupPanelOffset;

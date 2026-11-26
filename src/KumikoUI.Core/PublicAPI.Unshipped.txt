@@ -1,0 +1,31 @@
+KumikoUI.Core.Layout.KumikoLayoutEngine.GetContentHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style) -> float
+KumikoUI.Core.Layout.KumikoLayoutEngine.GetFrozenRowHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style) -> float
+KumikoUI.Core.Layout.KumikoLayoutEngine.GetVisibleRowRangeWithOffset(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! source, float topOffset) -> (int First, int Last)
+KumikoUI.Core.Models.KumikoRowHeightContext
+KumikoUI.Core.Models.KumikoRowHeightContext.DefaultHeight.get -> float
+KumikoUI.Core.Models.KumikoRowHeightContext.Item.get -> object!
+KumikoUI.Core.Models.KumikoRowHeightContext.KumikoRowHeightContext() -> void
+KumikoUI.Core.Models.KumikoRowHeightContext.MeasureContentHeight() -> float
+KumikoUI.Core.Models.KumikoRowHeightContext.Mode.get -> KumikoUI.Core.Models.KumikoRowHeightMode
+KumikoUI.Core.Models.KumikoRowHeightContext.Row.get -> int
+KumikoUI.Core.Models.KumikoRowHeightMode
+KumikoUI.Core.Models.KumikoRowHeightMode.Auto = 1 -> KumikoUI.Core.Models.KumikoRowHeightMode
+KumikoUI.Core.Models.KumikoRowHeightMode.Fixed = 0 -> KumikoUI.Core.Models.KumikoRowHeightMode
+KumikoUI.Core.Models.KumikoRowHeightResolver
+KumikoUI.Core.Models.KumikoSource.InvalidateRowHeight(object! item) -> void
+KumikoUI.Core.Models.KumikoSource.InvalidateRowHeights() -> void
+KumikoUI.Core.Models.KumikoStyle.CellVerticalPadding.get -> float
+KumikoUI.Core.Models.KumikoStyle.CellVerticalPadding.set -> void
+KumikoUI.Core.Models.KumikoStyle.MaxRowHeight.get -> float?
+KumikoUI.Core.Models.KumikoStyle.MaxRowHeight.set -> void
+KumikoUI.Core.Models.KumikoStyle.MinRowHeight.get -> float?
+KumikoUI.Core.Models.KumikoStyle.MinRowHeight.set -> void
+KumikoUI.Core.Models.KumikoStyle.RowHeightMode.get -> KumikoUI.Core.Models.KumikoRowHeightMode
+KumikoUI.Core.Models.KumikoStyle.RowHeightMode.set -> void
+KumikoUI.Core.Models.KumikoStyle.RowHeightResolver.get -> KumikoUI.Core.Models.KumikoRowHeightResolver?
+KumikoUI.Core.Models.KumikoStyle.RowHeightResolver.set -> void
+KumikoUI.Core.Rendering.IMeasurableCellRenderer
+KumikoUI.Core.Rendering.IMeasurableCellRenderer.MeasureHeight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> float?
+static KumikoUI.Core.Layout.KumikoScroller.GetRowHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style, int row) -> float
+virtual KumikoUI.Core.Models.KumikoRowHeightResolver.Invoke(in KumikoUI.Core.Models.KumikoRowHeightContext context) -> float?
+virtual KumikoUI.Core.Rendering.TextCellRenderer.MeasureHeight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> float?
