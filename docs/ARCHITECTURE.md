@@ -72,6 +72,7 @@ Four packages ship: `KumikoUI.Core` (with the generator), `KumikoUI.SkiaSharp`, 
 | `KumikoSource` | Data management: filtering, sorting, grouping, summaries, change observation, display-text cache |
 | `KumikoLayoutEngine` | Column width computation (Auto/Star/Fixed, header fit), visible row and column ranges |
 | `FrozenPanes`, `PinnedGroupHeaders`, `KumikoScroller` | Which frozen columns stay pinned, sticky group headers, scroll-to-row and column offsets |
+| `KumikoRowLayout` (internal) | Where every row is vertically, owned by the `KumikoSource` (`RowLayout`): row top, row height, the row at a y, the total and frozen heights. The renderer, hit tester, input controller, row drag geometry, sticky headers and `KumikoScroller` all ask it, so they agree with variable row heights (#320) |
 | `KumikoHitTester` | Resolves pointer coordinates to one of 13 `HitRegion` values, with the geometry the renderer drew |
 | `InteractionGeometry`, `RenderedHitRegions` | Hit and draw sizes both sides share; the regions a frame measured (grouping chips) |
 | `PaintCache` | The `KumikoPaint` objects the grid draws with, rebuilt from `KumikoStyle` only when the style changes |
@@ -191,7 +192,9 @@ The platform input mechanisms converge on the same Core types: command keys beco
 Core's `KumikoKeyboardAvoidance` computes how much of the grid an on-screen keyboard covers; both hosts feed it and set `ScrollState.BottomInset`.
 
 ### Virtual Scrolling
-Only visible rows and columns are computed and drawn. `KumikoLayoutEngine.GetVisibleRowRangeWithOffset` gives the row range from the scroll offset, row height, header, summaries and frozen rows; the `PopulateVisible*` methods give the column ranges per pane.
+Only visible rows and columns are computed and drawn. `KumikoLayoutEngine.GetVisibleRowRangeWithOffset` gives the row range from the scroll offset, the row layout, header, summaries and frozen rows; the `PopulateVisible*` methods give the column ranges per pane.
+
+Row geometry goes through `KumikoRowLayout`. With `RowHeightMode.Fixed` and no `RowHeightResolver` it is the uniform arithmetic (`row * RowHeight`) and keeps no per-row state. Otherwise it keeps per-row heights in two Fenwick trees (the sum of the measured heights and the count of rows not measured yet, which use an estimate: the mean of the measured rows), so row to y and y to row are O(log n) and changing the estimate is O(1). Heights are measured only inside `KumikoRenderer.Render` (`KumikoRenderer.RowHeights.cs`), for the rows about to be drawn, once per item, content version and column-width signature, and cached per item so they survive sorting, filtering and grouping. The source notifies the layout of rebuilds, single-row inserts and removes, and item changes; queries outside a frame never measure. Group header and group summary rows stay `RowHeight` tall. The design is in [spec #102](specs/102-variable-row-height.md).
 
 ### Grouped Flat View
 Hierarchical group data is flattened into the view's list of `FlatViewRow`, with `FlatRowKind` (Data, GroupHeader, GroupSummary). Group paths are `GroupKeyPath` composite keys. Expansion state is tracked per group; `PinnedGroupHeaders` computes the sticky headers for the scroll offset.

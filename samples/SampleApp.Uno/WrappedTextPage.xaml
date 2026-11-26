@@ -1,0 +1,54 @@
+<Page x:Class="SampleApp.Uno.WrappedTextPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      xmlns:core="using:KumikoUI.Core.Models"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Wrapped Text — Auto Row Height"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   Padding="16,12"
+                   Grid.Row="0" />
+
+        <!-- Scrolls horizontally so every option stays reachable on phone-width viewports. -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal" Padding="16,4" Spacing="8">
+                <ToggleSwitch x:Name="autoSwitch" IsOn="True" OnContent="Auto row height" OffContent="Auto row height"
+                              Toggled="OnAutoToggled" />
+                <ToggleSwitch x:Name="maxSwitch" OnContent="Max 90 px" OffContent="Max 90 px" Toggled="OnMaxToggled" />
+                <ToggleSwitch x:Name="starredSwitch" OnContent="Starred rows 64 px" OffContent="Starred rows 64 px"
+                              Toggled="OnStarredToggled" />
+                <ToggleSwitch x:Name="frameStatsSwitch" IsOn="True" OnContent="Frame stats" OffContent="Frame stats"
+                              Toggled="OnFrameStatsToggled" />
+                <Button Content="Jump to row 75,000" Click="OnJumpClicked" />
+                <TextBlock x:Name="statusLabel" VerticalAlignment="Center" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <kumiko:KumikoDataGrid x:Name="kumiko"
+                               Grid.Row="2"
+                               RowHeightMode="Auto"
+                               CellVerticalPadding="6"
+                               ShowFrameStats="True"
+                               AllowSorting="True"
+                               GridDescription="Notes with wrapped text and rows sized to their content">
+            <kumiko:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="#" PropertyName="Id" Width="80" ColumnType="Numeric" IsReadOnly="True" IsFrozen="True" />
+                <core:KumikoColumn Header="Title" PropertyName="Title" Width="160" />
+                <core:KumikoColumn Header="Notes" PropertyName="Notes" Width="280" TextWrap="Word" />
+                <core:KumikoColumn Header="Address" PropertyName="Address" Width="180" TextWrap="Word" />
+                <core:KumikoColumn Header="Starred" PropertyName="Starred" Width="90" ColumnType="Boolean" />
+            </kumiko:KumikoDataGrid.Columns>
+        </kumiko:KumikoDataGrid>
+    </Grid>
+</Page>

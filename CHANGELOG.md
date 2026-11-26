@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Variable and auto row height (#320, spec #102): `KumikoStyle.RowHeightMode` (`Fixed`, the default and unchanged, or `Auto`, where a data row is as tall as its tallest wrapped cell plus `CellVerticalPadding`, within `MinRowHeight` and `MaxRowHeight`) and `RowHeightResolver`, which sets or adjusts any data row's height in either mode (`KumikoRowHeightContext.MeasureContentHeight()` gives the measured height). The same properties are on both hosts' `KumikoDataGrid` (limits as `double`, `NaN` for none) and survive a `Theme` or `GridStyle` change. Rows are measured when first drawn and the heights are kept per item through sorting, filtering and grouping; the visible rows stay still while rows above them are measured, and a scroll to a row never drawn is refined on the next frame. `KumikoSource.InvalidateRowHeights()`/`InvalidateRowHeight(item)` (also on the hosts) re-measure, `IMeasurableCellRenderer` lets a custom renderer take part (`TextCellRenderer` implements it), `KumikoScroller.GetRowHeight` reports a row's height, and `KumikoLayoutEngine` gains `GetContentHeight`, `GetFrozenRowHeight` and `GetVisibleRowRangeWithOffset` overloads that take the source. Hit testing, keyboard paging and ensure-visible, sticky group headers, frozen rows, summaries, row drag and the editor follow the row heights. Both sample apps have a Wrapped Text page.
+
 ### Fixed
 - A column's `HeaderCellStyle.TextAlignment` now aligns the header text (and the text of the column drag ghost) instead of being ignored: Center and Right align within the space left after the sort and filter glyphs, so the text never runs under them. The default is still Left.
 

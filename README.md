@@ -86,7 +86,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Summaries | Table (top or bottom, bottom pinned as a footer by default), group and caption summaries: Sum, Average, Count, Min, Max, Custom |
 | Editing | Text, numeric, date, combo box, picker and custom editors; edit triggers per grid and per column; typed conversion and validation with messages |
 | Selection | None, Single, Multiple, Extended; item-based, so it survives sort, filter and regrouping; MVVM-bindable |
-| Rows | Drag and drop reorder by handle or by row |
+| Rows | Drag and drop reorder by handle or by row; fixed or auto row height sized to wrapped text, with a per-row height resolver ([Row height](#row-height)) |
 | Interaction | Hover and pressed feedback, short transitions (group expand and collapse, column drag), momentum presets for iOS, Android and desktop, optional haptics, and a context-menu event; every timing is listed in [docs/INTERACTION.md](docs/INTERACTION.md) |
 | Scrolling | Touch, wheel, trackpad and keyboard; `ScrollToRow`, `ScrollToItem` and `ScrollToColumn`; bindable `VerticalOffset` and `HorizontalOffset`; a `Scrolled` event |
 | Clipboard | Ctrl/Cmd+C copies the selected rows as tab-separated text; copy, cut and paste work in editors |
@@ -320,11 +320,35 @@ Column settings can be changed from code at any time: `KumikoColumn` raises `Pro
 
 ### Text wrapping
 
-A Text, Numeric or Date cell shows one line and cuts it with an ellipsis; a line break in the value draws as a space. Set `TextWrap` on the column to `Word` or `Character` to wrap the text onto as many lines as fit the row height, with an ellipsis at the end of the last line when there is more. Rows keep the grid's `RowHeight`, so raise it to show more lines (variable row height is tracked in #102). The ellipsis never splits an emoji or a letter with combining marks.
+A Text, Numeric or Date cell shows one line and cuts it with an ellipsis; a line break in the value draws as a space. Set `TextWrap` on the column to `Word` or `Character` to wrap the text onto as many lines as fit the row height, with an ellipsis at the end of the last line when there is more. With the default `RowHeightMode="Fixed"` every row is `RowHeight` tall, so a wrapped cell shows as many lines as that holds; with `RowHeightMode="Auto"` each row grows to show all of its lines (see [Row height](#row-height)). The ellipsis never splits an emoji or a letter with combining marks.
 
 ```xml
 <core:KumikoColumn Header="Notes" PropertyName="Notes" Width="220" TextWrap="Word" />
 ```
+
+### Row height
+
+`RowHeightMode` decides how tall data rows are. `Fixed` (the default) makes every row `RowHeight` tall. `Auto` makes each row as tall as its tallest wrapped cell (a column with `TextWrap`) plus `CellVerticalPadding` (6) above and below, never shorter than `MinRowHeight` (`NaN`, the default, means `RowHeight`) and never taller than `MaxRowHeight` (`NaN` means no limit; text that needs more ends with an ellipsis). Group headers, group summaries, table summaries and the header keep their fixed heights.
+
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Tickets}"
+                       RowHeightMode="Auto"
+                       MaxRowHeight="160">
+    <kumiko:KumikoDataGrid.Columns>
+        <core:KumikoColumn Header="Title" PropertyName="Title" Width="160" />
+        <core:KumikoColumn Header="Notes" PropertyName="Notes" Width="280" TextWrap="Word" />
+    </kumiko:KumikoDataGrid.Columns>
+</kumiko:KumikoDataGrid>
+```
+
+`RowHeightResolver` sets or adjusts the height of any data row, in either mode: return a height, or `null` for the height the mode gives the row. `context.MeasureContentHeight()` returns the row's `Auto` height, so a `Fixed` grid can size a few rows to their content, or an `Auto` grid can adjust the measurement. The resolver runs only while a frame is drawn, once per item (not every frame), so keep it fast and free of side effects.
+
+```csharp
+kumiko.RowHeightResolver = (in KumikoRowHeightContext context) =>
+    context.Item is Employee { IsActive: false } ? 56 : null;
+```
+
+Rows are measured when they are first drawn, and the measured heights are kept per item, so sorting, filtering and grouping do not measure again. A row that has not been drawn yet is laid out at an estimate (the mean of the measured rows), so in `Auto` mode the scroll range settles as you scroll, while the rows on screen stay still. `ScrollToRow` and `ScrollToItem` to a row that was never drawn scroll at once and refine the offset on the next frame. A change an item reports through `PropertyChanged` re-measures its row; call `InvalidateRowHeight(item)` or `InvalidateRowHeights()` when the height depends on something the grid cannot see. The settings live on `KumikoStyle` (`RowHeightMode`, `MinRowHeight`, `MaxRowHeight`, `CellVerticalPadding`, `RowHeightResolver`), and the grid's properties survive a `Theme` or `GridStyle` change. A custom cell renderer takes part in `Auto` mode by implementing `IMeasurableCellRenderer`. The editor stays one line tall, drawn over the full height of the row.
 
 ### Progress bars
 
@@ -1244,7 +1268,7 @@ style.RowStyleResolver = item =>
 kumiko.GridStyle = style;
 ```
 
-`KumikoCellStyle` has `BackgroundColor`, `TextColor`, `Font`, `Padding` and `TextAlignment`; `KumikoRowStyle` has `BackgroundColor`, `TextColor` and `Font` (every row has the grid's `RowHeight`; variable row height is tracked in #102). Every member is nullable, and null means "no override". A cell's style is composed from the cell resolver, then the column's `CellStyle`, then the row resolver's text color and font, then the grid style; the row resolver's background is drawn behind unselected rows. Resolvers run for every visible cell on every frame, so return cached instances rather than allocating new ones where you can.
+`KumikoCellStyle` has `BackgroundColor`, `TextColor`, `Font`, `Padding` and `TextAlignment`; `KumikoRowStyle` has `BackgroundColor`, `TextColor` and `Font` (a row's height comes from `RowHeightMode` and `RowHeightResolver`, see [Row height](#row-height)). Every member is nullable, and null means "no override". A cell's style is composed from the cell resolver, then the column's `CellStyle`, then the row resolver's text color and font, then the grid style; the row resolver's background is drawn behind unselected rows. Resolvers run for every visible cell on every frame, so return cached instances rather than allocating new ones where you can.
 
 ### KumikoStyle reference
 
@@ -1253,8 +1277,12 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | Sizing | Type | Light | Meaning |
 |---|---|---|---|
 | `HeaderHeight` | `float` | 40 | Height of the header row (also the grid's `HeaderHeight`) |
-| `RowHeight` | `float` | 36 | Height of each data row (also the grid's `RowHeight`) |
+| `RowHeight` | `float` | 36 | Height of each data row in `Fixed` mode, and of group header and group summary rows (also the grid's `RowHeight`) |
 | `CellPadding` | `float` | 8 | Horizontal padding inside data cells |
+| `RowHeightMode` | `KumikoRowHeightMode` | `Fixed` | `Fixed` rows or `Auto` rows sized to their wrapped cells ([Row height](#row-height)) |
+| `MinRowHeight`, `MaxRowHeight` | `float?` | null | `Auto` mode: the shortest (null: `RowHeight`) and tallest (null: no limit) a data row is |
+| `CellVerticalPadding` | `float` | 6 | `Auto` mode: space above and below a row's tallest cell |
+| `RowHeightResolver` | `KumikoRowHeightResolver?` | null | Sets or adjusts a data row's height in either mode |
 
 | Colors | Type | Light | Meaning |
 |---|---|---|---|
@@ -1396,6 +1424,7 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `ClearSelectionOnEmptyAreaTap` | `bool` | true | A tap below the last row or right of the last column clears the selection. |
 | `FrozenRowCount` | `int` | 0 | Top rows frozen while scrolling. |
 | `RowHeight`, `HeaderHeight` | `double` | 36, 40 | Row and header heights. |
+| `RowHeightMode`, `MinRowHeight`, `MaxRowHeight`, `CellVerticalPadding`, `RowHeightResolver` | see [Row height](#row-height) | `Fixed`, NaN, NaN, 6, null | Variable and auto row height; `InvalidateRowHeights()` and `InvalidateRowHeight(item)` re-measure. |
 | `EditTriggers` | `EditTrigger` | `Default` (DoubleTap, F2Key, Typing) | Gestures and keys that start editing. |
 | `EditTextSelectionMode` | `EditTextSelectionMode` | `SelectAll` | Text selection when editing starts. |
 | `DismissKeyboardOnEnter` | `bool` | true | Enter ends editing; false keeps editing on the next row. |
@@ -1737,7 +1766,7 @@ kumiko.Scrolled += (_, e) =>
 };
 ```
 
-`VerticalOffset` and `HorizontalOffset` are two-way properties that follow every scroll and scroll the grid when set. Scrolling before the grid has its first layout is applied once it has a size.
+`VerticalOffset` and `HorizontalOffset` are two-way properties that follow every scroll and scroll the grid when set. Scrolling before the grid has its first layout is applied once it has a size. With `RowHeightMode="Auto"`, a scroll to a row that was never drawn is refined on the next frame, once the rows around it are measured (one more `Scrolled`).
 
 ---
 
@@ -2024,6 +2053,7 @@ Both samples have the same pages (`samples/README.md` has the run commands and a
 | **All Components** | Every column type, frozen columns and rows, edit triggers, selection modes, summaries, adding and removing rows, theme switching, built-in or Material Icons glyphs |
 | **Grouping** | Nested groups, the grouping panel, filter popups, group summaries |
 | **Large Data** | 100,000 rows, load timings and the frame-time overlay switch |
+| **Wrapped Text** | 100,000 rows with two wrapping columns in `RowHeightMode="Auto"`, `MaxRowHeight`, a `RowHeightResolver` and a jump to a row far down, with the frame-time overlay |
 | **Theming** | Light, Dark and HighContrast, and custom colors |
 | **MVVM Actions** | Action button columns bound to view model commands, per-column `EditTriggers`, MVVM selection |
 | **Custom Fonts** | Japanese headers with Noto Sans JP, and icon columns with Material Icons |

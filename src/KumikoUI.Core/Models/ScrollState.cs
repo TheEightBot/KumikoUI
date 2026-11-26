@@ -33,7 +33,11 @@ public sealed class ScrollState
     /// <summary>Total content width (sum of column widths).</summary>
     public float ContentWidth { get; set; }
 
-    /// <summary>Total content height (row count × row height + header).</summary>
+    /// <summary>
+    /// Total content height: the header, the height of every row, the grouping panel and the summary rows. With
+    /// <see cref="KumikoRowHeightMode.Auto"/> rows it uses an estimate for rows not drawn yet, so it settles as the grid
+    /// scrolls.
+    /// </summary>
     public float ContentHeight { get; set; }
 
     /// <summary>

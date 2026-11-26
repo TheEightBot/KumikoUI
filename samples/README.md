@@ -52,6 +52,7 @@ grid scrolls the edited cell into view (see [docs/TEXT-INPUT.md](../docs/TEXT-IN
 | **All Components** (`MainPage` / All Components) | Every column type, frozen columns and rows, edit triggers and text selection, selection modes, table summaries, adding, removing and updating rows (live data), row drag and drop, themes, built-in or Material icons, context menu, saving and restoring the layout | Columns, Editing, Selection, Row Drag and Drop, Summaries, Theming, Icons, Live Data |
 | **Grouping** (`GroupingPage`) | Nested groups, the grouping panel, filter popups, sorting, group summaries, sticky headers | Grouping, Sorting and Filtering, Summaries |
 | **Large Data** (`LargeDataPage`) | 100,000 rows, load timings, the frame-time overlay, scrolling | Performance, Scrolling |
+| **Wrapped Text** (`WrappedTextPage`) | 100,000 rows with two wrapping columns in `RowHeightMode="Auto"`, `MaxRowHeight`, a `RowHeightResolver`, a jump to row 75,000, the frame-time overlay | Row height, Text wrapping |
 | **Theming** (`ThemingPage`) | Light, Dark, HighContrast, custom colors and `FollowSystemTheme` | Theming and Styling |
 | **MVVM Actions** (`MvvmActionsPage`) | Action button columns bound to commands, per-column `EditTriggers`, `SelectedItem`, `SelectedItems` and `SelectionChangedCommand` | Action Button Columns, Selection in MVVM |
 | **Custom Fonts** (`CustomFontsPage`) | Noto Sans JP headers, Material Icons columns, registered fonts | Custom Fonts |
