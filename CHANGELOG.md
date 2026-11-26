@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Fixed
+- A column's `HeaderCellStyle.TextAlignment` now aligns the header text (and the text of the column drag ghost) instead of being ignored: Center and Right align within the space left after the sort and filter glyphs, so the text never runs under them. The default is still Left.
 - `KumikoDataGrid.GroupDescriptions` (MAUI and Uno) follows a grouping change made in the grid: removing a level with the grouping panel chip's remove button now removes it from the bound collection too, so a view model no longer keeps the removed group and brings it back the next time it changes the collection.
 
 ## [1.0.0] - 2026-11-25
