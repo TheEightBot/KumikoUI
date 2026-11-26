@@ -36,6 +36,29 @@ public partial class LargeDataPage : ContentPage
 
     private void ShowSurface() => surfaceLabel.Text = $"Surface: {kumiko.ActiveRenderMode}";
 
+    // ── Grid-wide search (#317) ──
+
+    private void OnFindNextClicked(object? sender, EventArgs e) => kumiko.FindNext();
+
+    private void OnFindPreviousClicked(object? sender, EventArgs e) => kumiko.FindPrevious();
+
+    private void OnShowSearchPanelClicked(object? sender, EventArgs e) => kumiko.ShowSearchPanel();
+
+    private void OnSearchTextChanged(object? sender, TextChangedEventArgs e) => kumiko.SearchText = e.NewTextValue ?? string.Empty;
+
+    private void OnSearchFilterChanged(object? sender, CheckedChangedEventArgs e) => kumiko.SearchFiltersRows = e.Value;
+
+    // The count of a large grid arrives after a moment (it is counted in the background): SearchChanged says when.
+    // The text follows the grid too, which changes it when the user types in the drawn search panel.
+    private void OnSearchChanged(object? sender, EventArgs e)
+    {
+        if (searchEntry.Text != kumiko.SearchText) searchEntry.Text = kumiko.SearchText;
+        int count = kumiko.SearchMatchCount;
+        searchLabel.Text = kumiko.SearchText.Length == 0 ? string.Empty
+            : count < 0 ? "Counting..."
+            : $"{count:N0} matches";
+    }
+
     private async void LoadData(int count)
     {
         statusLabel.Text = $"Generating {count:N0} rows...";

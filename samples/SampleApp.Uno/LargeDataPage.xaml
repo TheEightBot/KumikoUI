@@ -32,6 +32,17 @@
                 <Button x:Name="btnClear" Content="Clear" Click="OnClearClicked" />
                 <Button x:Name="btnUpdateRandom" Content="Update 100 Random" Click="OnUpdateRandomClicked" />
                 <ToggleSwitch x:Name="frameStatsSwitch" OnContent="Frame stats" OffContent="Frame stats" />
+                <!-- Grid-wide search (#317): highlights matches; Prev/Next move between them; Ctrl/Cmd+F opens the drawn panel -->
+                <TextBox x:Name="searchBox"
+                         PlaceholderText="Search all columns"
+                         Width="180"
+                         VerticalAlignment="Center"
+                         Text="{Binding SearchText, ElementName=kumiko, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Content="Prev" Click="OnFindPreviousClicked" />
+                <Button Content="Next" Click="OnFindNextClicked" />
+                <ToggleSwitch x:Name="searchFilterSwitch" OnContent="Only matching rows" OffContent="Only matching rows" />
+                <Button Content="Find panel" Click="OnShowSearchPanelClicked" />
+                <TextBlock x:Name="searchLabel" VerticalAlignment="Center" />
             </StackPanel>
         </ScrollViewer>
 
@@ -46,6 +57,9 @@
                              Grid.Row="3"
                              ItemsSource="{Binding Items}"
                              ShowFrameStats="{Binding IsOn, ElementName=frameStatsSwitch}"
+                             SearchFiltersRows="{Binding IsOn, ElementName=searchFilterSwitch}"
+                             AllowSearchPanel="True"
+                             SearchChanged="OnSearchChanged"
                              RowHeight="32"
                              HeaderHeight="40"
                              GridDescription="Large dataset stress-test grid"
