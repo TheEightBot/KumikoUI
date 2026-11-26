@@ -63,6 +63,8 @@ public sealed partial class MainShell : Page
         if (args.SelectedItem is not NavigationViewItem item || item.Tag is not string tag)
             return;
 
+        sender.Header = item.Content;
+
         Type? pageType = tag switch
         {
             "BasicGrid" => typeof(BasicGridPage),

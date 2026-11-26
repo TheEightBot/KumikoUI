@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 - KumikoUI.Uno ignores a mouse press or release whose update kind names no button and with no left, right or middle button pressed, so a mouse wheel notch on Uno's X11 host no longer selects the cell under the pointer or opens its editor. Touch and pen are unaffected (#286). The cause is upstream: Uno's X11 host does not turn XInput2 buttons 4 to 7 into wheel deltas ([unoplatform/uno#26709](https://github.com/unoplatform/uno/issues/26709)), so the wheel itself still does not scroll there until that is fixed.
 
+### Fixed
+- The Uno sample's navigation shell no longer draws the pane's menu button over the page title on a phone, and its pane item labels are no longer clipped in landscape: the `NavigationView` now has a header row and switches directly from the minimal pane to the expanded one at 640 effective pixels (#291).
+
 ## [1.0.0-preview.1] - 2026-11-14
 
 First 1.0 prerelease. All four packages (KumikoUI.Core, KumikoUI.SkiaSharp, KumikoUI.Maui, KumikoUI.Uno) ship at this version, and each package depends on the exact version of its siblings. The API may still change before 1.0.0. KumikoUI.Uno is the least verified host. The release brings the 1.0 API review and `sealed`/value-type changes (#37, #112), `KumikoSource` thread affinity (#69), saved layouts, column reordering and context menus (#98, #100), native text input on iOS, Android, Windows and Uno (#40-#43), and the hardware-accelerated render mode on MAUI (`KumikoRenderMode.Hardware`, #71); the entries marked **Breaking:** below list what to change when upgrading from 0.2.0. See [docs/release/1.0.0-preview.1-release-notes.md](https://github.com/TheEightBot/KumikoUI/blob/v1.0.0-preview.1/docs/release/1.0.0-preview.1-release-notes.md) for the summary and known issues.
