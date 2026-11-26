@@ -119,7 +119,7 @@ Done for `1.0.0` ([release notes](release/1.0.0-release-notes.md)):
 Left after the `1.0.0` tag:
 
 - The [1.0.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/5): the macOS desktop pass (#274), touch column reorder on a physical Android phone (#276), the macOS accessibility tree (#277), the Linux AT-SPI table role (#287), Android head docs (#292) and the Uno device matrix (#67).
-- The [1.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/6): the data grid features that the major commercial grids ship and KumikoUI lacks (#315 to #412), opened in order of expected value and use.
+- The [1.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/6): the data grid features that the major commercial grids ship and KumikoUI lacks (#315 to #412), opened in order of expected value and use. The research behind them is in [research/competitor-grid-features.md](research/competitor-grid-features.md).
 - Hands-on passes on Windows (MAUI, Uno Windows App SDK) and on a physical low-end Android phone, and a screen-reader run (VoiceOver, TalkBack, Narrator).
 
 Deferred to 1.x as before: the specs listed under epic X, the per-cell accessibility tree (#79) and right-to-left layout (#80).

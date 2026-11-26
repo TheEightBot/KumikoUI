@@ -193,6 +193,79 @@ public class DrawnFilterPopupTests
         Assert.Equal(1, canceled);
     }
 
+    // ── Conditions set from code survive OK ───────────────────────
+
+    private static void Press(PopupManager manager, float x, float y)
+    {
+        Pointer(manager, InputAction.Pressed, x, y);
+        Pointer(manager, InputAction.Released, x, y);
+    }
+
+    private static readonly float ButtonsY = ListTop + ListHeight + 9 + 3 + 10;
+    private static readonly float OkX = 6 + 10;
+    private static readonly float ClearX = 6 + 2 * ((208 - 8) / 3f + 4) + 10;
+
+    private static FilterDescription ConditionFilter(KumikoColumn column) => new(column)
+    {
+        Condition1 = new FilterCondition { TextOperator = TextFilterOperator.Contains, Value = "V0000" },
+        Condition2 = new FilterCondition { TextOperator = TextFilterOperator.EndsWith, Value = "3" },
+        Combination = FilterCombination.Or,
+    };
+
+    [Fact]
+    public void Ok_WithoutChanges_KeepsConditionsSetFromCode()
+    {
+        var (_, manager, source, column) = Open(20);
+        source.SetColumnFilter(column, ConditionFilter(column));
+
+        Press(manager, OkX, ButtonsY);
+
+        var filter = column.ActiveFilter;
+        Assert.NotNull(filter);
+        Assert.Null(filter!.SelectedValues); // a condition-only filter shows every value checked, and stays that way
+        Assert.Equal("V0000", filter.Condition1!.Value);
+        Assert.Equal("3", filter.Condition2!.Value);
+        Assert.Equal(FilterCombination.Or, filter.Combination);
+    }
+
+    [Fact]
+    public void Ok_AfterChangingTheChecklist_KeepsConditionsAndSetsTheValues()
+    {
+        var (_, manager, source, column) = Open(20);
+        source.SetColumnFilter(column, ConditionFilter(column));
+
+        Press(manager, ItemX, RowY(0)); // uncheck V00000
+        Press(manager, OkX, ButtonsY);
+
+        var filter = column.ActiveFilter!;
+        Assert.Equal(19, filter.SelectedValues!.Count);
+        Assert.DoesNotContain(Value(0), filter.SelectedValues);
+        Assert.Equal("V0000", filter.Condition1!.Value);
+        Assert.Equal(FilterCombination.Or, filter.Combination);
+    }
+
+    [Fact]
+    public void Ok_WithoutConditions_AllSelected_StillRemovesTheFilter()
+    {
+        var (_, manager, source, column) = Open(20);
+        source.SetColumnFilter(column, new FilterDescription(column) { SelectedValues = Enumerable.Range(0, 20).Select(Value).ToHashSet() });
+
+        Press(manager, OkX, ButtonsY);
+
+        Assert.Null(column.ActiveFilter);
+    }
+
+    [Fact]
+    public void Clear_RemovesTheWholeFilter_IncludingConditions()
+    {
+        var (_, manager, source, column) = Open(20);
+        source.SetColumnFilter(column, ConditionFilter(column));
+
+        Press(manager, ClearX, ButtonsY);
+
+        Assert.Null(column.ActiveFilter);
+    }
+
     // ── Search ────────────────────────────────────────────────────
 
     [Fact]
