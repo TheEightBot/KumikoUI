@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Incremental "load more" loading (#318): the grid asks for the next batch as the user nears the end of the loaded rows, draws a loading row after the last row while it waits, and an error row with Retry when a batch fails (never retried automatically). One batch runs at a time; replacing or resetting the items, `Detach` and `Dispose` cancel it. Sources: `IKumikoIncrementalSource` (detected on the items or set through `IncrementalSource`), the ready-made `KumikoIncrementalCollection<T>`, an MVVM `LoadMoreCommand` with two-way `IsLoadingMore` and `LoadMoreErrorText`, and on Uno an `ISupportIncrementalLoading` items source. Both hosts add `LoadMoreMode` (Automatic, Manual, None), `LoadMoreThreshold`, `LoadMoreBatchSize`, the read-only `LoadMoreState`, the `LoadMoreRequested` and `LoadMoreCompleted` events, `LoadMoreAsync` and `ResetLoadMore`; Core adds `KumikoSource.IncrementalLoading` (`KumikoIncrementalLoader`), `HitRegion.LoadMoreRow`, the `KumikoStyle.LoadMore*` members, the `KumikoStrings.LoadMore*` and `AnnounceLoadMore*` strings and `KumikoAnnouncements.LoadMoreStarted`/`LoadMoreCompleted`. A multi-item collection `Add` now raises one `ViewChanged` `Insert` (no sort, grouping or summary) instead of a rebuild.
+
 ### Fixed
 - A column's `HeaderCellStyle.TextAlignment` now aligns the header text (and the text of the column drag ghost) instead of being ignored: Center and Right align within the space left after the sort and filter glyphs, so the text never runs under them. The default is still Left.
 
