@@ -1,0 +1,30 @@
+KumikoUI.Uno.KumikoDataGrid.IncrementalSource.get -> KumikoUI.Core.Data.IKumikoIncrementalSource?
+KumikoUI.Uno.KumikoDataGrid.IncrementalSource.set -> void
+KumikoUI.Uno.KumikoDataGrid.IsLoadingMore.get -> bool
+KumikoUI.Uno.KumikoDataGrid.IsLoadingMore.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSize.get -> int
+KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSize.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandParameter.get -> object?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandParameter.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreCompleted -> System.EventHandler<KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreErrorText.get -> string?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreErrorText.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreMode.get -> KumikoUI.Core.Data.KumikoLoadMoreMode
+KumikoUI.Uno.KumikoDataGrid.LoadMoreMode.set -> void
+KumikoUI.Uno.KumikoDataGrid.LoadMoreRequested -> System.EventHandler<KumikoUI.Core.Data.KumikoLoadMoreRequestedEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.LoadMoreState.get -> KumikoUI.Core.Data.KumikoLoadMoreState
+KumikoUI.Uno.KumikoDataGrid.LoadMoreThreshold.get -> int
+KumikoUI.Uno.KumikoDataGrid.LoadMoreThreshold.set -> void
+KumikoUI.Uno.KumikoDataGrid.ResetLoadMore() -> void
+static readonly KumikoUI.Uno.KumikoDataGrid.IncrementalSourceProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.IsLoadingMoreProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSizeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandParameterProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreErrorTextProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreModeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreStateProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreThresholdProperty -> Microsoft.UI.Xaml.DependencyProperty!

@@ -38,6 +38,9 @@ public partial class KumikoSource
     /// </summary>
     internal int ViewVersion { get; private set; }
 
+    /// <summary>How many items the bound collection holds (null entries included).</summary>
+    internal int SourceItemCount => _sourceItems.Count;
+
     /// <summary>Whether the source is detached or disposed: no collection is observed, nothing loads.</summary>
     internal bool IsDetachedOrDisposed => _detached || _disposed;
 
