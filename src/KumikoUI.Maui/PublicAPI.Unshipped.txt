@@ -1,0 +1,9 @@
+#nullable enable
+KumikoUI.Maui.KumikoDataGrid.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.IsColumnMenuEnabled.get -> bool
+KumikoUI.Maui.KumikoDataGrid.IsColumnMenuEnabled.set -> void
+KumikoUI.Maui.KumikoDataGrid.ShowColumnMenu(KumikoUI.Core.Models.KumikoColumn! column) -> bool
+KumikoUI.Maui.KumikoDataGrid.ShowColumnMenuButton.get -> bool
+KumikoUI.Maui.KumikoDataGrid.ShowColumnMenuButton.set -> void
+static readonly KumikoUI.Maui.KumikoDataGrid.IsColumnMenuEnabledProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ShowColumnMenuButtonProperty -> Microsoft.Maui.Controls.BindableProperty!

@@ -54,6 +54,19 @@ internal static class InputMapping
         _ => KumikoKey.None
     };
 
+    // ── Context-menu key (#319) ──
+
+    /// <summary>
+    /// <see cref="ToGridKey(VirtualKey)"/>, plus the keys that need the modifiers held: the Menu (Application) key and
+    /// Shift+F10 are <see cref="KumikoKey.ContextMenu"/>, which opens the column menu.
+    /// </summary>
+    public static KumikoKey ToGridKey(VirtualKey key, InputModifiers modifiers) => key switch
+    {
+        VirtualKey.Application => KumikoKey.ContextMenu,
+        VirtualKey.F10 when (modifiers & InputModifiers.Shift) != 0 => KumikoKey.ContextMenu,
+        _ => ToGridKey(key),
+    };
+
     /// <summary>
     /// Maps WinUI <see cref="VirtualKeyModifiers"/> flags to KumikoUI.Core's
     /// <see cref="InputModifiers"/> flags. <c>Menu</c> is Alt; <c>Windows</c> (the Command key on

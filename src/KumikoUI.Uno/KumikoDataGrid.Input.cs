@@ -405,7 +405,7 @@ public partial class KumikoDataGrid
         // don't send it twice.
         if (ReferenceEquals(e.OriginalSource, _inputProxy)) return;
 
-        var key = InputMapping.ToGridKey(e.Key);
+        var key = InputMapping.ToGridKey(e.Key, InputMapping.GetLiveModifiers());
         if (key == KumikoKey.None) return; // printable text comes through the proxy's text changes
 
         // KeyRoutedEventArgs.KeyboardModifiers is [NotImplemented] on the Uno Skia/WASM heads (the

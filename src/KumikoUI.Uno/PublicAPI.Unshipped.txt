@@ -1,0 +1,9 @@
+#nullable enable
+KumikoUI.Uno.KumikoDataGrid.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
+KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabled.get -> bool
+KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabled.set -> void
+KumikoUI.Uno.KumikoDataGrid.ShowColumnMenu(KumikoUI.Core.Models.KumikoColumn! column) -> bool
+KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButton.get -> bool
+KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButton.set -> void
+static readonly KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabledProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButtonProperty -> Microsoft.UI.Xaml.DependencyProperty!
