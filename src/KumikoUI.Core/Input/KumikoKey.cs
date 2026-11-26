@@ -54,5 +54,12 @@ public enum KumikoKey
     Y,
     // Generic character input
     /// <summary>Generic character input for text entry.</summary>
-    Character
+    Character,
+
+    // ── Column menu (#319) ──
+    /// <summary>
+    /// The context-menu key: the Menu (Application) key, or Shift+F10. Opens the column menu of the current column
+    /// when it is enabled; a second press closes it.
+    /// </summary>
+    ContextMenu
 }

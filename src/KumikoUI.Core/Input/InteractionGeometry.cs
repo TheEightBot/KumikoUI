@@ -84,6 +84,51 @@ internal static class InteractionGeometry
         return x >= left && x <= right;
     }
 
+    // ── Header column menu button (#319) ──
+
+    /// <summary>Side of the header column menu button as drawn.</summary>
+    public const float MenuButtonSize = 12f;
+
+    /// <summary>
+    /// The left edge of the column menu button, measured from the column's left edge: left of the filter icon when
+    /// the column shows one (<paramref name="filterShown"/>), else where the filter icon would be.
+    /// </summary>
+    public static float MenuButtonOffset(KumikoColumn column, KumikoStyle style, bool filterShown) =>
+        column.Width - style.CellPadding - SortGlyphSpace(column)
+            - (filterShown ? KumikoLayoutEngine.FilterGlyphSpace : 0f) - MenuButtonSize;
+
+    /// <summary>The column menu button as drawn in a header whose column starts at <paramref name="columnLeft"/>.</summary>
+    public static KumikoRect MenuButtonRect(float columnLeft, KumikoColumn column, KumikoStyle style, bool filterShown)
+    {
+        float x = columnLeft + MenuButtonOffset(column, style, filterShown);
+        return new KumikoRect(x, style.HeaderHeight / 2 - MenuButtonSize / 2, MenuButtonSize, MenuButtonSize);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="x"/> (in the same coordinates as <paramref name="columnLeft"/>) is on the column menu
+    /// button as drawn. Like the filter icon, the drawn button wins over a resize grip that reaches over it.
+    /// </summary>
+    public static bool IsOnDrawnMenuButton(float x, float columnLeft, KumikoColumn column, KumikoStyle style, bool filterShown)
+    {
+        float left = columnLeft + MenuButtonOffset(column, style, filterShown);
+        return x >= left && x <= left + MenuButtonSize;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="x"/> is on the column menu button's target: the button plus the filter icon's margin
+    /// for the device, kept inside the column and left of its resize grip. Test the filter icon first: where the two
+    /// margins meet, the filter icon wins.
+    /// </summary>
+    public static bool IsOnMenuButton(float x, float columnLeft, KumikoColumn column, KumikoStyle style, bool filterShown,
+        KumikoPointerDeviceType device, float gripHalfWidth)
+    {
+        float slop = device == KumikoPointerDeviceType.Touch ? FilterIconTouchSlop : FilterIconMouseSlop;
+        float buttonLeft = columnLeft + MenuButtonOffset(column, style, filterShown);
+        float left = Math.Max(columnLeft, buttonLeft - slop);
+        float right = Math.Min(columnLeft + column.Width - gripHalfWidth, buttonLeft + MenuButtonSize + slop);
+        return x >= left && x <= right;
+    }
+
     // ── Group header chevron ──
 
     /// <summary>The chevron's pill (its background) on a group header row of level <paramref name="level"/> at <paramref name="rowY"/>.</summary>

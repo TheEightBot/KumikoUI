@@ -11,7 +11,7 @@ namespace KumikoUI.Core;
 /// Renders the entire grid (header, rows, grid lines, selection, frozen columns)
 /// using the platform-independent IDrawingContext.
 /// </summary>
-public sealed class KumikoRenderer : IDisposable
+public sealed partial class KumikoRenderer : IDisposable
 {
     private readonly KumikoLayoutEngine _layout = new();
     private readonly PaintCache _paintCache = new();
@@ -375,6 +375,7 @@ public sealed class KumikoRenderer : IDisposable
         DrawHeader(ctx, scrollableCols, scroll, style, false, frozenWidth, handleOffset, rightHandleWidth);
         DrawSortIndicators(ctx, scrollableCols, scroll, style, false, frozenWidth, isMultiSort);
         DrawFilterIcons(ctx, scrollableCols, scroll, style, false, frozenWidth);
+        DrawColumnMenuButtons(ctx, scrollableCols, scroll, style);
 
         // Draw frozen rows in the scrollable column area
         if (frozenRowCount > 0)
@@ -397,6 +398,7 @@ public sealed class KumikoRenderer : IDisposable
             DrawHeader(ctx, frozenCols, scroll, style, true, frozenWidth, handleOffset, rightHandleWidth);
             DrawSortIndicators(ctx, frozenCols, scroll, style, true, frozenWidth, isMultiSort);
             DrawFilterIcons(ctx, frozenCols, scroll, style, true, frozenWidth);
+            DrawColumnMenuButtons(ctx, frozenCols, scroll, style);
 
             // Draw frozen rows in the left-frozen column area
             if (frozenRowCount > 0)
@@ -423,6 +425,7 @@ public sealed class KumikoRenderer : IDisposable
             DrawHeader(ctx, rightFrozenCols, scroll, style, ColumnFreezeMode.Right, frozenWidth, rightFrozenLeft, rightFrozenWidth, handleOffset, rightHandleWidth);
             DrawSortIndicators(ctx, rightFrozenCols, scroll, style, ColumnFreezeMode.Right, frozenWidth, isMultiSort);
             DrawFilterIcons(ctx, rightFrozenCols, scroll, style, ColumnFreezeMode.Right, frozenWidth);
+            DrawColumnMenuButtons(ctx, rightFrozenCols, scroll, style);
 
             // Draw frozen rows in the right-frozen column area
             if (frozenRowCount > 0)
@@ -946,7 +949,7 @@ public sealed class KumikoRenderer : IDisposable
 
             // Reserve right-side space for the glyphs this column actually shows (sort arrow, filter icon),
             // so the header text never runs under them and is not cut short for glyphs that are not drawn.
-            float rightReserved = SortGlyphSpace(col) + FilterGlyphSpace(col);
+            float rightReserved = SortGlyphSpace(col) + FilterGlyphSpace(col) + MenuButtonGlyphSpace(col);
 
             var cellRect = new KumikoRect(
                 screenX + padding,

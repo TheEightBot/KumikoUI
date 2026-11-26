@@ -32,5 +32,7 @@ public enum HitRegion
     /// <summary>A group summary row.</summary>
     GroupSummaryRow,
     /// <summary>A table summary row.</summary>
-    TableSummaryRow
+    TableSummaryRow,
+    /// <summary>The column menu button in a column header (see <see cref="KumikoInputController.ShowColumnMenuButton"/>).</summary>
+    HeaderMenuButton
 }

@@ -22,6 +22,16 @@ public sealed class KumikoHitTester
     /// </summary>
     public bool AllowFiltering { get; set; } = true;
 
+    /// <summary>
+    /// Whether column headers show the column menu button, so a point on it reports
+    /// <see cref="HitRegion.HeaderMenuButton"/> (see <see cref="KumikoInputController.ShowColumnMenuButton"/>).
+    /// Default false.
+    /// </summary>
+    public bool ShowColumnMenuButton { get; set; }
+
+    /// <summary>Whether the header of <paramref name="col"/> draws a filter icon.</summary>
+    private bool FilterShown(KumikoColumn col) => AllowFiltering && col.AllowFiltering;
+
     // Sticky group headers pinned for the scroll offset being hit-tested (#174); reused by every hit test
     private readonly List<PinnedGroupHeader> _pinnedGroupHeaders = new();
 
@@ -324,6 +334,18 @@ public sealed class KumikoHitTester
                 if (!col.IsVisible || FrozenPanes.ScrollPass(col) != k / n) continue;
                 float colRight = x + col.Width;
 
+                // The column menu button as drawn, like the filter icon, wins over a wide (touch) resize grip
+                if (ShowColumnMenuButton && scrollContentX >= x &&
+                    InteractionGeometry.IsOnDrawnMenuButton(scrollContentX, x, col, style, FilterShown(col)))
+                {
+                    return new KumikoHitInfo
+                    {
+                        Region = HitRegion.HeaderMenuButton,
+                        ColumnIndex = i, Column = col,
+                        ContentX = scrollContentX, ContentY = contentY
+                    };
+                }
+
                 // The filter icon as drawn wins over a wide (touch) resize grip that reaches over it
                 if (AllowFiltering && col.AllowFiltering && scrollContentX >= x &&
                     InteractionGeometry.IsOnDrawnFilterIcon(scrollContentX, x, col, style))
@@ -363,6 +385,17 @@ public sealed class KumikoHitTester
                                 ContentX = scrollContentX, ContentY = contentY
                             };
                         }
+                    }
+
+                    if (ShowColumnMenuButton && InteractionGeometry.IsOnMenuButton(scrollContentX, x, col, style,
+                            FilterShown(col), deviceType, InteractionGeometry.ResizeGripHalfWidth(col, style, deviceType)))
+                    {
+                        return new KumikoHitInfo
+                        {
+                            Region = HitRegion.HeaderMenuButton,
+                            ColumnIndex = i, Column = col,
+                            ContentX = scrollContentX, ContentY = contentY
+                        };
                     }
 
                     return new KumikoHitInfo
@@ -417,6 +450,18 @@ public sealed class KumikoHitTester
     {
         var col = columns[index];
 
+        // The column menu button as drawn, like the filter icon, wins over a wide (touch) resize grip
+        if (ShowColumnMenuButton && testX >= colLeft &&
+            InteractionGeometry.IsOnDrawnMenuButton(testX, colLeft, col, style, FilterShown(col)))
+        {
+            return new KumikoHitInfo
+            {
+                Region = HitRegion.HeaderMenuButton,
+                ColumnIndex = index, Column = col,
+                ContentX = effectiveContentX, ContentY = contentY
+            };
+        }
+
         // The filter icon as drawn wins over a wide (touch) resize grip that reaches over it
         if (AllowFiltering && col.AllowFiltering && testX >= colLeft &&
             InteractionGeometry.IsOnDrawnFilterIcon(testX, colLeft, col, style))
@@ -456,6 +501,17 @@ public sealed class KumikoHitTester
                         ContentX = effectiveContentX, ContentY = contentY
                     };
                 }
+            }
+
+            if (ShowColumnMenuButton && InteractionGeometry.IsOnMenuButton(testX, colLeft, col, style,
+                    FilterShown(col), deviceType, InteractionGeometry.ResizeGripHalfWidth(col, style, deviceType)))
+            {
+                return new KumikoHitInfo
+                {
+                    Region = HitRegion.HeaderMenuButton,
+                    ColumnIndex = index, Column = col,
+                    ContentX = effectiveContentX, ContentY = contentY
+                };
             }
 
             return new KumikoHitInfo

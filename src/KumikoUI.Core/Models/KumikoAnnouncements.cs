@@ -95,6 +95,42 @@ public static class KumikoAnnouncements
         return Format(strings.AnnounceValidationFailed, ColumnName(strings, column, columnIndex), message ?? string.Empty);
     }
 
+    /// <summary>The accessible name of a column's menu (<see cref="KumikoStrings.ColumnMenuName"/>).</summary>
+    /// <param name="strings">The text table.</param>
+    /// <param name="column">The column the menu is for.</param>
+    /// <param name="columnIndex">The zero-based column index, used when the header is empty.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="strings"/> is <c>null</c>.</exception>
+    public static string ColumnMenuName(KumikoStrings strings, KumikoColumn column, int columnIndex)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+        return Format(strings.ColumnMenuName, ColumnName(strings, column, columnIndex));
+    }
+
+    /// <summary>The announcement for a menu that opened: its name and how many items it has.</summary>
+    /// <param name="strings">The text table.</param>
+    /// <param name="menuName">The menu's accessible name, for example from <see cref="ColumnMenuName"/>.</param>
+    /// <param name="itemCount">The number of items that can be chosen.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="strings"/> is <c>null</c>.</exception>
+    public static string MenuOpened(KumikoStrings strings, string menuName, int itemCount)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+        return Format(strings.AnnounceMenuOpened, menuName ?? string.Empty, itemCount);
+    }
+
+    /// <summary>
+    /// The announcement for the menu item the keyboard moved to: its text, and whether it is checked or unavailable.
+    /// </summary>
+    /// <param name="strings">The text table.</param>
+    /// <param name="item">The item.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="strings"/> or <paramref name="item"/> is <c>null</c>.</exception>
+    public static string MenuItem(KumikoStrings strings, Components.DrawnMenuItem item)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+        ArgumentNullException.ThrowIfNull(item);
+        if (!item.IsEnabled) return Format(strings.AnnounceMenuItemDisabled, item.Text);
+        return item.IsChecked == true ? Format(strings.AnnounceMenuItemChecked, item.Text) : item.Text;
+    }
+
     private static string ColumnName(KumikoStrings strings, KumikoColumn column, int columnIndex)
         => string.IsNullOrWhiteSpace(column.Header)
             ? Format(strings.AnnounceUnnamedColumn, columnIndex + 1)

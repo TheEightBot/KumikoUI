@@ -174,6 +174,7 @@ public class IconProviderRoutingTests
     {
         var (h, icons) = Grid();
         h.Style.ShowRowDragHandle = true;
+        h.Renderer.ShowColumnMenuButton = true;
         h.Source.AddGroupDescription(new GroupDescription("City"));
         h.Source.AddGroupDescription(new GroupDescription("Age"));
         h.Column("Name").SortDirection = KumikoSortDirection.Descending;
@@ -361,10 +362,11 @@ public class IconProviderRoutingTests
         void Collect(RecordingIconProvider p) => seen.UnionWith(p.Icons);
 
         // Grid: grouped (expanded and collapsed, two levels), sorted both ways, filtered and not, drag handles,
-        // and a three-state boolean column
+        // column menu buttons, and a three-state boolean column
         var (h, gridIcons) = Grid(g => g.Source.SetColumns(g.Source.Columns.Append(
             new KumikoColumn { Header = "Active", PropertyName = "Active", Width = 60, ColumnType = KumikoColumnType.Boolean }).ToList()));
         h.Style.ShowRowDragHandle = true;
+        h.Renderer.ShowColumnMenuButton = true;
         h.Source.AddGroupDescription(new GroupDescription("City"));
         h.Source.AddGroupDescription(new GroupDescription("Age") { GroupSortDirection = KumikoSortDirection.Descending });
         h.Source.ToggleGroupExpansion(1);

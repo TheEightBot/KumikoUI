@@ -111,6 +111,18 @@ internal static class GlyphDrawing
         }
     }
 
+    /// <summary>A "more" glyph: three round dots stacked vertically, centered on (<paramref name="cx"/>, <paramref name="cy"/>).</summary>
+    public static void VerticalDots(IDrawingContext ctx, float cx, float cy, float size, KumikoPaint paint)
+    {
+        float radius = Math.Max(1f, size * 0.11f);
+        float spacing = size * 0.34f;
+        for (int row = -1; row <= 1; row++)
+        {
+            float dy = cy + row * spacing;
+            ctx.FillRoundRect(new KumikoRect(cx - radius, dy - radius, radius * 2, radius * 2), radius, paint);
+        }
+    }
+
     /// <summary>
     /// A calendar page in the square (<paramref name="x"/>, <paramref name="y"/>, <paramref name="size"/>): an outline
     /// with a header line and two binding tabs.
