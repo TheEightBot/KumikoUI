@@ -102,8 +102,8 @@ this work lists where.
    has settled.
 9. **Column reorder by touch (Android):** the first pass's two `adb input swipe` drags did nothing visible. Re-run
    with `adb shell input motionevent DOWN/MOVE/UP` (steps of 20 px, 100 ms apart), the header drag starts (the ghost
-   follows the finger) and the column moves on release. A hold of 500 ms or more before moving opens the header's
-   sort menu instead (#288), a press near a header's right edge resizes the column (#289), and dragging toward the
+   follows the finger) and the column moves on release. A hold of 500 ms or more before moving used to open the header's
+   sort menu instead; now the drag starts and the menu opens only on a release with no movement (#288), a press near a header's right edge resizes the column (#289), and dragging toward the
    frozen columns auto-scrolls to the start (#290). The earlier failure is put down to the automation; a check with a
    real finger on a physical device is still pending (F3, #276).
 10. **Row drag on WebAssembly and iOS:** not exercised; the sample had no page with row drag enabled until the sample

@@ -21,7 +21,8 @@ public sealed partial class KumikoInputController
     /// <summary>
     /// Raised when the user asks for a context menu: a click with the secondary (right) mouse button, on its
     /// release, or a long press with a finger or a pen that neither starts a row drag nor edits the cell
-    /// (<see cref="KumikoContextTrigger"/>). It is raised for every part of the grid (cells, headers, group rows,
+    /// (<see cref="KumikoContextTrigger"/>). A long press on a column header that can be reordered raises it when the
+    /// finger is lifted with no movement; moving the finger instead starts the column drag and raises nothing. It is raised for every part of the grid (cells, headers, group rows,
     /// the empty area), with what is under the point; on a data row the selection is updated first (see
     /// <see cref="KumikoContextRequestedEventArgs"/>). Not raised for a press inside a popup or the open editor, or
     /// one that closes an open popup. A secondary-button press never sorts, scrolls, drags or edits.
