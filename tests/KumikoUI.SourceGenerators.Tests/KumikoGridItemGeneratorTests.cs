@@ -147,7 +147,9 @@ public class KumikoGridItemGeneratorTests
         var code = GeneratedFor(Generate(Models).Run, "Demo_Outer_Nested");
 
         Assert.Contains("[global::System.Runtime.CompilerServices.ModuleInitializer]", code);
-        Assert.Contains("KumikoAccessorRegistry.Register(typeof(global::Demo.Outer.Nested), new __KumikoAccessors_Demo_Outer_Nested());", code);
+        Assert.Contains("var provider = new __KumikoAccessors_Demo_Outer_Nested();", code);
+        Assert.Contains("KumikoAccessorRegistry.Register(typeof(global::Demo.Outer.Nested), provider);", code);
+        Assert.Contains("KumikoColumnMetadataRegistry.Register(typeof(global::Demo.Outer.Nested), provider);", code);
     }
 
     [Theory]
@@ -184,6 +186,75 @@ public class KumikoGridItemGeneratorTests
             .SelectMany(s => s.Value).SelectMany(s => s.Outputs);
 
         Assert.All(outputs, o => Assert.True(o.Reason is IncrementalStepRunReason.Cached or IncrementalStepRunReason.Unchanged, o.Reason.ToString()));
+    }
+
+    private const string AnnotatedModels = """
+        using System.ComponentModel;
+        using System.ComponentModel.DataAnnotations;
+        using KumikoUI.Core.Data;
+
+        namespace Demo;
+
+        public enum Status { Open, Closed, Alias = 1 }
+
+        internal static class Texts
+        {
+            public static string Title => "Localized";
+        }
+
+        public class Root
+        {
+            [Display(Name = "Base name")] public virtual string Name { get; set; } = "";
+        }
+
+        [KumikoGridItem]
+        public class Annotated : Root
+        {
+            [Display(Name = "Order date", ShortName = "Date", Description = "When \"ordered\"", Order = 2)]
+            public System.DateTime OrderDate { get; set; }
+            [Display(Name = nameof(Texts.Title), ResourceType = typeof(Texts))] public string Localized { get; set; } = "";
+            [Display(Name = "Missing", ResourceType = typeof(Texts))] public string NoSuchResource { get; set; } = "";
+            [DisplayFormat(DataFormatString = "{0:C2}")] public decimal Total { get; set; }
+            [Editable(false)] public string Locked { get; set; } = "";
+            [ReadOnly(true)] public string Frozen { get; set; } = "";
+            public string Computed => "";
+            [Display(AutoGenerateField = false)] public string Hidden { get; set; } = "";
+            [Browsable(false)] public string NotBrowsable { get; set; } = "";
+            public Status State { get; set; }
+            public Status? Previous { get; set; }
+            public string WriteOnly { set { } }
+            public override string Name { get; set; } = "";
+        }
+        """;
+
+    [Fact]
+    public void ColumnMetadata_IsEmittedFromDataAnnotations_AndCompilesCleanly()
+    {
+        var (output, diagnostics, run) = Generate(AnnotatedModels);
+
+        Assert.Empty(diagnostics);
+        AssertCompilesCleanly(output);
+        string code = Normalize(GeneratedFor(run, "Annotated"));
+
+        Assert.Contains("global::KumikoUI.Core.Data.IKumikoColumnMetadataProvider", code);
+        Assert.Contains("KumikoColumnMetadataRegistry.Register(typeof(global::Demo.Annotated), provider);", code);
+        // Base properties first; the override keeps the base position and inherits the base attribute
+        int name = code.IndexOf("KumikoColumnMetadata(\"Name\"", StringComparison.Ordinal);
+        int orderDate = code.IndexOf("KumikoColumnMetadata(\"OrderDate\"", StringComparison.Ordinal);
+        Assert.True(name >= 0 && name < orderDate, "Name (from the base type) is listed first");
+        Assert.Contains("new global::KumikoUI.Core.Data.KumikoColumnMetadata(\"Name\", typeof(string)) { DisplayName = \"Base name\" }", code);
+        Assert.Contains("DisplayName = \"Order date\", ShortName = \"Date\", Description = \"When \\\"ordered\\\"\", Order = 2", code);
+        Assert.Contains("DisplayName = global::Demo.Texts.Title", code);       // read from the resource type
+        Assert.Contains("DisplayName = \"Missing\"", code);                    // no such resource: the literal
+        Assert.Contains("Format = \"{0:C2}\"", code);
+        Assert.Contains("KumikoColumnMetadata(\"Locked\", typeof(string)) { IsReadOnly = true }", code);
+        Assert.Contains("KumikoColumnMetadata(\"Frozen\", typeof(string)) { IsReadOnly = true }", code);
+        Assert.Contains("KumikoColumnMetadata(\"Computed\", typeof(string)) { IsReadOnly = true }", code);
+        Assert.Contains("KumikoColumnMetadata(\"Hidden\", typeof(string)) { AutoGenerate = false }", code);
+        Assert.Contains("KumikoColumnMetadata(\"NotBrowsable\", typeof(string)) { AutoGenerate = false }", code);
+        Assert.Contains("EnumValues = new object[] { global::Demo.Status.Open, global::Demo.Status.Closed }", code);
+        Assert.Contains("KumikoColumnMetadata(\"Previous\", typeof(global::Demo.Status?)) { EnumValues = new object[] { global::Demo.Status.Open, global::Demo.Status.Closed } }", code);
+        Assert.DoesNotContain("KumikoColumnMetadata(\"WriteOnly\"", code); // nothing to show
     }
 
     private static string Normalize(string code) => code.Replace("\r\n", "\n");
