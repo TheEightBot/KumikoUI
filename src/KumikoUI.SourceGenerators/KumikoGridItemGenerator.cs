@@ -115,9 +115,8 @@ public sealed class KumikoGridItemGenerator : IIncrementalGenerator
         foreach (var t in chain)
         {
             ct.ThrowIfCancellationRequested();
-            foreach (var property in t.GetMembers().OfType<IPropertySymbol>())
+            foreach (var property in t.GetMembers().OfType<IPropertySymbol>().Where(p => IsSupported(p) && CanRead(p)))
             {
-                if (!IsSupported(property) || !CanRead(property)) continue;
                 var column = DescribeColumn(property);
                 if (index.TryGetValue(property.Name, out int at))
                     columns[at] = column;
@@ -220,11 +219,10 @@ public sealed class KumikoGridItemGenerator : IIncrementalGenerator
         string enumName = type.ToDisplayString(TypeFormat);
         var seen = new HashSet<object>();
         var values = new List<string>();
-        foreach (var field in type.GetMembers().OfType<IFieldSymbol>())
-        {
-            if (field.HasConstantValue && field.ConstantValue != null && seen.Add(field.ConstantValue))
-                values.Add($"{enumName}.{Identifier(field.Name)}");
-        }
+        var fields = type.GetMembers().OfType<IFieldSymbol>()
+            .Where(f => f.HasConstantValue && f.ConstantValue != null && seen.Add(f.ConstantValue));
+        foreach (var field in fields)
+            values.Add($"{enumName}.{Identifier(field.Name)}");
         return "new object[] { " + string.Join(", ", values) + " }";
     }
 

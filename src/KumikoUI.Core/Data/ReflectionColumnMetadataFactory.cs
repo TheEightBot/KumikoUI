@@ -25,10 +25,10 @@ internal static class ReflectionColumnMetadataFactory
         var byName = new Dictionary<string, PropertyInfo>(StringComparer.OrdinalIgnoreCase);
         foreach (var t in chain)
         {
-            foreach (var property in t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            var readable = t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(p => p.GetIndexParameters().Length == 0 && p.GetMethod is { IsPublic: true });
+            foreach (var property in readable)
             {
-                if (property.GetIndexParameters().Length > 0 || property.GetMethod is not { IsPublic: true })
-                    continue;
                 if (!byName.ContainsKey(property.Name))
                     order.Add(property.Name);
                 byName[property.Name] = property;
@@ -51,7 +51,7 @@ internal static class ReflectionColumnMetadataFactory
         var browsable = property.GetCustomAttribute<BrowsableAttribute>(inherit: true);
 
         bool canWrite = property.SetMethod is { IsPublic: true } set
-                        && !set.ReturnParameter.GetRequiredCustomModifiers().Any(m => m.FullName == "System.Runtime.CompilerServices.IsExternalInit");
+                        && !set.ReturnParameter.GetRequiredCustomModifiers().Contains(typeof(System.Runtime.CompilerServices.IsExternalInit));
 
         var enumType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
 

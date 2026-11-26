@@ -33,13 +33,11 @@ public static class KumikoColumnFactory
     public static IReadOnlyList<KumikoColumn> FromType(Type itemType)
     {
         ArgumentNullException.ThrowIfNull(itemType);
-        var columns = new List<KumikoColumn>();
-        foreach (var metadata in GetGeneratedMetadata(itemType))
-        {
-            if (Create(metadata) is { } column)
-                columns.Add(column);
-        }
-        return columns;
+        return GetGeneratedMetadata(itemType)
+            .Select(Create)
+            .Where(c => c != null)
+            .Select(c => c!)
+            .ToList();
     }
 
     /// <summary>
