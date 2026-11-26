@@ -113,6 +113,9 @@ public class KumikoIconProvider : IKumikoIconProvider
             case KumikoIcon.SpinDown:
                 GlyphDrawing.Chevron(ctx, cx - s / 2, cy - s / 4, cx, cy + s / 4, cx + s / 2, cy - s / 4, paint);
                 break;
+            case KumikoIcon.ColumnMenu:
+                GlyphDrawing.VerticalDots(ctx, cx, cy, s, paint);
+                break;
         }
     }
 }

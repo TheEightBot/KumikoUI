@@ -262,7 +262,7 @@ public partial class KumikoDataGrid
     {
         // Text keys (printable keys, plain letters, Space in an editor, every key during a composition) are left to
         // the text box; the adapter picks the text up from TextChanging.
-        if (_textInput.OnKeyDown(InputMapping.ToGridKey(e.Key)) is not { } result) return;
+        if (_textInput.OnKeyDown(InputMapping.ToGridKey(e.Key, InputMapping.GetLiveModifiers())) is not { } result) return;
 
         // A key is marked handled only when Core handled it, so the grid is no keyboard trap: an unhandled Tab
         // (no current cell, or past the last/first tab stop) moves focus out of the grid, and any other unhandled

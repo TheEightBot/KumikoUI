@@ -140,7 +140,7 @@ public class KumikoFontIconProvider : IKumikoIconProvider
     /// <c>chevron_right</c> for the group headers, <c>arrow_upward</c> and <c>arrow_downward</c> for sorting,
     /// <c>filter_list</c> and <c>filter_alt</c> for the filter button, <c>close</c>, <c>drag_indicator</c>,
     /// <c>check</c>, <c>remove</c>, <c>arrow_drop_down</c> and <c>arrow_drop_up</c>, <c>add</c>,
-    /// <c>calendar_today</c>, <c>chevron_left</c>, <c>expand_less</c>. The font is licensed under the Apache License
+    /// <c>calendar_today</c>, <c>chevron_left</c>, <c>expand_less</c> and <c>more_vert</c> for the column menu button. The font is licensed under the Apache License
     /// 2.0; ship it with the app and register it under <paramref name="fontFamily"/>. <see cref="Scale"/> is set
     /// to 1.25 to make up for the font's margin around each glyph.
     /// </remarks>
@@ -167,7 +167,8 @@ public class KumikoFontIconProvider : IKumikoIconProvider
             .SetGlyph(KumikoIcon.CalendarPrevious, 0xE5CB)   // chevron_left
             .SetGlyph(KumikoIcon.CalendarNext, 0xE5CC)       // chevron_right
             .SetGlyph(KumikoIcon.SpinUp, 0xE5CE)             // expand_less
-            .SetGlyph(KumikoIcon.SpinDown, 0xE5CF);          // expand_more
+            .SetGlyph(KumikoIcon.SpinDown, 0xE5CF)           // expand_more
+            .SetGlyph(KumikoIcon.ColumnMenu, 0xE5D4);        // more_vert
 
     private int IndexOf(KumikoIcon icon)
     {

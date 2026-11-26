@@ -40,5 +40,7 @@ public enum HitRegion
     /// <summary>The thumb of the horizontal scroll bar (a mouse or pen only; a finger pans through the bar).</summary>
     HorizontalScrollBarThumb,
     /// <summary>The track of the horizontal scroll bar, left or right of its thumb (a mouse or pen only).</summary>
-    HorizontalScrollBarTrack
+    HorizontalScrollBarTrack,
+    /// <summary>The column menu button in a column header (see <see cref="KumikoInputController.ShowColumnMenuButton"/>).</summary>
+    HeaderMenuButton
 }

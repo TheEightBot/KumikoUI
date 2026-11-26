@@ -52,6 +52,10 @@ internal sealed class AndroidTextInputMapper
     internal const int KeycodeF2 = 132;
     internal const int KeycodeNumpadEnter = 160;
 
+    // ── Context-menu key (#319) ──
+    internal const int KeycodeMenu = 82;
+    internal const int KeycodeF10 = 140;
+
     // ── android.view.KeyEvent meta state ──
     internal const int MetaShiftOn = 0x1;
     internal const int MetaAltOn = 0x2;
@@ -411,7 +415,7 @@ internal sealed class AndroidTextInputMapper
         bool command = (modifiers & (InputModifiers.Control | InputModifiers.Meta)) != 0;
         text = null;
 
-        if (MapKeyCode(keyCode, command) is { } mapped)
+        if (MapKeyCode(keyCode, command, (modifiers & InputModifiers.Shift) != 0) is { } mapped)
         {
             key = mapped;
             if (mapped == KumikoKey.Space && !command)
@@ -431,9 +435,16 @@ internal sealed class AndroidTextInputMapper
         return true;
     }
 
-    /// <summary>The grid key for an Android key code; letters only with <paramref name="command"/>.</summary>
-    public static KumikoKey? MapKeyCode(int keyCode, bool command) => keyCode switch
+    /// <summary>
+    /// The grid key for an Android key code; letters only with <paramref name="command"/>. The Menu key, and F10 with
+    /// <paramref name="shift"/>, are <see cref="KumikoKey.ContextMenu"/>.
+    /// </summary>
+    public static KumikoKey? MapKeyCode(int keyCode, bool command, bool shift = false) => keyCode switch
     {
+        // ── Context-menu key (#319) ──
+        KeycodeMenu => KumikoKey.ContextMenu,
+        KeycodeF10 when shift => KumikoKey.ContextMenu,
+
         KeycodeDpadUp => KumikoKey.Up,
         KeycodeDpadDown => KumikoKey.Down,
         KeycodeDpadLeft => KumikoKey.Left,

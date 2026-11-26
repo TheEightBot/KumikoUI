@@ -102,6 +102,9 @@ internal class PopupManager
     /// <summary>Draw all active popups (call after main grid rendering).</summary>
     public void DrawPopups(IDrawingContext ctx)
     {
+        // A popup sized by its text (a menu) measures it with this frame's context before it is placed
+        for (int i = 0; i < _popups.Count; i++)
+            if (_popups[i].Component is IMeasuredPopup measured) measured.Measure(ctx);
         UpdateAnchors();
         // Lowest ZOrder first, popups of equal ZOrder in the order they were shown. Picking the next one in turn
         // (popups are few) allocates nothing, where sorting them with LINQ allocated on every frame.

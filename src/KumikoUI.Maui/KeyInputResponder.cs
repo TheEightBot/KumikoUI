@@ -217,6 +217,9 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
                 UIKeyboardHidUsage.KeyboardTab when ClaimsTab(key.ModifierFlags.HasFlag(UIKeyModifierFlags.Shift)) => KumikoKey.Tab,
                 UIKeyboardHidUsage.KeyboardSpacebar => KumikoKey.Space,
                 UIKeyboardHidUsage.KeyboardF2 => KumikoKey.F2,
+                // ── Context-menu key (#319): the Menu (Application) key, and F10 with Shift ──
+                UIKeyboardHidUsage.KeyboardApplication => KumikoKey.ContextMenu,
+                UIKeyboardHidUsage.KeyboardF10 when key.ModifierFlags.HasFlag(UIKeyModifierFlags.Shift) => KumikoKey.ContextMenu,
                 _ => null
             };
 
