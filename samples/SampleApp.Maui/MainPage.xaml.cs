@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using KumikoUI.Core.Components;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
@@ -34,25 +35,37 @@ public partial class MainPage : ContentPage
 		style.ShowRowDragHandle = true;
 		kumiko.GridStyle = style;
 
-		// Right click (or a long press on touch) opens a context menu
+		// A right click or a long press on a header, its menu button, or the Menu key (Shift+F10) opens the grid's own
+		// column menu: sort, filter, group by, hide and auto-fit, drawn at the pointer on every platform
+		kumiko.IsColumnMenuEnabled = true;
+		kumiko.ShowColumnMenuButton = true;
+		kumiko.ColumnMenuOpening += OnColumnMenuOpening;
+
+		// Right click (or a long press on touch) on a row or the empty area opens a context menu
 		kumiko.ContextMenuRequested += OnGridContextMenuRequested;
 	}
 
+	// ── Column menu ──
+
+	// The built-in items can be removed, reordered or joined by the app's own
+	private void OnColumnMenuOpening(object? sender, KumikoColumnMenuOpeningEventArgs e)
+	{
+		e.Items.Add(DrawnMenuItem.Separator());
+		e.Items.Add(new DrawnMenuItem("ClearAllSorts", "Clear All Sorts", () => kumiko.DataSource.ClearSort())
+		{
+			IsEnabled = kumiko.Columns.Any(c => c.SortDirection != KumikoSortDirection.None),
+		});
+	}
+
 	// ── Context menu ──
-	// MAUI has no API to open a MenuFlyout at a point, so the menu is an action sheet: a sheet on phones and
-	// tablets, a dialog on the desktop.
+	// MAUI has no API to open a MenuFlyout at a point, so the row menu is an action sheet: a sheet on phones and
+	// tablets, a dialog on the desktop. Column headers use the grid's drawn column menu instead (see above).
 
 	private async void OnGridContextMenuRequested(object? sender, KumikoContextRequestedEventArgs e)
 	{
-		if (e.IsHeader && e.Column is { } column)
-		{
-			const string ascending = "Sort ascending", descending = "Sort descending", clear = "Clear sort";
-			var choice = await DisplayActionSheetAsync($"Column: {column.Header}", "Cancel", null, ascending, descending, clear);
-			if (choice == ascending) kumiko.DataSource.SetSort(column, KumikoSortDirection.Ascending);
-			else if (choice == descending) kumiko.DataSource.SetSort(column, KumikoSortDirection.Descending);
-			else if (choice == clear) kumiko.DataSource.ClearSort();
-		}
-		else if (e.DataItem is Employee employee)
+		if (e.IsHeader) return; // the built-in column menu opens
+
+		if (e.DataItem is Employee employee)
 		{
 			// The grid selected the row first (unless it was already part of the selection)
 			var selected = kumiko.Selection.SelectedItems.OfType<Employee>().ToList();

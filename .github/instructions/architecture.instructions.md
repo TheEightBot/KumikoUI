@@ -69,7 +69,7 @@ other: same properties, events and defaults.
 | `KumikoUI.Core.Layout` | `KumikoLayoutEngine`, `KumikoScroller`, `FrozenPanes`, `PinnedGroupHeaders`, `KumikoKeyboardAvoidance` |
 | `KumikoUI.Core.Input` | `KumikoInputController`, `KumikoHitTester`, `HitRegion`, `InertialScroller`, `ScrollSettings`, `KumikoPointerEventArgs`, `KumikoKeyEventArgs`, `ITextInputSession` |
 | `KumikoUI.Core.Editing` | `EditSession`, `CellEditorFactory`, `EditorDescriptor`, `EditTrigger`, `CellValidationResult` |
-| `KumikoUI.Core.Components` | `DrawnComponent`, `DrawnTextBox`, `DrawnComboBox`, `DrawnDatePicker`, `DrawnNumericUpDown`, `DrawnScrollPicker`, `DrawnFilterPopup`, `DrawnActionButtons` (public); `DrawnCheckBox`, `DrawnProgressBar`, `DrawnFocusManager`, `PopupManager` (internal) |
+| `KumikoUI.Core.Components` | `DrawnComponent`, `DrawnTextBox`, `DrawnComboBox`, `DrawnDatePicker`, `DrawnNumericUpDown`, `DrawnScrollPicker`, `DrawnFilterPopup`, `DrawnActionButtons`, `DrawnMenu`, `DrawnMenuItem` (public); `DrawnCheckBox`, `DrawnProgressBar`, `DrawnFocusManager`, `PopupManager` (internal) |
 | `KumikoUI.SkiaSharp` | `SkiaDrawingContext`, `SkiaResourceCache`, `SkiaFontRegistrar`, `KumikoImageCache` |
 | `KumikoUI.Maui` | `KumikoDataGrid`, `KumikoUIHostingExtensions`, `KumikoFonts`, `MauiActionButtonDefinition` |
 | `KumikoUI.Uno` | `KumikoDataGrid`, `KumikoFonts`, `UnoActionButtonDefinition` |
