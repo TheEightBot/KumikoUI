@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-25
+
+The first stable release of all four packages. From this version on the public API follows Semantic Versioning: a breaking change waits for 2.0.0 ([docs/VERSIONING.md](docs/VERSIONING.md)). The changes below are those since 1.0.0-preview.1; coming from 0.2.0, read the [1.0.0-preview.1] section too. Follow-ups planned for 1.0.1 are in the [1.0.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/5).
+
 ### Added
 - `KumikoColorTypeConverter` (so every `KumikoColor` property in XAML) accepts the CSS functional forms `rgb(r, g, b)` and `rgba(r, g, b, a)`: channels are integers 0 to 255, alpha is a number from 0 to 1 (period as the decimal separator in any culture) or a percentage such as `50%`, and white space and case are ignored. Out-of-range values and bad syntax throw the same `FormatException` as invalid hex. Hex is unchanged, 8 digits are still `#AARRGGBB` (#304).
 
@@ -417,7 +421,8 @@ First 1.0 prerelease. All four packages (KumikoUI.Core, KumikoUI.SkiaSharp, Kumi
 
 Versions 0.1.1, 0.1.2 and 0.1.5 were tagged but never published to NuGet.org.
 
-[Unreleased]: https://github.com/TheEightBot/KumikoUI/compare/v1.0.0-preview.1...HEAD
+[Unreleased]: https://github.com/TheEightBot/KumikoUI/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/TheEightBot/KumikoUI/compare/v1.0.0-preview.1...v1.0.0
 [1.0.0-preview.1]: https://github.com/TheEightBot/KumikoUI/compare/v0.2.0...v1.0.0-preview.1
 [0.2.0]: https://github.com/TheEightBot/KumikoUI/compare/v0.1.10...v0.2.0
 [0.1.10]: https://github.com/TheEightBot/KumikoUI/compare/v0.1.9...v0.1.10
