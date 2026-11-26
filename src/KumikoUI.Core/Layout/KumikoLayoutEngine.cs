@@ -497,6 +497,63 @@ public sealed class KumikoLayoutEngine
     }
 
     /// <summary>
+    /// The header height plus the height of every row of <paramref name="source"/> as laid out now: the row count
+    /// times <see cref="KumikoStyle.RowHeight"/> in <see cref="KumikoRowHeightMode.Fixed"/> mode, and the measured
+    /// heights (with an estimate for rows not drawn yet) when row heights vary (<see cref="KumikoStyle.RowHeightMode"/>,
+    /// <see cref="KumikoStyle.RowHeightResolver"/>).
+    /// </summary>
+    /// <param name="source">The rows.</param>
+    /// <param name="style">Header and row heights.</param>
+    /// <returns>The content height in pixels.</returns>
+    public float GetContentHeight(KumikoSource source, KumikoStyle style)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(style);
+        var rows = source.RowLayout;
+        if (rows.IsUniform(style)) return GetContentHeight(source.RowCount, style);
+        return style.HeaderHeight + (float)rows.GetTotalHeight(style);
+    }
+
+    /// <summary>The height of the frozen rows of <paramref name="source"/> as laid out now.</summary>
+    /// <param name="source">The rows.</param>
+    /// <param name="style">Row heights.</param>
+    /// <returns>The height in pixels of the first <see cref="KumikoSource.EffectiveFrozenRowCount"/> rows.</returns>
+    public float GetFrozenRowHeight(KumikoSource source, KumikoStyle style)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(style);
+        return source.RowLayout.GetFrozenHeight(style);
+    }
+
+    /// <summary>
+    /// The first and last scrolling rows of <paramref name="source"/> on screen, with rows of any height: as
+    /// <see cref="GetVisibleRowRangeWithOffset(ScrollState, KumikoStyle, int, float, int)"/> (frozen rows excluded,
+    /// <paramref name="topOffset"/> between the header and the rows), from the row layout.
+    /// </summary>
+    /// <param name="scroll">The scroll offset and viewport.</param>
+    /// <param name="style">Header and row heights.</param>
+    /// <param name="source">The rows.</param>
+    /// <param name="topOffset">Height between the header and the rows, such as the top summary rows.</param>
+    /// <returns>The first and last visible scrolling rows; (0, -1) when none.</returns>
+    public (int First, int Last) GetVisibleRowRangeWithOffset(
+        ScrollState scroll, KumikoStyle style, KumikoSource source, float topOffset)
+    {
+        ArgumentNullException.ThrowIfNull(scroll);
+        ArgumentNullException.ThrowIfNull(style);
+        ArgumentNullException.ThrowIfNull(source);
+        var rows = source.RowLayout;
+        int frozen = source.EffectiveFrozenRowCount;
+        if (rows.IsUniform(style))
+            return GetVisibleRowRangeWithOffset(scroll, style, source.RowCount, topOffset, frozen);
+
+        int totalRows = source.RowCount;
+        if (totalRows - frozen <= 0) return (0, -1);
+        float frozenHeight = rows.GetFrozenHeight(style);
+        float scrollingHeight = scroll.ViewportHeight - style.HeaderHeight - topOffset - frozenHeight;
+        return rows.GetVisibleScrollingRows(scroll.OffsetY, scrollingHeight, style);
+    }
+
+    /// <summary>
     /// Calculate total content height from row count and style.
     /// </summary>
     public float GetContentHeight(int rowCount, KumikoStyle style)

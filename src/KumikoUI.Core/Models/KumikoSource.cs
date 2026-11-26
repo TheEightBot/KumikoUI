@@ -609,6 +609,7 @@ public sealed partial class KumikoSource : IDisposable
 
         // Drop the display text of the previous items (and the references to them)
         InvalidateCellText();
+        _rowLayout?.Clear();
         // Cold path (items replaced), so LINQ is fine here.
         foreach (var col in _columns.Where(c => ReferenceEquals(c.TextCache?.Owner, this)))
             col.TextCache = null;
@@ -824,6 +825,7 @@ public sealed partial class KumikoSource : IDisposable
                 SubscribeToItemPropertyChanged();
                 InvalidateCellText(); // the same items may now hold anything
                 _incremental?.OnItemsReset(); // cancels a batch in flight (#318)
+                _rowLayout?.InvalidateAll();
                 break;
         }
 
@@ -840,6 +842,7 @@ public sealed partial class KumikoSource : IDisposable
         // include the change.
         bool incremental = !_viewStale && !(copyView && (IsViewUpdatePending || _pendingRebuild)) &&
                            TryIncrementalUpdate(e, out viewIndex, out rowCountChanged, out rowsChanged);
+        OnRowLayoutCollectionChanged(e, incremental, viewIndex, rowCountChanged, rowsChanged);
         if (incremental)
         {
             _view.RowKeyIndex = null; // the rows move; the index is rebuilt on the next lookup
@@ -1991,6 +1994,7 @@ public sealed partial class KumikoSource : IDisposable
         _collectionVersion++; // items may have moved without a notification
         if (!_view.ItemsAreCopy) _view.SourceIndexByItem = null;
         InvalidateCellText();
+        _rowLayout?.InvalidateAll();
         RequestRebuild();
     }
 
@@ -2152,6 +2156,7 @@ public sealed partial class KumikoSource : IDisposable
         {
             _textCulture = culture;
             InvalidateCellText();
+            _rowLayout?.InvalidateAll();
         }
     }
 
@@ -2206,6 +2211,7 @@ public sealed partial class KumikoSource : IDisposable
     private void InvalidateCellText(object item, string? propertyName)
     {
         ContentVersion++;
+        InvalidateRowHeightOf(item, propertyName);
         foreach (var col in _columns)
         {
             var cache = col.TextCache;
@@ -2362,6 +2368,7 @@ public sealed partial class KumikoSource : IDisposable
         _viewStale = false;
         ViewVersion++;
         InvalidateCellText();
+        _rowLayout?.OnViewRebuilt();
     }
 
     /// <summary>

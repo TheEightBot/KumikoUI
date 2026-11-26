@@ -49,23 +49,24 @@ internal static class PinnedGroupHeaders
         int rowCount = source.RowCount;
         int levels = source.GroupDescriptions.Count;
         float bandBottom = scrollTop;
+        var rows = source.RowLayout;
 
         for (int level = 0; level < levels; level++)
         {
             float slot = scrollTop + level * rowHeight;
 
             // The row under the slot's top edge (scrolling rows start at scrollTop, after the frozen rows).
-            int row = frozenRowCount + (int)MathF.Floor((level * rowHeight + offsetY) / rowHeight);
+            int row = rows.GetScrollRowAt(level * rowHeight + offsetY, style);
             if (row < frozenRowCount || row >= rowCount) break;
             if (!source.TryGetEnclosingGroup(row, level, out int headerRow, out int endRow)) break;
             if (headerRow < frozenRowCount) break;
 
-            float headerTop = RowTop(headerRow, scrollTop, offsetY, frozenRowCount, rowHeight);
+            float headerTop = RowTop(rows, style, headerRow, scrollTop, offsetY);
             if (headerTop >= slot) break; // in its natural place, on screen
 
             float y = slot;
             if (endRow < rowCount)
-                y = Math.Min(y, RowTop(endRow, scrollTop, offsetY, frozenRowCount, rowHeight) - rowHeight);
+                y = Math.Min(y, RowTop(rows, style, endRow, scrollTop, offsetY) - rowHeight);
 
             pinned.Add(new PinnedGroupHeader(headerRow, level, y));
             bandBottom = Math.Max(bandBottom, y + rowHeight);
@@ -91,9 +92,10 @@ internal static class PinnedGroupHeaders
     /// The scroll offset that puts a group header in its pinned slot: where a collapsed group's header stays after
     /// its pinned header is tapped, so the view does not jump to whatever followed the group.
     /// </summary>
-    public static float SlotOffset(int headerRow, int level, int frozenRowCount, float rowHeight) =>
-        (headerRow - frozenRowCount - level) * rowHeight;
+    public static float SlotOffset(KumikoSource source, KumikoStyle style, int headerRow, int level) =>
+        source.RowLayout.GetScrollTop(headerRow, style) - level * style.RowHeight;
 
-    private static float RowTop(int row, float scrollTop, float offsetY, int frozenRowCount, float rowHeight) =>
-        scrollTop + (row - frozenRowCount) * rowHeight - offsetY;
+    // Group header rows are always RowHeight tall, so the slots stack by RowHeight; only rows to offsets use the layout.
+    private static float RowTop(KumikoRowLayout rows, KumikoStyle style, int row, float scrollTop, float offsetY) =>
+        scrollTop + rows.GetScrollTop(row, style) - offsetY;
 }

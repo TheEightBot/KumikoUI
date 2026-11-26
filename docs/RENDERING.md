@@ -23,7 +23,8 @@ KumikoRenderer.RenderFrame(ctx, source, scroll, selection, style, drag state, ed
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ A. Layout (no drawing)                                                      │
 │    SyncCellTextCulture · GetVisibleRowRangeWithOffset · ComputeColumnWidths │
-│    FrozenPanes.Resolve · content size · ScrollState.ClampOffset             │
+│    FrozenPanes.Resolve · MeasureRowHeights (variable rows only, see below)  │
+│    content size · ScrollState.ClampOffset                                   │
 │    PaintCache.Update (rebuilds only on a style change) · CaptureFeedback    │
 │ B. FillRect(PaintCache.Background)                                          │
 │ C. DrawGroupingPanel (when grouped), above everything else                  │
@@ -147,6 +148,29 @@ The passes run in the order scrolling, left-frozen, right-frozen. Table summarie
 
 **Group transitions** (#101): while a group slides open or shut, `DrawPaneRows` draws two bands: the rows up to the group's header as usual, and the rows after it moved by the slide and clipped below the header; the frame draws rows from below the viewport too while they slide up into it.
 
+## Row Heights
+
+Every row-geometry question (a row's top, its height, the row at a y, the total height) goes to the source's
+`KumikoRowLayout`; with `RowHeightMode.Fixed` and no `RowHeightResolver` that is `row * RowHeight` and nothing else
+(#320). With variable rows, step A measures before the content size is known (`KumikoRenderer.RowHeights.cs`):
+
+1. `KumikoRowLayout.BeginFrame` brings the index up to date with the view, and makes every height stale when a column
+   width, wrap mode, font or padding changed (a color change measures nothing).
+2. The anchor, the first visible scrolling row as the last frame laid it out, and its distance from the offset are
+   recorded. Frozen rows that are stale are measured.
+3. The visible scrolling rows plus two rows of overscan on each side are measured when stale: each measurable cell
+   (a wrapping text column, or a renderer implementing `IMeasurableCellRenderer`) is resolved and styled as
+   `DrawRowCells` draws it, the tallest content plus `CellVerticalPadding` above and below is clamped to
+   `MinRowHeight`/`MaxRowHeight`, and the `RowHeightResolver` can override it.
+4. When a height above the anchor (or the estimate unmeasured rows use) changed, the offset moves so the anchor row
+   stays where it was on screen. A programmatic scroll to a row that was not measured (`PendingScrollTarget`) takes
+   precedence: its offset is recomputed with the measured heights instead.
+5. Steps 3 and 4 repeat while the visible rows change, up to three times. Once a frame has measured a screenful of rows
+   it stops after 256 cells or 4 ms, and the rest draw at the estimate and another frame is requested.
+
+A steady frame (every visible row measured and current) measures and allocates nothing. Draw loops read the row tops
+through the layout, which answers consecutive rows by adding heights rather than querying its trees.
+
 ## DrawRows Detail
 
 `DrawRows` iterates over the flat view within the visible row range of one pane, skipping group header and group summary rows (those are the full-width pass):
@@ -256,7 +280,7 @@ Each is a least-recently-used map with `MaxTextMeasurements` entries (default 40
 
 `KumikoTextLayout` (Core) lays text out for any `IDrawingContext`. Every cut falls between two text elements (`StringInfo.GetNextTextElementLength`), so emoji, surrogate pairs and combining sequences are never split; the cut point is found by a binary search over those boundaries. Text wider than its rectangle ends with "…" at any width (there is no minimum width anymore); just the ellipsis is drawn when no character fits beside it. On one line, line breaks and tabs are drawn as spaces and other control characters are dropped, instead of as missing-glyph boxes.
 
-`IDrawingContext.DrawTextInRect(…, KumikoTextWrap wrap)` and `MeasureText(text, paint, maxWidth, wrap)` add wrapping (`None`, `Word`, `Character`): line breaks start new lines, as many lines as fit the rectangle's height are drawn, and the last ends with an ellipsis when there is more. Both are default interface members, so other implementations keep compiling (the defaults lay out through `MeasureText` and allocate per call). Text cells wrap when `KumikoColumn.TextWrap` is set; rows keep their fixed height (#102 adds variable row heights).
+`IDrawingContext.DrawTextInRect(…, KumikoTextWrap wrap)` and `MeasureText(text, paint, maxWidth, wrap)` add wrapping (`None`, `Word`, `Character`): line breaks start new lines, as many lines as fit the rectangle's height are drawn, and the last ends with an ellipsis when there is more. Both are default interface members, so other implementations keep compiling (the defaults lay out through `MeasureText` and allocate per call). Text cells wrap when `KumikoColumn.TextWrap` is set; with `RowHeightMode.Auto` a row grows to show all of its lines (see "Row Heights").
 
 ### Font fallback
 
@@ -290,8 +314,12 @@ Right-to-left layout is not supported in 1.0. The grid always lays out and draws
 
 ### Visible Range Computation
 ```
-firstVisibleRow = (int)(offsetY / rowHeight)
-lastVisibleRow  = firstVisibleRow + (int)(viewportHeight / rowHeight) + 1
+Uniform rows (Fixed, no resolver):
+  firstVisibleRow = frozenRows + (int)(offsetY / rowHeight)
+  lastVisibleRow  = frozenRows + (int)((offsetY + viewportHeight - headerHeight - topSummaries - frozenHeight) / rowHeight)
+Variable rows (KumikoRowLayout, O(log n) each):
+  firstVisibleRow = GetRowAt(top(frozenRows) + offsetY)
+  lastVisibleRow  = GetRowAt(top(frozenRows) + offsetY + scrollingHeight)
 
 Column range computed by KumikoLayoutEngine, walking column widths from
 the scroll offset until cumulative width exceeds viewport width.
@@ -300,7 +328,8 @@ the scroll offset until cumulative width exceeds viewport width.
 ### Scroll Clamping (ClampOffset)
 ```
 MaxOffsetX = totalColumnsWidth - viewportWidth + frozenLeftWidth + frozenRightWidth
-MaxOffsetY = totalRowsHeight - viewportHeight + headerHeight + frozenRowsHeight
+MaxOffsetY = headerHeight + totalRowsHeight + groupPanel + summaries - viewportHeight
+             (totalRowsHeight from the row layout: an estimate for rows not measured yet in Auto mode)
 
 OffsetX = clamp(OffsetX, 0, max(0, MaxOffsetX))
 OffsetY = clamp(OffsetY, 0, max(0, MaxOffsetY))

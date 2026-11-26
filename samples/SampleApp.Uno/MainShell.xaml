@@ -32,6 +32,7 @@
             <NavigationViewItem Content="All Components" Tag="BasicGrid" />
             <NavigationViewItem Content="Grouping" Tag="Grouping" />
             <NavigationViewItem Content="Large Data" Tag="LargeData" />
+            <NavigationViewItem Content="Wrapped Text" Tag="WrappedText" />
             <NavigationViewItem Content="Theming" Tag="Theming" />
             <NavigationViewItem Content="MVVM Actions" Tag="MvvmActions" />
             <NavigationViewItem Content="Custom Fonts" Tag="CustomFonts" />

@@ -10,9 +10,13 @@ namespace KumikoUI.Core.Layout;
 /// <remarks>
 /// <para>
 /// Vertically, <see cref="ScrollState.OffsetY"/> is measured over the <em>scrolling</em> rows only: at offset 0 the
-/// first row after the frozen rows sits right below the group panel, header, top summaries and frozen rows. Every row
-/// has the same height, group header and group summary rows included, so a row's place is its index times
-/// <see cref="KumikoStyle.RowHeight"/>. The visible part of the scrolling rows ends above the pinned bottom summary
+/// first row after the frozen rows sits right below the group panel, header, top summaries and frozen rows. A row's
+/// place comes from the source's row layout: its index times <see cref="KumikoStyle.RowHeight"/> in
+/// <see cref="KumikoRowHeightMode.Fixed"/> mode, and the sum of the heights above it when row heights vary
+/// (<see cref="KumikoStyle.RowHeightMode"/>, <see cref="KumikoStyle.RowHeightResolver"/>). In
+/// <see cref="KumikoRowHeightMode.Auto"/> mode a row that was never drawn is placed with an estimated height, so a
+/// scroll to it is refined on the next frame, once the rows around it are measured (one more
+/// <see cref="ScrollState.ScrollChanged"/>). The visible part of the scrolling rows ends above the pinned bottom summary
 /// footer, and a sticky group header (<see cref="KumikoStyle.StickyGroupHeaders"/>) covers the top of that part, so
 /// a row scrolled to the start is placed below the headers that would be pinned over it.
 /// </para>
@@ -48,10 +52,24 @@ public static class KumikoScroller
         ArgumentNullException.ThrowIfNull(style);
         ArgumentNullException.ThrowIfNull(scroll);
         float top = GetRowsTop(source, style);
-        int frozen = source.EffectiveFrozenRowCount;
-        return row < frozen
-            ? top + row * style.RowHeight
-            : top + frozen * style.RowHeight + (row - frozen) * style.RowHeight - scroll.OffsetY;
+        return source.RowLayout.GetRowY(row, top, scroll.OffsetY, style);
+    }
+
+    /// <summary>
+    /// The height of <paramref name="row"/> as laid out now: <see cref="KumikoStyle.RowHeight"/> in
+    /// <see cref="KumikoRowHeightMode.Fixed"/> mode and for group header and group summary rows; otherwise the row's
+    /// measured or resolved height, or an estimate for a row that has not been drawn yet.
+    /// </summary>
+    /// <param name="source">The rows.</param>
+    /// <param name="style">Row heights and the row height mode.</param>
+    /// <param name="row">The row in the flat view.</param>
+    /// <returns>The row's height in pixels.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="style"/> is <c>null</c>.</exception>
+    public static float GetRowHeight(KumikoSource source, KumikoStyle style, int row)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(style);
+        return source.RowLayout.GetRowHeight(row, style);
     }
 
     /// <summary>
@@ -111,9 +129,11 @@ public static class KumikoScroller
         int frozen = source.EffectiveFrozenRowCount;
         if (row < frozen) return scroll.OffsetY;
 
-        float rowHeight = style.RowHeight;
-        float rowTop = (row - frozen) * rowHeight;
-        float visibleHeight = Math.Max(rowHeight, GetScrollableRowsViewportHeight(scroll, style, source));
+        var rows = source.RowLayout;
+        float rowHeight = rows.GetRowHeight(row, style);
+        float rowTop = rows.GetScrollTop(row, style);
+        float viewportHeight = GetScrollableRowsViewportHeight(scroll, style, source);
+        float visibleHeight = Math.Max(rowHeight, viewportHeight);
 
         // Sticky group headers pinned over the top of the rows once this row is at the top
         float band = Math.Min(PinnedGroupHeaders.BandHeightAbove(source, style, row), visibleHeight - rowHeight);
@@ -129,9 +149,57 @@ public static class KumikoScroller
                 return rowTop - band - (visibleHeight - band - rowHeight) / 2f;
             default:
                 if (rowTop - band < offset) return rowTop - band;
+                // A row taller than the rows' viewport whose top is on screen stays put; otherwise its top is shown.
+                if (rowHeight > viewportHeight && !rows.IsUniform(style))
+                    return rowTop < offset + viewportHeight ? offset : rowTop - band;
                 if (rowTop + rowHeight > offset + visibleHeight) return rowTop + rowHeight - visibleHeight;
                 return offset;
         }
+    }
+
+    /// <summary>
+    /// After a programmatic scroll to <paramref name="row"/> with rows of varying height, whose neighbors may still
+    /// have estimated heights: the next frame measures the rows around it and scrolls to it again with their real
+    /// heights, unless the offset moved in between (a user scroll). Nothing with uniform rows.
+    /// </summary>
+    internal static void SetPendingRowTarget(ScrollState scroll, KumikoSource source, KumikoStyle style, int row,
+        KumikoScrollPosition position = KumikoScrollPosition.Nearest)
+    {
+        var rows = source.RowLayout;
+        rows.PendingScrollTarget = rows.IsUniform(style) || row < source.EffectiveFrozenRowCount
+            ? null
+            : new PendingRowScroll(row, position, scroll.OffsetY);
+    }
+
+    /// <summary>
+    /// How many rows PageDown (<paramref name="down"/>) or PageUp moves the current row from
+    /// <paramref name="fromRow"/>: one page of the rows' viewport. With uniform rows it is the number of rows that fit;
+    /// with rows of varying height it is the distance to the row that starts the next page (PageDown, with
+    /// <paramref name="fromRow"/> at the top) or that starts the page ending at <paramref name="fromRow"/> (PageUp).
+    /// Always at least 1.
+    /// </summary>
+    internal static int GetPageRowCount(KumikoSource source, KumikoStyle style, ScrollState scroll, int fromRow, bool down)
+    {
+        float pageHeight = GetScrollableRowsViewportHeight(scroll, style, source);
+        var rows = source.RowLayout;
+        int rowCount = source.RowCount;
+        if (rows.IsUniform(style) || fromRow < 0 || fromRow >= rowCount)
+            return Math.Max(1, (int)(pageHeight / style.RowHeight));
+
+        double top = rows.GetRowTop(fromRow, style);
+        int target;
+        if (down)
+        {
+            target = rows.GetRowAt(top + Math.Max(0, pageHeight), style);
+        }
+        else
+        {
+            double pageTop = top - Math.Max(0, pageHeight);
+            target = rows.GetRowAt(pageTop, style);
+            if (target < 0) target = 0;
+            else if (rows.GetRowTop(target, style) < pageTop) target++;
+        }
+        return Math.Max(1, Math.Abs(target - fromRow));
     }
 
     /// <summary>
@@ -212,6 +280,7 @@ public static class KumikoScroller
 
         RefreshContentExtents(scroll, source, style);
         scroll.ScrollTo(scroll.OffsetX, GetRowOffsetY(source, style, scroll, row, position));
+        SetPendingRowTarget(scroll, source, style, row, position);
         return true;
     }
 
@@ -282,7 +351,11 @@ public static class KumikoScroller
     {
         float groupPanel = source.IsGroupingActive ? style.GroupPanelHeight : 0;
         float summaries = (source.TopSummaryCount + source.BottomSummaryCount) * style.SummaryRowHeight;
-        scroll.ContentHeight = style.HeaderHeight + source.RowCount * style.RowHeight + groupPanel + summaries
+        var rows = source.RowLayout;
+        float rowsHeight = rows.IsUniform(style)
+            ? source.RowCount * style.RowHeight
+            : (float)rows.GetTotalHeight(style);
+        scroll.ContentHeight = style.HeaderHeight + rowsHeight + groupPanel + summaries
             + LoadMoreRowLayout.GetHeight(source, style);
 
         var (leftHandle, rightHandle) = GetHandleWidths(style);
@@ -301,7 +374,7 @@ public static class KumikoScroller
     {
         float groupPanelHeight = source != null && source.IsGroupingActive ? style.GroupPanelHeight : 0;
         float topSummaryHeight = source != null ? source.TopSummaryCount * style.SummaryRowHeight : 0;
-        float frozenRowHeight = (source?.EffectiveFrozenRowCount ?? 0) * style.RowHeight;
+        float frozenRowHeight = source?.RowLayout.GetFrozenHeight(style) ?? 0;
         float pinnedFooterHeight = style.GetPinnedBottomSummaryHeight(source?.BottomSummaryCount ?? 0);
         return scroll.ViewportHeight - groupPanelHeight - style.HeaderHeight - topSummaryHeight
             - frozenRowHeight - pinnedFooterHeight;

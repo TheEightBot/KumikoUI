@@ -169,7 +169,8 @@ public sealed class KumikoHitTester
 
         // Compute frozen rows
         int frozenRowCount = dataSource?.EffectiveFrozenRowCount ?? 0;
-        float frozenRowHeight = frozenRowCount * style.RowHeight;
+        var rowLayout = dataSource?.RowLayout ?? KumikoRowLayout.Detached;
+        float frozenRowHeight = rowLayout.GetFrozenHeight(style);
 
         // Data area — find row (offset by top summary height and frozen rows)
         float dataAreaTop = style.HeaderHeight + topSummaryHeight;
@@ -204,7 +205,8 @@ public sealed class KumikoHitTester
         // Unpinned bottom summary rows scroll with the content, directly after the last row.
         if (pinnedFooterHeight == 0 && bottomSummaryCount > 0)
         {
-            float bottomSummaryTop = dataAreaTop + totalRows * style.RowHeight - scroll.OffsetY + loadMoreHeight;
+            float rowsHeight = rowLayout.IsUniform(style) ? totalRows * style.RowHeight : (float)rowLayout.GetTotalHeight(style);
+            float bottomSummaryTop = dataAreaTop + rowsHeight - scroll.OffsetY + loadMoreHeight;
             if (adjustedY >= bottomSummaryTop && adjustedY < bottomSummaryTop + bottomSummaryCount * style.SummaryRowHeight)
             {
                 return new KumikoHitInfo { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
@@ -215,14 +217,13 @@ public sealed class KumikoHitTester
         if (frozenRowCount > 0 && adjustedY >= dataAreaTop && adjustedY < dataAreaTop + frozenRowHeight)
         {
             // Click is in the frozen row area (fixed, doesn't scroll)
-            row = (int)((adjustedY - dataAreaTop) / style.RowHeight);
+            row = rowLayout.GetRowAtY(adjustedY, dataAreaTop, scroll.OffsetY, style);
             row = Math.Clamp(row, 0, frozenRowCount - 1);
         }
         else
         {
             // Click is in the scrollable row area
-            float scrollableDataTop = dataAreaTop + frozenRowHeight;
-            row = (int)((adjustedY - scrollableDataTop + scroll.OffsetY) / style.RowHeight) + frozenRowCount;
+            row = rowLayout.GetRowAtY(adjustedY, dataAreaTop, scroll.OffsetY, style);
         }
 
         if (row < 0 || row >= totalRows)
