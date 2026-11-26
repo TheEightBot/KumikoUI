@@ -106,10 +106,11 @@ Both are far from 16 ms on this emulator under load; Hardware is two to ten time
 software surface's per-frame allocation (a bitmap) and CPU cost are what the hardware surface exists to avoid.
 
 **Recommendation for #263: keep `Auto` = Hardware on Android.** It drew correctly everywhere, it is clearly faster on
-every measure, and `RenderMode = Software` is a one-line escape hatch that works at run time (verified). Before 1.0,
-confirm it on one physical device (a low-end Mali or Adreno phone is the realistic risk: GL driver bugs do not show on
-the emulator's host GPU) and keep the XML doc's advice to switch to `Software` if a driver misdraws. Re-measure on
-that device with the `render` tool.
+every measure, and `RenderMode = Software` is a one-line escape hatch that works at run time (verified).
+**Decided for 1.0.0 (2026-11-25): `Auto` stays Hardware on Android.** It has not yet been confirmed on a physical
+low-end phone (a Mali or Adreno GPU is the realistic risk: GL driver bugs do not show on the emulator's host GPU), so
+the XML doc keeps its advice to switch to `Software` if a driver misdraws. When a physical device is available, check
+it there and re-measure with the `render` tool.
 
 ## Follow-ups
 

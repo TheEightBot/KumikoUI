@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- A column's `HeaderCellStyle.TextAlignment` now aligns the header text (and the text of the column drag ghost) instead of being ignored: Center and Right align within the space left after the sort and filter glyphs, so the text never runs under them. The default is still Left.
+
+## [1.0.0] - 2026-11-25
+
+The first stable release of all four packages. From this version on the public API follows Semantic Versioning: a breaking change waits for 2.0.0 ([docs/VERSIONING.md](docs/VERSIONING.md)). The changes below are those since 1.0.0-preview.1; coming from 0.2.0, read the [1.0.0-preview.1] section too. Follow-ups planned for 1.0.1 are in the [1.0.1 milestone](https://github.com/TheEightBot/KumikoUI/milestone/5).
+
 ### Added
 - `KumikoColorTypeConverter` (so every `KumikoColor` property in XAML) accepts the CSS functional forms `rgb(r, g, b)` and `rgba(r, g, b, a)`: channels are integers 0 to 255, alpha is a number from 0 to 1 (period as the decimal separator in any culture) or a percentage such as `50%`, and white space and case are ignored. Out-of-range values and bad syntax throw the same `FormatException` as invalid hex. Hex is unchanged, 8 digits are still `#AARRGGBB` (#304).
 
@@ -17,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A touch long press on a column header that can be reordered no longer opens the header menu and swallows the drag that follows (#288). The long press now holds the header: moving the finger past the drag slop (8 px) lifts the column like a quick press-and-drag does, and raises no `ContextRequested`; lifting the finger with no movement raises `ContextRequested` (`KumikoContextTrigger.LongPress`) on the release instead of at 500 ms. A header whose `AllowReorder` is false, a mouse or pen, a right click and a long press on a cell behave as before.
 
 ### Fixed
+- KumikoUI.Uno on touch shows the soft keyboard again for an editor or the filter search box that already has focus, once the press has settled, for input methods that ignore a show request racing the touch (#275).
 - KumikoUI.Uno ignores a mouse press or release whose update kind names no button and with no left, right or middle button pressed, so a mouse wheel notch on Uno's X11 host no longer selects the cell under the pointer or opens its editor. Touch and pen are unaffected (#286). The cause is upstream: Uno's X11 host does not turn XInput2 buttons 4 to 7 into wheel deltas ([unoplatform/uno#26709](https://github.com/unoplatform/uno/issues/26709)), so the wheel itself still does not scroll there until that is fixed.
 - The Uno sample's navigation shell no longer draws the pane's menu button over the page title on a phone, and its pane item labels are no longer clipped in landscape: the `NavigationView` now has a header row and switches directly from the minimal pane to the expanded one at 640 effective pixels (#291).
 - On touch, a finger's header resize grip reaches at most a fifth of a column into it on each side of a border (at least 8 px, still at most half of `TouchColumnResizeGripWidth`), where it reached a quarter, so pressing near the right of a narrow header starts a reorder instead of a resize and the two grips that cut into a column leave at least 60 percent of it in the middle. The default `KumikoStyle.TouchColumnResizeGripWidth` is now 24 px (was 32), so a finger's grip reaches 12 px into a column instead of 16 and a press 16 px left of a header's right edge reorders the column. Set it back to 32 for the old touch grip. The mouse and pen grip is unchanged (#289).
@@ -417,7 +425,8 @@ First 1.0 prerelease. All four packages (KumikoUI.Core, KumikoUI.SkiaSharp, Kumi
 
 Versions 0.1.1, 0.1.2 and 0.1.5 were tagged but never published to NuGet.org.
 
-[Unreleased]: https://github.com/TheEightBot/KumikoUI/compare/v1.0.0-preview.1...HEAD
+[Unreleased]: https://github.com/TheEightBot/KumikoUI/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/TheEightBot/KumikoUI/compare/v1.0.0-preview.1...v1.0.0
 [1.0.0-preview.1]: https://github.com/TheEightBot/KumikoUI/compare/v0.2.0...v1.0.0-preview.1
 [0.2.0]: https://github.com/TheEightBot/KumikoUI/compare/v0.1.10...v0.2.0
 [0.1.10]: https://github.com/TheEightBot/KumikoUI/compare/v0.1.9...v0.1.10

@@ -85,7 +85,7 @@ dotnet run --project samples/SampleApp.Uno -f net10.0-desktop
 Package versions come from git tags through [MinVer](https://github.com/adamralph/minver); no project file contains a version.
 
 - A commit tagged `vX.Y.Z` (or `vX.Y.Z-suffix`) builds exactly that version for all four packages.
-- Any other commit builds the next version as a prerelease, for example `1.0.0-alpha.0.8`: eight commits after the last tag. After a prerelease tag it is that version with the commit count appended (`1.0.0-preview.1.5`). `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 1.0; it only affects builds whose computed version would be lower, so untagged commits after `v0.2.0` build `1.0.0-alpha.0.N`, which sorts below `1.0.0-preview.1`).
+- Any other commit builds the next version as a prerelease, for example `1.0.1-alpha.0.8`: eight commits after the `v1.0.0` tag. After a prerelease tag it is that version with the commit count appended (`1.1.0-preview.1.5`). `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 1.0; it only affects builds whose computed version would be lower).
 - Clones need tags and history (`git fetch --tags`, no shallow clone) or MinVer falls back to `0.2.0-alpha.0`.
 
 To release:
@@ -94,14 +94,14 @@ To release:
 2. Push a version tag on that commit on `main`:
 
 ```bash
-git tag v1.0.0-preview.1   # a prerelease: published as a NuGet prerelease and a GitHub prerelease
-git push origin v1.0.0-preview.1
+git tag v1.0.1             # a stable release
+git push origin v1.0.1
 
-git tag v1.0.0             # a stable release
-git push origin v1.0.0
+git tag v1.1.0-preview.1   # a prerelease: published as a NuGet prerelease and a GitHub prerelease
+git push origin v1.1.0-preview.1
 ```
 
-A tag with a suffix (`v1.0.0-preview.1`) is a prerelease on NuGet.org and on GitHub; NuGet hides it from consumers unless they ask for prereleases (`dotnet add package KumikoUI.Maui --prerelease`). The heading of its CHANGELOG section is `## [1.0.0-preview.1] - YYYY-MM-DD`.
+A tag with a suffix (`v1.1.0-preview.1`) is a prerelease on NuGet.org and on GitHub; NuGet hides it from consumers unless they ask for prereleases (`dotnet add package KumikoUI.Maui --prerelease`). The heading of its CHANGELOG section is `## [1.1.0-preview.1] - YYYY-MM-DD`.
 
 The section becomes the GitHub release notes, and every package links to the CHANGELOG. Versioning rules (SemVer, lockstep packages, deprecation, support window) are in [docs/VERSIONING.md](docs/VERSIONING.md).
 
@@ -171,7 +171,7 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 
 ### Public API and formatting
 
-**Recording an API change.** The public surface of the four shipped libraries (Core, SkiaSharp, Maui, Uno) is recorded in `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to each project and checked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Adding, changing or removing a public or protected member without updating those files fails the build (RS0016 for an unrecorded member, RS0017 for a recorded one that no longer exists). RS0026 and RS0027 are errors as well: only one overload of a method may have optional parameters, and it must be the one with the most parameters, so a later optional parameter can be added without a break. Nothing has shipped as a stable release yet, so every `Shipped` file is empty and the whole surface is in the `Unshipped` files; at the first stable release the maintainer moves the `Unshipped` lines into `Shipped` (the exact steps are in [the 1.0 API review](docs/release-readiness/api-review-1.0.md#steps-at-the-10-tag)), and from then on a removal or change of a shipped line is a breaking change that must be called out in the CHANGELOG.
+**Recording an API change.** The public surface of the four shipped libraries (Core, SkiaSharp, Maui, Uno) is recorded in `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to each project and checked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Adding, changing or removing a public or protected member without updating those files fails the build (RS0016 for an unrecorded member, RS0017 for a recorded one that no longer exists). RS0026 and RS0027 are errors as well: only one overload of a method may have optional parameters, and it must be the one with the most parameters, so a later optional parameter can be added without a break. The `Shipped` files hold the surface of the last stable release (`1.0.0`, frozen in #112); a new member goes into `Unshipped` and moves into `Shipped` when the next release is cut (the steps are in [the 1.0 API review](docs/release/api-review-1.0.md#steps-at-the-10-tag)). A removed or changed `Shipped` line is a breaking change: it needs a new major version (or a documented exception) and a **Breaking:** entry in the CHANGELOG. `eng/update-public-api.sh` never removes a `Shipped` line; that stays a deliberate edit by hand.
 
 To record a change, either:
 
@@ -180,7 +180,7 @@ To record a change, either:
 
 KumikoUI.Maui and KumikoUI.Uno target several frameworks. Members every framework has live in the project's own `PublicAPI.Unshipped.txt`; members only some frameworks have (for example the `GlobalStaticResources` class the Uno XAML generator adds to every Uno head) live in `PublicAPI/<target framework>/PublicAPI.Unshipped.txt`. The Windows heads cannot be built on macOS or Linux, so CI is the first to check them; if the Windows build reports RS0016 or RS0017, add or remove the line in `PublicAPI/net10.0-windows10.0.19041.0/` (Maui) or `PublicAPI/net10.0-windows10.0.26100/` (Uno), each with its own `PublicAPI.Shipped.txt` containing `#nullable enable`.
 
-Package validation (`EnablePackageValidation`) also runs when the packages are packed. Once the first stable version is out, the maintainer enables `PackageValidationBaselineVersion` (see `Directory.Build.props`) so that a breaking change against the last release fails the pack.
+Package validation (`EnablePackageValidation`) also runs when the packages are packed. It compares each package with the last stable release (`PackageValidationBaselineVersion` in `Directory.Build.props`, currently `1.0.0`), so a breaking change against that release fails the pack. Pack needs network access to restore the baseline packages, and the MAUI and Uno packages are only validated in full on Windows (CI and the publish workflow), where every target framework builds. Record an intentional break with `dotnet pack /p:GenerateCompatibilitySuppressionFile=true`, check in the generated `CompatibilitySuppressions.xml`, and add a **Breaking:** CHANGELOG entry.
 
 **Formatting.** [`.editorconfig`](.editorconfig) records the whitespace rules the code follows (four-space indentation, Allman braces, LF line endings, final newline). CI runs:
 
