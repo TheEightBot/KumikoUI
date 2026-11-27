@@ -103,6 +103,8 @@
   -->
   <ItemGroup>
     <ProjectReference Include="../../src/KumikoUI.Uno/KumikoUI.Uno.csproj" />
+    <!-- Excel export for the Export page (#324). -->
+    <ProjectReference Include="../../src/KumikoUI.Export.Excel/KumikoUI.Export.Excel.csproj" />
   </ItemGroup>
 
   <!--

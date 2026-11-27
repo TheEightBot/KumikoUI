@@ -164,7 +164,9 @@ jobs:
       - name: Restore
         run: dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
           && dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
+          && dotnet restore src/KumikoUI.Export.Excel/KumikoUI.Export.Excel.csproj
           && dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
+          && dotnet restore tests/KumikoUI.Export.Excel.Tests/KumikoUI.Export.Excel.Tests.csproj
           && dotnet restore tests/KumikoUI.SkiaSharp.Tests/KumikoUI.SkiaSharp.Tests.csproj
           && dotnet restore tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
           && dotnet restore tests/KumikoUI.Maui.Tests/KumikoUI.Maui.Tests.csproj
@@ -177,12 +179,17 @@ jobs:
         run: dotnet build src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
           --no-restore -c Release
 
+      - name: Build — Export.Excel
+        run: dotnet build src/KumikoUI.Export.Excel/KumikoUI.Export.Excel.csproj
+          --no-restore -c Release
+
       # No public type may share a simple name with another KumikoUI type or a type of MAUI, WinUI/Uno, WPF,
       # Windows Forms, Avalonia or the community toolkits' grids (eng/TypeNameCheck; see CONTRIBUTING.md).
-      - name: Check public type names — Core + SkiaSharp
+      - name: Check public type names — Core + SkiaSharp + Export.Excel
         run: dotnet run --project eng/TypeNameCheck/TypeNameCheck.csproj -c Release
           -- src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll
           src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
+          src/KumikoUI.Export.Excel/bin/Release/net10.0/KumikoUI.Export.Excel.dll
 
       # Collects Cobertura coverage for KumikoUI.Core + KumikoUI.SkiaSharp (coverage.runsettings excludes the tests,
       # generated code and samples); the report and ratchet follow the source generator tests below. Tests with a
@@ -199,6 +206,11 @@ jobs:
         run: dotnet test tests/KumikoUI.SkiaSharp.Tests/KumikoUI.SkiaSharp.Tests.csproj
           --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
           --collect:"XPlat Code Coverage" --settings coverage.runsettings
+
+      # Excel package: every workbook is checked with the Open XML SDK validator and read back (test-only dependency).
+      - name: Test — Export.Excel
+        run: dotnet test tests/KumikoUI.Export.Excel.Tests/KumikoUI.Export.Excel.Tests.csproj
+          --no-restore -c Release --logger "trx" --logger "GitHubActions" --results-directory TestResults
 
       - name: Test — source generator
         run: dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
@@ -241,6 +253,10 @@ jobs:
 
       - name: Pack — SkiaSharp (dry run)
         run: dotnet pack src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
+          --no-restore -c Release -o /tmp/ci-pack
+
+      - name: Pack — Export.Excel (dry run)
+        run: dotnet pack src/KumikoUI.Export.Excel/KumikoUI.Export.Excel.csproj
           --no-restore -c Release -o /tmp/ci-pack
 
   # ─── Build KumikoUI.Maui (all TFMs including Windows requires Windows runner) ─

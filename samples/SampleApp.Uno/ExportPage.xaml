@@ -12,7 +12,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Text="Export — what the grid shows, as CSV"
+        <TextBlock Text="Export — what the grid shows, as CSV or Excel"
                    FontSize="20"
                    FontWeight="Bold"
                    Padding="16,12"
@@ -23,6 +23,7 @@
                       VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
             <StackPanel Orientation="Horizontal" Padding="16,4" Spacing="8">
                 <Button Content="Export CSV" Click="OnExportClicked" />
+                <Button Content="Export Excel" Click="OnExportExcelClicked" />
                 <CheckBox x:Name="selectedCheck" Content="Selected rows only" />
                 <CheckBox x:Name="groupCheck" Content="Group by department" Checked="OnGroupChanged" Unchecked="OnGroupChanged" />
                 <TextBlock x:Name="statusLabel" VerticalAlignment="Center" />

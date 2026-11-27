@@ -7,7 +7,7 @@
              Title="Export">
 
     <Grid RowDefinitions="Auto,Auto,*">
-        <Label Text="Export — what the grid shows, as CSV"
+        <Label Text="Export — what the grid shows, as CSV or Excel"
                FontSize="20"
                FontAttributes="Bold"
                Padding="16,12"
@@ -16,6 +16,7 @@
         <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
             <HorizontalStackLayout Padding="16,4" Spacing="8">
                 <Button Text="Export CSV" Clicked="OnExportClicked" />
+                <Button Text="Export Excel" Clicked="OnExportExcelClicked" />
                 <HorizontalStackLayout VerticalOptions="Center">
                     <CheckBox x:Name="selectedCheck" />
                     <Label Text="Selected rows only" VerticalOptions="Center" />
