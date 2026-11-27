@@ -323,22 +323,40 @@ KumikoUI.Core.Input.KumikoContextRequestedEventArgs.Handled.get -> bool
 KumikoUI.Core.Input.KumikoContextRequestedEventArgs.Handled.set -> void
 KumikoUI.Core.Input.KumikoHitTester.ShowColumnMenuButton.get -> bool
 KumikoUI.Core.Input.KumikoHitTester.ShowColumnMenuButton.set -> void
+KumikoUI.Core.Input.KumikoInputController.AllowDeleting.get -> bool
+KumikoUI.Core.Input.KumikoInputController.AllowDeleting.set -> void
 KumikoUI.Core.Input.KumikoInputController.AllowSearchPanel.get -> bool
 KumikoUI.Core.Input.KumikoInputController.AllowSearchPanel.set -> void
 KumikoUI.Core.Input.KumikoInputController.CheckAllToggled -> System.EventHandler<bool>?
 KumikoUI.Core.Input.KumikoInputController.CloseSearchPanel() -> void
 KumikoUI.Core.Input.KumikoInputController.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
+KumikoUI.Core.Input.KumikoInputController.DeleteSelectedRows(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.FindNext(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.FindPrevious(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.IsColumnMenuEnabled.get -> bool
 KumikoUI.Core.Input.KumikoInputController.IsColumnMenuEnabled.set -> void
 KumikoUI.Core.Input.KumikoInputController.IsSearchPanelOpen.get -> bool
+KumikoUI.Core.Input.KumikoInputController.RowsDeleted -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletedEventArgs!>?
+KumikoUI.Core.Input.KumikoInputController.RowsDeleting -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletingEventArgs!>?
 KumikoUI.Core.Input.KumikoInputController.ShowColumnMenu(KumikoUI.Core.Models.KumikoColumn! column, KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.ShowColumnMenuButton.get -> bool
 KumikoUI.Core.Input.KumikoInputController.ShowColumnMenuButton.set -> void
 KumikoUI.Core.Input.KumikoInputController.ShowSearchPanel(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> void
 KumikoUI.Core.Input.KumikoKey.ContextMenu = 23 -> KumikoUI.Core.Input.KumikoKey
 KumikoUI.Core.Input.KumikoKey.F = 24 -> KumikoUI.Core.Input.KumikoKey
+KumikoUI.Core.Input.KumikoRowsDeleteTrigger
+KumikoUI.Core.Input.KumikoRowsDeleteTrigger.Command = 1 -> KumikoUI.Core.Input.KumikoRowsDeleteTrigger
+KumikoUI.Core.Input.KumikoRowsDeleteTrigger.Key = 0 -> KumikoUI.Core.Input.KumikoRowsDeleteTrigger
+KumikoUI.Core.Input.KumikoRowsDeletedEventArgs
+KumikoUI.Core.Input.KumikoRowsDeletedEventArgs.Items.get -> System.Collections.Generic.IReadOnlyList<object!>!
+KumikoUI.Core.Input.KumikoRowsDeletedEventArgs.KumikoRowsDeletedEventArgs(System.Collections.Generic.IReadOnlyList<object!>! items, KumikoUI.Core.Models.KumikoRemoveResult result) -> void
+KumikoUI.Core.Input.KumikoRowsDeletedEventArgs.Result.get -> KumikoUI.Core.Models.KumikoRemoveResult
+KumikoUI.Core.Input.KumikoRowsDeletingEventArgs
+KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Cancel.get -> bool
+KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Cancel.set -> void
+KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Items.get -> System.Collections.Generic.IReadOnlyList<object!>!
+KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.KumikoRowsDeletingEventArgs(System.Collections.Generic.IReadOnlyList<object!>! items, KumikoUI.Core.Input.KumikoRowsDeleteTrigger trigger) -> void
+KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Trigger.get -> KumikoUI.Core.Input.KumikoRowsDeleteTrigger
 KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.get -> bool
 KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.set -> void
 KumikoUI.Core.Layout.KumikoLayoutEngine.GetContentHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style) -> float
@@ -369,6 +387,10 @@ KumikoUI.Core.Models.KumikoColumnType.DateTime = 11 -> KumikoUI.Core.Models.Kumi
 KumikoUI.Core.Models.KumikoColumnType.Selection = 9 -> KumikoUI.Core.Models.KumikoColumnType
 KumikoUI.Core.Models.KumikoColumnType.Time = 10 -> KumikoUI.Core.Models.KumikoColumnType
 KumikoUI.Core.Models.KumikoFilterValueKind.Time = 5 -> KumikoUI.Core.Models.KumikoFilterValueKind
+KumikoUI.Core.Models.KumikoRemoveResult
+KumikoUI.Core.Models.KumikoRemoveResult.NotSupportedSource = 2 -> KumikoUI.Core.Models.KumikoRemoveResult
+KumikoUI.Core.Models.KumikoRemoveResult.NothingToRemove = 1 -> KumikoUI.Core.Models.KumikoRemoveResult
+KumikoUI.Core.Models.KumikoRemoveResult.Removed = 0 -> KumikoUI.Core.Models.KumikoRemoveResult
 KumikoUI.Core.Models.KumikoRowHeightContext
 KumikoUI.Core.Models.KumikoRowHeightContext.DefaultHeight.get -> float
 KumikoUI.Core.Models.KumikoRowHeightContext.Item.get -> object!
@@ -398,6 +420,7 @@ KumikoUI.Core.Models.KumikoSource.IncrementalSource.set -> void
 KumikoUI.Core.Models.KumikoSource.InvalidateRowHeight(object! item) -> void
 KumikoUI.Core.Models.KumikoSource.InvalidateRowHeights() -> void
 KumikoUI.Core.Models.KumikoSource.IsSearchActive.get -> bool
+KumikoUI.Core.Models.KumikoSource.RemoveItems(System.Collections.Generic.IReadOnlyList<object!>! items) -> KumikoUI.Core.Models.KumikoRemoveResult
 KumikoUI.Core.Models.KumikoSource.SearchChanged -> System.EventHandler?
 KumikoUI.Core.Models.KumikoSource.SearchFiltersRows.get -> bool
 KumikoUI.Core.Models.KumikoSource.SearchFiltersRows.set -> void
@@ -420,6 +443,10 @@ KumikoUI.Core.Models.KumikoStrings.AnnounceMenuItemDisabled.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AnnounceMenuItemDisabled.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceMenuOpened.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AnnounceMenuOpened.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceRowDeleted.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceRowDeleted.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceRowsDeleted.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceRowsDeleted.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceSearchMatch.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AnnounceSearchMatch.init -> void
 KumikoUI.Core.Models.KumikoStrings.CheckStateChecked.get -> string!
@@ -629,6 +656,7 @@ static KumikoUI.Core.Models.KumikoAnnouncements.LoadMoreCompleted(KumikoUI.Core.
 static KumikoUI.Core.Models.KumikoAnnouncements.LoadMoreStarted(KumikoUI.Core.Models.KumikoStrings! strings) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.MenuItem(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Components.DrawnMenuItem! item) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.MenuOpened(KumikoUI.Core.Models.KumikoStrings! strings, string! menuName, int itemCount) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.RowsDeleted(KumikoUI.Core.Models.KumikoStrings! strings, int rowCount, System.Globalization.CultureInfo? culture = null) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.SearchMatch(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Models.KumikoColumn! column, int columnIndex, int rowIndex, string? cellText) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.SearchMatchCount(KumikoUI.Core.Models.KumikoStrings! strings, int matchCount) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.SelectionBox(KumikoUI.Core.Models.KumikoStrings! strings, bool isSelected) -> string!

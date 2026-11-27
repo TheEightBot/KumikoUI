@@ -768,7 +768,7 @@ public sealed partial class KumikoSource : IDisposable
         if (!copyView) _view.SourceIndexByItem = null; // source indices may have moved
         // During ReorderRow we do RemoveAt+Insert on the source list;
         // skip the intermediate rebuilds; ReorderRow rebuilds once afterwards.
-        if (_isReordering)
+        if (_isReordering || _isRemoving)
         {
             // Still track/untrack item property changes
             switch (e.Action)
