@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.ExportPage"
+             Title="Export">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <Label Text="Export — what the grid shows, as CSV"
+               FontSize="20"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+            <HorizontalStackLayout Padding="16,4" Spacing="8">
+                <Button Text="Export CSV" Clicked="OnExportClicked" />
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="selectedCheck" />
+                    <Label Text="Selected rows only" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="groupCheck" CheckedChanged="OnGroupChanged" />
+                    <Label Text="Group by department" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Label x:Name="statusLabel" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <!-- Sorting, filtering and grouping apply to the export: it writes the rows the grid shows (rows of collapsed
+             groups included), in the grid's column order. -->
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="2"
+                           AllowSorting="True"
+                           AllowFiltering="True"
+                           SelectionMode="Extended"
+                           GridDescription="Employees, exportable as CSV">
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="Id" PropertyName="Id" Width="70" ColumnType="Numeric" IsReadOnly="True" />
+                <core:KumikoColumn Header="Name" PropertyName="Name" Width="160" />
+                <core:KumikoColumn Header="Department" PropertyName="Department" Width="130" />
+                <core:KumikoColumn Header="Salary" PropertyName="Salary" Width="110" ColumnType="Numeric" Format="C0" TextAlignment="Right" />
+                <core:KumikoColumn Header="Score" PropertyName="Score" Width="90" ColumnType="Numeric" Format="N1" TextAlignment="Right" />
+                <core:KumikoColumn Header="Active" PropertyName="IsActive" Width="80" ColumnType="Boolean" />
+            </dg:KumikoDataGrid.Columns>
+            <dg:KumikoDataGrid.TableSummaryRows>
+                <core:TableSummaryRow Name="Total" Position="Bottom" Title="Total">
+                    <core:TableSummaryRow.Columns>
+                        <core:SummaryColumnDescription PropertyName="Salary" SummaryType="Sum" Format="C0" />
+                    </core:TableSummaryRow.Columns>
+                </core:TableSummaryRow>
+            </dg:KumikoDataGrid.TableSummaryRows>
+        </dg:KumikoDataGrid>
+    </Grid>
+</ContentPage>

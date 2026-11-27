@@ -68,6 +68,12 @@
             Route="LoadMorePage" />
 
         <ShellContent
+            Title="Export"
+            Icon="icon_data.png"
+            ContentTemplate="{DataTemplate local:ExportPage}"
+            Route="ExportPage" />
+
+        <ShellContent
             Title="Events"
             Icon="icon_events.png"
             ContentTemplate="{DataTemplate local:EventsPage}"

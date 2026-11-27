@@ -79,6 +79,7 @@ public sealed partial class MainShell : Page
             "Events" => typeof(EventsPage),
             "LoadMore" => typeof(LoadMorePage),
             "AutoColumns" => typeof(AutoColumnsPage),
+            "Export" => typeof(ExportPage),
             _ => null,
         };
 
