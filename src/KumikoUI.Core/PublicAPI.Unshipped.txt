@@ -175,6 +175,7 @@ KumikoUI.Core.Export.KumikoCsvOptions.UseCultureListSeparator.get -> bool
 KumikoUI.Core.Export.KumikoCsvOptions.UseCultureListSeparator.init -> void
 KumikoUI.Core.Export.KumikoExportCell
 KumikoUI.Core.Export.KumikoExportCell.KumikoExportCell() -> void
+KumikoUI.Core.Export.KumikoExportCell.SummaryType.get -> KumikoUI.Core.Models.SummaryType?
 KumikoUI.Core.Export.KumikoExportCell.Text.get -> string!
 KumikoUI.Core.Export.KumikoExportCell.Value.get -> object?
 KumikoUI.Core.Export.KumikoExportColumn
