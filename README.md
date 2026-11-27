@@ -2242,7 +2242,7 @@ kumiko.ShowEmptyView = false;
 
 `ShowEmptyView` defaults to on, so a grid that had no rows in 1.0 now shows the message; set it to `false` to keep the blank area. Like the other style settings it survives a `Theme` or `GridStyle` change. The text's look comes from `KumikoStyle` (`EmptyViewTextColor`, a muted color in each built-in theme, and `EmptyViewFont`, which defaults to `CellFont`). `KumikoSource.ItemCount` (the non-null items of the bound collection, whatever the filters hide) and `IsFiltered` (a column filter, a predicate or a row-filtering search is active) let an app make the same distinction.
 
-The message is not drawn while a load-more row occupies the data area (the first batch of [incremental loading](#incremental-loading) is loading, or a "Load more" button or an error shows), nor while a background rebuild that started from a view with rows is still pending, so the message does not flash. A tap on the area still clears the selection, as a tap on any empty area does.
+The message is not drawn while a load-more row occupies the data area (the first batch of [incremental loading](#incremental-loading) is loading, or a "Load more" button or an error shows), nor while a background rebuild that started from a view with rows is still pending, so the message does not flash, nor while the grid is [busy](#busy-indicator). A tap on the area still clears the selection, as a tap on any empty area does.
 
 To draw something else, implement `IKumikoEmptyViewRenderer` and set `EmptyViewRenderer`. It gets the data area, why there are no rows and the text the built-in view would draw. As with a cell renderer, `Render` runs on every frame while the view is empty: create paints once and reuse them.
 

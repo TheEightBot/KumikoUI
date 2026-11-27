@@ -31,7 +31,7 @@ public sealed partial class KumikoRenderer
     {
         bool hadRows = _emptyViewHadRows;
         _emptyViewHadRows = source.RowCount > 0;
-        if (!EmptyViewState.IsShown(source, style)) return false;
+        if (!EmptyViewState.IsShown(source, style, IsBusy)) return false;
         return !(hadRows && source.IsViewUpdatePending);
     }
 

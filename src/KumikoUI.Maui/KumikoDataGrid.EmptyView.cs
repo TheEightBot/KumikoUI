@@ -79,12 +79,12 @@ public partial class KumikoDataGrid
     }
 
     /// <summary>The empty text a screen reader hears in place of the size of the grid while the view has no rows, else null.</summary>
-    private string? GetEmptyViewHint() => EmptyViewState.CurrentText(_dataSource, _style, EmptyViewText);
+    private string? GetEmptyViewHint() => EmptyViewState.CurrentText(_dataSource, _style, EmptyViewText, _renderer.IsBusy);
 
     /// <summary>After a structural view change: announces the empty text once when a filter or search just emptied the view.</summary>
     private void AnnounceEmptyView()
     {
-        if (_emptyViewAnnouncer.Observe(_dataSource, _style, EmptyViewText) is { } text)
+        if (_emptyViewAnnouncer.Observe(_dataSource, _style, EmptyViewText, _renderer.IsBusy) is { } text)
             Announce(text);
     }
 }
