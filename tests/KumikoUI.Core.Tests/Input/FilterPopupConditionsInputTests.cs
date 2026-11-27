@@ -44,7 +44,7 @@ public class FilterPopupConditionsInputTests
         {
             Source.SetColumns(new[] { Name, Amount, When });
             Source.SetItems(Enumerable.Range(0, 30)
-                .Select(i => new Row { Name = $"N{i:D2}", Amount = i * 10, When = DateTime.Today.AddDays(i - 15) }).ToList());
+                .Select(i => new Row { Name = $"N{i:D2}", Amount = i * 10.0, When = DateTime.Today.AddDays(i - 15) }).ToList());
             Selection = new KumikoSelectionModel(Source);
             Input.FilterPopupClosed += (_, _) => Closed++;
             Input.AnnouncementRequested += Said.Add;
@@ -64,7 +64,7 @@ public class FilterPopupConditionsInputTests
         public DrawnFilterPopup OpenFilter(KumikoColumn column)
         {
             int index = column == Name ? 0 : column == Amount ? 1 : 2;
-            float x = index * 150 + 137; // the middle of the filter icon
+            float x = index * 150f + 137f; // the middle of the filter icon
             Tap(x, Style.HeaderHeight / 2);
             var popup = Assert.IsType<DrawnFilterPopup>(Input.ActivePopup);
             Frame();
@@ -257,7 +257,7 @@ public class FilterPopupConditionsInputTests
         Assert.Null(g.Input.ActivePopup);
         Assert.Null(g.Amount.ActiveFilter);
 
-        popup = OpenConditions(g, g.Amount);
+        OpenConditions(g, g.Amount);
         g.Key(KumikoKey.Tab);
         g.Key(KumikoKey.Character, character: '5');
         g.Key(KumikoKey.Character, character: '0');
