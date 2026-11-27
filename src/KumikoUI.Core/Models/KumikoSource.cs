@@ -1509,6 +1509,7 @@ public sealed partial class KumikoSource : IDisposable
         _groupDescriptions.Add(group);
         PruneGroupExpandedState();
         RequestRebuild();
+        RaiseGroupDescriptionsChanged();
     }
 
     /// <summary>
@@ -1520,6 +1521,7 @@ public sealed partial class KumikoSource : IDisposable
         _groupDescriptions.Insert(index, group);
         PruneGroupExpandedState();
         RequestRebuild();
+        RaiseGroupDescriptionsChanged();
     }
 
     /// <summary>
@@ -1531,6 +1533,7 @@ public sealed partial class KumikoSource : IDisposable
         _groupDescriptions.RemoveAll(g => g.PropertyName == propertyName);
         PruneGroupExpandedState();
         RequestRebuild();
+        RaiseGroupDescriptionsChanged();
     }
 
     /// <summary>
@@ -1549,6 +1552,23 @@ public sealed partial class KumikoSource : IDisposable
             _view.RowKeyIndex = null;
         }
         RequestRebuild();
+        RaiseGroupDescriptionsChanged();
+    }
+
+    /// <summary>
+    /// Raised after the list of group descriptions changed through <see cref="AddGroupDescription"/>,
+    /// <see cref="InsertGroupDescription"/>, <see cref="RemoveGroupDescription"/>, <see cref="ClearGroupDescriptions"/>
+    /// or <see cref="SetGroupDescriptions"/> (once, when the batch ends), so a host can mirror a change made from
+    /// the UI (a grouping panel chip) into its bindable collection. Not raised for a change of a description's
+    /// sort direction, which keeps the same object.
+    /// </summary>
+    internal event EventHandler? GroupDescriptionsChanged;
+
+    private int _groupDescriptionsBatch;
+
+    private void RaiseGroupDescriptionsChanged()
+    {
+        if (_groupDescriptionsBatch == 0) GroupDescriptionsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -1559,6 +1579,7 @@ public sealed partial class KumikoSource : IDisposable
     {
         VerifyAccess();
         BeginUpdate();
+        _groupDescriptionsBatch++;
         try
         {
             ClearGroupDescriptions();
@@ -1566,7 +1587,12 @@ public sealed partial class KumikoSource : IDisposable
                 foreach (var group in groups)
                     AddGroupDescription(group);
         }
-        finally { EndUpdate(); }
+        finally
+        {
+            _groupDescriptionsBatch--;
+            EndUpdate();
+        }
+        RaiseGroupDescriptionsChanged();
     }
 
     /// <summary>
