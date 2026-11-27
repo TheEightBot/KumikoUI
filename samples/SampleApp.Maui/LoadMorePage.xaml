@@ -27,13 +27,15 @@
 
         <!-- The items are a KumikoIncrementalCollection: the grid loads the next batch as the user nears the end,
              shows a loading row meanwhile and an error row with Retry when a batch fails. Sorting applies to the
-             loaded rows; the totals are over the loaded rows too. -->
+             loaded rows; the totals are over the loaded rows too. Pull the rows down from the top to reload them
+             (RefreshCommand); "Start over" reloads the same way without the gesture. -->
         <dg:KumikoDataGrid x:Name="kumiko"
                            Grid.Row="2"
                            AllowSorting="True"
                            AllowFiltering="True"
                            LoadMoreRequested="OnLoadMoreRequested"
                            LoadMoreCompleted="OnLoadMoreCompleted"
+                           IsPullToRefreshEnabled="True"
                            GridDescription="Orders loaded on demand">
             <dg:KumikoDataGrid.Columns>
                 <core:KumikoColumn Header="Order" PropertyName="Id" Width="90" ColumnType="Numeric" IsReadOnly="True" />
