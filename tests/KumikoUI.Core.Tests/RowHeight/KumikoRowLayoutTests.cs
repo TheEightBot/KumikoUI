@@ -364,7 +364,7 @@ public class KumikoRowLayoutTests
             {
                 AssertAgrees(source, style, rows, measured, rng);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException))
             {
                 throw new InvalidOperationException($"after operation {op} (kind {kind}, sorted {sorted}, grouped {grouped})", ex);
             }

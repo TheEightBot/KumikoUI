@@ -249,7 +249,7 @@ public class ScrollBarRenderingTests
         var g = Grid(x => x.Input.AnimationsEnabled = true);
         for (int i = 1; i <= 5; i++)
         {
-            g.Scroll.OffsetY = i * 50;
+            g.Scroll.OffsetY = i * 50f;
             g.RenderRecorded();
             g.Input.UpdateAnimations(InteractionAnimations.ScrollBarHoldMs / 2);
         }
