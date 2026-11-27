@@ -1,5 +1,6 @@
 using KumikoUI.Core.Export;
 using KumikoUI.Core.Models;
+using KumikoUI.Export.Excel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SampleApp.Shared;
@@ -8,8 +9,8 @@ using Windows.Storage.Pickers;
 namespace SampleApp.Uno;
 
 /// <summary>
-/// Export to CSV (#323, ← SampleApp.Maui ExportPage): the grid's rows as the user sees them, written through
-/// <c>ExportToCsvAsync</c> to the file the user picks in the platform's save dialog. Select rows or group the grid
+/// Export to CSV (#323) and Excel (#324, ← SampleApp.Maui ExportPage): the grid's rows as the user sees them, written
+/// through <c>ExportToCsvAsync</c> or <c>ExportToExcelAsync</c> (the KumikoUI.Export.Excel package) to the file the user picks in the platform's save dialog. Select rows or group the grid
 /// and export again.
 /// </summary>
 public sealed partial class ExportPage : Page
@@ -28,7 +29,11 @@ public sealed partial class ExportPage : Page
             kumiko.GroupDescriptions.Clear();
     }
 
-    private async void OnExportClicked(object sender, RoutedEventArgs e)
+    private void OnExportClicked(object sender, RoutedEventArgs e) => _ = ExportAsync(excel: false);
+
+    private void OnExportExcelClicked(object sender, RoutedEventArgs e) => _ = ExportAsync(excel: true);
+
+    private async Task ExportAsync(bool excel)
     {
         var options = new KumikoExportOptions();
         if (selectedCheck.IsChecked == true)
@@ -43,7 +48,10 @@ public sealed partial class ExportPage : Page
         try
         {
             var picker = new FileSavePicker { SuggestedFileName = "employees" };
-            picker.FileTypeChoices.Add("CSV", new List<string> { ".csv" });
+            if (excel)
+                picker.FileTypeChoices.Add("Excel workbook", new List<string> { ".xlsx" });
+            else
+                picker.FileTypeChoices.Add("CSV", new List<string> { ".csv" });
 #if WINDOWS
             // WinAppSDK pickers need the window they belong to.
             WinRT.Interop.InitializeWithWindow.Initialize(picker,
@@ -56,7 +64,17 @@ public sealed partial class ExportPage : Page
             await using var stream = await file.OpenStreamForWriteAsync();
             stream.SetLength(0);
             // On the UI thread: the rows are copied here, then written on a pool thread.
-            await kumiko.DataSource.ExportToCsvAsync(stream, options, progress: progress);
+            if (excel)
+            {
+                // Typed cells, the grid's widths and colors, a frozen header with filters, groups as outlines.
+                var xlsx = new KumikoXlsxOptions { SheetName = "Employees", UseGridColors = true, Style = kumiko.GridStyle };
+                await kumiko.DataSource.ExportToExcelAsync(stream, options, xlsx, progress);
+            }
+            else
+            {
+                await kumiko.DataSource.ExportToCsvAsync(stream, options, progress: progress);
+            }
+
             statusLabel.Text = "Exported.";
         }
         catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException))

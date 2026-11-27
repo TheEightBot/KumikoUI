@@ -1,0 +1,39 @@
+#nullable enable
+KumikoUI.Export.Excel.KumikoExcelExportExtensions
+KumikoUI.Export.Excel.KumikoXlsxColumnWidths
+KumikoUI.Export.Excel.KumikoXlsxColumnWidths.Fixed = 1 -> KumikoUI.Export.Excel.KumikoXlsxColumnWidths
+KumikoUI.Export.Excel.KumikoXlsxColumnWidths.FromGrid = 0 -> KumikoUI.Export.Excel.KumikoXlsxColumnWidths
+KumikoUI.Export.Excel.KumikoXlsxExporter
+KumikoUI.Export.Excel.KumikoXlsxExporter.ExportAsync(KumikoUI.Core.Models.KumikoSource! source, System.IO.Stream! destination, KumikoUI.Core.Export.KumikoExportOptions? options = null, System.IProgress<KumikoUI.Core.Export.KumikoExportProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+KumikoUI.Export.Excel.KumikoXlsxExporter.FileExtension.get -> string!
+KumikoUI.Export.Excel.KumikoXlsxExporter.FormatName.get -> string!
+KumikoUI.Export.Excel.KumikoXlsxExporter.KumikoXlsxExporter(KumikoUI.Export.Excel.KumikoXlsxOptions? xlsx = null) -> void
+KumikoUI.Export.Excel.KumikoXlsxExporter.MediaType.get -> string!
+KumikoUI.Export.Excel.KumikoXlsxOptions
+KumikoUI.Export.Excel.KumikoXlsxOptions.<Clone>$() -> KumikoUI.Export.Excel.KumikoXlsxOptions!
+KumikoUI.Export.Excel.KumikoXlsxOptions.ApplyColumnAlignment.get -> bool
+KumikoUI.Export.Excel.KumikoXlsxOptions.ApplyColumnAlignment.init -> void
+KumikoUI.Export.Excel.KumikoXlsxOptions.Author.get -> string?
+KumikoUI.Export.Excel.KumikoXlsxOptions.Author.init -> void
+KumikoUI.Export.Excel.KumikoXlsxOptions.AutoFilter.get -> bool
+KumikoUI.Export.Excel.KumikoXlsxOptions.AutoFilter.init -> void
+KumikoUI.Export.Excel.KumikoXlsxOptions.ColumnWidths.get -> KumikoUI.Export.Excel.KumikoXlsxColumnWidths
+KumikoUI.Export.Excel.KumikoXlsxOptions.ColumnWidths.init -> void
+KumikoUI.Export.Excel.KumikoXlsxOptions.Equals(KumikoUI.Export.Excel.KumikoXlsxOptions? other) -> bool
+KumikoUI.Export.Excel.KumikoXlsxOptions.FreezeHeader.get -> bool
+KumikoUI.Export.Excel.KumikoXlsxOptions.FreezeHeader.init -> void
+KumikoUI.Export.Excel.KumikoXlsxOptions.KumikoXlsxOptions() -> void
+KumikoUI.Export.Excel.KumikoXlsxOptions.SheetName.get -> string!
+KumikoUI.Export.Excel.KumikoXlsxOptions.SheetName.init -> void
+KumikoUI.Export.Excel.KumikoXlsxOptions.Style.get -> KumikoUI.Core.Models.KumikoStyle?
+KumikoUI.Export.Excel.KumikoXlsxOptions.Style.init -> void
+KumikoUI.Export.Excel.KumikoXlsxOptions.Title.get -> string?
+KumikoUI.Export.Excel.KumikoXlsxOptions.Title.init -> void
+KumikoUI.Export.Excel.KumikoXlsxOptions.UseGridColors.get -> bool
+KumikoUI.Export.Excel.KumikoXlsxOptions.UseGridColors.init -> void
+override KumikoUI.Export.Excel.KumikoXlsxOptions.Equals(object? obj) -> bool
+override KumikoUI.Export.Excel.KumikoXlsxOptions.GetHashCode() -> int
+override KumikoUI.Export.Excel.KumikoXlsxOptions.ToString() -> string!
+static KumikoUI.Export.Excel.KumikoExcelExportExtensions.ExportToExcelAsync(this KumikoUI.Core.Models.KumikoSource! source, System.IO.Stream! destination, KumikoUI.Core.Export.KumikoExportOptions? options = null, KumikoUI.Export.Excel.KumikoXlsxOptions? xlsx = null, System.IProgress<KumikoUI.Core.Export.KumikoExportProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static KumikoUI.Export.Excel.KumikoXlsxOptions.operator !=(KumikoUI.Export.Excel.KumikoXlsxOptions? left, KumikoUI.Export.Excel.KumikoXlsxOptions? right) -> bool
+static KumikoUI.Export.Excel.KumikoXlsxOptions.operator ==(KumikoUI.Export.Excel.KumikoXlsxOptions? left, KumikoUI.Export.Excel.KumikoXlsxOptions? right) -> bool

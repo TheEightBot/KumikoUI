@@ -1,7 +1,8 @@
 # Exporting
 
-`KumikoUI.Core` exports what a grid shows. This stage ships CSV; the same format-neutral core (`IKumikoExporter`,
-`KumikoExportOptions`, `KumikoExportSnapshot`) is what the Excel and PDF exporters build on. The design is in
+`KumikoUI.Core` exports what a grid shows as CSV, and the optional `KumikoUI.Export.Excel` package as an Excel
+workbook (`.xlsx`). Both build on the same format-neutral core (`IKumikoExporter`, `KumikoExportOptions`,
+`KumikoExportSnapshot`), which a PDF exporter will use too. The design is in
 [specs/105-export.md](specs/105-export.md); the clipboard's tab-separated text ([README](../README.md#keyboard)) uses
 the same column order and escaping.
 
@@ -15,6 +16,7 @@ is the app's job (see [Saving the file](#saving-the-file)).
 - [CSV options](#csv-options)
 - [Culture and values](#culture-and-values)
 - [Formula injection](#formula-injection)
+- [Excel](#excel)
 - [Async, cancellation and progress](#async-cancellation-and-progress)
 - [Saving the file](#saving-the-file)
 - [Writing another format](#writing-another-format)
@@ -98,6 +100,57 @@ The cost is a visible `'` on a legitimate string such as a phone number `+49 171
 `FormulaInjection.None` for a consumer that is not a spreadsheet. There is deliberately no "looks like a number"
 heuristic: guessing would weaken a security control.
 
+## Excel
+
+The `KumikoUI.Export.Excel` package adds `ExportToExcelAsync` and `KumikoXlsxExporter` (an `IKumikoExporter`, so code
+that picks a format at run time treats it like CSV). It writes one sheet, row by row, through the BCL's `ZipArchive`
+and plain XML text: no third-party dependency, no reflection, trimming and Native AOT safe.
+
+```csharp
+await using var file = File.Create(path);
+await grid.DataSource.ExportToExcelAsync(file, xlsx: new KumikoXlsxOptions { SheetName = "Orders", Title = "Orders" });
+```
+
+`KumikoExportOptions` chooses the rows and columns as for CSV. With `ValueMode = Auto` (the default) the cells are
+typed:
+
+| Value | Cell |
+|---|---|
+| `int`, `long`, `decimal`, `double` and the other numbers | a number, in the number format the column's `Format` maps to |
+| `bool` | a boolean |
+| `DateTime`, `DateOnly` | a date (1900 date system; dates before 1900 are written as the grid's text) |
+| `DateTimeOffset` | its clock time in its own offset, as the grid shows it |
+| `TimeOnly`, `TimeSpan` | a time, and an elapsed time `[h]:mm:ss` (a negative duration is written as text) |
+| `string`, enums and anything else | text (an inline string: Excel never evaluates it, so `=1+2` stays text) |
+
+The format mapping covers the .NET standard formats `N`, `F`, `D`, `C`, `P`, `E`, `G` with or without a precision,
+custom numeric formats made of `0 # . , %`, exponents, literals and up to three sections, and date and time patterns
+(`d`, `D`, `f`, `F`, `g`, `G`, `M`, `s`, `t`, `T`, `Y` and custom ones such as `yyyy-MM-dd`, `HH:mm` or `dd MMM yyyy`).
+Currency symbols and patterns, percent patterns, separators and month names come from the export culture (with a
+locale prefix for names). A format Excel cannot show exactly (`X`, per mille, eras, offsets, a 12-hour clock without
+AM/PM, a one-digit year, more than three fraction digits, or a number format such as `C2` on a date) writes the grid's display text instead, so the sheet never
+shows a different value than the grid. Excel draws digit grouping and the decimal separator in the reader's locale.
+`ValueMode = DisplayText` writes every cell as the grid's text.
+
+`KumikoXlsxOptions`:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `SheetName` | "Sheet1" | Made valid for Excel: `[ ] : * ? / \` and control characters removed, no leading or trailing apostrophe, at most 31 characters, "History" gets an underscore. |
+| `FreezeHeader` | `true` | Freeze the header row and the columns frozen at the left of the grid. |
+| `AutoFilter` | `true` | Filter and sort buttons on the header row. |
+| `ColumnWidths` | `FromGrid` | `FromGrid`: the grid's `Width` in Excel's character units. `Fixed`: Excel's default width. |
+| `ApplyColumnAlignment` | `true` | Center and right `TextAlignment` on the cells and the header. |
+| `UseGridColors`, `Style` | `false`, `null` | Header, group header and summary rows in the colors of `Style` (pass the grid's `GridStyle`) instead of plain bold. |
+| `Title`, `Author` | `null` | The workbook's document properties. |
+
+Group headers (`GroupLayout = Rows`) become rows with outline levels, so Excel shows collapsible groups with the button
+on the group header row; summary rows follow their group. A sum, average, minimum or maximum takes the
+column's number format; a count or a custom summary uses Excel's General format (a count of a currency column is not
+currency). Excel's limits are checked before any byte is written: more than
+1,048,576 rows (the header and summaries included) or 16,384 columns throws `ArgumentException`; text over 32,767
+characters is cut. Characters XML cannot hold (control characters other than tab, CR and LF) are removed.
+
 ## Async, cancellation and progress
 
 ```csharp
@@ -148,7 +201,8 @@ stream.SetLength(0);
 await grid.DataSource.ExportToCsvAsync(stream, cancellationToken: ct);
 ```
 
-Both sample apps have an Export page that does this.
+Both sample apps have an Export page that does this, for CSV and for Excel (`.xlsx`, media type
+`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`).
 
 ## Writing another format
 
@@ -187,3 +241,7 @@ CSV is written row by row through a buffer of about 64 KB: memory use does not g
 snapshot (one reference and a small struct per row, about 40 bytes). A 100,000-row by 10-column export allocates a
 few tens of megabytes in all (the cell texts) and retains none of it; the unit tests assert a bound. Prefer a file
 stream over a `MemoryStream` for very large exports so the output is not held either.
+
+The Excel writer streams the same way: each row is written as XML into a buffer that is compressed into the
+`ZipArchive` entry whenever it passes about 64 KB, so memory stays flat whatever the row count, and the destination
+need not be seekable. The style sheet is built from the columns before the first row, not from the data.

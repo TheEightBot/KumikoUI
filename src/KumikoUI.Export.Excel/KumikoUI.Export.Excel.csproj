@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Native AOT and trimming safe; analyzer warnings are errors (Directory.Build.targets, #17). -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Public API is recorded in PublicAPI.*.txt files and checked by PublicApiAnalyzers (Directory.Build.targets, #54). -->
+    <KumikoTrackPublicApi>true</KumikoTrackPublicApi>
+    <!--
+      Package validation (#54). This package is new in 1.1 and has no stable release to compare with yet, so the
+      repository-wide baseline (Directory.Build.props) is cleared here. After its first stable release, remove this
+      override so ApiCompat compares it with that release like the other packages.
+    -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion></PackageValidationBaselineVersion>
+    <!-- The recommended code-analysis rules (#112); Directory.Build.props sets `latest` for tests and samples. -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <!-- NuGet Package Metadata (Authors, License, URLs inherited from Directory.Build.props) -->
+    <PackageId>KumikoUI.Export.Excel</PackageId>
+    <Description>Excel (.xlsx) export for KumikoUI DataGrid: typed cells, number formats, column widths, a frozen header, an autofilter and outline groups, streamed row by row with no third-party dependency. Trimming and Native AOT safe.</Description>
+    <PackageTags>datagrid;data-grid;grid;table;excel;xlsx;export;spreadsheet;aot;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../KumikoUI.Core/KumikoUI.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="KumikoUI.Export.Excel.Tests" />
+  </ItemGroup>
+
+  <!-- The package README shown on nuget.org: plain Markdown with absolute image URLs (#95). -->
+  <ItemGroup>
+    <None Include="../../docs/nuget/README.KumikoUI.Export.Excel.md" Pack="true" PackagePath="README.md" Visible="false" />
+  </ItemGroup>
+
+</Project>

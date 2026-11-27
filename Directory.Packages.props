@@ -124,5 +124,7 @@
     <PackageVersion Include="coverlet.collector" Version="10.1.1" />
     <!-- Writes failures as workflow annotations and a step summary (dotnet test with the GitHubActions logger); needs no extra token permissions. -->
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.5" />
+    <!-- Validates and reads back the workbooks of tests/KumikoUI.Export.Excel.Tests; never referenced by a shipped package. -->
+    <PackageVersion Include="DocumentFormat.OpenXml" Version="3.5.1" />
   </ItemGroup>
 </Project>

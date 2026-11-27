@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Rewrites the PublicAPI.Unshipped.txt files of the four shipped libraries from the current source (#54).
+# Rewrites the PublicAPI.Unshipped.txt files of the shipped libraries from the current source (#54).
 #
-#   eng/update-public-api.sh            all four libraries
-#   eng/update-public-api.sh Maui Uno   only the named ones (Core, SkiaSharp, Maui, Uno)
+#   eng/update-public-api.sh            all five libraries
+#   eng/update-public-api.sh Maui Uno   only the named ones (Core, SkiaSharp, Export.Excel, Maui, Uno)
 #
 # Run it after adding, changing or removing public API, then review `git diff -- '*PublicAPI*.txt'`.
 #
-# Core and SkiaSharp target one framework: the script empties the Unshipped file and lets the RS0016 code fix
+# Core, SkiaSharp and Export.Excel target one framework: the script empties the Unshipped file and lets the RS0016 code fix
 # (through `dotnet format analyzers`) write the whole surface that PublicAPI.Shipped.txt does not already cover.
 # Maui and Uno target several frameworks whose surface differs a little (platform-specific members): the script builds the
 # surface of every target framework this machine can build, writes the members common to all of them to the
@@ -42,7 +42,7 @@ generated_for() { # <project> <tfm>
 }
 
 projects=("$@")
-if [ ${#projects[@]} -eq 0 ]; then projects=(Core SkiaSharp Maui Uno); fi
+if [ ${#projects[@]} -eq 0 ]; then projects=(Core SkiaSharp Export.Excel Maui Uno); fi
 
 work="$(mktemp -d)"
 csproj_backup=""
