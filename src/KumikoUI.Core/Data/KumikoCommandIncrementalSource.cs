@@ -76,7 +76,7 @@ internal sealed class KumikoCommandIncrementalSource : IKumikoIncrementalSource,
         {
             _command.Execute(_parameter());
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException))
         {
             Complete(error: ex);
         }
