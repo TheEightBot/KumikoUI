@@ -241,6 +241,7 @@ public sealed partial class KumikoInputController
 
         Redraw();
         IsRefreshingChanged?.Invoke(this, EventArgs.Empty);
-        if (value && fromGesture && _pull.IsRefreshing) RefreshRequested?.Invoke(this, EventArgs.Empty);
+        // A handler of IsRefreshingChanged may have ended the refresh already; then there is nothing to request.
+        if (value && fromGesture && IsRefreshing) RefreshRequested?.Invoke(this, EventArgs.Empty);
     }
 }
