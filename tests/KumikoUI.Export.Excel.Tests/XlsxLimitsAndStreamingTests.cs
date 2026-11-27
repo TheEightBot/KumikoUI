@@ -6,6 +6,11 @@ using static KumikoUI.Export.Excel.Tests.Xlsx;
 
 namespace KumikoUI.Export.Excel.Tests;
 
+// Runs alone: the streaming test reads process-wide heap sizes, which tests running in parallel would inflate.
+[CollectionDefinition(nameof(XlsxMemoryCollection), DisableParallelization = true)]
+public sealed class XlsxMemoryCollection;
+
+[Collection(nameof(XlsxMemoryCollection))]
 public class XlsxLimitsAndStreamingTests
 {
     [Theory]
