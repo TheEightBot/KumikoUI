@@ -54,6 +54,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 - [Localization](#localization)
 - [Selection](#selection)
 - [Keyboard](#keyboard)
+- [Exporting](#exporting)
 - [Row Drag and Drop](#row-drag-and-drop)
 - [Theming and Styling](#theming-and-styling)
 - [Host Properties, Commands & Events](#host-properties-commands--events)
@@ -267,6 +268,7 @@ using System.Globalization;
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Data;
 using KumikoUI.Core.Editing;
+using KumikoUI.Core.Export;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -1337,6 +1339,36 @@ Ctrl/Cmd+C copies the selected rows to the clipboard as tab-separated text that 
 ```csharp
 kumiko.ClipboardCopyIncludesHeaders = true;
 ```
+
+---
+
+## Exporting
+
+`KumikoSource` exports what the grid shows to CSV with one call. The exporter writes to any `Stream` (it never closes it, and the stream need not be seekable), so the app decides where the bytes go: a file the user picks, a share sheet, an HTTP response. Call it on the UI thread: the rows are copied there, and the values are then read and written on a thread-pool thread, with cancellation and progress:
+
+```csharp
+string path = Path.Combine(Path.GetTempPath(), "employees.csv");
+using var cancellation = new CancellationTokenSource();
+var progress = new Progress<KumikoExportProgress>(p => Console.WriteLine($"{p.RowsWritten} of {p.TotalRows}"));
+await using var file = File.Create(path);
+await kumiko.DataSource.ExportToCsvAsync(file, progress: progress, cancellationToken: cancellation.Token);
+```
+
+By default the export writes the filtered rows in the grid's sort order (rows of collapsed groups included), the visible columns in pane order (left-frozen, scrolling, right-frozen), a header row, the group headers and the group and table summaries, as display text in the grid's culture: `KumikoSource.Culture`, else the current culture. `KumikoExportOptions` changes what is written:
+
+```csharp
+var options = new KumikoExportOptions
+{
+    Rows = KumikoExportRows.Selected,                        // Filtered (default), Visible, Selected, All
+    Selection = KumikoExportSelection.FromSelection(kumiko.Selection),
+    ColumnFilter = column => column.PropertyName != "Salary",
+    GroupLayout = KumikoExportGroupLayout.Columns,           // Rows (default), Columns, None
+    ValueMode = KumikoExportValueMode.RawValue,              // invariant, round-trippable text
+};
+string csv = kumiko.DataSource.ExportToCsvString(options, new KumikoCsvOptions { Delimiter = ';' });
+```
+
+`KumikoCsvOptions` sets the delimiter (or the culture's list separator), the line ending, the encoding and byte order mark (UTF-8 with a BOM by default, which Excel needs to read non-ASCII text), quoting and the text for `null`. Text that a spreadsheet would run as a formula (a string starting with `=`, `+`, `-`, `@`, a tab or a carriage return) gets a leading apostrophe; numbers, dates and headers are never altered, and `FormulaInjection = KumikoFormulaInjection.None` turns it off. [docs/EXPORT.md](docs/EXPORT.md) has the full guide: every option, how the rows, columns, groups and summaries are chosen, saving through the MAUI and Uno pickers, the format-neutral `IKumikoExporter` and `KumikoExportSnapshot` that other formats build on, and performance notes. Both sample apps have an Export page.
 
 ---
 

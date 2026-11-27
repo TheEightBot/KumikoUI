@@ -20,6 +20,9 @@ public partial class App : Application
 
     protected Window? MainWindow { get; private set; }
 
+    /// <summary>The app's window, for pickers that need it (the Windows save picker).</summary>
+    internal static Window? CurrentWindow { get; private set; }
+
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         // ── Register custom SkiaSharp typefaces before the first grid renders ──
@@ -39,6 +42,7 @@ public partial class App : Application
 
         StartupTrace.Mark("fonts registered");
         MainWindow = new Window();
+        CurrentWindow = MainWindow;
 #if DEBUG
         MainWindow.UseStudio();
 #endif
