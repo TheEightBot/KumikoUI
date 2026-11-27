@@ -1,4 +1,6 @@
 #nullable enable
+KumikoUI.Maui.KumikoDataGrid.AllowDeleting.get -> bool
+KumikoUI.Maui.KumikoDataGrid.AllowDeleting.set -> void
 KumikoUI.Maui.KumikoDataGrid.AllowSearchPanel.get -> bool
 KumikoUI.Maui.KumikoDataGrid.AllowSearchPanel.set -> void
 KumikoUI.Maui.KumikoDataGrid.AutoGenerateColumns.get -> KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode
@@ -9,6 +11,7 @@ KumikoUI.Maui.KumikoDataGrid.CellVerticalPadding.get -> double
 KumikoUI.Maui.KumikoDataGrid.CellVerticalPadding.set -> void
 KumikoUI.Maui.KumikoDataGrid.CloseSearchPanel() -> void
 KumikoUI.Maui.KumikoDataGrid.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.DeleteSelectedRows() -> bool
 KumikoUI.Maui.KumikoDataGrid.FindNext() -> bool
 KumikoUI.Maui.KumikoDataGrid.FindPrevious() -> bool
 KumikoUI.Maui.KumikoDataGrid.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
@@ -46,6 +49,10 @@ KumikoUI.Maui.KumikoDataGrid.RowHeightMode.get -> KumikoUI.Core.Models.KumikoRow
 KumikoUI.Maui.KumikoDataGrid.RowHeightMode.set -> void
 KumikoUI.Maui.KumikoDataGrid.RowHeightResolver.get -> KumikoUI.Core.Models.KumikoRowHeightResolver?
 KumikoUI.Maui.KumikoDataGrid.RowHeightResolver.set -> void
+KumikoUI.Maui.KumikoDataGrid.RowsDeleted -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletedEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.RowsDeleting -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletingEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.RowsDeletingCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.KumikoDataGrid.RowsDeletingCommand.set -> void
 KumikoUI.Maui.KumikoDataGrid.SearchChanged -> System.EventHandler?
 KumikoUI.Maui.KumikoDataGrid.SearchFiltersRows.get -> bool
 KumikoUI.Maui.KumikoDataGrid.SearchFiltersRows.set -> void
@@ -62,6 +69,7 @@ KumikoUI.Maui.KumikoDataGrid.ShowSelectionColumn.get -> bool
 KumikoUI.Maui.KumikoDataGrid.ShowSelectionColumn.set -> void
 KumikoUI.Maui.KumikoDataGrid.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Maui.KumikoDataGrid.VerticalScrollBarVisibility.set -> void
+static readonly KumikoUI.Maui.KumikoDataGrid.AllowDeletingProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.AllowSearchPanelProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.AutoGenerateColumnsProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.CellVerticalPaddingProperty -> Microsoft.Maui.Controls.BindableProperty!
@@ -80,6 +88,7 @@ static readonly KumikoUI.Maui.KumikoDataGrid.MaxRowHeightProperty -> Microsoft.M
 static readonly KumikoUI.Maui.KumikoDataGrid.MinRowHeightProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.RowHeightModeProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.RowHeightResolverProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.RowsDeletingCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.SearchFiltersRowsProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.SearchTextProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.SelectOnRowClickProperty -> Microsoft.Maui.Controls.BindableProperty!

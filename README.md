@@ -1072,6 +1072,47 @@ An open edit belongs to its item and column, not a row number. If rows move unde
 
 `CellBeginEdit`, `CellEndEdit` and `CellValueChanged` report an edit; `CellValueChanged` is raised after `CellEndEdit`, and only for a value that was written.
 
+### Deleting rows
+
+Set `AllowDeleting` and the Delete key removes the selected rows from `ItemsSource` (on a Mac keyboard the key labeled Delete arrives as Backspace, so Command+Backspace does the same; plain Backspace never deletes rows). The key works while no editor is open, in a grid that is not read-only, and with at least one selected row: with no selection it stays with the page. `DeleteSelectedRows()` does the same from code or a button, whatever `AllowDeleting` says.
+
+```csharp
+kumiko.AllowDeleting = true;                 // the Delete key (Command+Backspace on a Mac)
+
+kumiko.RowsDeleting += (_, e) =>             // before anything is removed
+{
+    Console.WriteLine($"Deleting {e.Items.Count} rows ({e.Trigger})"); // e.Items: the data items, in view order
+    if (e.Items.Count > 100) e.Cancel = true;                          // Cancel keeps the rows
+};
+kumiko.RowsDeleted += (_, e) => Console.WriteLine($"{e.Result}");      // Removed, or why not
+
+bool deleted = kumiko.DeleteSelectedRows();  // from a button or a menu: the same flow and events
+```
+
+The flow is: an open edit is committed first (a refused commit stops the delete), `RowsDeleting` is raised, the items are removed from the bound collection in one go (`KumikoSource.RemoveItems`, one view rebuild however many rows), and `RowsDeleted` is raised. Afterwards the current cell moves to the row that took the first deleted row's place (or the new last row), in the same column, and that row becomes the selection, so pressing Delete again keeps working. Sorting, filtering and grouping make no difference: items are removed from the collection, not by row number, and group header and summary rows are never deleted. Deleting needs an `ItemsSource` the grid can change, an `ObservableCollection<T>` or a `List<T>`; with an array, a read-only list or a plain `IEnumerable` nothing is removed and `RowsDeleted.Result` is `NotSupportedSource`. There is no undo. A deletion is announced to a screen reader ("3 rows deleted", `KumikoStrings.AnnounceRowsDeleted` and `AnnounceRowDeleted`).
+
+`RowsDeleting` is synchronous, so it cannot wait for a dialog. To confirm, cancel the event, ask, and remove the items yourself:
+
+```csharp
+kumiko.RowsDeleting += async (_, e) =>
+{
+    e.Cancel = true;                          // set before the first await
+    var items = e.Items;
+    if (await ConfirmAsync($"Delete {items.Count} rows?"))
+        kumiko.DataSource.RemoveItems(items); // the same removal, in one rebuild
+
+    static Task<bool> ConfirmAsync(string question) => Task.FromResult(true); // show your dialog here
+};
+```
+
+In MVVM bind `RowsDeletingCommand`: it is executed with the `KumikoRowsDeletingEventArgs` as its parameter before your `RowsDeleting` handlers, and can set `Cancel` like they can.
+
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Employees}"
+                       AllowDeleting="True"
+                       RowsDeletingCommand="{Binding ConfirmDeleteCommand}" />
+```
+
 ### Custom editors
 
 For a `Template` column, an `EditorDescriptor` describes the editor:
@@ -1300,6 +1341,7 @@ The keys are handled in `KumikoUI.Core`, the same way on every host. Which keys 
 | Escape | Clear the selection and the current cell; with nothing to clear, left to the page | Cancel the edit |
 | Space | Toggle a Boolean cell, toggle a group header, or toggle the current row's selection | Types a space |
 | Ctrl+A | Select all rows | Select all text |
+| Delete, Cmd+Backspace on Apple keyboards | Delete the selected rows when `AllowDeleting` is true, after `RowsDeleting` (see [Deleting rows](#deleting-rows)); otherwise left to the page | Delete the character after the caret |
 | Ctrl/Cmd+C | Copy the selected rows (see [Copying rows](#copying-rows)) | Copy the selected text |
 | Menu key, Shift+F10 | Open the column menu of the current cell's column (with `IsColumnMenuEnabled`, see [Column menu](#column-menu)); otherwise left to the page | |
 | Ctrl/Cmd+F | Open the search panel, or return to it, when `AllowSearchPanel` is true; otherwise left to the page ([Searching](#searching)) | Commit the edit and open the search panel (when `AllowSearchPanel` is true) |
@@ -1320,6 +1362,7 @@ Each host captures the keyboard through a native input view, and that decides wh
 | Home, End, Page Up, Page Down | Yes | Yes | Yes | Yes |
 | Tab, Shift+Tab | Yes | Yes | Yes; past the last tab stop Android moves focus on | Yes |
 | Escape, F2, Delete | Yes | Yes | Yes | Yes |
+| Cmd+Backspace (delete rows) | Yes, with Cmd (Windows key on Windows) | Yes, with Cmd; claimed only while `AllowDeleting` is true, rows are selected and no editor is open | No | No |
 | Ctrl+A, editor undo / redo | Yes; Cmd works as Ctrl on macOS, iOS and WebAssembly | Yes, with Cmd | Yes (Ctrl or Meta) | Yes |
 | Ctrl/Cmd+C, X, V | Yes | Yes | Yes | Yes |
 | Menu key, Shift+F10 | Yes | Yes (a keyboard with a Menu key, or Shift+F10) | Yes (the Menu key, or Shift+F10) | Yes |

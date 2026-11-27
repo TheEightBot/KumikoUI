@@ -64,6 +64,10 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
         // Command+F: the grid-wide search panel (#317), claimed only while the grid wants it (CanHandleFind)
         cmds.Add(UIKeyCommand.Create((NSString)"f", UIKeyModifierFlags.Command, new Selector("handleFindKey:")));
 
+        // Command+Backspace: the key Apple keyboards label Delete deletes the selected rows (#328), claimed only while
+        // the grid wants it (CanHandleDelete)
+        cmds.Add(UIKeyCommand.Create((NSString)"\b", UIKeyModifierFlags.Command, new Selector("handleDeleteKey:")));
+
         // The grid's commands come before the text system's own handling of these keys (which would move a caret
         // in an empty document, or select all of it): while an input method composes, CanPerform declines them.
         foreach (var cmd in cmds)
@@ -104,6 +108,12 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
     /// </summary>
     public Func<bool>? CanHandleFind { get; set; }
 
+    /// <summary>
+    /// Asked before Command+Backspace is claimed (#328). Returning false (or null) leaves the key to UIKit, so a text
+    /// editor still deletes to the start of the line.
+    /// </summary>
+    public Func<bool>? CanHandleDelete { get; set; }
+
     /// <summary>Stops following the bridge; call before dropping the responder.</summary>
     public void Detach()
     {
@@ -111,6 +121,7 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
         _bridge.Detach();
         CanHandleTab = null;
         CanHandleFind = null;
+        CanHandleDelete = null;
     }
 
     private bool ClaimsTab(bool shift) => CanHandleTab?.Invoke(shift) ?? true;
@@ -126,6 +137,7 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
         if (action.Name == "handleTabKey:") return ClaimsTab(false);
         if (action.Name == "handleShiftTabKey:") return ClaimsTab(true);
         if (action.Name == "handleFindKey:") return !_bridge.HasMarkedText && (CanHandleFind?.Invoke() ?? false);
+        if (action.Name == "handleDeleteKey:") return !_bridge.HasMarkedText && (CanHandleDelete?.Invoke() ?? false);
         return base.CanPerform(action, withSender);
     }
 
@@ -137,6 +149,9 @@ internal sealed class KeyInputResponder : UIView, IUITextInput
 
     [Export("handleFindKey:")]
     private void HandleFindKey(UIKeyCommand cmd) => _sendKey(KumikoKey.F, InputModifiers.Control); // #317
+
+    [Export("handleDeleteKey:")]
+    private void HandleDeleteKey(UIKeyCommand cmd) => _sendKey(KumikoKey.Backspace, InputModifiers.Meta); // #328
 
     [Export("handleNavKey:")]
     private void HandleNavKey(UIKeyCommand cmd)

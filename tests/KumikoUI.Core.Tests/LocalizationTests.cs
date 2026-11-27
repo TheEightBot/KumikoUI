@@ -96,6 +96,8 @@ public class LocalizationTests
         CheckStateChecked = "ausgewählt",
         CheckStateUnchecked = "nicht ausgewählt",
         CheckStateMixed = "teilweise ausgewählt",
+        AnnounceRowsDeleted = "{0} Zeilen gelöscht",
+        AnnounceRowDeleted = "Zeile gelöscht",
         SearchPlaceholder = "Im Raster suchen",
         SearchMatchCount = "{0} von {1}",
         SearchMatchTotal = "{0} Treffer",
