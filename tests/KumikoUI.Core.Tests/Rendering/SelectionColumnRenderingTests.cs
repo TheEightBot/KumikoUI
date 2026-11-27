@@ -18,7 +18,7 @@ public class SelectionColumnRenderingTests
     private static (RenderHarness H, RecordingIconProvider Icons) Grid(KumikoSelectionMode mode = KumikoSelectionMode.Extended)
     {
         var icons = new RecordingIconProvider();
-        var h = Create(rows: 10, configure: x =>
+        var h = Create(rows: 10, height: 700, configure: x =>
         {
             var columns = x.Source.Columns.ToList();
             columns.Insert(0, new KumikoSelectionColumn());
@@ -124,7 +124,7 @@ public class SelectionColumnRenderingTests
         Assert.All(checks, c => Assert.Equal(KumikoIcon.Check, c.Icon));
         Assert.Equal(new[] { 1, 3 }, checks.Select(c => (int)((c.Bounds.Y - h.Style.HeaderHeight) / h.Style.RowHeight)).Order());
         // One border per row, drawn on the cell
-        var boxes = ctx.Ops.Where(o => o.Kind == DrawOpKind.DrawRect && InSelectionColumn(o.Rect) && o.Rect.Y >= h.Style.HeaderHeight).ToList();
+        var boxes = ctx.Ops.Where(o => o.Kind == DrawOpKind.DrawRect && InSelectionColumn(o.Rect) && o.Rect.Width == 16f && o.Rect.Y >= h.Style.HeaderHeight).ToList();
         Assert.Equal(10, boxes.Count);
         Assert.All(boxes, b => Assert.Equal(h.Style.CheckBoxBorderColor ?? h.Style.GridLineColor, b.Color));
     }
@@ -147,7 +147,7 @@ public class SelectionColumnRenderingTests
 
         var ctx = h.Render();
 
-        var boxes = ctx.Ops.Where(o => o.Kind == DrawOpKind.DrawRect && InSelectionColumn(o.Rect) && o.Rect.Y >= h.Style.HeaderHeight).ToList();
+        var boxes = ctx.Ops.Where(o => o.Kind == DrawOpKind.DrawRect && InSelectionColumn(o.Rect) && o.Rect.Width == 16f && o.Rect.Y >= h.Style.HeaderHeight).ToList();
         Assert.Equal(10, boxes.Count);
         Assert.All(boxes, b => Assert.True(b.Color.A < 255, "a box that cannot be used is dimmed"));
     }
