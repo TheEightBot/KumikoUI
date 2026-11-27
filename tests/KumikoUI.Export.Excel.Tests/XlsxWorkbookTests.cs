@@ -156,9 +156,29 @@ public class XlsxWorkbookTests
         Assert.NotNull(Font(bytes, cells["A2"].Style).Element(Ns + "b"));
         Assert.Equal("Subtotal", cells["A6"].Text);
         Assert.Equal(3500.5, double.Parse(cells["C6"].Value!, CultureInfo.InvariantCulture));
-        Assert.Equal("General", NumberFormat(bytes, cells["C6"].Style));
+        Assert.Equal(NumberFormat(bytes, cells["C3"].Style), NumberFormat(bytes, cells["C6"].Style)); // a sum keeps the column's format
         Assert.Equal("Total", cells["A11"].Text);
         Assert.Equal(5100.75, double.Parse(cells["C11"].Value!, CultureInfo.InvariantCulture));
+    }
+
+    [Theory]
+    [InlineData(SummaryType.Sum, true)]
+    [InlineData(SummaryType.Average, true)]
+    [InlineData(SummaryType.Min, true)]
+    [InlineData(SummaryType.Max, true)]
+    [InlineData(SummaryType.Count, false)]
+    public async Task SummaryNumbers_UseTheColumnsFormat_ExceptCounts(SummaryType type, bool columnFormat)
+    {
+        var source = Source();
+        source.AddTableSummaryRow(new TableSummaryRow { Name = "s", Title = "Summary", Position = SummaryPosition.Bottom, Columns = { new SummaryColumnDescription("Salary", type) } });
+        var bytes = await ExportAsync(source);
+        AssertValid(bytes);
+
+        var cells = Cells(bytes);
+        string expected = columnFormat ? NumberFormat(bytes, cells["C2"].Style) : "General";
+        Assert.NotEqual("General", NumberFormat(bytes, cells["C2"].Style));
+        Assert.Equal(expected, NumberFormat(bytes, cells["C7"].Style));
+        Assert.NotNull(Font(bytes, cells["C7"].Style).Element(Ns + "b"));
     }
 
     [Fact]

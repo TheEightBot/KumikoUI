@@ -96,6 +96,9 @@ public class XlsxNumberFormatTests
     [InlineData("o")]
     [InlineData("r")]
     [InlineData("u")]
+    [InlineData("C2")]        // number formats: no date or time part, so not a date format
+    [InlineData("P1")]
+    [InlineData("N0")]
     public void UnmappableDateFormats_FallBackToText(string format) =>
         Assert.Null(XlsxNumberFormats.ForDate(format, "G", Inv));
 
