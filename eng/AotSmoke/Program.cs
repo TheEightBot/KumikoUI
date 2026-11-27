@@ -124,8 +124,8 @@ Check(generatedColumns.Select(c => c.PropertyName).SequenceEqual(new[] { "Salary
     "generated columns follow [Display(Order)], then declaration order");
 Check(generatedColumns[0].Header == "Pay" && generatedColumns[0].Format == "C0" && generatedColumns[0].ColumnType == KumikoColumnType.Numeric,
     "generated Salary column uses [Display] and [DisplayFormat]");
-Check(generatedColumns[3].ColumnType == KumikoColumnType.Date && generatedColumns[4].ColumnType == KumikoColumnType.Boolean,
-    "generated Date and Boolean columns");
+Check(generatedColumns[3].ColumnType == KumikoColumnType.DateTime && generatedColumns[4].ColumnType == KumikoColumnType.Boolean,
+    "generated DateTime and Boolean columns");
 
 Console.WriteLine($"AOT smoke OK: {source.RowCount} visible rows, {distinct.Count}+ distinct colors in the frame.");
 return 0;
