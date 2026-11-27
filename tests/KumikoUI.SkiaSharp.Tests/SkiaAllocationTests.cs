@@ -177,6 +177,24 @@ public class SkiaAllocationTests : IDisposable
     }
 
     [Fact]
+    public void A_grid_with_a_search_and_its_panel_allocates_nothing()
+    {
+        // Search highlights (#317) measure the text before each match through the resource cache's span widths,
+        // and the open search panel draws its box and count text.
+        var scene = new Scene(Cities, Notes);
+        using var surface = SKSurface.Create(new SKImageInfo(Width, Height));
+        using var cache = new SkiaResourceCache();
+        scene.Source.SearchText = "o";
+        scene.Input.ShowSearchPanel(scene.Scroll, scene.Selection, scene.Style, scene.Source);
+        scene.DrawPopups = true;
+
+        long bytes = Allocated(surface.Canvas, cache, scene);
+
+        _output.WriteLine($"{bytes} B per {FramesPerRun} frames");
+        Assert.Equal(0, bytes);
+    }
+
+    [Fact]
     public void A_frame_started_with_the_constructor_allocates_only_the_context_object()
     {
         var scene = new Scene(Cities, Notes);

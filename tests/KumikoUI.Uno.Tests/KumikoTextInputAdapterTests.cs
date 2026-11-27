@@ -529,6 +529,7 @@ public class KumikoTextInputAdapterTests
     [InlineData(KumikoKey.X)]
     [InlineData(KumikoKey.Z)]
     [InlineData(KumikoKey.Y)]
+    [InlineData(KumikoKey.F)]
     public void APlainShortcutLetter_IsLeftToTheTextBoxToType(KumikoKey key)
     {
         var (_, _, adapter, target) = Editor("ab");
@@ -544,6 +545,40 @@ public class KumikoTextInputAdapterTests
         grid.Modifiers = InputModifiers.Control;
 
         Assert.Equal(ProxyKeyOutcome.Handled, adapter.OnKeyDown(KumikoKey.A)?.Outcome); // select all rows
+    }
+
+    [Fact]
+    public void CtrlF_OpensTheSearchPanel_AndTheProxyTypesIntoItsBox_WithAnInputMethod()
+    {
+        // #317: Ctrl/Cmd+F reaches Core through the proxy, the search panel's box becomes the active text input, and
+        // text (a composition included) typed into the proxy searches the grid.
+        var (grid, proxy, adapter) = Grid();
+        grid.Input.AllowSearchPanel = true;
+        grid.Input.SearchDebounceMs = 0;
+        grid.Modifiers = InputModifiers.Control;
+
+        Assert.Equal(ProxyKeyOutcome.Handled, adapter.OnKeyDown(KumikoKey.F)?.Outcome);
+        Assert.True(grid.Input.IsSearchPanelOpen);
+        grid.Modifiers = InputModifiers.None;
+        adapter.Sync();
+
+        proxy.StartComposition();
+        proxy.UpdateComposition("bo", 2);
+        proxy.CompleteComposition("bo");
+        proxy.Type("b");
+
+        Assert.Equal("bob", grid.Source.SearchText);
+        Assert.Equal(1, grid.Source.SearchMatchCount);
+    }
+
+    [Fact]
+    public void CtrlF_IsLeftToThePage_WhenTheSearchPanelIsNotAllowed()
+    {
+        var (grid, _, adapter) = Grid();
+        grid.Modifiers = InputModifiers.Control;
+
+        Assert.NotEqual(ProxyKeyOutcome.Handled, adapter.OnKeyDown(KumikoKey.F)?.Outcome);
+        Assert.False(grid.Input.IsSearchPanelOpen);
     }
 
     [Fact]

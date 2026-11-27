@@ -109,6 +109,23 @@ public sealed partial class LargeDataPage : Page
         btnUpdateRandom.IsEnabled = enabled;
     }
 
+    // ── Grid-wide search (#317) ──
+
+    private void OnFindNextClicked(object sender, RoutedEventArgs e) => kumiko.FindNext();
+
+    private void OnFindPreviousClicked(object sender, RoutedEventArgs e) => kumiko.FindPrevious();
+
+    private void OnShowSearchPanelClicked(object sender, RoutedEventArgs e) => kumiko.ShowSearchPanel();
+
+    // The count of a large grid arrives after a moment (it is counted in the background): SearchChanged says when.
+    private void OnSearchChanged(object? sender, EventArgs e)
+    {
+        int count = kumiko.SearchMatchCount;
+        searchLabel.Text = kumiko.SearchText.Length == 0 ? string.Empty
+            : count < 0 ? "Counting..."
+            : $"{count:N0} matches";
+    }
+
     private void OnLoad10KClicked(object sender, RoutedEventArgs e) => LoadData(10_000);
     private void OnLoad50KClicked(object sender, RoutedEventArgs e) => LoadData(50_000);
     private void OnLoad100KClicked(object sender, RoutedEventArgs e) => LoadData(100_000);

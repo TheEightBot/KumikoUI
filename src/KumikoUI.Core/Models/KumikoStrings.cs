@@ -203,6 +203,26 @@ public sealed partial record KumikoStrings
     /// <summary>The announcement for a menu item that cannot be used now. <c>{0}</c> is the item's text. Default: "{0}, unavailable".</summary>
     public string AnnounceMenuItemDisabled { get; init; } = "{0}, unavailable";
 
+    // ── Grid-wide search (#317) ──
+
+    /// <summary>The placeholder of the search panel's text box. Default: "Find in grid".</summary>
+    public string SearchPlaceholder { get; init; } = "Find in grid";
+
+    /// <summary>The search panel's position among the matches. <c>{0}</c> is the current match and <c>{1}</c> the number of matches. Default: "{0} of {1}".</summary>
+    public string SearchMatchCount { get; init; } = "{0} of {1}";
+
+    /// <summary>The number of matches when the current cell is not one of them. <c>{0}</c> is the number. Default: "{0} matches".</summary>
+    public string SearchMatchTotal { get; init; } = "{0} matches";
+
+    /// <summary>The search panel's text, and the announcement, when nothing matches. Default: "No matches".</summary>
+    public string SearchNoMatches { get; init; } = "No matches";
+
+    /// <summary>The search panel's text while the matches of a large grid are being counted. Default: "?".</summary>
+    public string SearchCountPending { get; init; } = "?";
+
+    /// <summary>The announcement when the search moves to a match. <c>{0}</c> is the column header, <c>{1}</c> the cell's text and <c>{2}</c> the one-based row. Default: "{0}: {1}, row {2}".</summary>
+    public string AnnounceSearchMatch { get; init; } = "{0}: {1}, row {2}";
+
     /// <summary>The default summary label for <paramref name="type"/>, or an empty string.</summary>
     /// <param name="type">The kind of summary.</param>
     internal string SummaryLabel(SummaryType type) => type switch

@@ -79,6 +79,31 @@ public class AppleTextInputBridgeTests
         public DrawnTextBox Box => Assert.IsType<DrawnTextBox>(Edit.ActiveEditor);
     }
 
+    // ── The search panel (#317) ──────────────────────────────────
+
+    [Fact]
+    public void CmdF_OpensTheSearchPanel_AndMarkedTextComposesIntoItsBox()
+    {
+        var h = new Harness();
+        h.Input.AllowSearchPanel = true;
+        h.Input.SearchDebounceMs = 0;
+
+        h.SendKey(new KumikoKeyEventArgs { Key = KumikoKey.F, Modifiers = InputModifiers.Control }); // as handleFindKey:
+        Assert.True(h.Input.IsSearchPanelOpen);
+
+        h.Bridge.SetMarkedText("ro", 2, 0);
+        Assert.True(h.Bridge.HasMarkedText);
+        h.Bridge.UnmarkText();
+        h.Bridge.InsertText("me");
+
+        Assert.Equal("rome", h.Bridge.Text);
+        Assert.Equal("rome", h.Source.SearchText);
+        Assert.Equal(1, h.Source.SearchMatchCount);
+
+        h.SendKey(new KumikoKeyEventArgs { Key = KumikoKey.Enter }); // the next match
+        Assert.Equal(new CellPosition(1, 2), h.Selection.CurrentCell);
+    }
+
     // ── Marked text ──────────────────────────────────────────────
 
     [Fact]

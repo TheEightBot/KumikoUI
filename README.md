@@ -82,7 +82,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | Column types | Text, Numeric, Boolean (optionally three-state), Date, ComboBox, Picker, Image, ProgressBar, Template (custom renderers such as the built-in action buttons) |
 | Column layout | Fixed, Star and Auto (fitted to content) sizing; headers fit unless you set a width; resize by dragging or double-click auto-fit; wrapping text cells; drag a header to reorder; freeze columns left or right and rows at the top; save and restore the layout as JSON |
 | Sorting | Header tap cycles through a type-aware first direction, the opposite direction and none; Shift or Ctrl adds columns to a multi-column sort |
-| Filtering | Filter popup per column with search, a value checklist, sort rows and OK / Cancel / Clear; programmatic predicate and column filters |
+| Filtering | Filter popup per column with search, a value checklist, sort rows and OK / Cancel / Clear; programmatic predicate and column filters; grid-wide search with match highlighting, next / previous navigation and a drawn search panel ([Searching](#searching)) |
 | Grouping | Nested groups, expand and collapse, sticky group headers, a grouping panel with chips |
 | Summaries | Table (top or bottom, bottom pinned as a footer by default), group and caption summaries: Sum, Average, Count, Min, Max, Custom |
 | Editing | Text, numeric, date, combo box, picker and custom editors; edit triggers per grid and per column; typed conversion and validation with messages |
@@ -793,6 +793,34 @@ kumiko.DataSource.ClearAllFilters();
 
 `FilterChanging` and `FilterChanged` report filter changes.
 
+### Searching
+
+`SearchText` searches every column at once: each cell whose display text contains it (the value formatted as the cell shows it, under the source's `Culture` and `StringCompareOptions`, so case is ignored by default) gets a highlight behind the matching characters, and the current cell's match a stronger one. By default every row stays; `SearchFiltersRows` also hides the rows with no match, combined with the column filters. `FindNext` and `FindPrevious` move the current cell from match to match in reading order (the columns in their on-screen order, as Tab moves), wrapping at the end, skipping group header and summary rows, expanding a collapsed group that holds the match and scrolling it into view.
+
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Employees}"
+                       SearchText="{Binding Query, Mode=TwoWay}"
+                       SearchFiltersRows="False"
+                       AllowSearchPanel="True" />
+```
+
+```csharp
+kumiko.SearchText = "oslo";          // highlight every matching cell
+kumiko.SearchFiltersRows = true;     // and hide the rows without one
+kumiko.FindNext();                   // the current cell moves to the next match (FindPrevious: back)
+int matches = kumiko.SearchMatchCount; // -1 while a large grid is still counting
+kumiko.SearchChanged += (_, _) => Console.WriteLine($"{kumiko.SearchMatchCount} matches");
+
+kumiko.ShowSearchPanel();            // the drawn search box; Ctrl/Cmd+F opens it when AllowSearchPanel is true
+kumiko.CloseSearchPanel();           // closes it and clears the search
+```
+
+The drawn search panel sits at the top right of the data area: a search box, the position among the matches ("3 of 12"), previous and next buttons and a close button. It searches when the user pauses typing; Enter moves to the next match, Shift+Enter to the previous one, and Escape closes the panel and clears the search. Its box takes text like the filter popup's search box (input methods, the soft keyboard, the clipboard). A tap on the grid gives the keyboard back to the grid and leaves the panel open; Ctrl/Cmd+F returns to it. `AllowSearchPanel` is false by default, so Ctrl/Cmd+F stays with the page unless you turn it on.
+
+Which columns are searched: every visible column with `AllowSearching` (true by default), except Boolean, Image, Template and ProgressBar columns and columns drawn by action buttons. The highlight colors are `SearchHighlightColor` and `SearchCurrentHighlightColor` on `KumikoStyle`; a custom cell renderer gets the match in `CellRenderContext.SearchMatchStart` and `SearchMatchLength` and can draw it with `TextCellRenderer.DrawSearchHighlight`. A wrapped cell is highlighted only while its text fits on one line. The panel's texts are `SearchPlaceholder`, `SearchMatchCount`, `SearchMatchTotal`, `SearchNoMatches` and `SearchCountPending` in `KumikoStrings`. The number of matches is counted after the search changes (on a background thread for 10,000 rows or more) and announced to a screen reader, as is each match `FindNext` moves to. The search is not part of the saved layout.
+
+The same API is on `DataSource` (`SearchText`, `SearchFiltersRows`, `SearchMatchCount`, `SearchChanged`) and `InputController` (`FindNext`, `FindPrevious`, `ShowSearchPanel`, `CloseSearchPanel`, `AllowSearchPanel`) for a custom host.
+
 ---
 
 ## Grouping
@@ -1092,7 +1120,7 @@ source.Strings = KumikoStrings.Default with
 };
 ```
 
-`KumikoStrings` is a record: start from `KumikoStrings.Default` (English) and replace what you need. It covers the grouping panel label and the group for empty values, the default summary labels, the filter popup (including its type-aware sort rows) and the validation messages. A message with `{0}` is a format string; keep the placeholder. Setting `Strings` or `Culture` rebuilds the view, so group headers and summaries follow.
+`KumikoStrings` is a record: start from `KumikoStrings.Default` (English) and replace what you need. It covers the grouping panel label and the group for empty values, the default summary labels, the filter popup (including its type-aware sort rows), the search panel and the validation messages. A message with `{0}` is a format string; keep the placeholder. Setting `Strings` or `Culture` rebuilds the view, so group headers and summaries follow.
 
 ---
 
@@ -1176,11 +1204,12 @@ The keys are handled in `KumikoUI.Core`, the same way on every host. Which keys 
 | Ctrl+A | Select all rows | Select all text |
 | Ctrl/Cmd+C | Copy the selected rows (see [Copying rows](#copying-rows)) | Copy the selected text |
 | Menu key, Shift+F10 | Open the column menu of the current cell's column (with `IsColumnMenuEnabled`, see [Column menu](#column-menu)); otherwise left to the page | |
+| Ctrl/Cmd+F | Open the search panel, or return to it, when `AllowSearchPanel` is true; otherwise left to the page ([Searching](#searching)) | Commit the edit and open the search panel (when `AllowSearchPanel` is true) |
 | Ctrl/Cmd+X, Ctrl/Cmd+V | | Cut, paste |
 | Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y | | Undo, redo (a word at a time) |
 | A character | Open the editor with that character (`Typing` trigger) | Type it |
 
-Tab stops at every visible column that isn't read-only, whatever its type, unless the column sets `AllowTabStop="False"`. Tab and Shift+Tab never trap focus: with no current cell, or no further tab stop, the grid leaves the key unhandled and the host moves focus to the next control. The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, sticky group headers and the pinned footer. The filter popup and the column menu handle their own keys while they are open: in the menu, Up and Down move over the enabled items, Home and End go to the first and the last, a letter goes to the next item starting with it, Enter or Space chooses, and Escape, Tab or the Menu key closes it.
+Tab stops at every visible column that isn't read-only, whatever its type, unless the column sets `AllowTabStop="False"`. Tab and Shift+Tab never trap focus: with no current cell, or no further tab stop, the grid leaves the key unhandled and the host moves focus to the next control. The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, sticky group headers and the pinned footer. The filter popup and the column menu handle their own keys while they are open: in the menu, Up and Down move over the enabled items, Home and End go to the first and the last, a letter goes to the next item starting with it, Enter or Space chooses, and Escape, Tab or the Menu key closes it. The search panel handles its own keys while it has the keyboard (Enter and Shift+Enter: next and previous match; Escape: close).
 
 ### Keys per platform
 
@@ -1196,6 +1225,7 @@ Each host captures the keyboard through a native input view, and that decides wh
 | Ctrl+A, editor undo / redo | Yes; Cmd works as Ctrl on macOS, iOS and WebAssembly | Yes, with Cmd | Yes (Ctrl or Meta) | Yes |
 | Ctrl/Cmd+C, X, V | Yes | Yes | Yes | Yes |
 | Menu key, Shift+F10 | Yes | Yes (a keyboard with a Menu key, or Shift+F10) | Yes (the Menu key, or Shift+F10) | Yes |
+| Ctrl/Cmd+F (search panel) | Yes | Yes, with Cmd; claimed only while `AllowSearchPanel` is true or the panel is open | Yes (Ctrl or Meta) | Yes |
 
 On Android, pressing the grid gives it keyboard focus, so a hardware keyboard navigates it without opening an editor. The soft keyboard appears only while a cell editor or the filter popup's search box is open.
 
@@ -1333,6 +1363,8 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | `CurrentCellBorderColor` | `KumikoColor` | 0, 120, 215 | Border of the current cell |
 | `CurrentCellBorderWidth` | `float` | 2 | Width of the current cell border |
 | `AccentColor` | `KumikoColor` | 0, 120, 215 | Accent for interactive elements such as check marks |
+| `SearchHighlightColor` | `KumikoColor` | 255, 214, 0, 110 | Behind the text that matches the grid-wide search ([Searching](#searching)) |
+| `SearchCurrentHighlightColor` | `KumikoColor` | 255, 140, 0, 170 | Behind the search match in the current cell |
 
 | Fonts | Type | Light | Meaning |
 |---|---|---|---|
@@ -1494,8 +1526,11 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `AllowSorting`, `AllowFiltering` | `bool` | true | False stops header-tap sorting, or hides and disables the header filter icons; a grid-level false wins over the column's setting. |
 | `IsColumnMenuEnabled` | `bool` | false | The grid's own column menu on a header right click or long press, the header menu button and the Menu key ([Column menu](#column-menu)). |
 | `ShowColumnMenuButton` | `bool` | false | A menu button (three dots) in every header that opens the column menu with a tap; shown while `IsColumnMenuEnabled` is on. |
+| `SearchText` | `string` | empty | The grid-wide search; two-way, it follows the search panel ([Searching](#searching)). |
+| `SearchFiltersRows` | `bool` | false | The search also hides the rows with no match. |
+| `AllowSearchPanel` | `bool` | false | Ctrl/Cmd+F opens the drawn search panel. |
 
-Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)), `ShowColumnMenu(column)` ([Column menu](#column-menu)), `GetLayoutState` and `ApplyLayoutState` ([Saving and restoring the layout](#saving-and-restoring-the-layout)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
+Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)), `ShowColumnMenu(column)` ([Column menu](#column-menu)), `FindNext`, `FindPrevious`, `ShowSearchPanel` and `CloseSearchPanel` ([Searching](#searching)), `GetLayoutState` and `ApplyLayoutState` ([Saving and restoring the layout](#saving-and-restoring-the-layout)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
 
 ### Commands
 
@@ -1513,7 +1548,7 @@ Each command is executed with the event arguments as its parameter (`SelectionCh
 
 ### Events
 
-`RowTapped`, `RowDoubleTapped`, `CellTapped`, `HeaderTapped`, `ContextMenuRequested`, `ColumnMenuOpening`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled`, `SelectionChanged`, `AutoGeneratingColumn` and `AutoGeneratedColumns` ([Generated columns](#generated-columns)). Most of them forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection` (`ColumnReordered` is raised by the grid once it has moved the column), which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
+`RowTapped`, `RowDoubleTapped`, `CellTapped`, `HeaderTapped`, `ContextMenuRequested`, `ColumnMenuOpening`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `SearchChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled`, `SelectionChanged`, `AutoGeneratingColumn` and `AutoGeneratedColumns` ([Generated columns](#generated-columns)). Most of them forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection` (`ColumnReordered` is raised by the grid once it has moved the column), which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
 
 `DataSource.ViewChanged` reports every change of the view once, with its kind (`Redraw`, `Rebuild`, `Insert`, `Remove`); `MapRow(oldRow)` follows a row from before the change to after it, and `GetViewRow(item)` finds an item's row.
 
@@ -2196,7 +2231,7 @@ This is the current state, not the goal. The 1.0 target and the plan are in [doc
 - **Screen readers see one element.** Cells, headers, editors and popups are drawn on a canvas and are not exposed to assistive technology individually, so a screen reader can't read or navigate cell contents. A per-cell accessibility tree is planned for 1.x.
   - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default: the localizable `KumikoStrings.AccessibleGridName`, "Data grid") as its semantic description and `GridHint` (default: a hint with the row and column counts and the current cell) as its hint.
   - **Uno:** the grid has a UI Automation peer with the DataGrid control type. Its name comes from `GridDescription` or `KumikoStrings.AccessibleGridName`, and its help text from `GridHint` or a computed description of the rows and columns. The peer shows up in the accessibility trees of WebAssembly (as a `role="grid"` element), Android and the Windows desktop head (UI Automation). On the macOS desktop head it is there only on the page the app opens with: Uno 6.7's macOS bridge loses the whole window's tree after a navigation, and in Debug builds that use Hot Design. The Linux desktop head (X11) had no AT-SPI bridge in Uno 6.7; Uno 7.0.65 adds one, and the grid appears in the AT-SPI tree as a single `panel` with its name and a static description, with no table, selection or action interfaces, so Orca will not navigate it as a grid yet ([docs/uno/verification.md](docs/uno/verification.md), F4 and F12). The device verification passes inspected these accessibility trees but did not drive a screen reader on any host, so test with VoiceOver, TalkBack or Narrator before relying on it.
-  - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, validation errors, and the [column menu](#column-menu) (its name and item count when it opens, then each item the keyboard moves to) to a running screen reader. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
+  - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, validation errors, the number of search matches and each match the search moves to, and the [column menu](#column-menu) (its name and item count when it opens, then each item the keyboard moves to) to a running screen reader. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
 - **Keyboard.** The grid can be used without a pointer on Uno and on MAUI for every platform, and never traps Tab. See [Keys per platform](#keys-per-platform).
 - **Hidden input fields.** Most hosts keep an invisible native view to receive keyboard input: on MAUI, a `KeyInputResponder` on Apple platforms and an input view on Android (on Windows the grid itself takes the keyboard focus); on Uno, a `TextBox`. It is kept out of the accessibility tree and takes no pointer input.
 - **Right-to-left layout is not supported in 1.0.** Under a right-to-left ancestor (`FlowDirection`) the grid still draws left to right instead of mirroring; mirrored layout is tracked in #80.

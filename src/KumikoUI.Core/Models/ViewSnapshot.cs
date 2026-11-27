@@ -38,6 +38,12 @@ internal sealed class ViewSnapshot
     /// <summary>The number of group levels the view was built with (0 when not grouping).</summary>
     public int GroupLevels;
 
+    /// <summary>
+    /// While grouping, the filtered source indices in group order: the data rows as they would show with every
+    /// group expanded, collapsed groups included (the grid-wide search walks them, #317). Null when not grouping.
+    /// </summary>
+    public int[]? GroupOrder;
+
     // The group structure of the flat view (sticky group headers, #174). For every group header in view order: its
     // row, its level, the index (into these lists) of its enclosing group's header (-1 at level 0) and the row just
     // after the group (the next header at the same or an outer level, or the row count).
@@ -101,6 +107,7 @@ internal sealed class ViewSnapshot
         FlatViewBuffer.Clear();
         FlatView = null;
         GroupLevels = 0;
+        GroupOrder = null;
         GroupHeaderRows.Clear();
         GroupHeaderLevels.Clear();
         GroupHeaderParents.Clear();

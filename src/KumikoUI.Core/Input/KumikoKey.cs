@@ -61,5 +61,9 @@ public enum KumikoKey
     /// The context-menu key: the Menu (Application) key, or Shift+F10. Opens the column menu of the current column
     /// when it is enabled; a second press closes it.
     /// </summary>
-    ContextMenu
+    ContextMenu,
+
+    // ── Grid-wide search (#317) ──
+    /// <summary>F key (Ctrl/Cmd+F opens the grid's search panel when it is allowed).</summary>
+    F,
 }

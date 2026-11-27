@@ -353,6 +353,30 @@ public sealed class KumikoColumn : INotifyPropertyChanged
     private bool _allowFiltering = true;
 
     /// <summary>
+    /// Whether the grid-wide search (<see cref="KumikoSource.SearchText"/>) looks at this column's display text.
+    /// Default true. Columns without a text representation are never searched, whatever this says:
+    /// <see cref="KumikoColumnType.Boolean"/>, <see cref="KumikoColumnType.Image"/>,
+    /// <see cref="KumikoColumnType.Template"/> and <see cref="KumikoColumnType.ProgressBar"/> columns, columns drawn
+    /// by an interactive renderer (action buttons), and hidden columns.
+    /// </summary>
+    public bool AllowSearching
+    {
+        get => _allowSearching;
+        set => SetField(ref _allowSearching, value);
+    }
+    private bool _allowSearching = true;
+
+    /// <summary>
+    /// Whether the grid-wide search reads this column: <see cref="AllowSearching"/>, visible, and a column type
+    /// that shows text.
+    /// </summary>
+    internal bool IsSearchable =>
+        _allowSearching && IsVisible &&
+        ColumnType is not (KumikoColumnType.Boolean or KumikoColumnType.Image or KumikoColumnType.Template
+            or KumikoColumnType.ProgressBar) &&
+        CustomCellRenderer is not IInteractiveCellRenderer;
+
+    /// <summary>
     /// Active filter for this column. Null means no filter. Set it with
     /// <see cref="KumikoSource.SetColumnFilter"/>.
     /// </summary>

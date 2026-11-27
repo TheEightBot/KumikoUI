@@ -16,7 +16,8 @@ namespace KumikoUI.Core.Components;
 /// A press inside a popup captures the pointer: its moves and the release go to that popup even outside
 /// it. A press outside every popup closes them all and is swallowed with its moves and release, so it
 /// selects, edits or sorts nothing (<see cref="PopupClosed"/> reports each closed popup). Wheel input over
-/// a popup goes to <see cref="DrawnComponent.OnScroll"/>.
+/// a popup goes to <see cref="DrawnComponent.OnScroll"/>. A modeless popup (the search panel, #317) stays open
+/// when the press lands outside it, and a press that only modeless popups are open for reaches the grid.
 /// </remarks>
 internal class PopupManager
 {
@@ -56,9 +57,16 @@ internal class PopupManager
     /// Show a component as a popup next to an anchor that can move (a column header that scrolls). The
     /// anchor is read again before every frame, so the popup follows it.
     /// </summary>
-    public void Show(DrawnComponent component, Func<KumikoRect> anchor, PopupPlacement placement = PopupPlacement.Below)
+    public void Show(DrawnComponent component, Func<KumikoRect> anchor, PopupPlacement placement = PopupPlacement.Below) =>
+        Show(component, anchor, placement, modeless: false);
+
+    /// <summary>
+    /// Show a component as a popup next to an anchor that can move. A <paramref name="modeless"/> popup stays open
+    /// when a press lands outside it, and such a press goes on to the grid unless a modal popup is open too.
+    /// </summary>
+    public void Show(DrawnComponent component, Func<KumikoRect> anchor, PopupPlacement placement, bool modeless)
     {
-        var entry = new PopupEntry(component, anchor, placement);
+        var entry = new PopupEntry(component, anchor, placement) { Modeless = modeless };
         component.Bounds = CalculatePopupBounds(component, anchor(), placement, Viewport);
         component.IsVisible = true;
         component.ZOrder = _nextZOrder++; // above normal components, and above every earlier popup
@@ -259,8 +267,11 @@ internal class PopupManager
         // Pointer is outside all popups
         if (e.Action is InputAction.Pressed or InputAction.LongPress)
         {
-            // A press outside closes the popups and does nothing else
-            CloseAll();
+            // Modeless popups stay open; with no modal popup open the press is the grid's.
+            if (!HasModalPopups()) return false;
+
+            // A press outside closes the (modal) popups and does nothing else
+            CloseModal();
             _swallowUntilRelease = e.Action == InputAction.Pressed;
             e.Handled = true;
             NeedsRedraw?.Invoke();
@@ -315,6 +326,25 @@ internal class PopupManager
         return false;
     }
 
+    private bool HasModalPopups()
+    {
+        for (int i = 0; i < _popups.Count; i++)
+            if (!_popups[i].Modeless) return true;
+        return false;
+    }
+
+    /// <summary>Close every popup except the modeless ones.</summary>
+    private void CloseModal()
+    {
+        var closed = _popups.FindAll(p => !p.Modeless);
+        _popups.RemoveAll(p => !p.Modeless);
+        _captured = null;
+        foreach (var entry in closed)
+            entry.Component.IsVisible = false;
+        foreach (var entry in closed)
+            PopupClosed?.Invoke(entry.Component);
+    }
+
     /// <summary>Returns the topmost (highest ZOrder) visible popup, or null.</summary>
     private DrawnComponent? GetTopmostPopup()
     {
@@ -367,6 +397,7 @@ internal class PopupManager
         public DrawnComponent Component { get; }
         public Func<KumikoRect> Anchor { get; }
         public PopupPlacement Placement { get; }
+        public bool Modeless { get; init; }
 
         public PopupEntry(DrawnComponent component, Func<KumikoRect> anchor, PopupPlacement placement)
         {

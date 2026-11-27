@@ -122,6 +122,8 @@ public partial class KumikoDataGrid : ContentView
 
         // Incremental "load more" loading (KumikoDataGrid.LoadMore.cs)
         InitializeLoadMore();
+        // Grid-wide search, its panel and its announcements (KumikoDataGrid.Search.cs, #317)
+        InitializeSearch();
 
         // Large sources sort, filter and group on a worker; the new view is swapped in on the UI thread, which raises
         // ViewChanged and then ViewUpdated (#254). Below the threshold rebuilds stay synchronous. The property's

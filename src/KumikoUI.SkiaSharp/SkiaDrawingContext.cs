@@ -357,6 +357,25 @@ public sealed class SkiaDrawingContext : IDrawingContext, IDisposable
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The width is cached in the <see cref="ResourceCache"/> by text, range and font, so measuring the same part of
+    /// the same text again (on this or a later frame) allocates nothing. Line breaks and tabs are measured as they
+    /// are, so a range that holds one may differ from the width drawn.
+    /// </remarks>
+    public KumikoSize MeasureText(string text, int start, int length, KumikoPaint paint)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfNegative(start);
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(start + length, text.Length, nameof(length));
+        if (length == 0) return KumikoSize.Empty;
+
+        _cache.GetFont(paint.Font, out var metrics);
+        float width = _cache.MeasureTextWidth(text, start, length, paint.Font);
+        return new KumikoSize(width, metrics.Descent - metrics.Ascent);
+    }
+
+    /// <inheritdoc />
     /// <remarks>The layout is cached in the <see cref="ResourceCache"/>, as it is for drawing.</remarks>
     public KumikoSize MeasureText(string text, KumikoPaint paint, float maxWidth, KumikoTextWrap wrap)
     {

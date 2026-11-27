@@ -38,6 +38,21 @@
                     VerticalOptions="Center" />
             <Label x:Name="surfaceLabel" VerticalOptions="Center" Margin="8,0" />
             <Label x:Name="statusLabel" Text="No data loaded" VerticalOptions="Center" Margin="8,0" />
+            <!-- Grid-wide search (#317): highlights matches; Prev/Next move between them; Ctrl/Cmd+F opens the drawn panel -->
+            <Entry x:Name="searchEntry"
+                   Placeholder="Search all columns"
+                   WidthRequest="180"
+                   Margin="8,0,0,4"
+                   VerticalOptions="Center"
+                   TextChanged="OnSearchTextChanged" />
+            <Button Text="Prev" Clicked="OnFindPreviousClicked" Margin="4,0,0,4" />
+            <Button Text="Next" Clicked="OnFindNextClicked" Margin="4,0,0,4" />
+            <HorizontalStackLayout Margin="8,0,0,4" VerticalOptions="Center">
+                <CheckBox x:Name="searchFilterCheck" CheckedChanged="OnSearchFilterChanged" />
+                <Label Text="Only matching rows" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <Button Text="Find panel" Clicked="OnShowSearchPanelClicked" Margin="4,0,0,4" />
+            <Label x:Name="searchLabel" VerticalOptions="Center" Margin="8,0" />
         </FlexLayout>
         </ScrollView>
 
@@ -45,6 +60,8 @@
                          Grid.Row="2"
                          ItemsSource="{Binding Items}"
                          ShowFrameStats="{Binding IsChecked, Source={x:Reference frameStatsCheck}}"
+                         AllowSearchPanel="True"
+                         SearchChanged="OnSearchChanged"
                          AllowSorting="True"
                          AllowFiltering="True"
                          RowHeight="34"

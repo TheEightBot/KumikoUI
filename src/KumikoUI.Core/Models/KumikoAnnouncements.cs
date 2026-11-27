@@ -131,6 +131,32 @@ public static partial class KumikoAnnouncements
         return item.IsChecked == true ? Format(strings.AnnounceMenuItemChecked, item.Text) : item.Text;
     }
 
+    /// <summary>
+    /// The announcement for the number of cells a search matches (<see cref="KumikoStrings.SearchMatchTotal"/>, or
+    /// <see cref="KumikoStrings.SearchNoMatches"/> for none).
+    /// </summary>
+    /// <param name="strings">The text table.</param>
+    /// <param name="matchCount">The number of matching cells.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="strings"/> is <c>null</c>.</exception>
+    public static string SearchMatchCount(KumikoStrings strings, int matchCount)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+        return matchCount <= 0 ? strings.SearchNoMatches : Format(strings.SearchMatchTotal, matchCount);
+    }
+
+    /// <summary>The announcement for a search that moved to a matching cell.</summary>
+    /// <param name="strings">The text table.</param>
+    /// <param name="column">The cell's column.</param>
+    /// <param name="columnIndex">The zero-based column index, used when the header is empty.</param>
+    /// <param name="rowIndex">The zero-based visible row.</param>
+    /// <param name="cellText">The cell's display text.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="strings"/> is <c>null</c>.</exception>
+    public static string SearchMatch(KumikoStrings strings, KumikoColumn column, int columnIndex, int rowIndex, string? cellText)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+        return Format(strings.AnnounceSearchMatch, ColumnName(strings, column, columnIndex), Text(strings, cellText), rowIndex + 1);
+    }
+
     private static string ColumnName(KumikoStrings strings, KumikoColumn column, int columnIndex)
         => string.IsNullOrWhiteSpace(column.Header)
             ? Format(strings.AnnounceUnnamedColumn, columnIndex + 1)
