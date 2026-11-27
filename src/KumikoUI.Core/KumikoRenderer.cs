@@ -625,13 +625,10 @@ public sealed partial class KumikoRenderer : IDisposable
 
         float y = rows.GetRowY(cell.Row, dataAreaTop, scroll.OffsetY, style);
         float height = rows.GetRowHeight(cell.Row, style);
-        if (cell.Row >= frozenRowCount)
-        {
-            // Hidden once the row is entirely above the scrolling rows' top: the frozen rows, or the sticky group
-            // headers pinned over it (#174).
-            if (y + height <= scrollingRowsTop || y >= dataAreaBottom)
-                return null;
-        }
+        // Hidden once the row is entirely above the scrolling rows' top: the frozen rows, or the sticky group
+        // headers pinned over it (#174).
+        if (cell.Row >= frozenRowCount && (y + height <= scrollingRowsTop || y >= dataAreaBottom))
+            return null;
 
         return new KumikoRect(x, y + groupPanelOffset, width, height);
     }

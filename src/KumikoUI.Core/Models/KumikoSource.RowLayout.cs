@@ -77,9 +77,8 @@ public partial class KumikoSource
         if (!layout.HasResolver && !string.IsNullOrEmpty(propertyName))
         {
             bool affected = false;
-            foreach (var col in _columns)
+            foreach (var col in _columns.Where(c => c.TextWrap != KumikoTextWrap.None || c.CustomCellRenderer is IMeasurableCellRenderer))
             {
-                if (col.TextWrap == KumikoTextWrap.None && col.CustomCellRenderer is not IMeasurableCellRenderer) continue;
                 if (col.ValueAccessor != null || string.IsNullOrEmpty(col.PropertyName) ||
                     PropertyPathAffected(col.PropertyName, propertyName))
                 {
