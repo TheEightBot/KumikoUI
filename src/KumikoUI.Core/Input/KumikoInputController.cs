@@ -536,7 +536,7 @@ public sealed partial class KumikoInputController
         int totalRows = dataSource.RowCount;
         // One page = the number of scrollable rows that fit between the fixed bands (header, grouping
         // panel, top summaries, frozen rows, pinned footer), so PageUp/PageDown never skip unseen rows.
-        int pageSize = Math.Max(1, (int)(KumikoScroller.GetScrollableRowsViewportHeight(scroll, style, dataSource) / style.RowHeight));
+        int pageSize = KumikoScroller.GetPageRowCount(dataSource, style, scroll, selection.CurrentCell.Row, e.Key != KumikoKey.PageUp);
 
         // ── Editing-mode key handling ──
         if (_editSession != null && _editSession.IsEditing)
@@ -1329,7 +1329,7 @@ public sealed partial class KumikoInputController
         {
             UpdateRowDrag(e.Y, scroll, style, dataSource);
             int from = _dragRowIndex;
-            int to = RowDragGeometry.DropTarget(DragRowScreenY, scroll, style, dataSource);
+            int to = RowDragGeometry.DropTarget(DragRowScreenY, scroll, style, dataSource, from);
             EndRowDrag();
             RequestHaptic(KumikoHapticKind.Drop, _pressDeviceType);
             FinishRowReorder(from, to, dataSource);
@@ -1858,7 +1858,7 @@ public sealed partial class KumikoInputController
     /// </summary>
     private void UpdateRowDrag(float pointerY, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
     {
-        DragRowScreenY = RowDragGeometry.ClampGhostTop(pointerY - _dragRowOffset, scroll, style, dataSource);
+        DragRowScreenY = RowDragGeometry.ClampGhostTop(pointerY - _dragRowOffset, scroll, style, dataSource, _dragRowIndex);
         _autoScrollVelocityY = ComputeAutoScrollVelocity(
             pointerY, RowDragGeometry.ScrollableTop(style, dataSource),
             RowDragGeometry.RowsBottom(scroll, style, dataSource), scroll.OffsetY, scroll.MaxOffsetY);
@@ -1974,7 +1974,7 @@ public sealed partial class KumikoInputController
         int frozenRowCount = dataSource.EffectiveFrozenRowCount;
         if (headerRow < frozenRowCount) return;
 
-        float slotOffset = PinnedGroupHeaders.SlotOffset(headerRow, collapsed.Level, frozenRowCount, style.RowHeight);
+        float slotOffset = PinnedGroupHeaders.SlotOffset(dataSource, style, headerRow, collapsed.Level);
         if (scroll.OffsetY > slotOffset)
         {
             scroll.OffsetY = Math.Max(0, slotOffset);
@@ -2003,6 +2003,7 @@ public sealed partial class KumikoInputController
             : scroll.OffsetY;
         float offsetX = KumikoScroller.GetColumnOffsetX(columns, style, scroll, col);
         scroll.ScrollTo(offsetX, offsetY);
+        if (dataSource != null) KumikoScroller.SetPendingRowTarget(scroll, dataSource, style, row);
     }
 
     private void Redraw() => NeedsRedraw?.Invoke(this, EventArgs.Empty);
@@ -2245,22 +2246,10 @@ public sealed partial class KumikoInputController
         float topSummaryHeight = 0,
         KumikoSource? dataSource = null)
     {
-        // Calculate Y position accounting for frozen rows
-        int frozenRowCount = dataSource?.EffectiveFrozenRowCount ?? 0;
-        float frozenRowHeight = frozenRowCount * style.RowHeight;
-        float rowY;
-
-        if (row < frozenRowCount)
-        {
-            // Frozen row: fixed position
-            rowY = style.HeaderHeight + topSummaryHeight + row * style.RowHeight + groupPanelOffset;
-        }
-        else
-        {
-            // Scrollable row
-            rowY = style.HeaderHeight + topSummaryHeight + frozenRowHeight
-                + (row - frozenRowCount) * style.RowHeight - scroll.OffsetY + groupPanelOffset;
-        }
+        // Calculate Y position accounting for frozen rows (fixed) and the scroll offset (the rest)
+        var rowLayout = dataSource?.RowLayout ?? KumikoRowLayout.Detached;
+        float rowY = rowLayout.GetRowY(row, style.HeaderHeight + topSummaryHeight, scroll.OffsetY, style) + groupPanelOffset;
+        float rowHeight = rowLayout.GetRowHeight(row, style);
 
         // X position by the column's pane, as drawn (#268: frozen panes that do not fit are unpinned)
         if (col >= 0 && col < columns.Count)
@@ -2269,10 +2258,10 @@ public sealed partial class KumikoInputController
             float screenX = KumikoScroller.GetColumnX(columns, style, scroll, col);
             if (float.IsNaN(screenX)) screenX = 0; // hidden: not on screen
 
-            return new KumikoRect(screenX, rowY, targetCol.Width, style.RowHeight);
+            return new KumikoRect(screenX, rowY, targetCol.Width, rowHeight);
         }
 
-        return new KumikoRect(0, rowY, 0, style.RowHeight);
+        return new KumikoRect(0, rowY, 0, rowHeight);
     }
 
 

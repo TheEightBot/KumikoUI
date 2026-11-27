@@ -70,6 +70,7 @@ public sealed partial class MainShell : Page
             "BasicGrid" => typeof(BasicGridPage),
             "Grouping" => typeof(GroupingPage),
             "LargeData" => typeof(LargeDataPage),
+            "WrappedText" => typeof(WrappedTextPage),
             "Theming" => typeof(ThemingPage),
             "MvvmActions" => typeof(MvvmActionsPage),
             "CustomFonts" => typeof(CustomFontsPage),

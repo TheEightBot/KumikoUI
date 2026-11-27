@@ -516,8 +516,10 @@ public sealed class KumikoColumn : INotifyPropertyChanged
     /// <see cref="Rendering.KumikoTextWrap.None"/> (the default) a cell shows one line, cut with an ellipsis; with
     /// <see cref="Rendering.KumikoTextWrap.Word"/> or <see cref="Rendering.KumikoTextWrap.Character"/> it shows as
     /// many wrapped lines as fit the row height (line breaks in the value start a new line), and the last one ends
-    /// with an ellipsis when there is more. Rows keep their height (<see cref="KumikoStyle.RowHeight"/>), so
-    /// raise it to show more lines. Applies to the built-in text cells (Text, Numeric and Date columns).
+    /// with an ellipsis when there is more. With <see cref="KumikoStyle.RowHeightMode"/>
+    /// <see cref="KumikoRowHeightMode.Fixed"/> (the default) rows keep <see cref="KumikoStyle.RowHeight"/>; with
+    /// <see cref="KumikoRowHeightMode.Auto"/> a wrapping column makes its row tall enough for all of its lines (within
+    /// <see cref="KumikoStyle.MaxRowHeight"/>). Applies to the built-in text cells (Text, Numeric and Date columns).
     /// </summary>
     public Rendering.KumikoTextWrap TextWrap
     {

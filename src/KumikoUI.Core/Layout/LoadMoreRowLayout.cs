@@ -10,8 +10,8 @@ namespace KumikoUI.Core.Layout;
 /// disagree. The band is not a row of the view: it is not counted in <see cref="KumikoSource.RowCount"/>.
 /// </summary>
 /// <remarks>
-/// The height of the rows above the band is computed in <see cref="GetRowsHeight"/> alone; a layout with rows of
-/// different heights changes that one method.
+/// The height of the rows above the band comes from the source's row layout (<see cref="GetRowsHeight"/>), so with
+/// rows of varying height (#320) the band follows the last row's real bottom.
 /// </remarks>
 internal static class LoadMoreRowLayout
 {
@@ -22,7 +22,11 @@ internal static class LoadMoreRowLayout
             : 0f;
 
     /// <summary>The height of every row of the view (frozen and scrolling) stacked: where the band starts, in content.</summary>
-    public static float GetRowsHeight(KumikoSource source, KumikoStyle style) => source.RowCount * style.RowHeight;
+    public static float GetRowsHeight(KumikoSource source, KumikoStyle style)
+    {
+        var rows = source.RowLayout;
+        return rows.IsUniform(style) ? source.RowCount * style.RowHeight : (float)rows.GetTotalHeight(style);
+    }
 
     /// <summary>
     /// The band's top edge in viewport coordinates below the group panel, for a data area (the top of the first row)

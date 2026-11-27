@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.WrappedTextPage"
+             Title="Wrapped Text (100K Rows)">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+        <Label Text="Wrapped Text — Auto Row Height"
+               FontSize="20"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+            <HorizontalStackLayout Padding="16,4" Spacing="12">
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="autoCheck" IsChecked="True" CheckedChanged="OnAutoChanged" />
+                    <Label Text="Auto row height" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="maxCheck" CheckedChanged="OnMaxChanged" />
+                    <Label Text="Max 90 px" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="pinnedCheck" CheckedChanged="OnPinnedChanged" />
+                    <Label Text="Starred rows 64 px (resolver)" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="frameStatsCheck" IsChecked="True" CheckedChanged="OnFrameStatsChanged" />
+                    <Label Text="Frame stats" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Button Text="Jump to row 75,000" Clicked="OnJumpClicked" />
+                <Label x:Name="statusLabel" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="2"
+                           RowHeightMode="Auto"
+                           CellVerticalPadding="6"
+                           ShowFrameStats="True"
+                           AllowSorting="True"
+                           GridDescription="Notes with wrapped text and rows sized to their content"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill">
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="#" PropertyName="Id" Width="80" ColumnType="Numeric" IsReadOnly="True" IsFrozen="True" />
+                <core:KumikoColumn Header="Title" PropertyName="Title" Width="160" />
+                <core:KumikoColumn Header="Notes" PropertyName="Notes" Width="280" TextWrap="Word" />
+                <core:KumikoColumn Header="Address" PropertyName="Address" Width="180" TextWrap="Word" />
+                <core:KumikoColumn Header="Starred" PropertyName="Starred" Width="90" ColumnType="Boolean" />
+            </dg:KumikoDataGrid.Columns>
+        </dg:KumikoDataGrid>
+    </Grid>
+
+</ContentPage>

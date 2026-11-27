@@ -26,6 +26,12 @@
             Route="LargeDataPage" />
 
         <ShellContent
+            Title="Wrapped Text"
+            Icon="icon_data.png"
+            ContentTemplate="{DataTemplate local:WrappedTextPage}"
+            Route="WrappedTextPage" />
+
+        <ShellContent
             Title="Theming"
             Icon="icon_theme.png"
             ContentTemplate="{DataTemplate local:ThemingPage}"
