@@ -146,6 +146,7 @@ RenderFrame
   ├─ DrawTableSummaryRows          the pinned bottom summary (footer), when PinBottomSummaryRows
   ├─ DrawColumnDragOverlay, DrawRowDragOverlay
   ├─ ScrollBarRenderer.Draw        the scroll bars, in viewport coordinates (ScrollBarGeometry, #316)
+  ├─ DrawPullToRefresh             the pull-to-refresh indicator below the header (PullToRefreshState, #330)
   └─ EditSession.PlaceEditor + DrawEditor, PopupManager.DrawPopups, KumikoFrameStats overlay
 ```
 

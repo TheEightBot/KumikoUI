@@ -1618,6 +1618,8 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | `ScrollBarMinThumbLength` | `float` | 32 | Shortest thumb |
 | `ScrollBarThumbColor` | `KumikoColor` | 0, 0, 0, 110 | Thumb; a fading bar scales its alpha (white on Dark, cyan on HighContrast) |
 | `ScrollBarTrackColor` | `KumikoColor` | 0, 0, 0, 20 | Track, drawn only while the bar is expanded |
+| `RefreshIndicatorColor` | `KumikoColor?` | null (`AccentColor`) | The pull-to-refresh arrow and spinner ([Pull to refresh](#pull-to-refresh)); yellow on HighContrast |
+| `RefreshIndicatorBackgroundColor` | `KumikoColor` | white | The pull-to-refresh indicator's disc (58, 58, 62 on Dark, black on HighContrast) |
 
 | Icons | Type | Light | Meaning |
 |---|---|---|---|
@@ -1671,6 +1673,7 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `FollowSystemTheme` | `bool` | true until a theme or style is set | Follow the system light/dark setting at run time ([Built-in themes](#built-in-themes)). |
 | `ScrollSettings` | `ScrollSettings` | defaults | Scrolling and inertia ([Scrolling](#scrolling)); bindable. |
 | `VerticalOffset`, `HorizontalOffset` | `double` | 0 | The scroll offsets; two-way ([Scrolling](#scrolling)). |
+| `IsPullToRefreshEnabled`, `IsRefreshing`, `RefreshCommand`, `RefreshCommandParameter` | `bool`, `bool`, `ICommand?`, `object?` | false, false, null, null | Pull to refresh; `IsRefreshing` is two-way, and a pull also raises `Refreshing` ([Pull to refresh](#pull-to-refresh)). |
 | `Clipboard` | `IKumikoClipboard?` | the platform clipboard | Used for copy, cut and paste; null turns them off ([Copying rows](#copying-rows)). |
 | `ClipboardCopyIncludesHeaders` | `bool` | false | Ctrl/Cmd+C starts the copied text with the column headers. |
 | `RenderMode` | `KumikoRenderMode` | `Auto` | The drawing surface; `ActiveRenderMode` reports the one in use. MAUI: `Auto` rasterizes on the GPU (`SKGLView`) on Android and Mac Catalyst and on the CPU (`SKCanvasView`) on iOS and Windows; `Hardware` (the GPU view) and `Software` ask for one. Uno: `Auto` draws through Uno's GPU-backed `SKCanvasElement` on the Skia-rendered heads and through `SKXamlCanvas` elsewhere; `Hardware` and `Software` ask for one. |
@@ -2059,6 +2062,30 @@ kumiko.Scrolled += (_, e) =>
 ```
 
 `VerticalOffset` and `HorizontalOffset` are two-way properties that follow every scroll and scroll the grid when set. Scrolling before the grid has its first layout is applied once it has a size. With `RowHeightMode="Auto"`, a scroll to a row that was never drawn is refined on the next frame, once the rows around it are measured (one more `Scrolled`).
+
+### Pull to refresh
+
+With `IsPullToRefreshEnabled`, a finger or a pen pulled down from the top of the rows draws a refresh indicator that slides out from under the header (and the grouping panel); the rows stay where they are. Released past the threshold (64 px of indicator travel; it follows the finger at half its speed), the grid sets `IsRefreshing` to true, raises `Refreshing` and executes `RefreshCommand` with `RefreshCommandParameter`. The indicator then holds below the header with a spinner until the app sets `IsRefreshing` back to false, and slides away. Released short of the threshold it slides back and nothing happens. Crossing the threshold asks for a haptic tick (with `EnableHaptics`).
+
+```xml
+<kumiko:KumikoDataGrid IsPullToRefreshEnabled="True"
+                       IsRefreshing="{Binding IsLoading, Mode=TwoWay}"
+                       RefreshCommand="{Binding ReloadCommand}" />
+```
+
+`IsRefreshing` is two-way (on Uno, bind it with `Mode=TwoWay`): the command reloads the data and then sets its bound property to false, on the UI thread. Only a pan that starts with the grid scrolled to the top and moves mostly down pulls. A pan that starts lower and reaches the top, a fling, the wheel, a trackpad and a mouse drag scroll as before; sideways pans, column and row drags and an open editor keep their gestures. While refreshing, input stays enabled and another pull is ignored. With incremental loading, call `ResetLoadMore()` after reloading so the next batches load afresh. Wrap the grid in neither a `RefreshView` nor a `RefreshContainer`: the grid scrolls itself, so they cannot tell when it is at the top.
+
+Screen reader users cannot pull, and neither can mouse users: offer the refresh another way too (a button, a menu item, a key). Setting `IsRefreshing` in code shows the same indicator without raising `Refreshing` or executing the command, and the grid announces "Refreshing" and "Updated" (`KumikoStrings.AnnounceRefreshing` and `AnnounceRefreshed`) however the refresh started:
+
+```csharp
+// A refresh button: the same indicator, no gesture
+kumiko.IsRefreshing = true;   // shows the indicator and announces "Refreshing"
+await Task.Delay(1000);       // reload the data here
+kumiko.ResetLoadMore();       // with incremental loading: load on demand afresh
+kumiko.IsRefreshing = false;  // the indicator slides away and the grid announces "Updated"
+```
+
+The arrow and the spinner use `KumikoStyle.RefreshIndicatorColor` (the theme's `AccentColor` when null) on a disc of `RefreshIndicatorBackgroundColor`. With animations off (`KumikoStyle.EnableAnimations`, or the platform's reduced-motion setting) the indicator moves at once and the spinner stands still, and the grid requests no frames for it. The threshold is `InputController.PullToRefreshThreshold`; the timings are in [docs/INTERACTION.md](docs/INTERACTION.md).
 
 ---
 
