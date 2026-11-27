@@ -156,7 +156,7 @@ public class KumikoDataGridSelectionColumnTests
         var grid = Grid(Name());
         grid.GridSelectionMode = KumikoSelectionMode.Extended;
         grid.ShowSelectionColumn = true;
-        var items = ((ObservableCollection<Row>)grid.ItemsSource!);
+        var items = (IList<Row>)grid.ItemsSource!;
 
         grid.SelectedItems!.Add(items[2]);
 
