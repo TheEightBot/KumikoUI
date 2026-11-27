@@ -162,6 +162,21 @@ public class XlsxWorkbookTests
     }
 
     [Fact]
+    public async Task SummaryOfADateColumn_IsABoldDate()
+    {
+        var source = Source();
+        source.AddTableSummaryRow(new TableSummaryRow { Name = "last", Title = "Latest", Position = SummaryPosition.Bottom, Columns = { new SummaryColumnDescription("Hired", SummaryType.Max) } });
+        var bytes = await ExportAsync(source);
+        AssertValid(bytes);
+
+        var cells = Cells(bytes);
+        Assert.Equal("Latest", cells["A7"].Text);
+        Assert.Equal(new DateTime(2022, 8, 20), DateTime.FromOADate(double.Parse(cells["D7"].Value!, CultureInfo.InvariantCulture)));
+        Assert.Equal("yyyy\"-\"mm\"-\"dd", NumberFormat(bytes, cells["D7"].Style));
+        Assert.NotNull(Font(bytes, cells["D7"].Style).Element(Ns + "b"));
+    }
+
+    [Fact]
     public async Task NestedGroups_UseOneOutlineLevelPerGroupLevel()
     {
         var source = Source();
