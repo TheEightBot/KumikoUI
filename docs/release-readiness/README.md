@@ -31,7 +31,7 @@ Findings by severity (214 across the seven reports; UNO-01 and PKG-02 describe t
 | Medium | 98 | Correctness, performance or API issues worth fixing before the API freezes |
 | Low | 54 | Polish |
 
-The realistic path is a **stabilisation line first** (0.2.x: fix blockers and highs, freeze the API, retarget .NET 10, fix docs), then **1.0.0-preview** builds for device verification, then **1.0.0**. A roadmap built on that path lives in [`../ROADMAP.md`](../ROADMAP.md) once the decisions in §7 are settled.
+The realistic path is a **stabilisation line first** (0.2.x: fix blockers and highs, freeze the API, retarget .NET 10, fix docs), then **1.0.0-preview** builds for device verification, then **1.0.0**. A roadmap built on that path lives in [`../release/roadmap-to-1.0.md`](../release/roadmap-to-1.0.md) once the decisions in §7 are settled.
 
 ## 2. What is already good
 

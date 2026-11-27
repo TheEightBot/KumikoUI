@@ -15,7 +15,7 @@ they touch the same code: the vertical bands of the grid (header, summaries, fro
 footer), the three column panes, and the hit tester that has to agree with both.
 
 - **Item-based pinned rows (A).** `FrozenRowCount` freezes "the first N rows of the current view" (Excel
-  semantics, kept as is per the [roadmap](../ROADMAP.md)). Pinning keeps chosen *items* at the top or bottom of
+  semantics, kept as is per the [1.0 roadmap](../release/roadmap-to-1.0.md)). Pinning keeps chosen *items* at the top or bottom of
   the data area regardless of sort and filter, with or without grouping. Pinned items are spliced into the view
   at its start and end, so row indices, selection, navigation and the #102 row layout keep working on one
   contiguous list of rows.

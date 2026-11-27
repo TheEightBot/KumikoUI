@@ -239,4 +239,4 @@ public class AggregateBenchmarks { /* ... */ }
 - <a id="ref-skia-font"></a>Skia `SkFont.cpp` (`main`): https://github.com/google/skia/blob/main/src/core/SkFont.cpp
 - <a id="ref-skia-strike"></a>Skia `SkStrike.h` (`main`): https://github.com/google/skia/blob/main/src/core/SkStrike.h
 - BenchmarkDotNet: https://github.com/dotnet/BenchmarkDotNet
-- KumikoUI context: `docs/ROADMAP.md` (row I), `docs/release-readiness/issue-plan.md` (I1 #68, I2 #23, I4 #69, I6 #70), `docs/release-readiness/01-core-data-layout-render.md` (CORE-10, CORE-20, CORE-34), `docs/release-readiness/03-skiasharp-maui.md` (SKIA-02, SKIA-03, MAUI-10)
+- KumikoUI context: `docs/release/roadmap-to-1.0.md` (row I), `docs/release-readiness/issue-plan.md` (I1 #68, I2 #23, I4 #69, I6 #70), `docs/release-readiness/01-core-data-layout-render.md` (CORE-10, CORE-20, CORE-34), `docs/release-readiness/03-skiasharp-maui.md` (SKIA-02, SKIA-03, MAUI-10)
