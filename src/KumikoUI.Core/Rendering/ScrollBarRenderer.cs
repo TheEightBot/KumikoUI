@@ -43,7 +43,7 @@ internal sealed class ScrollBarRenderer
         DrawBar(ctx, layout.Horizontal, style, style.HorizontalScrollBarVisibility, input);
     }
 
-    private static bool Moved(float last, float now) => !float.IsNaN(last) && last != now;
+    private static bool Moved(float last, float now) => !float.IsNaN(last) && InertialScroller.Differs(last, now);
 
     private void DrawBar(IDrawingContext ctx, in ScrollBarAxisLayout bar, KumikoStyle style,
         KumikoScrollBarVisibility visibility, KumikoInputController? input)

@@ -143,7 +143,7 @@ public class ScrollBarInputTests
     {
         var g = Grid();
         Finger(g, InputAction.Pressed, 100, 220, 100);
-        for (int i = 1; i <= 4; i++) Finger(g, InputAction.Moved, 100, 220 - 30 * i, 100 + 16 * i);
+        for (int i = 1; i <= 4; i++) Finger(g, InputAction.Moved, 100, 220 - 30f * i, 100 + 16 * i);
         Finger(g, InputAction.Released, 100, 100, 200);
         Assert.True(g.Input.IsInertialScrolling);
 
