@@ -127,6 +127,8 @@ public class LocalizationTests
         FilterDateAfter = "Nach dem",
         FilterDateBeforeOrEqual = "Am oder vor dem",
         FilterDateAfterOrEqual = "Am oder nach dem",
+        AnnounceRefreshing = "Wird aktualisiert",
+        AnnounceRefreshed = "Aktualisiert",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>

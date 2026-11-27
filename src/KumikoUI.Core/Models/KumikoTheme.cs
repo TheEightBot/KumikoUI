@@ -104,6 +104,7 @@ public static class KumikoTheme
             PressedOverlayColor = new KumikoColor(255, 255, 255, 41),
             ScrollBarThumbColor = new KumikoColor(255, 255, 255, 110),
             ScrollBarTrackColor = new KumikoColor(255, 255, 255, 20),
+            RefreshIndicatorBackgroundColor = new KumikoColor(58, 58, 62),
         };
     }
 
@@ -194,6 +195,8 @@ public static class KumikoTheme
             PressedOverlayColor = new KumikoColor(0, 255, 255, 110),
             ScrollBarThumbColor = new KumikoColor(0, 255, 255),
             ScrollBarTrackColor = new KumikoColor(255, 255, 255, 60),
+            RefreshIndicatorBackgroundColor = KumikoColor.Black,
+            RefreshIndicatorColor = new KumikoColor(255, 255, 0),
         };
     }
 }

@@ -11,4 +11,7 @@ public enum KumikoHapticKind
 
     /// <summary>A long press was recognized (it asks for a context menu, or edits a cell with the LongPress trigger).</summary>
     LongPress,
+
+    /// <summary>A pull-to-refresh crossed its threshold: releasing now refreshes (#330).</summary>
+    RefreshThreshold,
 }
