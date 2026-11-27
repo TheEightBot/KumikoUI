@@ -75,8 +75,10 @@ source.AddTableSummaryRow(new TableSummaryRow
 Check(source.IsGroupingActive, "grouping is active");
 
 // CSV export (#323): the filtered, grouped rows streamed to a stream, read through the generated accessors.
+// A console app has no synchronization context: block instead of awaiting, so the rest of the smoke stays on the
+// thread the source is attached to.
 using var csvStream = new MemoryStream();
-await source.ExportToCsvAsync(csvStream, csv: new KumikoCsvOptions { EmitByteOrderMark = false });
+source.ExportToCsvAsync(csvStream, csv: new KumikoCsvOptions { EmitByteOrderMark = false }).GetAwaiter().GetResult();
 string csvText = System.Text.Encoding.UTF8.GetString(csvStream.ToArray());
 Check(csvText == source.ExportToCsvString(), "the streamed CSV equals the CSV string");
 var csvLines = csvText.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
