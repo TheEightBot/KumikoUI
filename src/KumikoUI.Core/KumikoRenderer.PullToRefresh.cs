@@ -14,14 +14,15 @@ public sealed partial class KumikoRenderer
     /// <summary>The diameter of the indicator's disc, in pixels.</summary>
     internal const float PullIndicatorDiameter = 36f;
 
-    // The arrow and the spinner are an arc of up to three quarters of a turn, drawn as a polyline of this many segments
-    private const int PullArcSegments = 24;
+    // The arrow and the spinner are an arc of up to three quarters of a turn, drawn as this many straight segments. Not a
+    // polyline: the Skia context caches a path per polyline shape, and an arc that turns every frame would build (and
+    // allocate) a new one each frame and push the grid's other cached glyphs out of that cache.
+    internal const int PullArcSegments = 24;
     private const float PullArcSweep = 1.5f * MathF.PI;
 
     // Set just before each draw from the style, so the indicator allocates nothing per frame
     private readonly KumikoPaint _pullDisc = new() { IsAntiAlias = true };
     private readonly KumikoPaint _pullArc = new() { IsAntiAlias = true, StrokeWidth = 2.5f };
-    private readonly KumikoPaint _pullHead = new() { IsAntiAlias = true };
 
     /// <summary>Where the last frame drew the indicator's disc, in viewport coordinates; empty when it was not drawn.</summary>
     internal KumikoRect PullIndicatorBounds { get; private set; }
@@ -72,7 +73,6 @@ public sealed partial class KumikoRenderer
             float rotation = animate ? progress * MathF.PI : 0f;
             var faded = new KumikoColor(color.R, color.G, color.B, (byte)(color.A * (0.35f + 0.65f * progress)));
             _pullArc.Color = faded;
-            _pullHead.Color = faded;
             DrawPullArc(ctx, centerX, centerY, radius, rotation - MathF.PI / 2, sweep, arrowHead: true);
         }
         ctx.Restore();
@@ -82,24 +82,23 @@ public sealed partial class KumikoRenderer
     private void DrawPullArc(IDrawingContext ctx, float centerX, float centerY, float radius, float start, float sweep,
         bool arrowHead)
     {
-        Span<KumikoPoint> arc = stackalloc KumikoPoint[PullArcSegments + 1];
-        for (int i = 0; i <= PullArcSegments; i++)
+        float x = centerX + radius * MathF.Cos(start), y = centerY + radius * MathF.Sin(start);
+        for (int i = 1; i <= PullArcSegments; i++)
         {
             float angle = start + sweep * i / PullArcSegments;
-            arc[i] = new KumikoPoint(centerX + radius * MathF.Cos(angle), centerY + radius * MathF.Sin(angle));
+            float nextX = centerX + radius * MathF.Cos(angle), nextY = centerY + radius * MathF.Sin(angle);
+            ctx.DrawLine(x, y, nextX, nextY, _pullArc);
+            x = nextX;
+            y = nextY;
         }
-        ctx.DrawPolyline(arc, _pullArc);
         if (!arrowHead) return;
 
-        // A triangle on the arc's end, pointing along it (clockwise on screen)
+        // A chevron on the arc's end, pointing along it (clockwise on screen): two lines back from the tip
         float end = start + sweep;
         float cos = MathF.Cos(end), sin = MathF.Sin(end);
-        float endX = centerX + radius * cos, endY = centerY + radius * sin;
         const float length = 5f, halfWidth = 4f;
-        Span<KumikoPoint> head = stackalloc KumikoPoint[3];
-        head[0] = new KumikoPoint(endX - sin * length, endY + cos * length);
-        head[1] = new KumikoPoint(endX + cos * halfWidth, endY + sin * halfWidth);
-        head[2] = new KumikoPoint(endX - cos * halfWidth, endY - sin * halfWidth);
-        ctx.FillPolygon(head, _pullHead);
+        float tipX = x - sin * length, tipY = y + cos * length;
+        ctx.DrawLine(x + cos * halfWidth, y + sin * halfWidth, tipX, tipY, _pullArc);
+        ctx.DrawLine(x - cos * halfWidth, y - sin * halfWidth, tipX, tipY, _pullArc);
     }
 }

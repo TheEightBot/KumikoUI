@@ -42,6 +42,12 @@ public class PullToRefreshRenderingTests
             input.UpdateAnimations(16);
     }
 
+    /// <summary>The indicator's glyph: its line segments in the glyph color (any alpha when <paramref name="faded"/>).</summary>
+    private static List<DrawOp> Glyph(RecordingDrawingContext ctx, bool faded = false) =>
+        ctx.Lines.Where(o => faded
+            ? o.Color.R == GlyphColor.R && o.Color.G == GlyphColor.G && o.Color.B == GlyphColor.B
+            : o.Color.Equals(GlyphColor)).ToList();
+
     private static DrawOp Disc(RecordingDrawingContext ctx) =>
         Assert.Single(ctx.Ops, o => o.Kind == DrawOpKind.FillRoundRect && o.Color.Equals(DiscColor));
 
@@ -110,9 +116,9 @@ public class PullToRefreshRenderingTests
 
         var ctx = g.RenderRecorded();
 
-        var arc = Assert.Single(ctx.Polylines, o => o.Color.R == GlyphColor.R && o.Color.G == GlyphColor.G);
-        Assert.True(arc.Color.A < 255);
-        Assert.Single(ctx.Polygons, o => o.Color.R == GlyphColor.R && o.Color.G == GlyphColor.G); // its head
+        var arrow = Glyph(ctx, faded: true);
+        Assert.Equal(KumikoRenderer.PullArcSegments + 2, arrow.Count); // the arc and its head
+        Assert.All(arrow, o => Assert.True(o.Color.A < 255));
     }
 
     [Fact]
@@ -123,14 +129,14 @@ public class PullToRefreshRenderingTests
         Settle(g.Input);
 
         var first = g.RenderRecorded();
-        var spinner = Assert.Single(first.Polylines, o => o.Color.Equals(GlyphColor));
-        Assert.DoesNotContain(first.Polygons, o => o.Color.R == GlyphColor.R && o.Color.G == GlyphColor.G);
+        var spinner = Glyph(first);
+        Assert.Equal(KumikoRenderer.PullArcSegments, spinner.Count); // no arrow head
         Assert.Equal(g.Style.HeaderHeight + g.Input.PullToRefreshThreshold - KumikoRenderer.PullIndicatorDiameter,
             Disc(first).Rect.Top, 0.01f); // held at the threshold
 
         g.Input.UpdateAnimations(250); // a quarter turn
-        var turned = Assert.Single(g.RenderRecorded().Polylines, o => o.Color.Equals(GlyphColor));
-        Assert.NotEqual(spinner.Points![0].X, turned.Points![0].X, 1);
+        var turned = Glyph(g.RenderRecorded());
+        Assert.NotEqual(spinner[0].X1, turned[0].X1, 1);
     }
 
     [Fact]
@@ -139,12 +145,12 @@ public class PullToRefreshRenderingTests
         var g = Grid(x => x.Style.EnableAnimations = false);
         g.Input.IsRefreshing = true;
 
-        var first = Assert.Single(g.RenderRecorded().Polylines, o => o.Color.Equals(GlyphColor));
+        var first = Glyph(g.RenderRecorded());
         g.Input.UpdateAnimations(250);
-        var second = Assert.Single(g.RenderRecorded().Polylines, o => o.Color.Equals(GlyphColor));
+        var second = Glyph(g.RenderRecorded());
 
-        Assert.Equal(first.Points![0].X, second.Points![0].X, 0.01f);
-        Assert.Equal(first.Points![0].Y, second.Points![0].Y, 0.01f);
+        Assert.Equal(first[0].X1, second[0].X1, 0.01f);
+        Assert.Equal(first[0].Y1, second[0].Y1, 0.01f);
     }
 
     [Fact]
@@ -156,7 +162,7 @@ public class PullToRefreshRenderingTests
 
         var ctx = g.RenderRecorded();
 
-        Assert.Single(ctx.Polylines, o => o.Color.Equals(g.Style.AccentColor));
+        Assert.Equal(KumikoRenderer.PullArcSegments, ctx.Lines.Count(o => o.Color.Equals(g.Style.AccentColor)));
     }
 
     [Theory]
