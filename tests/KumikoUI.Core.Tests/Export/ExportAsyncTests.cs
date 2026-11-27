@@ -187,7 +187,8 @@ public class ExportAsyncTests
 
         var stream = new CountingStream();
         long peak = 0;
-        var progress = new SyncProgress(_ => peak = Math.Max(peak, GC.GetTotalMemory(false)));
+        // Collect at each report (at most every 100 ms) so the peak is live memory, not garbage the runner's GC has not reached yet.
+        var progress = new SyncProgress(_ => peak = Math.Max(peak, GC.GetTotalMemory(true)));
 
         // The source belongs to this thread: take what needs it before the first await.
         var snapshot = KumikoExportSnapshot.Create(source);
