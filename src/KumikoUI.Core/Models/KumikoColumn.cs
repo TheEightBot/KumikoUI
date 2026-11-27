@@ -431,8 +431,9 @@ public class KumikoColumn : INotifyPropertyChanged
     /// <summary>
     /// The direction of the first header tap, or null (the default) for the column type's default: a
     /// <see cref="KumikoColumnType.Boolean"/> column sorts checked rows first
-    /// (<see cref="KumikoSortDirection.Descending"/>), a <see cref="KumikoColumnType.Date"/> column newest first
-    /// (<see cref="KumikoSortDirection.Descending"/>) and every other column ascending. Later taps switch to the
+    /// (<see cref="KumikoSortDirection.Descending"/>), a <see cref="KumikoColumnType.Date"/> or
+    /// <see cref="KumikoColumnType.DateTime"/> column newest first (<see cref="KumikoSortDirection.Descending"/>) and
+    /// every other column, a <see cref="KumikoColumnType.Time"/> column included, ascending. Later taps switch to the
     /// opposite direction and then remove the sort. <see cref="KumikoSortDirection.None"/> is the same as null.
     /// The filter popup's first sort row follows it.
     /// </summary>
@@ -450,7 +451,7 @@ public class KumikoColumn : INotifyPropertyChanged
     public KumikoSortDirection FirstSortDirection =>
         InitialSortDirection is { } initial && initial != KumikoSortDirection.None
             ? initial
-            : ColumnType is KumikoColumnType.Boolean or KumikoColumnType.Date
+            : ColumnType is KumikoColumnType.Boolean or KumikoColumnType.Date or KumikoColumnType.DateTime
                 ? KumikoSortDirection.Descending
                 : KumikoSortDirection.Ascending;
 
@@ -502,6 +503,47 @@ public class KumikoColumn : INotifyPropertyChanged
         set => SetField(ref _format, value);
     }
     private string? _format;
+
+    /// <summary>
+    /// The format cells are shown with: <see cref="Format"/>, or the culture's short time ("t") for a
+    /// <see cref="KumikoColumnType.Time"/> column and short date and time ("g") for a
+    /// <see cref="KumikoColumnType.DateTime"/> column; null for the type's own default. The strings are
+    /// constants, so a cache can compare them by reference.
+    /// </summary>
+    internal string? DisplayFormat => _format ?? ColumnType switch
+    {
+        KumikoColumnType.Time => "t",
+        KumikoColumnType.DateTime => "g",
+        _ => null,
+    };
+
+    /// <summary>
+    /// Whether the time editor of a <see cref="KumikoColumnType.Time"/> or <see cref="KumikoColumnType.DateTime"/>
+    /// column counts hours from 0 to 23 (true), or from 1 to 12 with an AM/PM designator (false); null (the default)
+    /// follows the grid's culture: 24-hour unless its short time pattern has an AM/PM designator.
+    /// </summary>
+    public bool? Use24HourTime
+    {
+        get => _use24HourTime;
+        set => SetField(ref _use24HourTime, value);
+    }
+    private bool? _use24HourTime;
+
+    /// <summary>
+    /// The minutes the up and down arrows of the time editor step by, from 1 to 30 (default 1). Stepping goes to
+    /// the next multiple of the step, so 15 steps through :00, :15, :30 and :45. Typing a time is not limited by
+    /// it. Values outside the range are limited to it.
+    /// </summary>
+    public int TimeMinuteStep
+    {
+        get => _timeMinuteStep;
+        set => SetField(ref _timeMinuteStep, Math.Clamp(value, 1, 30));
+    }
+    private int _timeMinuteStep = 1;
+
+    /// <summary>Whether the time editor uses 24-hour time in <paramref name="culture"/>: <see cref="Use24HourTime"/> or the culture's pattern.</summary>
+    internal bool UsesTwentyFourHourTime(System.Globalization.CultureInfo culture) =>
+        _use24HourTime ?? !culture.DateTimeFormat.ShortTimePattern.Contains('t');
 
     /// <summary>Horizontal alignment of cell content.</summary>
     public Rendering.KumikoTextAlignment TextAlignment

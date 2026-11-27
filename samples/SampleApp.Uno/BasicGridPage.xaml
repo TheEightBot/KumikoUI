@@ -95,6 +95,19 @@
                                      Format="yyyy-MM-dd"
                                      ColumnType="Date" />
 
+                <!-- TIME column — hour/minute editor, steps by 15 minutes -->
+                <core:KumikoColumn Header="Shift Start"
+                                     PropertyName="ShiftStart"
+                                     Width="110"
+                                     ColumnType="Time"
+                                     TimeMinuteStep="15" />
+
+                <!-- DATETIME column — calendar with a time row -->
+                <core:KumikoColumn Header="Last Login"
+                                     PropertyName="LastLogin"
+                                     Width="170"
+                                     ColumnType="DateTime" />
+
                 <!-- BOOLEAN column — checkbox toggle (Tab stops here, Space toggles) -->
                 <core:KumikoColumn Header="Active"
                                      PropertyName="IsActive"

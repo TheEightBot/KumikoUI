@@ -27,7 +27,7 @@ internal sealed class CellTextCache
         Owner = owner;
         PropertyName = column.PropertyName;
         Accessor = column.ValueAccessor;
-        Format = column.Format;
+        Format = column.DisplayFormat;
         AccessorVersion = Data.KumikoAccessorRegistry.Version;
         LayoutVersion = layoutVersion;
         Entries = new Entry[size];
@@ -54,7 +54,7 @@ internal sealed class CellTextCache
         && LayoutVersion == layoutVersion
         && ReferenceEquals(PropertyName, column.PropertyName)
         && ReferenceEquals(Accessor, column.ValueAccessor)
-        && ReferenceEquals(Format, column.Format)
+        && ReferenceEquals(Format, column.DisplayFormat)
         && AccessorVersion == Data.KumikoAccessorRegistry.Version;
 
     /// <summary>Mark every entry holding <paramref name="item"/> stale.</summary>

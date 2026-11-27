@@ -23,4 +23,10 @@ public enum KumikoFilterValueKind
 
     /// <summary>A <see cref="bool"/>.</summary>
     Boolean,
+
+    /// <summary>
+    /// A <see cref="TimeOnly"/>, or a <see cref="TimeSpan"/> (saved as a time of day within a day, restored as a
+    /// <see cref="TimeOnly"/>; a duration of a day or more, or a negative one, is restored as a <see cref="TimeSpan"/>).
+    /// </summary>
+    Time,
 }
