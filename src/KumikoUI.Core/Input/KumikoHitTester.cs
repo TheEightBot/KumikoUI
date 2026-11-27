@@ -17,6 +17,12 @@ public sealed class KumikoHitTester
     internal RenderedHitRegions? RenderedRegions { get; set; }
 
     /// <summary>
+    /// The row the owning controller swiped open (#329, <see cref="KumikoInputController.AllowSwiping"/>): the items
+    /// revealed beside it are hit before the rows.
+    /// </summary>
+    internal RowSwipe Swipe { get; } = new();
+
+    /// <summary>
     /// Grid-level switch for the header filter icon: when false no column reports
     /// <see cref="HitRegion.HeaderFilterIcon"/>, whatever its own <see cref="KumikoColumn.AllowFiltering"/>.
     /// </summary>
@@ -212,6 +218,16 @@ public sealed class KumikoHitTester
                 return new KumikoHitInfo { Region = HitRegion.TableSummaryRow, ContentX = effectiveContentX, ContentY = contentY };
             }
         }
+        // The items of a row swiped open (#329) lie over the rows, below the sticky group headers
+        if (dataSource != null && Swipe.ItemAt(viewportX, adjustedY, scroll, style, dataSource) is var swipeItem and >= 0)
+        {
+            return new KumikoHitInfo
+            {
+                Region = HitRegion.SwipeItem, RowIndex = Swipe.Row, SwipeItemIndex = swipeItem,
+                ContentX = effectiveContentX, ContentY = contentY,
+            };
+        }
+
         int row;
 
         if (frozenRowCount > 0 && adjustedY >= dataAreaTop && adjustedY < dataAreaTop + frozenRowHeight)
@@ -709,6 +725,7 @@ internal readonly struct KumikoHitInfo
     public float ContentX { get; init; }
     public float ContentY { get; init; }
     public int GroupDescriptionIndex { get; init; } = -1;
+    public int SwipeItemIndex { get; init; } = -1; // the item of a SwipeItem hit (#329)
 
     public KumikoHitTestResult ToResult() => new()
     {

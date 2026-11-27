@@ -11,4 +11,7 @@ public enum KumikoHapticKind
 
     /// <summary>A long press was recognized (it asks for a context menu, or edits a cell with the LongPress trigger).</summary>
     LongPress,
+
+    /// <summary>A swiped row crossed the full-swipe point, so lifting the finger now runs its outermost item (#329).</summary>
+    SwipeThreshold,
 }

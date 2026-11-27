@@ -145,6 +145,7 @@ public partial class KumikoDataGrid : ContentView
         _inputController.CursorChanged += OnInputControllerCursorChanged;
         _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested; // KumikoDataGrid.Haptics.cs
         InitializeColumnMenu(); // KumikoDataGrid.ColumnMenu.cs
+        InitializeSwipe(); // KumikoDataGrid.Swipe.cs (#329)
 
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
