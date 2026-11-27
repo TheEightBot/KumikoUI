@@ -380,7 +380,7 @@ public sealed class KumikoIncrementalLoader
         {
             LoadMoreRequested?.Invoke(this, new KumikoLoadMoreRequestedEventArgs(count, trigger, token));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException))
         {
             if (generation == _generation) Fail(ex, generation);
             return Task.FromResult(0);
@@ -400,7 +400,7 @@ public sealed class KumikoIncrementalLoader
             // Resume on the UI thread (no ConfigureAwait(false)): the state, the events and the re-arm happen there.
             loaded = await source.LoadMoreItemsAsync(count, token);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException))
         {
             // A cancellation by the loader bumped the generation first: that completion is stale and ignored. Anything
             // else, an OperationCanceledException from a token the app owns included, fails the batch.

@@ -96,7 +96,7 @@ public sealed class DrawnMenu : DrawnComponent, IMeasuredPopup
         set
         {
             float height = float.IsFinite(value) && value > 0 ? value : DefaultItemHeight;
-            if (field == height) return;
+            if (!InertialScroller.Differs(field, height)) return;
             field = height;
             InvalidateLayout();
         }
@@ -185,7 +185,7 @@ public sealed class DrawnMenu : DrawnComponent, IMeasuredPopup
         set
         {
             float max = float.IsNaN(value) || value <= 0 ? float.PositiveInfinity : value;
-            if (_maxHeight == max) return;
+            if (!InertialScroller.Differs(_maxHeight, max)) return;
             _maxHeight = max;
             ApplySize();
         }
@@ -344,7 +344,7 @@ public sealed class DrawnMenu : DrawnComponent, IMeasuredPopup
     {
         float height = Math.Min(_contentHeight, Math.Max(_maxHeight, Math.Min(_contentHeight, VerticalPadding * 2 + ItemHeight)));
         var b = Bounds;
-        if (b.Width != _width || b.Height != height)
+        if (InertialScroller.Differs(b.Width, _width) || InertialScroller.Differs(b.Height, height))
             Bounds = new KumikoRect(b.X, b.Y, _width, height);
         ClampScroll();
     }
@@ -356,7 +356,7 @@ public sealed class DrawnMenu : DrawnComponent, IMeasuredPopup
     private void ScrollTo(float offset)
     {
         float clamped = Math.Clamp(offset, 0f, MaxScrollOffset);
-        if (clamped == _scrollOffset) return;
+        if (!InertialScroller.Differs(clamped, _scrollOffset)) return;
         _scrollOffset = clamped;
         InvalidateVisual();
     }
