@@ -78,6 +78,7 @@ public sealed partial class MainShell : Page
             "Styling" => typeof(StylingPage),
             "Events" => typeof(EventsPage),
             "LoadMore" => typeof(LoadMorePage),
+            "AutoColumns" => typeof(AutoColumnsPage),
             _ => null,
         };
 

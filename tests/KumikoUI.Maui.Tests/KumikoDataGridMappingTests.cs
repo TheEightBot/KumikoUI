@@ -419,6 +419,42 @@ public class KumikoDataGridMappingTests
     }
 
     [Fact]
+    public void GroupDescriptions_FollowAGroupRemovedFromTheSource_AsTheGroupPanelChipDoes()
+    {
+        var grid = GridWithColumns(out _, out _);
+        var name = new GroupDescription("Name");
+        var age = new GroupDescription("Age");
+        grid.GroupDescriptions.Add(name);
+        grid.GroupDescriptions.Add(age);
+        int changes = 0;
+        grid.GroupDescriptions.CollectionChanged += (_, _) => changes++;
+
+        grid.DataSource.RemoveGroupDescription("Name"); // what KumikoInputController.ApplyChipTap calls
+
+        Assert.Equal(new[] { age }, grid.GroupDescriptions);
+        Assert.Equal(new[] { age }, grid.DataSource.GroupDescriptions);
+        Assert.True(changes > 0);
+
+        // A later change from the view model must not bring the removed group back
+        grid.GroupDescriptions.Add(new GroupDescription("Name2"));
+        Assert.Equal(new[] { "Age", "Name2" }, grid.DataSource.GroupDescriptions.Select(g => g.PropertyName));
+    }
+
+    [Fact]
+    public void GroupDescriptions_ChangedByTheCollection_DoNotBounceBackThroughTheSource()
+    {
+        var grid = GridWithColumns(out _, out _);
+        int changes = 0;
+        grid.GroupDescriptions.CollectionChanged += (_, _) => changes++;
+
+        grid.GroupDescriptions.Add(new GroupDescription("Name"));
+        grid.GroupDescriptions.Add(new GroupDescription("Age"));
+
+        Assert.Equal(2, changes);
+        Assert.Equal(new[] { "Name", "Age" }, grid.DataSource.GroupDescriptions.Select(g => g.PropertyName));
+    }
+
+    [Fact]
     public void ApplyLayoutState_RestoresTheLayout_AndMirrorsGroupDescriptions()
     {
         var grid = GridWithColumns(out var name, out var age);

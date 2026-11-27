@@ -40,6 +40,7 @@
             <NavigationViewItem Content="Styling" Tag="Styling" />
             <NavigationViewItem Content="Events" Tag="Events" />
             <NavigationViewItem Content="Load More" Tag="LoadMore" />
+            <NavigationViewItem Content="Auto Columns" Tag="AutoColumns" />
         </NavigationView.MenuItems>
 
         <Frame x:Name="ContentFrame" />
