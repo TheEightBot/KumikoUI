@@ -76,6 +76,7 @@ public sealed partial class MainShell : Page
             "Images" => typeof(ImagesPage),
             "Styling" => typeof(StylingPage),
             "Events" => typeof(EventsPage),
+            "AutoColumns" => typeof(AutoColumnsPage),
             _ => null,
         };
 
