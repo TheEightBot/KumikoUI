@@ -300,9 +300,9 @@ public class EmptyViewRenderingTests
     [Fact]
     public void Themes_GiveTheEmptyViewTextAReadableColor()
     {
-        foreach (var mode in new[] { KumikoThemeMode.Light, KumikoThemeMode.Dark, KumikoThemeMode.HighContrast })
+        var modes = new[] { KumikoThemeMode.Light, KumikoThemeMode.Dark, KumikoThemeMode.HighContrast };
+        foreach (var style in modes.Select(m => KumikoTheme.Create(m)))
         {
-            var style = KumikoTheme.Create(mode);
             Assert.True(style.ShowEmptyView);
             Assert.NotEqual(style.BackgroundColor, style.EmptyViewTextColor);
         }
