@@ -64,12 +64,7 @@ public partial class KumikoDataGrid
     {
         if (GetValue(ColumnsProperty) is not ObservableCollection<KumikoColumn> columns) return;
 
-        bool declared = false;
-        foreach (var column in columns)
-        {
-            if (column.ColumnType == KumikoColumnType.Selection && !ReferenceEquals(column, _ownedSelectionColumn))
-                declared = true;
-        }
+        bool declared = columns.Any(column => column.ColumnType == KumikoColumnType.Selection && !ReferenceEquals(column, _ownedSelectionColumn));
 
         _syncingSelectionColumn = true;
         try

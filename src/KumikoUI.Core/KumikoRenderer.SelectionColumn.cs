@@ -31,12 +31,9 @@ public sealed partial class KumikoRenderer
     {
         if (!_hasCheckAll) return;
         var box = CheckBoxGlyph.BoxBounds(new KumikoRect(screenX, 0, col.Width, style.HeaderHeight));
-        var state = _checkAllState switch
-        {
-            true => DrawnCheckState.Checked,
-            null => DrawnCheckState.Indeterminate,
-            _ => DrawnCheckState.Unchecked
-        };
+        var state = !_checkAllState.HasValue ? DrawnCheckState.Indeterminate
+            : _checkAllState.Value ? DrawnCheckState.Checked
+            : DrawnCheckState.Unchecked;
         CheckBoxGlyph.Draw(ctx, box, state, style, _paintCache);
     }
 }

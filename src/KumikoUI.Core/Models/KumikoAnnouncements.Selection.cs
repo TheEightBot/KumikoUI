@@ -45,11 +45,9 @@ public static partial class KumikoAnnouncements
     public static string CheckAllBox(KumikoStrings strings, bool? state)
     {
         ArgumentNullException.ThrowIfNull(strings);
-        return Format("{0}, {1}", strings.SelectAllRows, state switch
-        {
-            true => strings.CheckStateChecked,
-            false => strings.CheckStateUnchecked,
-            _ => strings.CheckStateMixed
-        });
+        string checkState = !state.HasValue ? strings.CheckStateMixed
+            : state.Value ? strings.CheckStateChecked
+            : strings.CheckStateUnchecked;
+        return Format("{0}, {1}", strings.SelectAllRows, checkState);
     }
 }
