@@ -131,6 +131,8 @@ public sealed partial class BasicGridPage : Page
                 Department = Departments[_random.Next(Departments.Length)],
                 Salary = _random.Next(45000, 180000),
                 HireDate = DateTime.Today.AddDays(-_random.Next(100, 3000)),
+                ShiftStart = new TimeOnly(_random.Next(6, 12), _random.Next(0, 4) * 15),
+                LastLogin = DateTime.Now.AddMinutes(-_random.Next(10, 20000)),
                 IsActive = _random.NextDouble() > 0.15,
                 Approved = _random.Next(3) switch { 0 => true, 1 => false, _ => null },
                 City = Cities[_random.Next(Cities.Length)],

@@ -16,6 +16,8 @@ public class Employee : INotifyPropertyChanged
     private string _department = string.Empty;
     private decimal _salary;
     private System.DateTime _hireDate;
+    private System.TimeOnly _shiftStart = new(9, 0);
+    private System.DateTime _lastLogin = System.DateTime.Now;
     private bool _isActive;
     private bool? _approved;
     private string _city = string.Empty;
@@ -52,6 +54,20 @@ public class Employee : INotifyPropertyChanged
     {
         get => _hireDate;
         set { _hireDate = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Time column — hour and minute editor.</summary>
+    public System.TimeOnly ShiftStart
+    {
+        get => _shiftStart;
+        set { _shiftStart = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>DateTime column — calendar with a time row.</summary>
+    public System.DateTime LastLogin
+    {
+        get => _lastLogin;
+        set { _lastLogin = value; OnPropertyChanged(); }
     }
 
     /// <summary>Boolean column — checkbox toggle.</summary>

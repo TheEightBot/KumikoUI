@@ -2111,7 +2111,7 @@ public sealed partial class KumikoSource : IDisposable
                 ? new HashSet<string>(selected, comparer.TextComparer)
                 : null;
             (prepared ??= new()).Add(new FilterSpec(col, new ItemReader(col),
-                forWorker ? filter.CloneForBuild() : filter, values, col.Format));
+                forWorker ? filter.CloneForBuild() : filter, values, col.DisplayFormat));
         }
         return prepared?.ToArray() ?? Array.Empty<FilterSpec>();
     }
@@ -2135,7 +2135,7 @@ public sealed partial class KumikoSource : IDisposable
     /// Format a cell value as display text: the column's <see cref="KumikoColumn.Format"/> in
     /// <see cref="Culture"/> for formattable values, otherwise <see cref="object.ToString"/>; empty for null.
     /// </summary>
-    public string FormatCellValue(object? value, KumikoColumn column) => _comparer.Format(value, column.Format);
+    public string FormatCellValue(object? value, KumikoColumn column) => _comparer.Format(value, column.DisplayFormat);
 
     // ── Display text cache (#68) ─────────────────────────────────
     //
@@ -2439,7 +2439,7 @@ public sealed partial class KumikoSource : IDisposable
                 desc.PropertyName,
                 desc.Header ?? column?.Header ?? desc.PropertyName,
                 column != null ? new ItemReader(column) : null,
-                column?.Format,
+                column?.DisplayFormat,
                 (desc.KeySelector == null ? column?.CustomComparer : null) ?? comparer,
                 desc.KeySelector,
                 desc.DisplayTextSelector,
@@ -2512,7 +2512,7 @@ public sealed partial class KumikoSource : IDisposable
             ? groupDesc.DisplayTextSelector(groupKey)
             : groupKey is null
                 ? _strings.BlankGroupText
-                : _comparer.Format(groupKey, groupDesc.KeySelector == null ? column?.Format : null);
+                : _comparer.Format(groupKey, groupDesc.KeySelector == null ? column?.DisplayFormat : null);
         return (groupKey, displayText);
     }
 

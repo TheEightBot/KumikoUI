@@ -148,6 +148,8 @@ public sealed partial class KumikoRenderer : IDisposable
         _cellRenderers[KumikoColumnType.Text] = textRenderer;
         _cellRenderers[KumikoColumnType.Numeric] = textRenderer;
         _cellRenderers[KumikoColumnType.Date] = textRenderer;
+        _cellRenderers[KumikoColumnType.Time] = textRenderer;
+        _cellRenderers[KumikoColumnType.DateTime] = textRenderer;
         _cellRenderers[KumikoColumnType.Template] = textRenderer;
         _cellRenderers[KumikoColumnType.ComboBox] = textRenderer;
         _cellRenderers[KumikoColumnType.Picker] = textRenderer;

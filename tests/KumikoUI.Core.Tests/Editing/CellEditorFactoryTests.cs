@@ -30,6 +30,8 @@ public class CellEditorFactoryTests
     [InlineData(KumikoColumnType.Text, typeof(DrawnTextBox))]
     [InlineData(KumikoColumnType.Numeric, typeof(DrawnTextBox))]
     [InlineData(KumikoColumnType.Date, typeof(DrawnDatePicker))]
+    [InlineData(KumikoColumnType.DateTime, typeof(DrawnDatePicker))]
+    [InlineData(KumikoColumnType.Time, typeof(DrawnTimePicker))]
     [InlineData(KumikoColumnType.ComboBox, typeof(DrawnComboBox))]
     [InlineData(KumikoColumnType.Picker, typeof(DrawnScrollPicker))]
     [InlineData(KumikoColumnType.Template, typeof(DrawnTextBox))] // text fallback

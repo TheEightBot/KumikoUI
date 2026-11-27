@@ -372,6 +372,27 @@ public sealed class DrawnDatePicker : DrawnComponent, IValueEditor
     /// <summary>Gets or sets the selected minute (0-59).</summary>
     public int SelectedMinute { get; set; }
 
+    // The seconds and fractions of the time the picker was opened with, kept while the hour and minute stay as they were
+    private long _openedSubMinuteTicks;
+    private int _openedHour = -1, _openedMinute = -1;
+
+    /// <summary>
+    /// Opens the time row on a time of day: sets <see cref="SelectedHour"/> and <see cref="SelectedMinute"/> and keeps the
+    /// seconds and fractions in the committed value for as long as the hour and minute stay as they are.
+    /// </summary>
+    /// <param name="time">The time of day, such as <see cref="DateTime.TimeOfDay"/>.</param>
+    internal void SetTimeOfDay(TimeSpan time)
+    {
+        SelectedHour = time.Hours;
+        SelectedMinute = time.Minutes;
+        _openedHour = SelectedHour;
+        _openedMinute = SelectedMinute;
+        _openedSubMinuteTicks = time.Ticks % TimeSpan.TicksPerMinute;
+    }
+
+    /// <summary>The seconds and fractions to add to the selected hour and minute: those the picker was opened with, until the time is changed.</summary>
+    private long SubMinuteTicks => SelectedHour == _openedHour && SelectedMinute == _openedMinute ? _openedSubMinuteTicks : 0;
+
     /// <summary>Gets the selected date and time combined.</summary>
     public DateTime SelectedDateTime => _selectedDate.Date.AddHours(SelectedHour).AddMinutes(SelectedMinute);
 
@@ -1495,12 +1516,12 @@ public sealed class DrawnDatePicker : DrawnComponent, IValueEditor
                 if (IsDisabled(typed)) return new RejectedDate(_box.Text);
 
                 if (ShowTimePicker)
-                    return typed.TimeOfDay != TimeSpan.Zero ? typed : typed.Date.AddHours(SelectedHour).AddMinutes(SelectedMinute);
+                    return typed.TimeOfDay != TimeSpan.Zero ? typed : typed.Date.AddHours(SelectedHour).AddMinutes(SelectedMinute).AddTicks(SubMinuteTicks);
                 return typed.Date + TimeOfDay;
             }
 
             return !_hasSelection ? null
-                : ShowTimePicker ? SelectedDateTime
+                : ShowTimePicker ? SelectedDateTime.AddTicks(SubMinuteTicks)
                 : _selectedDate.Date + TimeOfDay;
         }
     }

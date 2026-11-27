@@ -41,6 +41,8 @@ public class LocalizationTests
         SortNumericDescending = "Absteigend sortieren",
         SortDateAscending = "Älteste zuerst",
         SortDateDescending = "Neueste zuerst",
+        SortTimeAscending = "Früheste zuerst",
+        SortTimeDescending = "Späteste zuerst",
         SortBooleanCheckedFirst = "Angehakte zuerst",
         SortBooleanUncheckedFirst = "Nicht angehakte zuerst",
         ValueRequired = "Ein Wert ist erforderlich.",

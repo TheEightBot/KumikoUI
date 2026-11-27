@@ -407,7 +407,8 @@ public sealed class EditSession
         return column.ColumnType switch
         {
             KumikoColumnType.Numeric or KumikoColumnType.ProgressBar => typeof(decimal?),
-            KumikoColumnType.Date => typeof(DateTime?),
+            KumikoColumnType.Date or KumikoColumnType.DateTime => typeof(DateTime?),
+            KumikoColumnType.Time => typeof(TimeOnly?),
             KumikoColumnType.Boolean => typeof(bool?),
             _ => null,
         };

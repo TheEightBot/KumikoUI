@@ -32,5 +32,20 @@ public enum KumikoColumnType
     /// <see cref="KumikoColumn.ProgressShowText"/>, <see cref="KumikoColumn.ProgressFillColor"/> and
     /// <see cref="KumikoColumn.Format"/>. Sorts and filters as numbers.
     /// </summary>
-    ProgressBar
+    ProgressBar,
+    /// <summary>
+    /// A time of day: <see cref="TimeOnly"/>, <see cref="TimeSpan"/> or the time part of a <see cref="DateTime"/>.
+    /// Shown with <see cref="KumikoColumn.Format"/> ("t", the culture's short time, when it is not set) and
+    /// edited in a <see cref="DrawnTimePicker"/> (<see cref="KumikoColumn.Use24HourTime"/>,
+    /// <see cref="KumikoColumn.TimeMinuteStep"/>). Sorts earliest first on the first tap and filters by the
+    /// time of day, to the minute.
+    /// </summary>
+    Time,
+    /// <summary>
+    /// A date with a time of day: <see cref="DateTime"/> or <see cref="DateTimeOffset"/>. Shown with
+    /// <see cref="KumikoColumn.Format"/> ("g", the culture's short date and time, when it is not set) and edited in a
+    /// <see cref="DrawnDatePicker"/> with its time row. Sorts newest first on the first tap and filters by the
+    /// date and time, to the minute.
+    /// </summary>
+    DateTime
 }

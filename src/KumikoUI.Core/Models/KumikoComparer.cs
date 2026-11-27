@@ -11,6 +11,7 @@ namespace KumikoUI.Core.Models;
 /// <item>numbers by value across numeric types (an <c>int</c> and a <c>double</c> compare as numbers);</item>
 /// <item>dates and times chronologically across <see cref="DateTime"/>, <see cref="DateTimeOffset"/> and
 /// <see cref="DateOnly"/>;</item>
+/// <item>times of day and durations by value across <see cref="TimeOnly"/> and <see cref="TimeSpan"/>;</item>
 /// <item>other values of one type through <see cref="IComparable"/>;</item>
 /// <item>anything else by its text, then by type name, so the order is always deterministic.</item>
 /// </list>
@@ -56,6 +57,9 @@ public sealed class KumikoComparer : IComparer<object?>, IComparer
         if (TryGetInstant(x, out var dx) && TryGetInstant(y, out var dy))
             return dx.CompareTo(dy);
 
+        if (TryGetTimeSpan(x, out var tx) && TryGetTimeSpan(y, out var ty))
+            return tx.CompareTo(ty);
+
         if (x.GetType() == y.GetType() && x is IComparable comparable)
         {
             try
@@ -89,13 +93,54 @@ public sealed class KumikoComparer : IComparer<object?>, IComparer
     /// <summary>Whether <paramref name="text"/> ends with <paramref name="value"/>.</summary>
     public bool TextEndsWith(string text, string value) => Culture.CompareInfo.IsSuffix(text, value, Options);
 
-    /// <summary>A value as text in <see cref="Culture"/> (empty for null).</summary>
+    /// <summary>
+    /// A value as text in <see cref="Culture"/> (empty for null). A <see cref="TimeSpan"/> within a day takes the
+    /// time formats of <see cref="TimeOnly"/> too ("t", "HH:mm", "h:mm tt"), which its own format strings lack.
+    /// </summary>
     public string Format(object? value, string? format = null) => value switch
     {
         null => string.Empty,
+        TimeSpan span when !string.IsNullOrEmpty(format) => FormatTimeSpan(span, format),
         IFormattable formattable => formattable.ToString(string.IsNullOrEmpty(format) ? null : format, Culture),
         _ => value.ToString() ?? string.Empty,
     };
+
+    private string FormatTimeSpan(TimeSpan span, string format)
+    {
+        // The TimeSpan formats ("c", "g", "G", and custom ones with escaped separators) stay as they are
+        bool own = format.Length == 1 ? format[0] is 'c' or 'g' or 'G' : format.Contains('\\') || format.Contains('\'');
+        if (!own && span >= TimeSpan.Zero && span < TimeSpan.FromDays(1))
+        {
+            try
+            {
+                return TimeOnly.FromTimeSpan(span).ToString(format, Culture);
+            }
+            catch (FormatException)
+            {
+                // not a time format either: fall through to the duration formats
+            }
+        }
+
+        try
+        {
+            return span.ToString(format, Culture);
+        }
+        catch (FormatException)
+        {
+            return span.ToString("c", Culture);
+        }
+    }
+
+    /// <summary>A time of day or a duration as a span, so a <see cref="TimeOnly"/> and a <see cref="TimeSpan"/> compare by value.</summary>
+    internal static bool TryGetTimeSpan(object value, out TimeSpan span)
+    {
+        switch (value)
+        {
+            case TimeSpan v: span = v; return true;
+            case TimeOnly v: span = v.ToTimeSpan(); return true;
+            default: span = default; return false;
+        }
+    }
 
     /// <summary>A number as a value that orders across numeric types.</summary>
     internal static bool TryGetNumber(object value, out NumericValue number)

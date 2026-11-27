@@ -472,6 +472,9 @@ public static class KumikoDevFlowExtension
 					case DrawnDatePicker date:
 						date.SelectedDate = DateTime.Parse(value, CultureInfo.InvariantCulture);
 						break;
+					case DrawnTimePicker time:
+						time.TimeOfDay = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
+						break;
 					case DrawnNumericUpDown numeric:
 						numeric.Value = double.Parse(value, CultureInfo.InvariantCulture);
 						break;

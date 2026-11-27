@@ -33,7 +33,8 @@ public static class CellEditorFactory
         {
             KumikoColumnType.Text => CreateTextEditor(column, currentValue, cellBounds, initialCharacter, selectionMode, culture),
             KumikoColumnType.Numeric => CreateNumericEditor(column, currentValue, cellBounds, initialCharacter, selectionMode, culture),
-            KumikoColumnType.Date => CreateDateEditor(column, currentValue, cellBounds, initialCharacter, culture),
+            KumikoColumnType.Date or KumikoColumnType.DateTime => CreateDateEditor(column, currentValue, cellBounds, initialCharacter, culture),
+            KumikoColumnType.Time => CreateTimeEditor(column, currentValue, cellBounds, initialCharacter, culture),
             KumikoColumnType.Boolean => null, // Toggled directly, no overlay editor
             KumikoColumnType.ComboBox => CreateComboBoxEditor(column, currentValue, cellBounds, initialCharacter),
             KumikoColumnType.Picker => CreatePickerEditor(column, currentValue, cellBounds),
@@ -72,6 +73,7 @@ public static class CellEditorFactory
             case DrawnComboBox comboBox: comboBox.ApplyTheme(style); break;
             case DrawnNumericUpDown numeric: numeric.ApplyTheme(style); break;
             case DrawnDatePicker datePicker: datePicker.ApplyTheme(style); break;
+            case DrawnTimePicker timePicker: timePicker.ApplyTheme(style); break;
             case DrawnScrollPicker picker: picker.ApplyTheme(style); break;
             case DrawnActionButtons actionButtons: actionButtons.ApplyTheme(style); break;
         }
@@ -91,6 +93,7 @@ public static class CellEditorFactory
             case DrawnComboBox comboBox: comboBox.ApplyFont(font); break;
             case DrawnNumericUpDown numeric: numeric.ApplyFont(font); break;
             case DrawnDatePicker datePicker: datePicker.ApplyFont(font); break;
+            case DrawnTimePicker timePicker: timePicker.ApplyFont(font); break;
             case DrawnScrollPicker picker: picker.ApplyFont(font); break;
         }
     }
@@ -190,7 +193,8 @@ public static class CellEditorFactory
             Bounds = cellBounds,
             IsVisible = true,
             Culture = culture,
-            DateFormat = column.Format,
+            // A date and time column shows its time in the picker's time row, so the date takes the date part of the format
+            DateFormat = column.ColumnType == KumikoColumnType.DateTime ? DatePartOfFormat(column.Format) : column.Format,
             MinDate = column.EditorMinDate,
             MaxDate = column.EditorMaxDate,
         };
@@ -207,11 +211,81 @@ public static class CellEditorFactory
         // An empty cell opens with nothing selected; a date keeps its time of day through the edit
         picker.SelectedDate = initial;
         picker.TimeOfDay = initial?.TimeOfDay ?? TimeSpan.Zero;
+        if (column.ColumnType == KumikoColumnType.DateTime)
+        {
+            // Hours and minutes are editable; the seconds of the value survive an edit that leaves the time alone
+            picker.ShowTimePicker = true;
+            picker.Use24HourFormat = column.UsesTwentyFourHourTime(culture);
+            picker.SetTimeOfDay(initial?.TimeOfDay ?? TimeSpan.Zero);
+        }
 
         // Auto-open the calendar when the editor is created
         picker.OpenCalendar();
 
         // The typed character that opened the edit starts typing a date: a change by the user
+        if (initialCharacter is { } typed && !char.IsControl(typed) && !char.IsWhiteSpace(typed))
+        {
+            picker.StartTrackingChanges();
+            picker.OnKeyDown(new Input.KumikoKeyEventArgs { Key = Input.KumikoKey.Character, Character = typed });
+        }
+
+        return picker;
+    }
+
+    /// <summary>
+    /// The format to show a date with in a date and time picker: the column's format when it shows no time, else null
+    /// (the culture's short date pattern), since the picker adds the time itself.
+    /// </summary>
+    private static string? DatePartOfFormat(string? format)
+    {
+        if (string.IsNullOrEmpty(format)) return null;
+        if (format.Length == 1) return "dDmMyY".Contains(format[0]) ? format : null;
+
+        for (int i = 0; i < format.Length; i++)
+        {
+            char c = format[i];
+            if (c is '\\') { i++; continue; }
+            if (c is '\'' or '"')
+            {
+                int end = format.IndexOf(c, i + 1);
+                if (end < 0) break;
+                i = end;
+                continue;
+            }
+            if (c is 'h' or 'H' or 'm' or 's' or 't' or 'f' or 'F' or 'K' or 'z') return null;
+        }
+        return format;
+    }
+
+    private static DrawnTimePicker? CreateTimeEditor(
+        KumikoColumn column, object? value, KumikoRect cellBounds, char? initialCharacter, CultureInfo culture)
+    {
+        TimeSpan? initial;
+        DateTime? baseDate = null;
+        switch (value)
+        {
+            case null: initial = null; break;
+            case TimeOnly time: initial = time.ToTimeSpan(); break;
+            case TimeSpan span when span >= TimeSpan.Zero && span < TimeSpan.FromDays(1): initial = span; break;
+            case TimeSpan: return null; // a duration of a day or more, or a negative one, is not a time of day: read-only
+            case DateTime dt: initial = dt.TimeOfDay; baseDate = dt; break;
+            case DateTimeOffset dto: initial = dto.TimeOfDay; baseDate = dto.DateTime; break;
+            case string text when TimeOnly.TryParse(text, culture, DateTimeStyles.AllowWhiteSpaces, out var parsed): initial = parsed.ToTimeSpan(); break;
+            default: initial = null; break;
+        }
+
+        var picker = new DrawnTimePicker
+        {
+            Bounds = cellBounds,
+            IsVisible = true,
+            Culture = culture,
+            MinuteStep = column.TimeMinuteStep,
+            BaseDate = baseDate,
+        };
+        picker.Use24HourFormat = column.UsesTwentyFourHourTime(culture);
+        if (initial is { } start) picker.TimeOfDay = start;
+
+        // The typed character that opened the edit starts typing a time: a change by the user
         if (initialCharacter is { } typed && !char.IsControl(typed) && !char.IsWhiteSpace(typed))
         {
             picker.StartTrackingChanges();

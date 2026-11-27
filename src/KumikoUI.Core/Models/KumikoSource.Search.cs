@@ -362,7 +362,7 @@ internal sealed class SearchSpec
         {
             _columns[i] = columns[i];
             _readers[i] = new ItemReader(columns[i]);
-            _formats[i] = columns[i].Format;
+            _formats[i] = columns[i].DisplayFormat;
         }
     }
 
