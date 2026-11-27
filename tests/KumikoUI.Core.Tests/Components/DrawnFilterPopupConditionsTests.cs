@@ -478,8 +478,10 @@ public class DrawnFilterPopupConditionsTests
     {
         var ctx = new RecordingDrawingContext();
         popup.OnDraw(ctx);
-        return ctx.Ops.Count(o => o.Rect.Width == 5 && o.Rect.Height == 5 && o.Rect.Y == 47);
+        return ctx.Ops.Count(o => Near(o.Rect.Width, 5) && Near(o.Rect.Height, 5) && Near(o.Rect.Y, 47));
     }
+
+    private static bool Near(float a, float b) => Math.Abs(a - b) < 0.01f;
 
     // ── Layout round trip ─────────────────────────────────────────
 
