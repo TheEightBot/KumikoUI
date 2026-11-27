@@ -2403,7 +2403,8 @@ public sealed partial class KumikoSource : IDisposable
     /// copies and the comparer's culture is fixed, so the build never reads the source, its columns or the current
     /// culture of another thread.
     /// </summary>
-    private ViewBuildSettings CaptureBuildSettings(IList items, bool itemsAreCopy, bool forWorker)
+    private ViewBuildSettings CaptureBuildSettings(IList items, bool itemsAreCopy, bool forWorker,
+        bool forceExpanded = false, bool noGroups = false)
     {
         var comparer = forWorker ? new KumikoComparer(_comparer.Culture, _comparer.Options) : _comparer;
 
@@ -2479,9 +2480,10 @@ public sealed partial class KumikoSource : IDisposable
             // A first background build allocates the buffer the next copy reuses (see CopyItems).
             AllocateSpareItems = forWorker && _spareItems == null && _view.Items is not ItemBuffer,
             Sorts = sorts,
-            Groups = groups,
-            ExpandedState = forWorker ? new Dictionary<GroupKeyPath, bool>(_groupExpandedState) : _groupExpandedState,
-            DefaultExpanded = _defaultGroupExpanded,
+            Groups = noGroups ? Array.Empty<GroupSpec>() : groups,
+            ExpandedState = forceExpanded ? new Dictionary<GroupKeyPath, bool>()
+                : forWorker ? new Dictionary<GroupKeyPath, bool>(_groupExpandedState) : _groupExpandedState,
+            DefaultExpanded = forceExpanded || _defaultGroupExpanded,
             TableSummaries = tableSummaries,
             GroupSummaries = groupSummaries,
             Caption = caption,

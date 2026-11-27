@@ -23,9 +23,7 @@ public static class KumikoTsvFormatter
     /// <returns>The field, quoted when it needs to be.</returns>
     public static string EscapeField(string? field)
     {
-        if (string.IsNullOrEmpty(field)) return string.Empty;
-        if (field.AsSpan().IndexOfAny("\t\r\n\"".AsSpan()) < 0) return field;
-        return "\"" + field.Replace("\"", "\"\"") + "\"";
+        return Export.KumikoDelimitedText.EscapeField(field, '\t');
     }
 
     /// <summary>Formats the given visible rows of <paramref name="source"/>.</summary>
@@ -36,11 +34,7 @@ public static class KumikoTsvFormatter
     public static string Format(KumikoSource source, IEnumerable<int> rows, bool includeHeaders)
     {
         // Columns in the order the grid shows them: left-frozen pane, scrolling columns, right-frozen pane.
-        var visible = source.Columns.Where(c => c.IsVisible).ToList();
-        var columns = visible.Where(c => c.IsFrozen)
-            .Concat(visible.Where(c => !c.IsFrozen && !c.IsFrozenRight))
-            .Concat(visible.Where(c => c.IsFrozenRight))
-            .ToList();
+        var columns = Export.KumikoExportColumns.InPaneOrder(source.Columns.Where(c => c.IsVisible));
         if (columns.Count == 0) return string.Empty;
 
         var ordered = new List<int>(rows);
