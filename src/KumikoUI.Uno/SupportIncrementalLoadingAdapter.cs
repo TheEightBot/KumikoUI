@@ -65,7 +65,7 @@ internal sealed class SupportIncrementalLoadingAdapter : IKumikoIncrementalSourc
             {
                 case AsyncStatus.Completed:
                     try { completion.TrySetResult(op.GetResults()); }
-                    catch (Exception ex) { completion.TrySetException(ex); }
+                    catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException)) { completion.TrySetException(ex); }
                     break;
                 case AsyncStatus.Canceled:
                     completion.TrySetCanceled();

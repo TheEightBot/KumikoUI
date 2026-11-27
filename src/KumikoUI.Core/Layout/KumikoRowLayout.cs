@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
 
@@ -428,7 +429,7 @@ internal sealed class KumikoRowLayout
     {
         Refresh();
         if ((uint)row >= (uint)_count || _stamps[row] == NonDataRow) return false;
-        if (!(height >= 1f)) height = 1f;
+        if (float.IsNaN(height) || height < 1f) height = 1f;
         if (float.IsPositiveInfinity(height)) height = float.MaxValue / 4;
 
         ref var entry = ref CollectionsMarshal.GetValueRefOrAddDefault(_items, item, out bool existed);
@@ -447,7 +448,7 @@ internal sealed class KumikoRowLayout
 
         bool changed = false;
         float old = _heights[row];
-        if (old != height)
+        if (InertialScroller.Differs(old, height))
         {
             _heights[row] = height;
             if (!_treeDirty)
@@ -552,10 +553,10 @@ internal sealed class KumikoRowLayout
         _style = style;
         _styleVersion = style.Version;
 
-        bool rowHeightChanged = style.RowHeight != _snapRowHeight;
-        if (!rowHeightChanged && style.RowHeightMode == _snapMode && style.MinRowHeight == _snapMin &&
-            style.MaxRowHeight == _snapMax && style.CellVerticalPadding == _snapVerticalPadding &&
-            style.CellPadding == _snapCellPadding && style.CellFont == _snapFont &&
+        bool rowHeightChanged = InertialScroller.Differs(style.RowHeight, _snapRowHeight);
+        if (!rowHeightChanged && style.RowHeightMode == _snapMode && SameLimit(style.MinRowHeight, _snapMin) &&
+            SameLimit(style.MaxRowHeight, _snapMax) && !InertialScroller.Differs(style.CellVerticalPadding, _snapVerticalPadding) &&
+            !InertialScroller.Differs(style.CellPadding, _snapCellPadding) && style.CellFont == _snapFont &&
             ReferenceEquals(style.RowHeightResolver, _snapResolver))
             return;
 
@@ -574,23 +575,21 @@ internal sealed class KumikoRowLayout
         _version++;
     }
 
+    /// <summary>Whether two optional limits are both unset or both set to the same value (NaN is never the same).</summary>
+    private static bool SameLimit(float? a, float? b) =>
+        a.HasValue ? b.HasValue && !InertialScroller.Differs(a.Value, b.Value) : !b.HasValue;
+
     /// <summary>Recomputes the estimate for unmeasured rows; returns whether it changed.</summary>
     private bool UpdateEstimate()
     {
         float rowHeight = Math.Max(1f, _snapRowHeight);
-        float estimate;
-        if (_snapMode == KumikoRowHeightMode.Auto)
-        {
-            estimate = _measuredCount > 0
+        float estimate = _snapMode == KumikoRowHeightMode.Auto
+            ? _measuredCount > 0
                 ? (float)(_measuredSum / _measuredCount)
-                : Math.Max(rowHeight, _snapMin ?? rowHeight);
-        }
-        else
-        {
-            estimate = rowHeight;
-        }
-        if (!(estimate >= 1f)) estimate = 1f;
-        if (estimate == _estimate) return false;
+                : Math.Max(rowHeight, _snapMin ?? rowHeight)
+            : rowHeight;
+        if (float.IsNaN(estimate) || estimate < 1f) estimate = 1f;
+        if (!InertialScroller.Differs(estimate, _estimate)) return false;
         _estimate = estimate;
         return true;
     }

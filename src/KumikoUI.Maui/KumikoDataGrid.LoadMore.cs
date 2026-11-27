@@ -247,7 +247,7 @@ public partial class KumikoDataGrid
         LoadMoreRequested?.Invoke(this, e);
 
         // The user asked: say so now. An automatic batch is announced only if it is still loading a second later.
-        int batch = ++_loadMoreAnnounceBatch;
+        _loadMoreAnnounceBatch++;
         if (e.Trigger != KumikoLoadMoreTrigger.NearEnd)
         {
             Announce(KumikoAnnouncements.LoadMoreStarted(_dataSource.Strings));

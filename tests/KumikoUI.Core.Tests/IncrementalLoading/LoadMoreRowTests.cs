@@ -257,7 +257,7 @@ public class LoadMoreRowTests
 
         var ctx = grid.Render();
 
-        Assert.Contains(ctx.Fills, f => f.Rect.Y == BandTop + 36 && f.Color == grid.Style.SummaryRowBackgroundColor);
+        Assert.Contains(ctx.Fills, f => Math.Abs(f.Rect.Y - (BandTop + 36)) < 0.01f && f.Color == grid.Style.SummaryRowBackgroundColor);
         Assert.Equal(HitRegion.TableSummaryRow, grid.Hit(50, BandTop + 40).Region);
     }
 
@@ -399,7 +399,7 @@ public class LoadMoreRowTests
         grid.Pointer(InputAction.Hover, 50, BandTop + 10, PointerButton.None);
         var ctx = grid.Render();
 
-        Assert.Contains(ctx.Fills, f => f.Rect.Y == BandTop && f.Color == grid.Style.HoverOverlayColor);
+        Assert.Contains(ctx.Fills, f => Math.Abs(f.Rect.Y - BandTop) < 0.01f && f.Color == grid.Style.HoverOverlayColor);
     }
 
     // ── Keyboard ──

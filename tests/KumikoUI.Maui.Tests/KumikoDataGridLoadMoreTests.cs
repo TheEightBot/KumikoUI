@@ -209,6 +209,7 @@ public class KumikoDataGridLoadMoreTests
         grid.IsLoadingMore = false;
 
         Assert.Equal(2, await load);
+        Assert.Equal(2, items.Count);
     }
 
     [Fact]
@@ -224,6 +225,7 @@ public class KumikoDataGridLoadMoreTests
         grid.LoadMoreCommand = command;
 
         Assert.Equal(1, await grid.LoadMoreAsync());
+        Assert.Single(items);
     }
 
     [Fact]

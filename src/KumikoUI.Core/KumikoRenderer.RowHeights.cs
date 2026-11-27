@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using KumikoUI.Core.Input;
 using KumikoUI.Core.Layout;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
@@ -48,7 +49,7 @@ public sealed partial class KumikoRenderer
             float offset = scroll.OffsetY;
             var pending = rows.PendingScrollTarget;
             rows.PendingScrollTarget = null;
-            bool targeted = pending is { } p && p.OffsetY == scroll.OffsetY && p.Row >= frozen && p.Row < count;
+            bool targeted = pending is { } p && !InertialScroller.Differs(p.OffsetY, scroll.OffsetY) && p.Row >= frozen && p.Row < count;
 
             // The anchor: the first visible scrolling row, as the last frame laid it out, stays where it is on screen
             // while the rows above it change height (or the estimate they use changes).
@@ -92,7 +93,7 @@ public sealed partial class KumikoRenderer
                 if (!targeted) offset = rows.GetScrollTop(anchor, style) + anchorDelta;
             }
 
-            if (offset != scroll.OffsetY) scroll.OffsetY = offset;
+            if (InertialScroller.Differs(offset, scroll.OffsetY)) scroll.OffsetY = offset;
             // Rows left at their estimate (budget spent, or the visible rows still changing): finish next frame.
             if (exhausted || !settled) RedrawRequested?.Invoke(this, EventArgs.Empty);
         }
