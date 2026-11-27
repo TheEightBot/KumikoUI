@@ -138,8 +138,11 @@ public class KumikoDataGridSwipeTests
         grid.SwipeEnded += (_, e) => ended.Add(e);
         SwipeOpen(grid);
 
+        var opened = people[1];
         people.Insert(0, new Person("New", 1));
 
-        Assert.Null(Assert.Single(ended).InvokedItem);
+        var e = Assert.Single(ended);
+        Assert.Same(opened, e.DataItem);
+        Assert.Null(e.InvokedItem);
     }
 }
