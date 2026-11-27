@@ -66,6 +66,12 @@
             Icon="icon_events.png"
             ContentTemplate="{DataTemplate local:EventsPage}"
             Route="EventsPage" />
+
+        <ShellContent
+            Title="Auto Columns"
+            Icon="icon_grid.png"
+            ContentTemplate="{DataTemplate local:AutoColumnsPage}"
+            Route="AutoColumnsPage" />
     </TabBar>
 
 </Shell>

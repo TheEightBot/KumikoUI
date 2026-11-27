@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             x:Class="SampleApp.Maui.AutoColumnsPage"
+             Title="Auto Columns">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+        <Label Text="Auto columns: generated from the item type and its DataAnnotations attributes"
+               FontSize="16"
+               FontAttributes="Bold"
+               Padding="16,12,16,4"
+               Grid.Row="0" />
+
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+        <FlexLayout Wrap="NoWrap" JustifyContent="Start" AlignSelf="Start" Padding="16,4">
+            <!-- A different item type replaces the generated columns -->
+            <Button x:Name="itemsToggle" Text="Show products" Clicked="OnToggleItemsClicked" Margin="4,0,0,4" />
+        </FlexLayout>
+        </ScrollView>
+
+        <!-- No Columns declared: AutoGenerateColumns="Auto" builds them when the items arrive -->
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="2"
+                           AutoGenerateColumns="Auto"
+                           AutoGeneratingColumn="OnAutoGeneratingColumn"
+                           GridDescription="Auto-generated columns sample grid"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill" />
+    </Grid>
+</ContentPage>

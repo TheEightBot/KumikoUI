@@ -141,6 +141,7 @@
     <Compile Include="../Shared/GroupingTheme.cs" Link="Shared/GroupingTheme.cs" />
     <Compile Include="../Shared/ShowcaseData.cs" Link="Shared/ShowcaseData.cs" />
     <Compile Include="../Shared/RemoteOrders.cs" Link="Shared/RemoteOrders.cs" />
+    <Compile Include="../Shared/AutoColumnsData.cs" Link="Shared/AutoColumnsData.cs" />
   </ItemGroup>
 
   <!--
