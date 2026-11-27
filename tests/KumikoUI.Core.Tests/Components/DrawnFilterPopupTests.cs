@@ -19,9 +19,11 @@ public class DrawnFilterPopupTests
         public string Name { get; set; } = "";
     }
 
-    // Layout of a popup shown at (0, 0): the value list starts at y = 109, rows are 24 px, it is at most
-    // 250 px tall, and the scrollbar is the rightmost 12 px of the 208 px wide list (x 202–214).
-    private const float ListTop = 109;
+    // Layout of a popup shown at (0, 0) for a text column: the Values | Conditions switch (#325) takes 30 px under the
+    // sort rows, the value list starts at y = 139, rows are 24 px, it is at most 250 px tall, and the scrollbar is the
+    // rightmost 12 px of the 208 px wide list (x 202–214).
+    private const float SwitchRow = 30;
+    private const float ListTop = 109 + SwitchRow;
     private const float RowHeight = 24;
     private const float ListHeight = 250;
     private const float ItemX = 60;
@@ -53,7 +55,7 @@ public class DrawnFilterPopupTests
     {
         var ctx = new RecordingDrawingContext();
         popup.OnDraw(ctx);
-        return ctx.Texts.Select(t => t.Text!).Where(t => t.StartsWith('V')).ToList();
+        return ctx.Texts.Select(t => t.Text!).Where(t => t.Length == 6 && t[0] == 'V' && char.IsDigit(t[1])).ToList(); // not the Values tab
     }
 
     private static void Key(DrawnFilterPopup popup, KumikoKey key, char? character = null) =>
@@ -289,7 +291,7 @@ public class DrawnFilterPopupTests
     {
         var (popup, manager, _, _) = Open(100);
         popup.SearchText = "V0001"; // V00010–V00019
-        float rowY = 6 + 28 + 9 + 30 + 4 + 16;
+        float rowY = 6 + 28 + 9 + SwitchRow + 30 + 4 + 16;
 
         Pointer(manager, InputAction.Pressed, 150, rowY); // Deselect All
         Pointer(manager, InputAction.Released, 150, rowY);
@@ -359,7 +361,7 @@ public class DrawnFilterPopupTests
     {
         var (popup, manager, _, _) = Open(100);
         popup.SearchText = "V0001";
-        float rowY = 6 + 28 + 9 + 30 + 4 + 16;
+        float rowY = 6 + 28 + 9 + SwitchRow + 30 + 4 + 16;
         Pointer(manager, InputAction.Pressed, 150, rowY); // Deselect All (the results)
         Pointer(manager, InputAction.Released, 150, rowY);
         Assert.Equal(DrawnCheckState.Unchecked, popup.SelectAllState); // the results are all unchecked, the rest is not
@@ -392,7 +394,7 @@ public class DrawnFilterPopupTests
         var ctx = new RecordingDrawingContext();
         manager.DrawPopups(ctx);
 
-        var searchFill = ctx.Fills.First(f => f.Rect.Y > 40 && f.Rect.Y < 50 && f.Rect.Height < 30);
+        var searchFill = ctx.Fills.First(f => f.Rect.Y > 40 + SwitchRow && f.Rect.Y < 50 + SwitchRow && f.Rect.Height < 30);
         Assert.Equal(dark.BackgroundColor, searchFill.Color);
         Assert.DoesNotContain(ctx.Fills, f => f.Color == KumikoColor.White);
         Assert.Single(ctx.Fills, f => f.Color == new KumikoColor(0, 0, 0, 40));

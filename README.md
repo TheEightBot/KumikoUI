@@ -791,11 +791,14 @@ A column's `CustomComparer` replaces the comparer for that column's sort and gro
 Each column header with `AllowFiltering` (the default) shows a filter icon. Tapping it opens the filter popup:
 
 - two sort rows whose text follows the column type (A to Z, smallest to largest, newest to oldest, checked first), the first being the header's first-tap direction;
-- a search box that narrows the value list;
-- **Select All** and **Deselect All**, and a checklist of the column's distinct values;
-- **OK** applies the checked values as the column's filter, **Cancel** (or a tap outside the popup) closes it without changes, and **Clear** removes the column's filter.
+- on Text, ComboBox, Picker, Numeric, ProgressBar and Date columns, a **Values | Conditions** switch;
+- **Values**: a search box that narrows the value list, **Select All** and **Deselect All**, and a checklist of the column's distinct values;
+- **Conditions**: two conditions, each an operator and a value, joined by **And** or **Or**. Text columns offer contains, does not contain, equals, does not equal, begins with, ends with, is empty and is not empty; numeric columns equals, does not equal, greater than (or equal to) and less than (or equal to), with the number typed in the source's `Culture` (`1.234,5` in German); date columns on, not on, before, after, on or before and on or after, with a date picker that takes a typed date or opens a calendar. Is empty and Is not empty need no value, and a row without a value is left out;
+- **OK** applies the column's filter, **Cancel** (or a tap outside the popup) closes it without changes, and **Clear** removes the whole filter.
 
-The value list scrolls by drag, mouse wheel, its scrollbar, and Up/Down, Page Up/Page Down, Space, Enter and Escape. Filters on several columns combine. The filter icon is drawn in `FilterActiveIconColor` while the column has a filter.
+OK applies both pages, combined with And: the checked values and the conditions. A page you did not change keeps what the filter had, so OK on Values keeps the conditions and OK on Conditions keeps the checked values, and the tab of the page not shown has a dot while it holds criteria. A value that does not parse keeps the popup open with the `EnterNumber` or `EnterDate` message. The popup opens on Conditions when the column's filter has a condition. Set `KumikoColumn.AllowConditionFilter` to false to show only the values for a column; Boolean, Image and Template columns have no Conditions page.
+
+The value list scrolls by drag, mouse wheel, its scrollbar, and Up/Down, Page Up/Page Down, Space, Enter and Escape. Tab and Shift+Tab move between the switch (Left/Right change the page), the search box or the operators and values, And/Or (Space switches) and the buttons; Enter applies, and Escape closes an open operator list or calendar before the popup, as does a tap outside it. The value boxes take text like the search box (input methods, the soft keyboard, the clipboard), and a screen reader hears the page, the operator and where Tab moved (with the grid's `AnnounceChanges` on). Filters on several columns combine. The filter icon is drawn in `FilterActiveIconColor` while the column has a filter.
 
 From code, filter by predicate or per column:
 
@@ -809,6 +812,17 @@ var filter = new FilterDescription(departmentColumn)
     SelectedValues = new HashSet<string> { "Engineering", "Sales" },
 };
 kumiko.DataSource.SetColumnFilter(departmentColumn, filter);
+
+// Two conditions, as the Conditions page shows them: last names that begin with "Mc" or "Mac"
+kumiko.DataSource.SetColumnFilter(lastNameColumn, new FilterDescription(lastNameColumn)
+{
+    Condition1 = new FilterCondition { TextOperator = TextFilterOperator.StartsWith, Value = "Mc" },
+    Condition2 = new FilterCondition { TextOperator = TextFilterOperator.StartsWith, Value = "Mac" },
+    Combination = FilterCombination.Or,
+});
+
+// Only the value checklist for this column
+departmentColumn.AllowConditionFilter = false;
 
 // Remove filters
 kumiko.DataSource.SetFilter(null);
@@ -1138,13 +1152,15 @@ source.Strings = KumikoStrings.Default with
     FilterSelectAll = "Alle auswählen",
     FilterOk = "Übernehmen",
     FilterCancel = "Abbrechen",
+    FilterConditionsTab = "Bedingungen",
+    FilterTextStartsWith = "Beginnt mit",
     SortTextAscending = "A bis Z sortieren",
     SortNumericAscending = "Aufsteigend sortieren",
     EnterNumber = "Geben Sie eine Zahl ein.",
 };
 ```
 
-`KumikoStrings` is a record: start from `KumikoStrings.Default` (English) and replace what you need. It covers the grouping panel label and the group for empty values, the default summary labels, the filter popup (including its type-aware sort rows), the search panel and the validation messages. A message with `{0}` is a format string; keep the placeholder. Setting `Strings` or `Culture` rebuilds the view, so group headers and summaries follow.
+`KumikoStrings` is a record: start from `KumikoStrings.Default` (English) and replace what you need. It covers the grouping panel label and the group for empty values, the default summary labels, the filter popup (including its type-aware sort rows, its `FilterValuesTab` and `FilterConditionsTab`, `FilterAnd`, `FilterOr`, `FilterValuePlaceholder` and one string per condition operator: `FilterText*`, `FilterNumber*` and `FilterDate*`), the search panel and the validation messages. A message with `{0}` is a format string; keep the placeholder. Setting `Strings` or `Culture` rebuilds the view, so group headers and summaries follow.
 
 ---
 
