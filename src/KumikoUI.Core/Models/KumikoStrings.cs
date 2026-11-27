@@ -72,11 +72,17 @@ public sealed partial record KumikoStrings
     /// <summary>The filter popup's descending sort row for <see cref="KumikoColumnType.Numeric"/> columns. Default: "Sort Largest to Smallest".</summary>
     public string SortNumericDescending { get; init; } = "Sort Largest to Smallest";
 
-    /// <summary>The filter popup's ascending sort row for <see cref="KumikoColumnType.Date"/> columns. Default: "Sort Oldest to Newest".</summary>
+    /// <summary>The filter popup's ascending sort row for <see cref="KumikoColumnType.Date"/> and <see cref="KumikoColumnType.DateTime"/> columns. Default: "Sort Oldest to Newest".</summary>
     public string SortDateAscending { get; init; } = "Sort Oldest to Newest";
 
-    /// <summary>The filter popup's descending sort row for <see cref="KumikoColumnType.Date"/> columns. Default: "Sort Newest to Oldest".</summary>
+    /// <summary>The filter popup's descending sort row for <see cref="KumikoColumnType.Date"/> and <see cref="KumikoColumnType.DateTime"/> columns. Default: "Sort Newest to Oldest".</summary>
     public string SortDateDescending { get; init; } = "Sort Newest to Oldest";
+
+    /// <summary>The filter popup's ascending sort row for <see cref="KumikoColumnType.Time"/> columns. Default: "Sort Earliest to Latest".</summary>
+    public string SortTimeAscending { get; init; } = "Sort Earliest to Latest";
+
+    /// <summary>The filter popup's descending sort row for <see cref="KumikoColumnType.Time"/> columns. Default: "Sort Latest to Earliest".</summary>
+    public string SortTimeDescending { get; init; } = "Sort Latest to Earliest";
 
     /// <summary>The filter popup's row that sorts <see cref="KumikoColumnType.Boolean"/> columns checked rows first. Default: "Sort Checked First".</summary>
     public string SortBooleanCheckedFirst { get; init; } = "Sort Checked First";
@@ -242,14 +248,16 @@ public sealed partial record KumikoStrings
         ? type switch
         {
             KumikoColumnType.Numeric or KumikoColumnType.ProgressBar => SortNumericDescending,
-            KumikoColumnType.Date => SortDateDescending,
+            KumikoColumnType.Date or KumikoColumnType.DateTime => SortDateDescending,
+            KumikoColumnType.Time => SortTimeDescending,
             KumikoColumnType.Boolean => SortBooleanCheckedFirst,
             _ => SortTextDescending
         }
         : type switch
         {
             KumikoColumnType.Numeric or KumikoColumnType.ProgressBar => SortNumericAscending,
-            KumikoColumnType.Date => SortDateAscending,
+            KumikoColumnType.Date or KumikoColumnType.DateTime => SortDateAscending,
+            KumikoColumnType.Time => SortTimeAscending,
             KumikoColumnType.Boolean => SortBooleanUncheckedFirst,
             _ => SortTextAscending
         };

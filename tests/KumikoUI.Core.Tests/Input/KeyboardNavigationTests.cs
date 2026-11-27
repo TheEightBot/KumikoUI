@@ -818,6 +818,8 @@ public class KeyboardNavigationTests
         KumikoColumnType.Text,
         KumikoColumnType.Numeric,
         KumikoColumnType.Date,
+        KumikoColumnType.DateTime,
+        KumikoColumnType.Time,
         KumikoColumnType.Boolean,
         KumikoColumnType.ComboBox,
         KumikoColumnType.Picker,

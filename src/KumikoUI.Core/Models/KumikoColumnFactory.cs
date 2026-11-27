@@ -13,9 +13,11 @@ namespace KumikoUI.Core.Models;
 /// <listheader><term>Property type</term><description>Column</description></listheader>
 /// <item><term><see cref="bool"/></term><description><see cref="KumikoColumnType.Boolean"/>; three-state for <c>bool?</c></description></item>
 /// <item><term>integer, floating-point and <see cref="decimal"/> types</term><description><see cref="KumikoColumnType.Numeric"/>, right-aligned</description></item>
-/// <item><term><see cref="DateTime"/>, <see cref="DateTimeOffset"/>, <see cref="DateOnly"/></term><description><see cref="KumikoColumnType.Date"/></description></item>
+/// <item><term><see cref="DateTime"/>, <see cref="DateTimeOffset"/></term><description><see cref="KumikoColumnType.DateTime"/></description></item>
+/// <item><term><see cref="DateOnly"/></term><description><see cref="KumikoColumnType.Date"/></description></item>
+/// <item><term><see cref="TimeOnly"/>, <see cref="TimeSpan"/></term><description><see cref="KumikoColumnType.Time"/></description></item>
 /// <item><term>an enum</term><description><see cref="KumikoColumnType.ComboBox"/> offering the enum's values</description></item>
-/// <item><term><see cref="string"/>, <see cref="char"/>, <see cref="Guid"/>, <see cref="TimeSpan"/>, <see cref="TimeOnly"/></term><description><see cref="KumikoColumnType.Text"/></description></item>
+/// <item><term><see cref="string"/>, <see cref="char"/>, <see cref="Guid"/></term><description><see cref="KumikoColumnType.Text"/></description></item>
 /// </list>
 /// <para>Nullable value types map like their underlying type. Any other type (collections, byte arrays, other
 /// classes and structs) gets no column; declare one with a <see cref="KumikoColumn.ValueAccessor"/> or a custom renderer
@@ -77,12 +79,19 @@ public static class KumikoColumnFactory
             column.ColumnType = KumikoColumnType.Numeric;
             column.TextAlignment = KumikoTextAlignment.Right;
         }
-        else if (type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(DateOnly))
+        else if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
+        {
+            column.ColumnType = KumikoColumnType.DateTime;
+        }
+        else if (type == typeof(DateOnly))
         {
             column.ColumnType = KumikoColumnType.Date;
         }
-        else if (type != typeof(string) && type != typeof(char) && type != typeof(Guid)
-                 && type != typeof(TimeSpan) && type != typeof(TimeOnly))
+        else if (type == typeof(TimeSpan) || type == typeof(TimeOnly))
+        {
+            column.ColumnType = KumikoColumnType.Time;
+        }
+        else if (type != typeof(string) && type != typeof(char) && type != typeof(Guid))
         {
             return null;
         }

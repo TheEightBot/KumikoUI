@@ -109,6 +109,8 @@ public partial class MainPage : ContentPage
 				Department = Departments[_random.Next(Departments.Length)],
 				Salary = _random.Next(45000, 180000),
 				HireDate = DateTime.Today.AddDays(-_random.Next(100, 3000)),
+				ShiftStart = new TimeOnly(_random.Next(6, 12), _random.Next(0, 4) * 15),
+				LastLogin = DateTime.Now.AddMinutes(-_random.Next(10, 20000)),
 				IsActive = _random.NextDouble() > 0.15,
 				Approved = _random.Next(3) switch { 0 => true, 1 => false, _ => null },
 				City = Cities[_random.Next(Cities.Length)],
@@ -323,6 +325,8 @@ public class Employee : INotifyPropertyChanged
 	private string _department = string.Empty;
 	private decimal _salary;
 	private DateTime _hireDate;
+	private TimeOnly _shiftStart = new(9, 0);
+	private DateTime _lastLogin = DateTime.Now;
 	private bool _isActive;
 	private bool? _approved;
 	private string _city = string.Empty;
@@ -359,6 +363,20 @@ public class Employee : INotifyPropertyChanged
 	{
 		get => _hireDate;
 		set { _hireDate = value; OnPropertyChanged(); }
+	}
+
+	/// <summary>Time column — hour and minute editor.</summary>
+	public TimeOnly ShiftStart
+	{
+		get => _shiftStart;
+		set { _shiftStart = value; OnPropertyChanged(); }
+	}
+
+	/// <summary>DateTime column — calendar with a time row.</summary>
+	public DateTime LastLogin
+	{
+		get => _lastLogin;
+		set { _lastLogin = value; OnPropertyChanged(); }
 	}
 
 	/// <summary>Boolean column — checkbox toggle.</summary>

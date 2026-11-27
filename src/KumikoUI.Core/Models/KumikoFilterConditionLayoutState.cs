@@ -52,6 +52,17 @@ public sealed class KumikoFilterConditionLayoutState
                 state.ValueKind = KumikoFilterValueKind.Date;
                 state.Value = d.ToDateTime(TimeOnly.MinValue).ToString("O", invariant);
                 break;
+            case TimeOnly time:
+                state.ValueKind = KumikoFilterValueKind.Time;
+                state.Value = time.ToString("O", invariant);
+                break;
+            case TimeSpan span:
+                state.ValueKind = KumikoFilterValueKind.Time;
+                // A time of day reads back as a TimeOnly, a duration (a day or more, or negative) as a TimeSpan
+                state.Value = span >= TimeSpan.Zero && span < TimeSpan.FromDays(1)
+                    ? TimeOnly.FromTimeSpan(span).ToString("O", invariant)
+                    : span.ToString("c", invariant);
+                break;
             default:
                 object value = condition.Value;
                 if (KumikoComparer.TryGetNumber(value, out _))
@@ -94,6 +105,12 @@ public sealed class KumikoFilterConditionLayoutState
             case KumikoFilterValueKind.Date
                 when DateTime.TryParse(Value, invariant, DateTimeStyles.RoundtripKind, out var dt):
                 return dt;
+            case KumikoFilterValueKind.Time
+                when TimeOnly.TryParseExact(Value, "O", invariant, DateTimeStyles.None, out var time):
+                return time;
+            case KumikoFilterValueKind.Time
+                when TimeSpan.TryParse(Value, invariant, out var span):
+                return span;
             default:
                 return Value; // text, or a value that no longer parses as its kind
         }
