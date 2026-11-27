@@ -64,7 +64,7 @@ public sealed class RemoteOrderService
                 Customer = Customers[i % Customers.Length],
                 Region = Regions[i * 7 % Regions.Length],
                 Total = Math.Round(25m + i * 37 % 1900 + i % 7 * 0.25m, 2),
-                Placed = new DateTime(2026, 1, 1).AddHours(-i * 5),
+                Placed = new DateTime(2026, 1, 1).AddHours(-i * 5d),
             });
         }
         return page;
