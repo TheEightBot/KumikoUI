@@ -6,6 +6,11 @@ using static KumikoUI.Core.Tests.Export.ExportTests;
 
 namespace KumikoUI.Core.Tests.Export;
 
+// Runs alone: the memory test reads process-wide heap sizes, which tests running in parallel would inflate.
+[CollectionDefinition(nameof(ExportMemoryCollection), DisableParallelization = true)]
+public sealed class ExportMemoryCollection;
+
+[Collection(nameof(ExportMemoryCollection))]
 public class ExportAsyncTests
 {
     private static List<Person> Many(int count) => Enumerable.Range(0, count).Select(i => new Person
