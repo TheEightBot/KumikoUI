@@ -21,6 +21,10 @@ KumikoUI.Maui.KumikoDataGrid.IsColumnMenuEnabled.get -> bool
 KumikoUI.Maui.KumikoDataGrid.IsColumnMenuEnabled.set -> void
 KumikoUI.Maui.KumikoDataGrid.IsLoadingMore.get -> bool
 KumikoUI.Maui.KumikoDataGrid.IsLoadingMore.set -> void
+KumikoUI.Maui.KumikoDataGrid.IsPullToRefreshEnabled.get -> bool
+KumikoUI.Maui.KumikoDataGrid.IsPullToRefreshEnabled.set -> void
+KumikoUI.Maui.KumikoDataGrid.IsRefreshing.get -> bool
+KumikoUI.Maui.KumikoDataGrid.IsRefreshing.set -> void
 KumikoUI.Maui.KumikoDataGrid.LoadMoreAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 KumikoUI.Maui.KumikoDataGrid.LoadMoreBatchSize.get -> int
 KumikoUI.Maui.KumikoDataGrid.LoadMoreBatchSize.set -> void
@@ -41,6 +45,11 @@ KumikoUI.Maui.KumikoDataGrid.MaxRowHeight.get -> double
 KumikoUI.Maui.KumikoDataGrid.MaxRowHeight.set -> void
 KumikoUI.Maui.KumikoDataGrid.MinRowHeight.get -> double
 KumikoUI.Maui.KumikoDataGrid.MinRowHeight.set -> void
+KumikoUI.Maui.KumikoDataGrid.RefreshCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Maui.KumikoDataGrid.RefreshCommand.set -> void
+KumikoUI.Maui.KumikoDataGrid.RefreshCommandParameter.get -> object?
+KumikoUI.Maui.KumikoDataGrid.RefreshCommandParameter.set -> void
+KumikoUI.Maui.KumikoDataGrid.Refreshing -> System.EventHandler?
 KumikoUI.Maui.KumikoDataGrid.ResetLoadMore() -> void
 KumikoUI.Maui.KumikoDataGrid.RowHeightMode.get -> KumikoUI.Core.Models.KumikoRowHeightMode
 KumikoUI.Maui.KumikoDataGrid.RowHeightMode.set -> void
@@ -69,6 +78,8 @@ static readonly KumikoUI.Maui.KumikoDataGrid.HorizontalScrollBarVisibilityProper
 static readonly KumikoUI.Maui.KumikoDataGrid.IncrementalSourceProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.IsColumnMenuEnabledProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.IsLoadingMoreProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.IsPullToRefreshEnabledProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.IsRefreshingProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.LoadMoreBatchSizeProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.LoadMoreCommandParameterProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.LoadMoreCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
@@ -78,6 +89,8 @@ static readonly KumikoUI.Maui.KumikoDataGrid.LoadMoreStateProperty -> Microsoft.
 static readonly KumikoUI.Maui.KumikoDataGrid.LoadMoreThresholdProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.MaxRowHeightProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.MinRowHeightProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.RefreshCommandParameterProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.RefreshCommandProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.RowHeightModeProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.RowHeightResolverProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.SearchFiltersRowsProperty -> Microsoft.Maui.Controls.BindableProperty!
