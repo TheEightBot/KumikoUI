@@ -129,9 +129,8 @@ public sealed partial class KumikoInputController
         var doomed = new HashSet<object>(deleted, ReferenceEqualityComparer.Instance);
         int rowCount = dataSource.RowCount;
         int first = int.MaxValue;
-        foreach (var item in deleted)
+        foreach (int row in deleted.Select(dataSource.IndexOfRowKey))
         {
-            int row = dataSource.IndexOfRowKey(item);
             if (row >= 0 && row < first) first = row;
         }
         if (first == int.MaxValue) return null;

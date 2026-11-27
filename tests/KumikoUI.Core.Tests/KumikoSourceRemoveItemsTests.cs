@@ -42,6 +42,11 @@ public class KumikoSourceRemoveItemsTests
     private static string[] Ids(KumikoSource s) =>
         Enumerable.Range(0, s.RowCount).Where(i => !s.IsNonDataRow(i)).Select(i => ((Row)s.GetItem(i)).Id).ToArray();
 
+    private static IEnumerable<Row> Enumerate(IEnumerable<Row> rows)
+    {
+        foreach (var row in rows) yield return row;
+    }
+
     private static IReadOnlyList<object> Pick(Row[] rows, params int[] indices) => indices.Select(i => (object)rows[i]).ToArray();
 
     [Fact]
@@ -116,7 +121,7 @@ public class KumikoSourceRemoveItemsTests
     public void AnEnumerableThatIsNotAList_IsACopy_AndIsNotSupported()
     {
         var rows = Rows();
-        var source = MakeSource(rows.Select(r => r));
+        var source = MakeSource(Enumerate(rows));
 
         Assert.Equal(KumikoRemoveResult.NotSupportedSource, source.RemoveItems(Pick(rows, 1)));
 
