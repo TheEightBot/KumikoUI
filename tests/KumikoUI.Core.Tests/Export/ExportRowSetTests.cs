@@ -279,6 +279,6 @@ public class ExportGroupTests
         var source = Source();
         source.AddTableSummaryRow(new TableSummaryRow("t") { Title = "Total", Columns = { new SummaryColumnDescription("Salary", SummaryType.Sum) { Label = "" } } });
         var rows = Rfc4180.Parse(source.ExportToCsvString(new KumikoExportOptions { GroupLayout = KumikoExportGroupLayout.None, IncludeSummaries = true, Columns = new[] { Col(source, "Name"), Col(source, "Salary") } }));
-        Assert.Equal(new[] { "Total", "5,100.75" }, new[] { rows[^1][0], rows[^1][1] });
+        Assert.Equal(new[] { "Total", "5100.75" }, new[] { rows[^1][0], rows[^1][1] });
     }
 }

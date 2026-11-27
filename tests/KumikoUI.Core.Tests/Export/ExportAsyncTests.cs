@@ -113,13 +113,14 @@ public class ExportAsyncTests
     public async Task ThreadPoolReads_DoNotRunOnTheCallingThread()
     {
         var threads = new HashSet<int>();
-        var source = Reading(threads);
+        KumikoSource source = null!;
         int caller = -1;
         var done = new TaskCompletionSource();
         // A dedicated (non-pool) thread plays the UI thread.
         var ui = new Thread(() =>
         {
             caller = Environment.CurrentManagedThreadId;
+            source = Reading(threads); // the source belongs to the thread that creates it
             source.ExportToCsvAsync(new MemoryStream()).ContinueWith(t =>
             {
                 if (t.IsFaulted) done.SetException(t.Exception!.InnerExceptions); else done.SetResult();
@@ -188,16 +189,7 @@ public class ExportAsyncTests
         long peak = 0;
         var progress = new SyncProgress(_ => peak = Math.Max(peak, GC.GetTotalMemory(false)));
 
-        GC.Collect();
-        long baseline = GC.GetTotalMemory(true);
-        await source.ExportToCsvAsync(stream, progress: progress);
-
-        Assert.True(stream.BytesWritten > 10_000_000, $"output was {stream.BytesWritten} bytes");
-        GC.Collect();
-        Assert.True(GC.GetTotalMemory(true) - baseline < 8_000_000, "memory retained after the export");
-        Assert.True(peak - baseline < 60_000_000, $"peak {peak - baseline} above the baseline");
-
-        // The rows and their formatting, on this thread so other tests cannot add to the count: far less than the output.
+        // The source belongs to this thread: take what needs it before the first await.
         var snapshot = KumikoExportSnapshot.Create(source);
         var sink = new CsvStreamSink(new CountingStream(), new KumikoCsvOptions(), canBlock: true, CancellationToken.None);
         var formatter = new CsvRowFormatter(new KumikoCsvOptions(), ',');
@@ -209,6 +201,15 @@ public class ExportAsyncTests
         }
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Assert.True(allocated < 10_000_000, $"allocated {allocated} bytes streaming 1M cells");
+
+        GC.Collect();
+        long baseline = GC.GetTotalMemory(true);
+        await source.ExportToCsvAsync(stream, progress: progress);
+
+        Assert.True(stream.BytesWritten > 10_000_000, $"output was {stream.BytesWritten} bytes");
+        GC.Collect();
+        Assert.True(GC.GetTotalMemory(true) - baseline < 8_000_000, "memory retained after the export");
+        Assert.True(peak - baseline < 60_000_000, $"peak {peak - baseline} above the baseline");
     }
 
     private sealed class SyncProgress(Action<KumikoExportProgress> action) : IProgress<KumikoExportProgress>
