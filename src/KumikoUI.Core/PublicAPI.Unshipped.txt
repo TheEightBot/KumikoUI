@@ -339,6 +339,10 @@ KumikoUI.Core.Input.KumikoInputController.ShowColumnMenuButton.set -> void
 KumikoUI.Core.Input.KumikoInputController.ShowSearchPanel(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> void
 KumikoUI.Core.Input.KumikoKey.ContextMenu = 23 -> KumikoUI.Core.Input.KumikoKey
 KumikoUI.Core.Input.KumikoKey.F = 24 -> KumikoUI.Core.Input.KumikoKey
+KumikoUI.Core.KumikoRenderer.EmptyViewRenderer.get -> KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer?
+KumikoUI.Core.KumikoRenderer.EmptyViewRenderer.set -> void
+KumikoUI.Core.KumikoRenderer.EmptyViewText.get -> string?
+KumikoUI.Core.KumikoRenderer.EmptyViewText.set -> void
 KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.get -> bool
 KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.set -> void
 KumikoUI.Core.Layout.KumikoLayoutEngine.GetContentHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style) -> float
@@ -368,6 +372,9 @@ KumikoUI.Core.Models.KumikoColumnFactory
 KumikoUI.Core.Models.KumikoColumnType.DateTime = 11 -> KumikoUI.Core.Models.KumikoColumnType
 KumikoUI.Core.Models.KumikoColumnType.Selection = 9 -> KumikoUI.Core.Models.KumikoColumnType
 KumikoUI.Core.Models.KumikoColumnType.Time = 10 -> KumikoUI.Core.Models.KumikoColumnType
+KumikoUI.Core.Models.KumikoEmptyViewKind
+KumikoUI.Core.Models.KumikoEmptyViewKind.NoItems = 0 -> KumikoUI.Core.Models.KumikoEmptyViewKind
+KumikoUI.Core.Models.KumikoEmptyViewKind.NoMatches = 1 -> KumikoUI.Core.Models.KumikoEmptyViewKind
 KumikoUI.Core.Models.KumikoFilterValueKind.Time = 5 -> KumikoUI.Core.Models.KumikoFilterValueKind
 KumikoUI.Core.Models.KumikoRowHeightContext
 KumikoUI.Core.Models.KumikoRowHeightContext.DefaultHeight.get -> float
@@ -397,7 +404,9 @@ KumikoUI.Core.Models.KumikoSource.IncrementalSource.get -> KumikoUI.Core.Data.IK
 KumikoUI.Core.Models.KumikoSource.IncrementalSource.set -> void
 KumikoUI.Core.Models.KumikoSource.InvalidateRowHeight(object! item) -> void
 KumikoUI.Core.Models.KumikoSource.InvalidateRowHeights() -> void
+KumikoUI.Core.Models.KumikoSource.IsFiltered.get -> bool
 KumikoUI.Core.Models.KumikoSource.IsSearchActive.get -> bool
+KumikoUI.Core.Models.KumikoSource.ItemCount.get -> int
 KumikoUI.Core.Models.KumikoSource.SearchChanged -> System.EventHandler?
 KumikoUI.Core.Models.KumikoSource.SearchFiltersRows.get -> bool
 KumikoUI.Core.Models.KumikoSource.SearchFiltersRows.set -> void
@@ -442,6 +451,10 @@ KumikoUI.Core.Models.KumikoStrings.ColumnMenuName.get -> string!
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuName.init -> void
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuUngroup.get -> string!
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuUngroup.init -> void
+KumikoUI.Core.Models.KumikoStrings.EmptyViewNoItems.get -> string!
+KumikoUI.Core.Models.KumikoStrings.EmptyViewNoItems.init -> void
+KumikoUI.Core.Models.KumikoStrings.EmptyViewNoMatches.get -> string!
+KumikoUI.Core.Models.KumikoStrings.EmptyViewNoMatches.init -> void
 KumikoUI.Core.Models.KumikoStrings.FilterAnd.get -> string!
 KumikoUI.Core.Models.KumikoStrings.FilterAnd.init -> void
 KumikoUI.Core.Models.KumikoStrings.FilterConditionsTab.get -> string!
@@ -522,6 +535,10 @@ KumikoUI.Core.Models.KumikoStrings.SortTimeDescending.get -> string!
 KumikoUI.Core.Models.KumikoStrings.SortTimeDescending.init -> void
 KumikoUI.Core.Models.KumikoStyle.CellVerticalPadding.get -> float
 KumikoUI.Core.Models.KumikoStyle.CellVerticalPadding.set -> void
+KumikoUI.Core.Models.KumikoStyle.EmptyViewFont.get -> KumikoUI.Core.Rendering.KumikoFont?
+KumikoUI.Core.Models.KumikoStyle.EmptyViewFont.set -> void
+KumikoUI.Core.Models.KumikoStyle.EmptyViewTextColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Models.KumikoStyle.EmptyViewTextColor.set -> void
 KumikoUI.Core.Models.KumikoStyle.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoStyle.HorizontalScrollBarVisibility.set -> void
 KumikoUI.Core.Models.KumikoStyle.LoadMoreErrorTextColor.get -> KumikoUI.Core.Rendering.KumikoColor
@@ -558,10 +575,14 @@ KumikoUI.Core.Models.KumikoStyle.SearchCurrentHighlightColor.get -> KumikoUI.Cor
 KumikoUI.Core.Models.KumikoStyle.SearchCurrentHighlightColor.set -> void
 KumikoUI.Core.Models.KumikoStyle.SearchHighlightColor.get -> KumikoUI.Core.Rendering.KumikoColor
 KumikoUI.Core.Models.KumikoStyle.SearchHighlightColor.set -> void
+KumikoUI.Core.Models.KumikoStyle.ShowEmptyView.get -> bool
+KumikoUI.Core.Models.KumikoStyle.ShowEmptyView.set -> void
 KumikoUI.Core.Models.KumikoStyle.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoStyle.VerticalScrollBarVisibility.set -> void
 KumikoUI.Core.Models.KumikoStyleOptions.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility?
 KumikoUI.Core.Models.KumikoStyleOptions.HorizontalScrollBarVisibility.set -> void
+KumikoUI.Core.Models.KumikoStyleOptions.ShowEmptyView.get -> bool?
+KumikoUI.Core.Models.KumikoStyleOptions.ShowEmptyView.set -> void
 KumikoUI.Core.Models.KumikoStyleOptions.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility?
 KumikoUI.Core.Models.KumikoStyleOptions.VerticalScrollBarVisibility.set -> void
 KumikoUI.Core.Rendering.CellRenderContext.IsCurrentSearchMatch.get -> bool
@@ -571,6 +592,8 @@ KumikoUI.Core.Rendering.CellRenderContext.SearchMatchLength.init -> void
 KumikoUI.Core.Rendering.CellRenderContext.SearchMatchStart.get -> int
 KumikoUI.Core.Rendering.CellRenderContext.SearchMatchStart.init -> void
 KumikoUI.Core.Rendering.IDrawingContext.MeasureText(string! text, int start, int length, KumikoUI.Core.Rendering.KumikoPaint! paint) -> KumikoUI.Core.Rendering.KumikoSize
+KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer
+KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, KumikoUI.Core.Rendering.KumikoRect bounds, KumikoUI.Core.Models.KumikoEmptyViewKind kind, string! text, KumikoUI.Core.Models.KumikoStyle! style) -> void
 KumikoUI.Core.Rendering.IMeasurableCellRenderer
 KumikoUI.Core.Rendering.IMeasurableCellRenderer.MeasureHeight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> float?
 KumikoUI.Core.Rendering.KumikoIcon.ColumnMenu = 20 -> KumikoUI.Core.Rendering.KumikoIcon
@@ -625,6 +648,7 @@ static KumikoUI.Core.Layout.KumikoScroller.GetRowHeight(KumikoUI.Core.Models.Kum
 static KumikoUI.Core.Models.KumikoAnnouncements.CheckAllBox(KumikoUI.Core.Models.KumikoStrings! strings, bool? state) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.CheckAllToggled(KumikoUI.Core.Models.KumikoStrings! strings, bool allSelected, int rowCount, System.Globalization.CultureInfo? culture = null) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.ColumnMenuName(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Models.KumikoColumn! column, int columnIndex) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.EmptyView(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Models.KumikoEmptyViewKind kind, string? overrideText = null) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.LoadMoreCompleted(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs! e, System.Globalization.CultureInfo? culture = null) -> string?
 static KumikoUI.Core.Models.KumikoAnnouncements.LoadMoreStarted(KumikoUI.Core.Models.KumikoStrings! strings) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.MenuItem(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Components.DrawnMenuItem! item) -> string!
