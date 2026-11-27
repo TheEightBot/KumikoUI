@@ -32,6 +32,11 @@
                 <Button x:Name="btnClear" Content="Clear" Click="OnClearClicked" />
                 <Button x:Name="btnUpdateRandom" Content="Update 100 Random" Click="OnUpdateRandomClicked" />
                 <ToggleSwitch x:Name="frameStatsSwitch" OnContent="Frame stats" OffContent="Frame stats" />
+                <!-- KumikoDataGrid.VerticalScrollBarVisibility / HorizontalScrollBarVisibility (#316) -->
+                <ComboBox x:Name="scrollBarCombo"
+                          Header="Scroll bars"
+                          MinWidth="120"
+                          SelectionChanged="OnScrollBarsChanged" />
             </StackPanel>
         </ScrollViewer>
 

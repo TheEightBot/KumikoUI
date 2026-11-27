@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using KumikoUI.Core.Models;
 using KumikoUI.Maui;
 
 namespace SampleApp.Maui;
@@ -25,6 +26,17 @@ public partial class LargeDataPage : ContentPage
         renderModePicker.ItemsSource = Enum.GetValues<KumikoRenderMode>();
         renderModePicker.SelectedItem = kumiko.RenderMode;
         ShowSurface();
+
+        // Scroll bars: Auto fades them in while scrolling and on mouse hover; Always keeps them drawn
+        scrollBarPicker.ItemsSource = Enum.GetValues<KumikoScrollBarVisibility>();
+        scrollBarPicker.SelectedItem = kumiko.VerticalScrollBarVisibility;
+    }
+
+    private void OnScrollBarsChanged(object? sender, EventArgs e)
+    {
+        if (scrollBarPicker.SelectedItem is not KumikoScrollBarVisibility visibility) return;
+        kumiko.VerticalScrollBarVisibility = visibility;
+        kumiko.HorizontalScrollBarVisibility = visibility;
     }
 
     private void OnRenderModeChanged(object? sender, EventArgs e)

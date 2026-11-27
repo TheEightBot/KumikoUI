@@ -420,7 +420,8 @@ public class KeyboardNavigationTests
 
     /// <summary>
     /// The current row is entirely on screen: the hit tester (independent of the scroll math) finds that row
-    /// just inside its top and bottom edges, not a band drawn over it.
+    /// just inside its top and bottom edges, not a band drawn over it. A finger probes it: the overlay scroll bars,
+    /// which a mouse lands on at the rows' edges, are not a band the rows scroll clear of.
     /// </summary>
     private static void AssertCurrentRowFullyVisible(InputGrid g)
     {
@@ -431,7 +432,7 @@ public class KeyboardNavigationTests
 
         foreach (float y in new[] { bounds.Y + 1, bounds.Y + bounds.Height / 2, bounds.Bottom - 1 })
         {
-            var hit = g.Hit(10, y);
+            var hit = g.Hit(10, y, KumikoPointerDeviceType.Touch);
             Assert.True(hit.RowIndex == row && hit.Region is HitRegion.Cell or HitRegion.GroupHeaderRow or HitRegion.GroupChevron,
                 $"row {row} at y {y} hit {hit.Region} row {hit.RowIndex} (offset {g.Scroll.OffsetY})");
         }
@@ -568,7 +569,7 @@ public class KeyboardNavigationTests
         Assert.Equal(232, g.Scroll.OffsetX);
         Assert.Equal(g.Scroll.MaxOffsetX, g.Scroll.OffsetX);
         var bounds = KumikoInputController.GetCellScreenBounds(0, 4, g.Scroll, g.Style, g.Source.Columns, dataSource: g.Source);
-        Assert.Equal(4, g.Hit(bounds.Right - 1, g.RowY(0)).ColumnIndex);
+        Assert.Equal(4, g.Hit(bounds.Right - 1, g.RowY(0), KumikoPointerDeviceType.Touch).ColumnIndex); // under the overlay scroll bar
         Assert.Equal(4, g.Hit(bounds.X + 1, g.RowY(0)).ColumnIndex);
     }
 

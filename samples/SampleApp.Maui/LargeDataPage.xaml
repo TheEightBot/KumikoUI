@@ -30,6 +30,12 @@
                     SelectedIndexChanged="OnRenderModeChanged"
                     Margin="8,0,0,4"
                     VerticalOptions="Center" />
+            <!-- KumikoDataGrid.VerticalScrollBarVisibility / HorizontalScrollBarVisibility (#316) -->
+            <Picker x:Name="scrollBarPicker"
+                    Title="Scroll bars"
+                    SelectedIndexChanged="OnScrollBarsChanged"
+                    Margin="8,0,0,4"
+                    VerticalOptions="Center" />
             <Label x:Name="surfaceLabel" VerticalOptions="Center" Margin="8,0" />
             <Label x:Name="statusLabel" Text="No data loaded" VerticalOptions="Center" Margin="8,0" />
         </FlexLayout>

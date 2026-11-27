@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using KumikoUI.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -29,6 +30,17 @@ public sealed partial class LargeDataPage : Page
     {
         this.InitializeComponent();
         DataContext = _viewModel;
+
+        // Scroll bars: Auto fades them in while scrolling and on mouse hover; Always keeps them drawn
+        scrollBarCombo.ItemsSource = Enum.GetValues<KumikoScrollBarVisibility>();
+        scrollBarCombo.SelectedItem = kumiko.VerticalScrollBarVisibility;
+    }
+
+    private void OnScrollBarsChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (scrollBarCombo.SelectedItem is not KumikoScrollBarVisibility visibility) return;
+        kumiko.VerticalScrollBarVisibility = visibility;
+        kumiko.HorizontalScrollBarVisibility = visibility;
     }
 
     private async void LoadData(int count)

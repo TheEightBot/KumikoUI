@@ -34,10 +34,17 @@ public sealed class KumikoStyleOptions
     /// </summary>
     public KumikoColor? AlternateRowBackground { get; set; }
 
+    /// <summary>When the vertical scroll bar is drawn (<see cref="KumikoStyle.VerticalScrollBarVisibility"/>).</summary>
+    public KumikoScrollBarVisibility? VerticalScrollBarVisibility { get; set; }
+
+    /// <summary>When the horizontal scroll bar is drawn (<see cref="KumikoStyle.HorizontalScrollBarVisibility"/>).</summary>
+    public KumikoScrollBarVisibility? HorizontalScrollBarVisibility { get; set; }
+
     /// <summary>True when at least one setting is set.</summary>
     public bool HasOverrides =>
         RowHeight.HasValue || HeaderHeight.HasValue || ShowHorizontalGridLines.HasValue || ShowVerticalGridLines.HasValue ||
-        AllowRowDragDrop.HasValue || ShowRowDragHandle.HasValue || AlternateRowBackground.HasValue;
+        AllowRowDragDrop.HasValue || ShowRowDragHandle.HasValue || AlternateRowBackground.HasValue ||
+        VerticalScrollBarVisibility.HasValue || HorizontalScrollBarVisibility.HasValue;
 
     /// <summary>Write every setting that is set into <paramref name="style"/>; unset ones leave it untouched.</summary>
     public void Apply(KumikoStyle style)
@@ -55,5 +62,7 @@ public sealed class KumikoStyleOptions
             style.AlternateRowColor = alternate;
             style.AlternateRowBackground = true;
         }
+        if (VerticalScrollBarVisibility is { } verticalBar) style.VerticalScrollBarVisibility = verticalBar;
+        if (HorizontalScrollBarVisibility is { } horizontalBar) style.HorizontalScrollBarVisibility = horizontalBar;
     }
 }

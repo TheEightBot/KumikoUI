@@ -70,7 +70,7 @@ public sealed partial class KumikoInputController
     {
         if (!_animations.IsActive) return false;
         bool running = _animations.Update(frameIntervalMs);
-        Redraw();
+        if (_animations.ChangedVisibly) Redraw(); // a scroll bar's hold draws nothing new
         return running;
     }
 
@@ -293,12 +293,15 @@ public sealed partial class KumikoInputController
 
     /// <summary>
     /// Whether a row drag or a column header drag holds the pointer in an edge autoscroll band (see
-    /// <see cref="ScrollSettings.AutoScrollEdgeSize"/>) and the grid can still scroll that way. Hosts check it after each pointer event and, while it is true, call
+    /// <see cref="ScrollSettings.AutoScrollEdgeSize"/>) and the grid can still scroll that way, or a mouse or pen
+    /// press held on a scroll bar's track pages toward the pointer. Hosts check it after each pointer event and, while it is true, call
     /// <see cref="UpdateAutoScroll"/> once per frame (from the same frame loop or timer as
     /// <see cref="UpdateInertialScroll"/>).
     /// </summary>
     public bool IsAutoScrolling =>
-        (_isDraggingRow && _autoScrollVelocityY != 0) || (_isDraggingColumn && _autoScrollVelocityX != 0);
+        (_isDraggingRow && !InertialScroller.IsZero(_autoScrollVelocityY))
+        || (_isDraggingColumn && !InertialScroller.IsZero(_autoScrollVelocityX))
+        || IsPagingScrollBar;
 
     /// <summary>
     /// Whether the grid responds to the user. While false, pointer and key events are ignored (the grid does
@@ -348,6 +351,7 @@ public sealed partial class KumikoInputController
         {
             SetCursor(_isResizingColumn ? KumikoCursor.ResizeHorizontal : KumikoCursor.Default);
             if (_feedback.ClearHover()) Redraw();
+            UpdateScrollBarHover(HitRegion.None, e.DeviceType); // KumikoInputController.ScrollBars.cs
             return;
         }
 
@@ -498,6 +502,7 @@ public sealed partial class KumikoInputController
         _feedback.ClearHover();
         _feedback.EndPress();
         _animations.StopAll();
+        ResetScrollBars();
         if (_popupManager.HasActivePopups) _popupManager.CloseAll();
         if (_editSession is { IsEditing: true }) _editSession.CancelEdit();
         SetCursor(KumikoCursor.Default);
@@ -872,7 +877,7 @@ public sealed partial class KumikoInputController
     /// column header drag holds it in a left or right edge band of the scrolling columns
     /// (<see cref="IsAutoScrolling"/>), scroll toward that edge by the band's speed times
     /// <paramref name="frameIntervalMs"/>. The ghost stays under the pointer, so the drop target follows the rows or
-    /// columns scrolling by. Returns true while it keeps scrolling; false when there is nothing to do or the content edge was
+    /// columns scrolling by. A press held on a scroll bar's track pages the same way, toward the pointer. Returns true while it keeps scrolling; false when there is nothing to do or the content edge was
     /// reached (autoscroll then waits for the pointer to move again). Call it from the frame loop or timer that runs
     /// <see cref="UpdateInertialScroll"/>; it allocates nothing.
     /// </summary>
@@ -882,6 +887,7 @@ public sealed partial class KumikoInputController
     public bool UpdateAutoScroll(ScrollState scroll, float frameIntervalMs = 16f)
     {
         if (!IsAutoScrolling) return false;
+        if (IsPagingScrollBar) return StepScrollBarPaging(scroll, frameIntervalMs);
 
         float seconds = Math.Max(0, frameIntervalMs) / 1000f;
         float oldX = scroll.OffsetX, oldY = scroll.OffsetY;
@@ -953,6 +959,7 @@ public sealed partial class KumikoInputController
         }
 
         var hit = _hitTester.HitTest(e.X, e.Y, scroll, style, columns, totalRows, dataSource, e.DeviceType);
+        if (TryBeginScrollBarPress(hit.Region, e, scroll, style, dataSource)) return;
         _pressRegion = hit.Region;
         _pressColumnIndex = hit.ColumnIndex;
         _pressRowIndex = hit.RowIndex;
@@ -1003,6 +1010,12 @@ public sealed partial class KumikoInputController
         IReadOnlyList<KumikoColumn> columns, int totalRows,
         KumikoSource dataSource)
     {
+        if (_scrollBarPress != ScrollBarAxis.None)
+        {
+            HandleScrollBarMove(e, scroll, style, dataSource);
+            return;
+        }
+
         // Forward move events to the active editor first — this enables hover
         // highlighting on dropdown items and prevents the grid from starting
         // a pan while the mouse is inside an editor overlay.
@@ -1163,6 +1176,7 @@ public sealed partial class KumikoInputController
         var target = FeedbackTargetFor(hit.Region, hit.RowIndex, hit.ColumnIndex, hit.Column, hit.GroupDescriptionIndex,
             x, y, scroll, style, dataSource);
         SetCursor(_isResizingColumn ? KumikoCursor.ResizeHorizontal : CursorFor(hit.Region, target));
+        UpdateScrollBarHover(hit.Region, deviceType);
         if (_feedback.SetHover(deviceType == KumikoPointerDeviceType.Touch || _isResizingColumn ? FeedbackTarget.None : target,
                 x, y, scroll))
             Redraw();
@@ -1253,6 +1267,8 @@ public sealed partial class KumikoInputController
         IReadOnlyList<KumikoColumn> columns, int totalRows,
         KumikoSource dataSource)
     {
+        if (EndScrollBarPress(e)) return;
+
         if (_isResizingColumn)
         {
             _isResizingColumn = false;
@@ -1533,6 +1549,7 @@ public sealed partial class KumikoInputController
     /// </summary>
     private void HandlePointerCancelled(KumikoPointerEventArgs e, ScrollState scroll, KumikoStyle style, KumikoSource dataSource)
     {
+        if (EndScrollBarPress(e)) return;
         _editorConsumedPointerDown = false;
         _headerLongPressColumn = -1;
 
@@ -1617,7 +1634,7 @@ public sealed partial class KumikoInputController
     {
         // A long press that arrives after the press became a pan or a drag (the host's timer allows a little
         // movement) belongs to that gesture: it neither selects nor edits.
-        if (_isPanning || _isDraggingRow || _isDraggingColumn || _isResizingColumn)
+        if (_isPanning || _isDraggingRow || _isDraggingColumn || _isResizingColumn || _scrollBarPress != ScrollBarAxis.None)
         {
             e.Handled = true;
             return;

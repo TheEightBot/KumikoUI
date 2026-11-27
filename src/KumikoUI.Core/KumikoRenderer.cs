@@ -15,6 +15,7 @@ public sealed class KumikoRenderer : IDisposable
 {
     private readonly KumikoLayoutEngine _layout = new();
     private readonly PaintCache _paintCache = new();
+    private readonly ScrollBarRenderer _scrollBars = new(); // #316
 
     // The effective style of the cell being drawn when resolvers override the column's style; reused per cell
     private readonly KumikoCellStyle _effectiveCellStyle = new();
@@ -556,6 +557,9 @@ public sealed class KumikoRenderer : IDisposable
 
         // Restore from grouping panel offset
         ctx.Restore();
+
+        // Scroll bars over the rows (#316), in viewport coordinates
+        _scrollBars.Draw(ctx, dataSource, scroll, style, _inputController);
 
         // Keep the editor on its cell (it moves when the grid scrolls, sorts or regroups), hidden while
         // the cell is scrolled out of view, then draw it on top of everything (absolute coordinates).

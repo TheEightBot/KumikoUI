@@ -32,5 +32,13 @@ public enum HitRegion
     /// <summary>A group summary row.</summary>
     GroupSummaryRow,
     /// <summary>A table summary row.</summary>
-    TableSummaryRow
+    TableSummaryRow,
+    /// <summary>The thumb of the vertical scroll bar (a mouse or pen only; a finger pans through the bar).</summary>
+    VerticalScrollBarThumb,
+    /// <summary>The track of the vertical scroll bar, above or below its thumb (a mouse or pen only).</summary>
+    VerticalScrollBarTrack,
+    /// <summary>The thumb of the horizontal scroll bar (a mouse or pen only; a finger pans through the bar).</summary>
+    HorizontalScrollBarThumb,
+    /// <summary>The track of the horizontal scroll bar, left or right of its thumb (a mouse or pen only).</summary>
+    HorizontalScrollBarTrack
 }
