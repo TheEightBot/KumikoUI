@@ -277,10 +277,12 @@ public sealed partial class KumikoInputController
 
     /// <summary>
     /// The text-input surface that has the keyboard, for a host's native text-input adapter: the open
-    /// filter popup's search box, else the active editor's, else null.
+    /// filter popup's focused text box (its search box, or a condition's value box), else the active editor's, else null.
+    /// While the filter popup has the keyboard on something else (an operator drop-down), this is null.
     /// </summary>
-    public ITextInputSession? ActiveTextInput =>
-        _activeFilterPopup?.SearchTextInput ?? SearchPanelTextInput ?? _editSession?.ActiveTextInput;
+    public ITextInputSession? ActiveTextInput => _activeFilterPopup != null
+        ? _activeFilterPopup.ActiveTextInput
+        : SearchPanelTextInput ?? _editSession?.ActiveTextInput;
 
     /// <summary>
     /// Raised when a column edge is double-clicked, requesting auto-fit width. The built-in hosts answer it with
@@ -2060,6 +2062,7 @@ public sealed partial class KumikoInputController
         KumikoRect Anchor()
         {
             _popupManager.Viewport = new KumikoRect(0, 0, scroll.ViewportWidth, scroll.ViewportHeight);
+            popup.PopupViewport = _popupManager.Viewport; // its operator drop-downs and calendar stay on screen
             float x = HeaderScreenX(column, scroll, dataSource, style);
             float popupWidth = popup.Bounds.Width;
             if (x + popupWidth > scroll.ViewportWidth)
@@ -2083,6 +2086,7 @@ public sealed partial class KumikoInputController
         popup.RedrawRequested += (_, _) => Redraw();
         popup.KeyboardFocusRequested += (_, _) => KeyboardFocusRequested?.Invoke(this, EventArgs.Empty);
         WireSearchClipboard(popup);
+        WireFilterConditions(popup); // #325
 
         _popupManager.Show(popup, Anchor, PopupPlacement.Below);
         _activeFilterPopup = popup;
@@ -2297,6 +2301,7 @@ public sealed partial class KumikoInputController
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(dataSource);
         if (_editSession != null && _editSession.IsEditing) return true;
+        if (_activeFilterPopup != null) return true; // Tab moves through the filter popup (#325)
         return FindNextTabStop(selection.CurrentCell, dataSource, backwards ? -1 : 1).IsValid;
     }
 

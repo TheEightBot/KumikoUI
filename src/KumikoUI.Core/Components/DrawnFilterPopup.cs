@@ -7,9 +7,11 @@ namespace KumikoUI.Core.Components;
 /// <summary>
 /// Custom-drawn Excel-style filter popup:
 /// - sort ascending/descending;
-/// - a search box (a <see cref="DrawnTextBox"/>) that narrows the value list;
-/// - Select All / Deselect All for the values shown;
-/// - a virtualized, scrollable checkbox list of the column's distinct values;
+/// - for a column with condition filters, a Values | Conditions switch (<see cref="Mode"/>);
+/// - on Values: a search box (a <see cref="DrawnTextBox"/>) that narrows the value list, Select All / Deselect All
+///   for the values shown, and a virtualized, scrollable checkbox list of the column's distinct values;
+/// - on Conditions: two conditions, each an operator drop-down and a value editor for the column type (a text box,
+///   a number parsed in the source's culture, or a date picker), joined by And or Or;
 /// - OK / Cancel / Clear.
 /// </summary>
 /// <remarks>
@@ -17,8 +19,10 @@ namespace KumikoUI.Core.Components;
 /// threshold), by the mouse wheel, by dragging or clicking the scrollbar, and by the keyboard: Up/Down and
 /// PageUp/PageDown move through the values, Space toggles the current one, Enter applies, Escape cancels.
 /// Only the visible rows are drawn, and the search is applied once per frame however fast the user types.
+/// Tab and Shift+Tab move between the mode switch, the search box or the operators and values, and the buttons;
+/// Escape closes an open operator drop-down or calendar before the popup.
 /// </remarks>
-public sealed class DrawnFilterPopup : DrawnComponent
+public sealed partial class DrawnFilterPopup : DrawnComponent
 {
     private readonly KumikoColumn _column;
     private readonly KumikoSource _dataSource;
@@ -55,12 +59,17 @@ public sealed class DrawnFilterPopup : DrawnComponent
     private const float DragThreshold = 6f;
     private const int WheelRowsPerNotch = 3;
 
-    private enum Target { None, FirstSortRow, SecondSortRow, Search, SelectAll, DeselectAll, List, Scrollbar, Ok, Cancel, Clear }
+    private enum Target
+    {
+        None, FirstSortRow, SecondSortRow, Search, SelectAll, DeselectAll, List, Scrollbar, Ok, Cancel, Clear,
+        ValuesTab, ConditionsTab, Operator1, Value1, And, Or, Operator2, Value2, Child,
+    }
 
     private readonly record struct PopupLayout(
         KumikoRect Popup, KumikoRect FirstSortRow, KumikoRect SecondSortRow, KumikoRect Search,
         KumikoRect SelectAll, KumikoRect DeselectAll, KumikoRect List, KumikoRect Ok, KumikoRect Cancel, KumikoRect Clear,
-        float TopSeparatorY, float BottomSeparatorY);
+        float TopSeparatorY, float BottomSeparatorY,
+        KumikoRect ValuesTab, KumikoRect ConditionsTab, ConditionsLayout Conditions);
 
     // Styling
     /// <summary>Font used for item labels and button text.</summary>
@@ -118,6 +127,7 @@ public sealed class DrawnFilterPopup : DrawnComponent
     {
         _column = column;
         _dataSource = dataSource;
+        _kind = FilterConditionTypes.KindOf(column);
         _search = new DrawnTextBox
         {
             Font = SmallFont,
@@ -127,6 +137,7 @@ public sealed class DrawnFilterPopup : DrawnComponent
         _search.ValueChanged += (_, _) => { _searchDirty = true; InvalidateVisual(); };
         _search.RedrawRequested += (_, _) => InvalidateVisual();
         LoadUniqueValues();
+        InitConditions();
         Bounds = new KumikoRect(0, 0, PopupWidth, ComputePopupHeight());
     }
 
@@ -237,6 +248,7 @@ public sealed class DrawnFilterPopup : DrawnComponent
         ButtonTextColor = accentLum > 0.5 ? new KumikoColor(0, 0, 0) : new KumikoColor(255, 255, 255);
 
         _search.SelectionHighlightColor = style.AccentColor.WithAlpha(80);
+        ApplyThemeToConditions(style);
     }
 
     // ── Data ─────────────────────────────────────────────────────
@@ -314,10 +326,19 @@ public sealed class DrawnFilterPopup : DrawnComponent
         float h = PopupPadding;
         h += SortRowHeight;               // Sort A-Z / Z-A row
         h += SeparatorMargin * 2 + 1;     // Separator
-        h += SearchBoxHeight;             // Search box
-        h += SeparatorMargin;
-        h += ButtonRowHeight;             // Select All / Deselect All
-        h += ListViewHeight;              // Checkbox list
+        if (HasConditionPage)
+            h += ModeSwitchHeight + SeparatorMargin; // Values | Conditions
+        if (_mode == KumikoFilterPopupMode.Values)
+        {
+            h += SearchBoxHeight;         // Search box
+            h += SeparatorMargin;
+            h += ButtonRowHeight;         // Select All / Deselect All
+            h += ListViewHeight;          // Checkbox list
+        }
+        else
+        {
+            h += ConditionsBodyHeight;    // Two conditions joined by And/Or
+        }
         h += SeparatorMargin * 2 + 1;     // Separator
         h += ButtonRowHeight;             // OK / Cancel / Clear row
         h += PopupPadding;
@@ -337,15 +358,33 @@ public sealed class DrawnFilterPopup : DrawnComponent
         float topSeparator = y;
         y += 1 + SeparatorMargin;
 
-        var search = new KumikoRect(x, y + 2, width, SearchBoxHeight - 4);
-        y += SearchBoxHeight + SeparatorMargin;
+        KumikoRect valuesTab = default, conditionsTab = default;
+        if (HasConditionPage)
+        {
+            valuesTab = new KumikoRect(x, y, half - 2, ModeSwitchHeight);
+            conditionsTab = new KumikoRect(x + half + 2, y, half - 2, ModeSwitchHeight);
+            y += ModeSwitchHeight + SeparatorMargin;
+        }
 
-        var selectAll = new KumikoRect(x, y, half, ButtonRowHeight);
-        var deselectAll = new KumikoRect(x + half, y, half, ButtonRowHeight);
-        y += ButtonRowHeight;
+        KumikoRect search = default, selectAll = default, deselectAll = default, list = default;
+        ConditionsLayout conditions = default;
+        if (_mode == KumikoFilterPopupMode.Values)
+        {
+            search = new KumikoRect(x, y + 2, width, SearchBoxHeight - 4);
+            y += SearchBoxHeight + SeparatorMargin;
 
-        var list = new KumikoRect(x, y, width, ListViewHeight);
-        y += list.Height + SeparatorMargin;
+            selectAll = new KumikoRect(x, y, half, ButtonRowHeight);
+            deselectAll = new KumikoRect(x + half, y, half, ButtonRowHeight);
+            y += ButtonRowHeight;
+
+            list = new KumikoRect(x, y, width, ListViewHeight);
+            y += list.Height + SeparatorMargin;
+        }
+        else
+        {
+            conditions = LayoutConditions(x, y, width);
+            y += ConditionsBodyHeight + SeparatorMargin;
+        }
         float bottomSeparator = y;
         y += 1 + SeparatorMargin;
 
@@ -356,7 +395,8 @@ public sealed class DrawnFilterPopup : DrawnComponent
         var clear = new KumikoRect(x + (buttonWidth + 4) * 2, y + 3, buttonWidth, buttonHeight);
 
         return new PopupLayout(new KumikoRect(Bounds.X, Bounds.Y, PopupWidth, ComputePopupHeight()),
-            sortAsc, sortDesc, search, selectAll, deselectAll, list, ok, cancel, clear, topSeparator, bottomSeparator);
+            sortAsc, sortDesc, search, selectAll, deselectAll, list, ok, cancel, clear, topSeparator, bottomSeparator,
+            valuesTab, conditionsTab, conditions);
     }
 
     // ── Drawing ──────────────────────────────────────────────────
@@ -374,17 +414,29 @@ public sealed class DrawnFilterPopup : DrawnComponent
         ctx.FillRect(popupRect, Paints.Get(color: BackgroundColor));
         ctx.DrawRect(popupRect, Paints.Get(color: BorderColor, strokeWidth: 1));
 
-        float x = layout.Search.X;
-        float contentWidth = layout.Search.Width;
+        float x = layout.FirstSortRow.X;
+        float contentWidth = PopupWidth - PopupPadding * 2;
         var separatorPaint = Paints.Get(color: SeparatorColor, strokeWidth: 1);
 
         DrawSortRow(ctx, layout);
         ctx.DrawLine(x, layout.TopSeparatorY, x + contentWidth, layout.TopSeparatorY, separatorPaint);
-        DrawSearchBox(ctx, layout.Search);
-        DrawSelectAllRow(ctx, layout);
-        DrawCheckboxList(ctx, layout.List);
+        if (HasConditionPage) DrawModeSwitch(ctx, layout);
+        if (_mode == KumikoFilterPopupMode.Values)
+        {
+            DrawSearchBox(ctx, layout.Search);
+            DrawSelectAllRow(ctx, layout);
+            DrawCheckboxList(ctx, layout.List);
+        }
+        else
+        {
+            PlaceConditionEditors(layout);
+            DrawConditions(ctx, layout);
+        }
         ctx.DrawLine(x, layout.BottomSeparatorY, x + contentWidth, layout.BottomSeparatorY, separatorPaint);
         DrawActionButtons(ctx, layout);
+
+        // An open operator drop-down or calendar goes over everything else
+        OpenChild?.OnDraw(ctx);
     }
 
     private void DrawSortRow(IDrawingContext ctx, PopupLayout layout)
@@ -563,6 +615,17 @@ public sealed class DrawnFilterPopup : DrawnComponent
         ctx.DrawTextInRect(_dataSource.Strings.FilterClear, layout.Clear,
             Paints.Get(color: AccentColor, font: SmallFont, isAntiAlias: true),
             KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
+
+        // The keyboard is on a button (Tab)
+        if (IsFocused)
+        {
+            switch (_stop)
+            {
+                case FocusStop.Ok: DrawFocusRing(ctx, layout.Ok); break;
+                case FocusStop.Cancel: DrawFocusRing(ctx, layout.Cancel); break;
+                case FocusStop.Clear: DrawFocusRing(ctx, layout.Clear); break;
+            }
+        }
     }
 
     // ── Hit testing ──────────────────────────────────────────────
@@ -572,6 +635,7 @@ public sealed class DrawnFilterPopup : DrawnComponent
     {
         if (!IsVisible || !IsEnabled) return false;
         EnsureSearchApplied();
+        if (OpenChild is { } open && open.HitTest(x, y)) return true; // a drop-down or calendar may reach outside the popup
         return new KumikoRect(Bounds.X, Bounds.Y, PopupWidth, ComputePopupHeight()).Contains(x, y);
     }
 
@@ -579,6 +643,18 @@ public sealed class DrawnFilterPopup : DrawnComponent
     {
         if (layout.FirstSortRow.Contains(x, y)) return Target.FirstSortRow;
         if (layout.SecondSortRow.Contains(x, y)) return Target.SecondSortRow;
+        if (layout.ValuesTab.Contains(x, y)) return Target.ValuesTab;
+        if (layout.ConditionsTab.Contains(x, y)) return Target.ConditionsTab;
+        if (_mode == KumikoFilterPopupMode.Conditions)
+        {
+            var c = layout.Conditions;
+            if (c.Operator1.Contains(x, y)) return Target.Operator1;
+            if (c.Value1.Contains(x, y) && ShowsValue(0)) return Target.Value1;
+            if (c.And.Contains(x, y)) return Target.And;
+            if (c.Or.Contains(x, y)) return Target.Or;
+            if (c.Operator2.Contains(x, y)) return Target.Operator2;
+            if (c.Value2.Contains(x, y) && ShowsValue(1)) return Target.Value2;
+        }
         if (layout.Search.Contains(x, y)) return Target.Search;
         if (layout.SelectAll.Contains(x, y)) return Target.SelectAll;
         if (layout.DeselectAll.Contains(x, y)) return Target.DeselectAll;
@@ -610,16 +686,34 @@ public sealed class DrawnFilterPopup : DrawnComponent
         if (!IsEnabled) return false;
         EnsureSearchApplied();
         var layout = Layout();
-
-        _pressTarget = TargetAt(layout, e.X, e.Y);
+        PlaceConditionEditors(layout);
         _pressY = _lastPanY = e.Y;
         _isPanning = false;
         _pressItem = -1;
+        _pressChild = null;
+
+        // An open drop-down or calendar is on top: a press elsewhere only closes it
+        if (OpenChild is { } open)
+        {
+            PressWithOpenChild(open, e);
+            InvalidateVisual();
+            return true;
+        }
+
+        _pressTarget = TargetAt(layout, e.X, e.Y);
+
+        if (IsChildTarget(_pressTarget))
+        {
+            PressConditionEditor(_pressTarget, e);
+            InvalidateVisual();
+            return true;
+        }
 
         switch (_pressTarget)
         {
             case Target.Search:
                 _focusIndex = -1;
+                SetStop(FocusStop.Search, announce: false);
                 _search.OnPointerDown(e);
                 KeyboardFocusRequested?.Invoke(this, EventArgs.Empty);
                 break;
@@ -646,6 +740,17 @@ public sealed class DrawnFilterPopup : DrawnComponent
         if (!IsEnabled) return false;
         EnsureSearchApplied();
         var layout = Layout();
+
+        if (_pressTarget == Target.Child && _pressChild != null)
+        {
+            _pressChild.OnPointerMove(e);
+            return true;
+        }
+        if (_pressTarget == Target.None && OpenChild is { } open)
+        {
+            open.OnPointerMove(e); // hover over the drop-down's items
+            return true;
+        }
 
         switch (_pressTarget)
         {
@@ -681,6 +786,15 @@ public sealed class DrawnFilterPopup : DrawnComponent
         _pressTarget = Target.None;
         bool sameTarget = TargetAt(layout, e.X, e.Y) == pressed;
 
+        if (pressed == Target.Child)
+        {
+            var child = _pressChild;
+            _pressChild = null;
+            child?.OnPointerUp(e);
+            InvalidateVisual();
+            return true;
+        }
+
         switch (pressed)
         {
             case Target.Search:
@@ -715,6 +829,22 @@ public sealed class DrawnFilterPopup : DrawnComponent
             case Target.Clear when sameTarget:
                 ClearFilter();
                 break;
+            case Target.ValuesTab when sameTarget:
+                SetStop(FocusStop.Search, announce: false);
+                SetMode(KumikoFilterPopupMode.Values, announce: true);
+                break;
+            case Target.ConditionsTab when sameTarget:
+                SetStop(FocusStop.Operator1, announce: false);
+                SetMode(KumikoFilterPopupMode.Conditions, announce: true);
+                break;
+            case Target.And when sameTarget:
+                SetStop(FocusStop.Combination, announce: false);
+                SetCombination(FilterCombination.And);
+                break;
+            case Target.Or when sameTarget:
+                SetStop(FocusStop.Combination, announce: false);
+                SetCombination(FilterCombination.Or);
+                break;
         }
 
         _isPanning = false;
@@ -727,6 +857,12 @@ public sealed class DrawnFilterPopup : DrawnComponent
     public override bool OnScroll(KumikoPointerEventArgs e)
     {
         EnsureSearchApplied();
+        if (OpenChild is { } open)
+        {
+            open.OnScroll(e); // the operator list or the calendar's months
+            return true;
+        }
+        if (_mode == KumikoFilterPopupMode.Conditions) return true;
         ScrollTo(_scrollOffset - e.GetScrollPixelsY(CheckboxItemHeight * WheelRowsPerNotch));
         UpdateHover(Layout(), e.X, e.Y);
         return true;
@@ -777,25 +913,57 @@ public sealed class DrawnFilterPopup : DrawnComponent
     /// <summary>
     /// Up/Down and PageUp/PageDown move through the values, Space toggles the current one (or types a
     /// space in the search), Enter applies, Escape cancels; everything else edits the search text.
+    /// Tab and Shift+Tab move between the mode switch, the search box or the conditions, and the buttons; on the
+    /// Conditions page the keys go to the operator drop-down or value editor the keyboard is on, an open drop-down or
+    /// calendar takes them first, and Escape closes it.
     /// </summary>
     public override bool OnKeyDown(KumikoKeyEventArgs e)
     {
         EnsureSearchApplied();
 
-        // An input method composing in the search box gets Enter and Escape first
-        if (_search.Composition != null && e.Key is KumikoKey.Enter or KumikoKey.Escape)
-            return _search.OnKeyDown(e);
+        // An open drop-down or calendar takes the keys; Escape and Tab close it
+        if (OpenChild is { } open)
+        {
+            if (e.Key == KumikoKey.Tab)
+            {
+                CloseNestedPopup();
+                MoveStop(e.HasShift ? -1 : 1);
+                return true;
+            }
+            if (!open.OnKeyDown(e) && e.Key == KumikoKey.Escape) CloseNestedPopup();
+            InvalidateVisual();
+            return true;
+        }
+
+        // An input method composing in a text box gets Enter and Escape first
+        if (FocusedTextBox is { Composition: not null } composing && e.Key is KumikoKey.Enter or KumikoKey.Escape)
+            return composing.OnKeyDown(e);
 
         switch (e.Key)
         {
+            case KumikoKey.Tab:
+                MoveStop(e.HasShift ? -1 : 1);
+                return true;
+
             case KumikoKey.Escape:
                 Cancel();
                 return true;
 
             case KumikoKey.Enter:
-                ApplyFilter();
+                Activate(_stop);
                 return true;
+        }
 
+        if (HandleStopKey(e) is { } handled)
+            return handled;
+        if (_mode == KumikoFilterPopupMode.Conditions)
+            return HandleConditionEditorKey(e);
+
+        // On Values every other key is the list's or the search box's
+        if (_stop != FocusStop.Search) SetStop(FocusStop.Search, announce: false);
+
+        switch (e.Key)
+        {
             case KumikoKey.Down:
                 MoveFocus(_focusIndex < 0 ? 0 : _focusIndex + 1);
                 return true;
@@ -853,10 +1021,10 @@ public sealed class DrawnFilterPopup : DrawnComponent
     // ── Focus ────────────────────────────────────────────────────
 
     /// <inheritdoc />
-    protected override void OnGotFocus() => _search.IsFocused = true;
+    protected override void OnGotFocus() => ApplyFocus();
 
     /// <inheritdoc />
-    protected override void OnLostFocus() => _search.IsFocused = false;
+    protected override void OnLostFocus() => ApplyFocus();
 
     // ── Actions ──────────────────────────────────────────────────
 
@@ -877,7 +1045,25 @@ public sealed class DrawnFilterPopup : DrawnComponent
     private void ApplyFilter()
     {
         _search.CommitComposition();
+        _texts[0].CommitComposition();
+        _texts[1].CommitComposition();
         EnsureSearchApplied();
+
+        // The conditions: as the Conditions page shows them once the user changed it, else as the filter had them. A
+        // value that does not parse keeps the popup open with its message.
+        var existing = _column.ActiveFilter;
+        FilterCondition? condition1, condition2;
+        var combination = existing?.Combination ?? FilterCombination.And;
+        if (_conditionsEdited)
+        {
+            if (!TryReadConditions(out condition1, out condition2)) return;
+            combination = _combination;
+        }
+        else
+        {
+            condition1 = existing?.Condition1?.Clone();
+            condition2 = existing?.Condition2?.Clone();
+        }
 
         // Collect selected values. With a search, OK filters to the checked values that match it (like Excel):
         // the values the search hid are not part of the choice.
@@ -902,10 +1088,9 @@ public sealed class DrawnFilterPopup : DrawnComponent
             }
         }
 
-        // The popup edits only the value list: conditions set from code (Condition1/Condition2/Combination) stay.
+        // OK applies the values and the conditions; a page the user did not change keeps what the filter had.
         // The result is a new description, so FilterChanging sees the change like any other.
-        var existing = _column.ActiveFilter;
-        bool hasConditions = existing?.Condition1 != null;
+        bool hasConditions = condition1 != null;
 
         if (allSelected && !hasConditions)
         {
@@ -918,9 +1103,9 @@ public sealed class DrawnFilterPopup : DrawnComponent
             {
                 // All selected means no value-list filter; the conditions (if any) keep filtering.
                 SelectedValues = allSelected ? null : selectedValues,
-                Condition1 = existing?.Condition1?.Clone(),
-                Condition2 = existing?.Condition2?.Clone(),
-                Combination = existing?.Combination ?? FilterCombination.And,
+                Condition1 = condition1,
+                Condition2 = condition1 != null ? condition2 : null,
+                Combination = combination,
             };
             _dataSource.SetColumnFilter(_column, filter);
         }

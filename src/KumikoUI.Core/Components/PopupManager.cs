@@ -267,6 +267,15 @@ internal class PopupManager
         // Pointer is outside all popups
         if (e.Action is InputAction.Pressed or InputAction.LongPress)
         {
+            // A drop-down or calendar open inside the top popup is closed alone, like a popup of its own (#325)
+            if (GetTopmostPopup() is INestedPopupHost host && host.CloseNestedPopup())
+            {
+                _swallowUntilRelease = e.Action == InputAction.Pressed;
+                e.Handled = true;
+                NeedsRedraw?.Invoke();
+                return true;
+            }
+
             // Modeless popups stay open; with no modal popup open the press is the grid's.
             if (!HasModalPopups()) return false;
 
