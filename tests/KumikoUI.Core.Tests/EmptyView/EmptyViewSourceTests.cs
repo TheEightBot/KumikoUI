@@ -27,7 +27,7 @@ public class EmptyViewSourceTests
     }
 
     private static List<Item?> Items(int count) =>
-        Enumerable.Range(0, count).Select(i => (Item?)new Item { Name = $"N{i}", Value = i }).ToList();
+        Enumerable.Range(0, count).Select(i => new Item { Name = $"N{i}", Value = i }).ToList<Item?>();
 
     // ── ItemCount ──
 
