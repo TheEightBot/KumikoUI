@@ -100,4 +100,21 @@ public partial class KumikoDataGrid
         InvalidateSurface();
         return deleted;
     }
+
+    /// <summary>
+    /// Removes <paramref name="items"/> from <c>ItemsSource</c> the way <see cref="DeleteSelectedRows"/> removes the
+    /// selected ones (an open edit committed first, <see cref="RowsDeleting"/> able to cancel, <see cref="RowsDeleted"/>
+    /// afterwards, the deletion announced), whether or not they are selected. Call it from a delete swipe item's command
+    /// with the swiped row's item, so a confirmation in <see cref="RowsDeleting"/> covers swipes too.
+    /// </summary>
+    /// <param name="items">The items to remove, first the one whose row the current cell should replace.</param>
+    /// <returns>Whether items were removed: false with nothing to remove, a refused commit, a canceled event or an
+    /// <c>ItemsSource</c> that cannot be changed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="items"/> is <c>null</c>.</exception>
+    public bool DeleteRows(IEnumerable<object> items)
+    {
+        bool deleted = _inputController.DeleteRows(items, _scroll, _selection, _style, _dataSource);
+        InvalidateSurface();
+        return deleted;
+    }
 }

@@ -6,6 +6,6 @@ public enum KumikoRowsDeleteTrigger
     /// <summary>The Delete key (on Apple keyboards also Command+Backspace) with <see cref="KumikoInputController.AllowDeleting"/> on.</summary>
     Key,
 
-    /// <summary>A call to <c>DeleteSelectedRows</c> from code or a bound command.</summary>
+    /// <summary>A call to <c>DeleteSelectedRows</c> or <c>DeleteRows</c> from code, a bound command or a swipe item.</summary>
     Command,
 }

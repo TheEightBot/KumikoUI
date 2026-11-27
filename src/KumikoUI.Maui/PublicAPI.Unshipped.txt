@@ -16,6 +16,7 @@ KumikoUI.Maui.KumikoDataGrid.CellVerticalPadding.set -> void
 KumikoUI.Maui.KumikoDataGrid.CloseSearchPanel() -> void
 KumikoUI.Maui.KumikoDataGrid.CloseSwipe() -> void
 KumikoUI.Maui.KumikoDataGrid.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.DeleteRows(System.Collections.Generic.IEnumerable<object!>! items) -> bool
 KumikoUI.Maui.KumikoDataGrid.DeleteSelectedRows() -> bool
 KumikoUI.Maui.KumikoDataGrid.EmptyViewRenderer.get -> KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer?
 KumikoUI.Maui.KumikoDataGrid.EmptyViewRenderer.set -> void

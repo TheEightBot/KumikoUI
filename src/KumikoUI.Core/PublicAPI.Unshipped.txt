@@ -341,6 +341,7 @@ KumikoUI.Core.Input.KumikoInputController.CheckAllToggled -> System.EventHandler
 KumikoUI.Core.Input.KumikoInputController.CloseSearchPanel() -> void
 KumikoUI.Core.Input.KumikoInputController.CloseSwipe() -> void
 KumikoUI.Core.Input.KumikoInputController.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
+KumikoUI.Core.Input.KumikoInputController.DeleteRows(System.Collections.Generic.IEnumerable<object!>! items, KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.DeleteSelectedRows(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.FindNext(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.FindPrevious(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool

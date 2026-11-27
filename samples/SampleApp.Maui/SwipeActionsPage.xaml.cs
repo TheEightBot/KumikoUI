@@ -15,6 +15,8 @@ public partial class SwipeActionsPage : ContentPage
     {
         InitializeComponent();
         BindingContext = _viewModel;
+        // Delete goes through the grid, so RowsDeleting (a confirmation, for one) covers swipes like the Delete key.
+        _viewModel.DeleteRow = message => kumiko.DeleteRows(new object[] { message });
     }
 
     private void OnSwipeEnded(object? sender, KumikoSwipeEndedEventArgs e)
@@ -68,7 +70,11 @@ public sealed class SwipeActionsViewModel : INotifyPropertyChanged
             Status = $"{(m.IsFlagged ? "Flagged" : "Unflagged")} \"{m.Subject}\".";
         });
         ArchiveCommand = new Command<SwipeMessage>(m => Remove(m, "Archived"));
-        DeleteCommand = new Command<SwipeMessage>(m => Remove(m, "Deleted"));
+        DeleteCommand = new Command<SwipeMessage>(m =>
+        {
+            if (m is not null && (DeleteRow?.Invoke(m) ?? Messages.Remove(m)))
+                Status = $"Deleted \"{m.Subject}\".";
+        });
     }
 
     public ObservableCollection<SwipeMessage> Messages { get; } = new();
@@ -78,6 +84,9 @@ public sealed class SwipeActionsViewModel : INotifyPropertyChanged
     public ICommand ArchiveCommand { get; }
 
     public ICommand DeleteCommand { get; }
+
+    /// <summary>Deletes one message through the grid (<c>KumikoDataGrid.DeleteRows</c>); set by the page.</summary>
+    public Func<SwipeMessage, bool>? DeleteRow { get; set; }
 
     public SwipeMessage? SelectedMessage
     {

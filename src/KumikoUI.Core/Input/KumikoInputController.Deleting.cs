@@ -57,6 +57,31 @@ public sealed partial class KumikoInputController
     }
 
     /// <summary>
+    /// Removes <paramref name="items"/> from the items source through the same flow as <see cref="DeleteSelectedRows"/>
+    /// (commit an open edit, <see cref="RowsDeleting"/>, remove, <see cref="RowsDeleted"/>, announce), whether or not
+    /// they are selected: for a delete swipe item (#329), a row menu or a button bound to one row. Null entries are
+    /// ignored. The current cell and the selection move to the row that took the first item's place.
+    /// </summary>
+    /// <param name="items">The items to remove, first the one whose row the current cell should replace.</param>
+    /// <param name="scroll">The grid's scroll state; the new current cell is scrolled into view.</param>
+    /// <param name="selection">The grid's selection.</param>
+    /// <param name="style">The grid's style (row geometry for scrolling).</param>
+    /// <param name="dataSource">The data source the items belong to.</param>
+    /// <returns><c>true</c> when items were removed; <c>false</c> when there was nothing to remove, the edit could not
+    /// be committed, a handler canceled the delete or the items source could not be changed.</returns>
+    /// <exception cref="ArgumentNullException">An argument is <c>null</c>.</exception>
+    public bool DeleteRows(IEnumerable<object> items,
+        ScrollState scroll, KumikoSelectionModel selection, KumikoStyle style, KumikoSource dataSource)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(scroll);
+        ArgumentNullException.ThrowIfNull(selection);
+        ArgumentNullException.ThrowIfNull(style);
+        ArgumentNullException.ThrowIfNull(dataSource);
+        return DeleteItems(items.ToArray(), KumikoRowsDeleteTrigger.Command, scroll, selection, style, dataSource);
+    }
+
+    /// <summary>
     /// The delete flow for <paramref name="items"/> (any rows, not only the selected ones), shared by the Delete key,
     /// <see cref="DeleteSelectedRows"/>, the row menu and swipe actions: commit an open edit, ask
     /// <see cref="RowsDeleting"/>, remove, move the current cell and the selection, raise <see cref="RowsDeleted"/>
