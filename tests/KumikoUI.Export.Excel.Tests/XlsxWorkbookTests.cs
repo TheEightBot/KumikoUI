@@ -35,7 +35,8 @@ public class XlsxWorkbookTests
     {
         var bytes = await ExportAsync(Source());
 
-        using var document = SpreadsheetDocument.Open(new MemoryStream(bytes), false);
+        using var buffer = new MemoryStream(bytes);
+        using var document = SpreadsheetDocument.Open(buffer, false);
         var workbookPart = document.WorkbookPart!;
         var sheet = workbookPart.WorksheetParts.Single().Worksheet!;
         var rows = sheet.Descendants<Row>().ToList();
@@ -246,9 +247,9 @@ public class XlsxWorkbookTests
         Assert.Equal("FFFAFBFC", (string?)Font(bytes, cells["A1"].Style).Element(Ns + "color")?.Attribute("rgb"));
 
         // The group header band is painted across the row, its other cells empty so the title still overflows.
-        Assert.True(cells.ContainsKey("E2"));
-        Assert.Null(cells["E2"].Text);
-        Assert.NotEqual(0, (int)CellFormat(bytes, cells["E2"].Style).Attribute("fillId")!);
+        Assert.True(cells.TryGetValue("E2", out var e2));
+        Assert.Null(e2.Text);
+        Assert.NotEqual(0, (int)CellFormat(bytes, e2.Style).Attribute("fillId")!);
     }
 
     [Fact]
@@ -258,7 +259,8 @@ public class XlsxWorkbookTests
         AssertValid(bytes);
         Assert.Contains("docProps/core.xml", PartNames(bytes));
 
-        using var document = SpreadsheetDocument.Open(new MemoryStream(bytes), false);
+        using var buffer = new MemoryStream(bytes);
+        using var document = SpreadsheetDocument.Open(buffer, false);
         Assert.Equal("Staff & pay", document.PackageProperties.Title);
         Assert.Equal("Ops <team>", document.PackageProperties.Creator);
     }
@@ -292,7 +294,7 @@ public class XlsxWorkbookTests
             Source().ExportToExcelAsync(stream, xlsx: new KumikoXlsxOptions { ColumnWidths = (KumikoXlsxColumnWidths)42 }));
         await Assert.ThrowsAsync<ArgumentException>(() =>
             Source().ExportToExcelAsync(stream, new KumikoExportOptions { Rows = KumikoExportRows.Selected }));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => ((KumikoSource)null!).ExportToExcelAsync(stream));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => KumikoExcelExportExtensions.ExportToExcelAsync(null!, stream));
         Assert.Equal(0, stream.BytesWritten);
     }
 }

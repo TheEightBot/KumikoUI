@@ -111,7 +111,8 @@ public class XlsxLimitsAndStreamingTests
     public async Task Progress_EndsAtTheRowCount()
     {
         var reports = new List<KumikoExportProgress>();
-        await Source().ExportToExcelAsync(new MemoryStream(), progress: new SyncProgress(reports.Add));
+        using var stream = new MemoryStream();
+        await Source().ExportToExcelAsync(stream, progress: new SyncProgress(reports.Add));
         Assert.Equal(new KumikoExportProgress(5, 5), reports[^1]);
     }
 
@@ -130,7 +131,7 @@ public class XlsxLimitsAndStreamingTests
             var threads = new HashSet<int>();
             var source = Source(items);
             source.Columns[0].ValueAccessor = i => { lock (threads) threads.Add(Environment.CurrentManagedThreadId); return ((Person)i).Name; };
-            var stream = new MemoryStream();
+            using var stream = new MemoryStream();
             await source.ExportToExcelAsync(stream, new KumikoExportOptions { ReadOnCallerThread = true });
 
             Assert.Equal(new[] { caller }, threads.ToArray());
@@ -175,14 +176,12 @@ public class XlsxLimitsAndStreamingTests
         }
 
         // Streaming: memory measured while the rows are written to a stream that keeps nothing.
-        GC.Collect();
-        long baseline = GC.GetTotalMemory(true);
+        long baseline = GC.GetTotalMemory(true); // collects first
         long peak = 0;
         var counting = new ForwardOnlyStream { Keep = false };
-        await Make().ExportToExcelAsync(counting, progress: new SyncProgress(_ => peak = Math.Max(peak, GC.GetTotalMemory(false))));
+        await Make().ExportToExcelAsync(counting, progress: new SyncProgress(_ => peak = Math.Max(peak, GC.GetTotalMemory(true))));
         Assert.True(counting.BytesWritten > 1_000_000, $"output was {counting.BytesWritten} bytes");
         Assert.True(peak - baseline < 60_000_000, $"peak {peak - baseline} above the baseline");
-        GC.Collect();
         Assert.True(GC.GetTotalMemory(true) - baseline < 8_000_000, "memory retained after the export");
 
         // The same workbook, kept, passes the validator and has every row.

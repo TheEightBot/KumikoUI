@@ -192,8 +192,9 @@ public class XlsxValueTests
             "0.00", "#,##0", "#,##0.00;(#,##0.00)", "0%", "0.0%", "000000", "#,##0,,", "'$'#,##0", "\\#0", "0.00E+00",
         };
         var dateFormats = new[] { "yyyy-MM-dd", "HH:mm", "HH:mm:ss.fff", "d", "D", "f", "F", "g", "G", "t", "T", "M", "Y", "s", "dd MMM yyyy", "h:mm tt" };
-        var cells = formats.Select(f => (f, f.StartsWith('D') ? (object?)123 : -1234.5678, (string?)f))
-            .Concat(dateFormats.Select(f => ("date " + f, (object?)new DateTime(2024, 2, 29, 14, 5, 9, 250), (string?)f)))
+        object? date = new DateTime(2024, 2, 29, 14, 5, 9, 250);
+        var cells = formats.Select<string, (string, object?, string?)>(f => (f, f.StartsWith('D') ? (object?)123 : -1234.5678, f))
+            .Concat(dateFormats.Select<string, (string, object?, string?)>(f => ("date " + f, date, f)))
             .ToList();
         var bytes = await ExportAsync(Values(cells, CultureInfo.GetCultureInfo("en-US")));
         AssertValid(bytes);
