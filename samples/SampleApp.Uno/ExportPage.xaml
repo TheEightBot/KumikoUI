@@ -35,7 +35,6 @@
                                Grid.Row="2"
                                AllowSorting="True"
                                AllowFiltering="True"
-                               SelectionMode="Extended"
                                GridDescription="Employees, exportable as CSV"
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Stretch">

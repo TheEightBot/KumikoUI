@@ -1276,9 +1276,11 @@ kumiko.ClipboardCopyIncludesHeaders = true;
 `KumikoSource` exports what the grid shows to CSV with one call. The exporter writes to any `Stream` (it never closes it, and the stream need not be seekable), so the app decides where the bytes go: a file the user picks, a share sheet, an HTTP response. Call it on the UI thread: the rows are copied there, and the values are then read and written on a thread-pool thread, with cancellation and progress:
 
 ```csharp
-await using var file = File.Create(path);
+string path = Path.Combine(Path.GetTempPath(), "employees.csv");
+using var cancellation = new CancellationTokenSource();
 var progress = new Progress<KumikoExportProgress>(p => Console.WriteLine($"{p.RowsWritten} of {p.TotalRows}"));
-await kumiko.DataSource.ExportToCsvAsync(file, progress: progress, cancellationToken: cancellationToken);
+await using var file = File.Create(path);
+await kumiko.DataSource.ExportToCsvAsync(file, progress: progress, cancellationToken: cancellation.Token);
 ```
 
 By default the export writes the filtered rows in the grid's sort order (rows of collapsed groups included), the visible columns in pane order (left-frozen, scrolling, right-frozen), a header row, the group headers and the group and table summaries, as display text in the grid's culture: `KumikoSource.Culture`, else the current culture. `KumikoExportOptions` changes what is written:

@@ -34,7 +34,6 @@
                            Grid.Row="2"
                            AllowSorting="True"
                            AllowFiltering="True"
-                           SelectionMode="Extended"
                            GridDescription="Employees, exportable as CSV">
             <dg:KumikoDataGrid.Columns>
                 <core:KumikoColumn Header="Id" PropertyName="Id" Width="70" ColumnType="Numeric" IsReadOnly="True" />

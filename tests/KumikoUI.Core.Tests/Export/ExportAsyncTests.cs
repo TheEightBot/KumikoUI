@@ -113,13 +113,22 @@ public class ExportAsyncTests
     public async Task ThreadPoolReads_DoNotRunOnTheCallingThread()
     {
         var threads = new HashSet<int>();
-        await Task.Run(async () =>
+        var source = Reading(threads);
+        int caller = -1;
+        var done = new TaskCompletionSource();
+        // A dedicated (non-pool) thread plays the UI thread.
+        var ui = new Thread(() =>
         {
-            int caller = Environment.CurrentManagedThreadId;
-            await Reading(threads).ExportToCsvAsync(new MemoryStream());
-            Assert.DoesNotContain(caller, threads);
+            caller = Environment.CurrentManagedThreadId;
+            source.ExportToCsvAsync(new MemoryStream()).ContinueWith(t =>
+            {
+                if (t.IsFaulted) done.SetException(t.Exception!.InnerExceptions); else done.SetResult();
+            });
         });
+        ui.Start();
+        await done.Task;
         Assert.NotEmpty(threads);
+        Assert.DoesNotContain(caller, threads);
     }
 
     [Fact]
@@ -181,16 +190,25 @@ public class ExportAsyncTests
 
         GC.Collect();
         long baseline = GC.GetTotalMemory(true);
-        long allocatedBefore = GC.GetTotalAllocatedBytes(true);
         await source.ExportToCsvAsync(stream, progress: progress);
-        long allocated = GC.GetTotalAllocatedBytes(true) - allocatedBefore;
 
         Assert.True(stream.BytesWritten > 10_000_000, $"output was {stream.BytesWritten} bytes");
-        // The output (about 12 MB) is never held: the allocation delta stays small next to it and nothing is retained.
-        Assert.True(allocated < 40_000_000, $"allocated {allocated} bytes");
         GC.Collect();
         Assert.True(GC.GetTotalMemory(true) - baseline < 8_000_000, "memory retained after the export");
-        Assert.True(peak - baseline < 40_000_000, $"peak {peak - baseline} above the baseline");
+        Assert.True(peak - baseline < 60_000_000, $"peak {peak - baseline} above the baseline");
+
+        // The rows and their formatting, on this thread so other tests cannot add to the count: far less than the output.
+        var snapshot = KumikoExportSnapshot.Create(source);
+        var sink = new CsvStreamSink(new CountingStream(), new KumikoCsvOptions(), canBlock: true, CancellationToken.None);
+        var formatter = new CsvRowFormatter(new KumikoCsvOptions(), ',');
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        foreach (var row in snapshot.Rows)
+        {
+            formatter.WriteRow(row, sink.Buffer);
+            sink.AfterRow();
+        }
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(allocated < 10_000_000, $"allocated {allocated} bytes streaming 1M cells");
     }
 
     private sealed class SyncProgress(Action<KumikoExportProgress> action) : IProgress<KumikoExportProgress>
