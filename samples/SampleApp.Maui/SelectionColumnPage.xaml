@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.SelectionColumnPage"
+             Title="Selection Column">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+        <Label x:Name="statusLabel"
+               Text="Selection Column"
+               FontSize="20"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+            <HorizontalStackLayout Padding="16,4" Spacing="12">
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="columnCheck" IsChecked="True" CheckedChanged="OnColumnChanged" />
+                    <Label Text="Selection column" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="rowClickCheck" IsChecked="True" CheckedChanged="OnRowClickChanged" />
+                    <Label Text="Select on row tap" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Button Text="None" Clicked="OnModeClicked" CommandParameter="None" />
+                <Button Text="Single" Clicked="OnModeClicked" CommandParameter="Single" />
+                <Button Text="Multiple" Clicked="OnModeClicked" CommandParameter="Multiple" />
+                <Button Text="Extended" Clicked="OnModeClicked" CommandParameter="Extended" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="2"
+                           ShowSelectionColumn="True"
+                           GridSelectionMode="Multiple"
+                           AllowSorting="True"
+                           GridDescription="Tasks with a column of selection check boxes"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill">
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="Task" PropertyName="Title" Width="200" />
+                <core:KumikoColumn Header="Owner" PropertyName="Owner" Width="140" />
+                <core:KumikoColumn Header="Status" PropertyName="Status" Width="120" />
+                <core:KumikoColumn Header="Hours" PropertyName="Hours" Width="90" ColumnType="Numeric" />
+            </dg:KumikoDataGrid.Columns>
+        </dg:KumikoDataGrid>
+    </Grid>
+
+</ContentPage>

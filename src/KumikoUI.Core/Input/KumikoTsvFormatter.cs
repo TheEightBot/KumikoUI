@@ -11,7 +11,7 @@ namespace KumikoUI.Core.Input;
 /// <c>\r\n</c>. A field that contains a tab, a carriage return, a line feed or a double quote is wrapped in
 /// double quotes with each embedded quote doubled, so a multi-line or tabbed value stays in its cell.
 /// Cells are written as their display text (the column's format applied), hidden columns are skipped and
-/// the rest keep their display order.
+/// the rest keep their display order. A selection column (<see cref="KumikoColumnType.Selection"/>) is not copied.
 /// </remarks>
 public static class KumikoTsvFormatter
 {
@@ -36,7 +36,7 @@ public static class KumikoTsvFormatter
     public static string Format(KumikoSource source, IEnumerable<int> rows, bool includeHeaders)
     {
         // Columns in the order the grid shows them: left-frozen pane, scrolling columns, right-frozen pane.
-        var visible = source.Columns.Where(c => c.IsVisible).ToList();
+        var visible = source.Columns.Where(c => c.IsVisible && c.ColumnType != KumikoColumnType.Selection).ToList();
         var columns = visible.Where(c => c.IsFrozen)
             .Concat(visible.Where(c => !c.IsFrozen && !c.IsFrozenRight))
             .Concat(visible.Where(c => c.IsFrozenRight))

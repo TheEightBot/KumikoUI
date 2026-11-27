@@ -74,6 +74,12 @@
             Route="EventsPage" />
 
         <ShellContent
+            Title="Selection Column"
+            Icon="icon_grid.png"
+            ContentTemplate="{DataTemplate local:SelectionColumnPage}"
+            Route="SelectionColumnPage" />
+
+        <ShellContent
             Title="Auto Columns"
             Icon="icon_grid.png"
             ContentTemplate="{DataTemplate local:AutoColumnsPage}"

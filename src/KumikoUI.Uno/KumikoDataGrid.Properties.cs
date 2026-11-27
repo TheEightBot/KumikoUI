@@ -112,12 +112,16 @@ public partial class KumikoDataGrid
         }
 
         if (e.OldValue is ObservableCollection<KumikoColumn> oldCollection)
+        {
             oldCollection.CollectionChanged -= view.OnColumnsCollectionChanged;
+            if (view._ownedSelectionColumn != null) oldCollection.Remove(view._ownedSelectionColumn);
+        }
 
         if (e.NewValue is ObservableCollection<KumikoColumn> newCollection)
         {
             if (view.IsObservingCollections)
                 newCollection.CollectionChanged += view.OnColumnsCollectionChanged;
+            view.UpdateSelectionColumn(); // ShowSelectionColumn: the grid's own column leads the new collection
             view._dataSource.SetColumns(newCollection);
             view.SyncActionButtonDefinitions();
         }
@@ -137,6 +141,8 @@ public partial class KumikoDataGrid
     {
         if (_syncingFromSource) return; // the grid is copying the source's column order in (KumikoDataGrid.Layout.cs)
         if (_updatingAutoColumns) return; // generated columns are pushed once, when they are all in (KumikoDataGrid.AutoColumns.cs)
+        if (_syncingSelectionColumn) return; // ShowSelectionColumn is changing the collection and pushes it itself
+        if (ShowSelectionColumn || _ownedSelectionColumn != null) { UpdateSelectionColumn(); return; }
         _dataSource.SetColumns(Columns);
         SyncActionButtonDefinitions();
         Invalidate();

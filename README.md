@@ -1207,6 +1207,41 @@ Both hosts expose the selection as bindable properties:
 
 Setting `SelectedItem` to an item that is not visible, or any value in `None` mode, leaves the selection empty. A change made on one side is applied to the other without echoing back, so two-way bindings do not loop.
 
+### Selection column
+
+`Multiple` mode needs no modifier keys but gives no visible sign of what is selected, and `Extended` needs Ctrl and Shift, which a phone or tablet does not have. A selection column adds a narrow column of row check boxes, with a tri-state check-all box in its header: the touch way to select several rows.
+
+```xml
+<kumiko:KumikoDataGrid ShowSelectionColumn="True" GridSelectionMode="Extended" />
+```
+
+`ShowSelectionColumn` (default false) makes the grid add a column it owns as the first column and remove it again when you set the property back; it adds the column again when `Columns` is replaced or cleared, and it does nothing when `Columns` already holds a `KumikoSelectionColumn` you declared. To place the column yourself, or to set its freeze mode, declare it like any other column:
+
+```csharp
+kumiko.Columns.Insert(0, new KumikoSelectionColumn());
+```
+
+A `KumikoSelectionColumn` is 44 pixels wide (a touch-sized target), pinned to the left, read-only and centered, with no sorting, filtering, searching, resizing or reordering; Tab skips it. The whole cell is the target, not only the drawn box. It is left out of copy and of the saved layout, and it never shows a header menu button, filter icon or sort glyph.
+
+| `KumikoSelectionMode` | A row's box | Header box |
+|---|---|---|
+| `None` | Drawn dimmed; a tap does nothing | Hidden |
+| `Single` | Checking a row replaces the selection; unchecking clears it | Hidden |
+| `Multiple` | Toggles that row, others stay | Shown |
+| `Extended` | Toggles that row, others stay (no Ctrl needed) | Shown |
+
+Shift-click on a box applies the clicked row's new state to every data row from the last toggled row; group rows are skipped. A click on the box commits an open edit first and never starts an edit, a row drag or a column drag. Space on a current cell in the selection column toggles its row, and Shift+Space range-toggles; the Left arrow can move onto the column.
+
+The header box shows `Selection.CheckAllState`: unchecked when no row is selected, checked when every row of the view is, and the indeterminate dash otherwise. A click selects every row (when none or some are selected) or clears the selection (when all are, keeping the current cell). "Every row" means the data rows of the current view: rows a filter hides and rows inside collapsed groups are not counted (`KumikoSource.DataRowCount`), and with incremental loading it covers the loaded rows.
+
+For checkbox-only selection, turn off selecting by tapping a row. A tap on a row then only moves the current cell, and the boxes are the way to select with a pointer (the keyboard still selects):
+
+```csharp
+kumiko.SelectOnRowClick = false;
+```
+
+Screen readers get the box names from `KumikoStrings.SelectRow` and `SelectAllRows` with a state (`CheckStateChecked`, `CheckStateUnchecked`, `CheckStateMixed`). A header toggle is announced as `AllRowsSelected` ("All 120 rows selected") or `SelectionCleared`. The selection column is drawn with the style's check box paints, so themes need no new members.
+
 ---
 
 ## Keyboard
@@ -1526,6 +1561,8 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `GridSelectionMode` | `KumikoSelectionMode` | `Extended` | None, Single, Multiple or Extended. |
 | `SelectedItem`, `SelectedItems`, `SelectedIndex`, `CurrentCell` | see [Selection in MVVM](#selection-in-mvvm) | | Selection state. |
 | `ClearSelectionOnEmptyAreaTap` | `bool` | true | A tap below the last row or right of the last column clears the selection. |
+| `ShowSelectionColumn` | `bool` | false | Adds a column of row check boxes with a check-all header as the first column ([Selection column](#selection-column)). |
+| `SelectOnRowClick` | `bool` | true | False: a tap on a row only moves the current cell; check boxes and the keyboard select. |
 | `FrozenRowCount` | `int` | 0 | Top rows frozen while scrolling. |
 | `RowHeight`, `HeaderHeight` | `double` | 36, 40 | Row and header heights. |
 | `RowHeightMode`, `MinRowHeight`, `MaxRowHeight`, `CellVerticalPadding`, `RowHeightResolver` | see [Row height](#row-height) | `Fixed`, NaN, NaN, 6, null | Variable and auto row height; `InvalidateRowHeights()` and `InvalidateRowHeight(item)` re-measure. |
