@@ -184,6 +184,135 @@ KumikoUI.Core.Data.KumikoLoadMoreTrigger.Keyboard = 1 -> KumikoUI.Core.Data.Kumi
 KumikoUI.Core.Data.KumikoLoadMoreTrigger.NearEnd = 0 -> KumikoUI.Core.Data.KumikoLoadMoreTrigger
 KumikoUI.Core.Data.KumikoLoadMoreTrigger.Programmatic = 3 -> KumikoUI.Core.Data.KumikoLoadMoreTrigger
 KumikoUI.Core.Data.KumikoLoadMoreTrigger.Tap = 2 -> KumikoUI.Core.Data.KumikoLoadMoreTrigger
+KumikoUI.Core.Export.IKumikoExporter
+KumikoUI.Core.Export.IKumikoExporter.ExportAsync(KumikoUI.Core.Models.KumikoSource! source, System.IO.Stream! destination, KumikoUI.Core.Export.KumikoExportOptions? options = null, System.IProgress<KumikoUI.Core.Export.KumikoExportProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+KumikoUI.Core.Export.IKumikoExporter.FileExtension.get -> string!
+KumikoUI.Core.Export.IKumikoExporter.FormatName.get -> string!
+KumikoUI.Core.Export.IKumikoExporter.MediaType.get -> string!
+KumikoUI.Core.Export.KumikoCsvExporter
+KumikoUI.Core.Export.KumikoCsvExporter.ExportAsync(KumikoUI.Core.Models.KumikoSource! source, System.IO.Stream! destination, KumikoUI.Core.Export.KumikoExportOptions? options = null, System.IProgress<KumikoUI.Core.Export.KumikoExportProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+KumikoUI.Core.Export.KumikoCsvExporter.FileExtension.get -> string!
+KumikoUI.Core.Export.KumikoCsvExporter.FormatName.get -> string!
+KumikoUI.Core.Export.KumikoCsvExporter.KumikoCsvExporter(KumikoUI.Core.Export.KumikoCsvOptions? csv = null) -> void
+KumikoUI.Core.Export.KumikoCsvExporter.MediaType.get -> string!
+KumikoUI.Core.Export.KumikoCsvOptions
+KumikoUI.Core.Export.KumikoCsvOptions.<Clone>$() -> KumikoUI.Core.Export.KumikoCsvOptions!
+KumikoUI.Core.Export.KumikoCsvOptions.Delimiter.get -> char
+KumikoUI.Core.Export.KumikoCsvOptions.Delimiter.init -> void
+KumikoUI.Core.Export.KumikoCsvOptions.EmitByteOrderMark.get -> bool
+KumikoUI.Core.Export.KumikoCsvOptions.EmitByteOrderMark.init -> void
+KumikoUI.Core.Export.KumikoCsvOptions.Encoding.get -> System.Text.Encoding!
+KumikoUI.Core.Export.KumikoCsvOptions.Encoding.init -> void
+KumikoUI.Core.Export.KumikoCsvOptions.EndWithLineEnding.get -> bool
+KumikoUI.Core.Export.KumikoCsvOptions.EndWithLineEnding.init -> void
+KumikoUI.Core.Export.KumikoCsvOptions.Equals(KumikoUI.Core.Export.KumikoCsvOptions? other) -> bool
+KumikoUI.Core.Export.KumikoCsvOptions.FormulaInjection.get -> KumikoUI.Core.Export.KumikoFormulaInjection
+KumikoUI.Core.Export.KumikoCsvOptions.FormulaInjection.init -> void
+KumikoUI.Core.Export.KumikoCsvOptions.KumikoCsvOptions() -> void
+KumikoUI.Core.Export.KumikoCsvOptions.LineEnding.get -> string!
+KumikoUI.Core.Export.KumikoCsvOptions.LineEnding.init -> void
+KumikoUI.Core.Export.KumikoCsvOptions.NullText.get -> string!
+KumikoUI.Core.Export.KumikoCsvOptions.NullText.init -> void
+KumikoUI.Core.Export.KumikoCsvOptions.QuoteAllFields.get -> bool
+KumikoUI.Core.Export.KumikoCsvOptions.QuoteAllFields.init -> void
+KumikoUI.Core.Export.KumikoCsvOptions.UseCultureListSeparator.get -> bool
+KumikoUI.Core.Export.KumikoCsvOptions.UseCultureListSeparator.init -> void
+KumikoUI.Core.Export.KumikoExportCell
+KumikoUI.Core.Export.KumikoExportCell.KumikoExportCell() -> void
+KumikoUI.Core.Export.KumikoExportCell.SummaryType.get -> KumikoUI.Core.Models.SummaryType?
+KumikoUI.Core.Export.KumikoExportCell.Text.get -> string!
+KumikoUI.Core.Export.KumikoExportCell.Value.get -> object?
+KumikoUI.Core.Export.KumikoExportColumn
+KumikoUI.Core.Export.KumikoExportColumn.Column.get -> KumikoUI.Core.Models.KumikoColumn?
+KumikoUI.Core.Export.KumikoExportColumn.ColumnType.get -> KumikoUI.Core.Models.KumikoColumnType
+KumikoUI.Core.Export.KumikoExportColumn.Format.get -> string?
+KumikoUI.Core.Export.KumikoExportColumn.GroupLevel.get -> int
+KumikoUI.Core.Export.KumikoExportColumn.Header.get -> string!
+KumikoUI.Core.Export.KumikoExportColumn.IsFrozen.get -> bool
+KumikoUI.Core.Export.KumikoExportColumn.IsGroupKey.get -> bool
+KumikoUI.Core.Export.KumikoExportColumn.PropertyName.get -> string!
+KumikoUI.Core.Export.KumikoExportColumn.TextAlignment.get -> KumikoUI.Core.Rendering.KumikoTextAlignment
+KumikoUI.Core.Export.KumikoExportColumn.Width.get -> float
+KumikoUI.Core.Export.KumikoExportExtensions
+KumikoUI.Core.Export.KumikoExportGroupLayout
+KumikoUI.Core.Export.KumikoExportGroupLayout.Columns = 1 -> KumikoUI.Core.Export.KumikoExportGroupLayout
+KumikoUI.Core.Export.KumikoExportGroupLayout.None = 2 -> KumikoUI.Core.Export.KumikoExportGroupLayout
+KumikoUI.Core.Export.KumikoExportGroupLayout.Rows = 0 -> KumikoUI.Core.Export.KumikoExportGroupLayout
+KumikoUI.Core.Export.KumikoExportOptions
+KumikoUI.Core.Export.KumikoExportOptions.<Clone>$() -> KumikoUI.Core.Export.KumikoExportOptions!
+KumikoUI.Core.Export.KumikoExportOptions.ColumnFilter.get -> System.Func<KumikoUI.Core.Models.KumikoColumn!, bool>?
+KumikoUI.Core.Export.KumikoExportOptions.ColumnFilter.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.Columns.get -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Models.KumikoColumn!>?
+KumikoUI.Core.Export.KumikoExportOptions.Columns.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.Culture.get -> System.Globalization.CultureInfo?
+KumikoUI.Core.Export.KumikoExportOptions.Culture.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.Equals(KumikoUI.Core.Export.KumikoExportOptions? other) -> bool
+KumikoUI.Core.Export.KumikoExportOptions.GroupLayout.get -> KumikoUI.Core.Export.KumikoExportGroupLayout
+KumikoUI.Core.Export.KumikoExportOptions.GroupLayout.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.HeaderSelector.get -> System.Func<KumikoUI.Core.Models.KumikoColumn!, string!>?
+KumikoUI.Core.Export.KumikoExportOptions.HeaderSelector.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.IncludeHeaders.get -> bool
+KumikoUI.Core.Export.KumikoExportOptions.IncludeHeaders.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.IncludeHiddenColumns.get -> bool
+KumikoUI.Core.Export.KumikoExportOptions.IncludeHiddenColumns.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.IncludeSummaries.get -> bool?
+KumikoUI.Core.Export.KumikoExportOptions.IncludeSummaries.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.KumikoExportOptions() -> void
+KumikoUI.Core.Export.KumikoExportOptions.ReadOnCallerThread.get -> bool
+KumikoUI.Core.Export.KumikoExportOptions.ReadOnCallerThread.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.Rows.get -> KumikoUI.Core.Export.KumikoExportRows
+KumikoUI.Core.Export.KumikoExportOptions.Rows.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.Selection.get -> KumikoUI.Core.Export.KumikoExportSelection?
+KumikoUI.Core.Export.KumikoExportOptions.Selection.init -> void
+KumikoUI.Core.Export.KumikoExportOptions.ValueMode.get -> KumikoUI.Core.Export.KumikoExportValueMode
+KumikoUI.Core.Export.KumikoExportOptions.ValueMode.init -> void
+KumikoUI.Core.Export.KumikoExportProgress
+KumikoUI.Core.Export.KumikoExportProgress.Deconstruct(out int RowsWritten, out int TotalRows) -> void
+KumikoUI.Core.Export.KumikoExportProgress.Equals(KumikoUI.Core.Export.KumikoExportProgress other) -> bool
+KumikoUI.Core.Export.KumikoExportProgress.KumikoExportProgress() -> void
+KumikoUI.Core.Export.KumikoExportProgress.KumikoExportProgress(int RowsWritten, int TotalRows) -> void
+KumikoUI.Core.Export.KumikoExportProgress.RowsWritten.get -> int
+KumikoUI.Core.Export.KumikoExportProgress.RowsWritten.init -> void
+KumikoUI.Core.Export.KumikoExportProgress.TotalRows.get -> int
+KumikoUI.Core.Export.KumikoExportProgress.TotalRows.init -> void
+KumikoUI.Core.Export.KumikoExportRow
+KumikoUI.Core.Export.KumikoExportRow.Cells.get -> System.ReadOnlySpan<KumikoUI.Core.Export.KumikoExportCell>
+KumikoUI.Core.Export.KumikoExportRow.Count.get -> int
+KumikoUI.Core.Export.KumikoExportRow.DataItem.get -> object?
+KumikoUI.Core.Export.KumikoExportRow.Kind.get -> KumikoUI.Core.Export.KumikoExportRowKind
+KumikoUI.Core.Export.KumikoExportRow.Level.get -> int
+KumikoUI.Core.Export.KumikoExportRow.this[int index].get -> KumikoUI.Core.Export.KumikoExportCell
+KumikoUI.Core.Export.KumikoExportRowKind
+KumikoUI.Core.Export.KumikoExportRowKind.Data = 1 -> KumikoUI.Core.Export.KumikoExportRowKind
+KumikoUI.Core.Export.KumikoExportRowKind.GroupHeader = 2 -> KumikoUI.Core.Export.KumikoExportRowKind
+KumikoUI.Core.Export.KumikoExportRowKind.GroupSummary = 3 -> KumikoUI.Core.Export.KumikoExportRowKind
+KumikoUI.Core.Export.KumikoExportRowKind.Header = 0 -> KumikoUI.Core.Export.KumikoExportRowKind
+KumikoUI.Core.Export.KumikoExportRowKind.TableSummary = 4 -> KumikoUI.Core.Export.KumikoExportRowKind
+KumikoUI.Core.Export.KumikoExportRows
+KumikoUI.Core.Export.KumikoExportRows.All = 3 -> KumikoUI.Core.Export.KumikoExportRows
+KumikoUI.Core.Export.KumikoExportRows.Filtered = 0 -> KumikoUI.Core.Export.KumikoExportRows
+KumikoUI.Core.Export.KumikoExportRows.Selected = 2 -> KumikoUI.Core.Export.KumikoExportRows
+KumikoUI.Core.Export.KumikoExportRows.Visible = 1 -> KumikoUI.Core.Export.KumikoExportRows
+KumikoUI.Core.Export.KumikoExportSelection
+KumikoUI.Core.Export.KumikoExportSnapshot
+KumikoUI.Core.Export.KumikoExportSnapshot.Columns.get -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Export.KumikoExportColumn!>!
+KumikoUI.Core.Export.KumikoExportSnapshot.Culture.get -> System.Globalization.CultureInfo!
+KumikoUI.Core.Export.KumikoExportSnapshot.ForEachRowAsync(System.Action<KumikoUI.Core.Export.KumikoExportRow!>! onRow, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask>? flushAsync = null, System.IProgress<KumikoUI.Core.Export.KumikoExportProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+KumikoUI.Core.Export.KumikoExportSnapshot.FormatDisplayText(object? value, KumikoUI.Core.Export.KumikoExportColumn! column) -> string!
+KumikoUI.Core.Export.KumikoExportSnapshot.FrozenColumnCount.get -> int
+KumikoUI.Core.Export.KumikoExportSnapshot.IncludeHeaders.get -> bool
+KumikoUI.Core.Export.KumikoExportSnapshot.Options.get -> KumikoUI.Core.Export.KumikoExportOptions!
+KumikoUI.Core.Export.KumikoExportSnapshot.ReadOnCallerThread.get -> bool
+KumikoUI.Core.Export.KumikoExportSnapshot.Rows.get -> System.Collections.Generic.IEnumerable<KumikoUI.Core.Export.KumikoExportRow!>!
+KumikoUI.Core.Export.KumikoExportSnapshot.TotalRows.get -> int
+KumikoUI.Core.Export.KumikoExportSnapshot.ValueMode.get -> KumikoUI.Core.Export.KumikoExportValueMode
+KumikoUI.Core.Export.KumikoExportValueMode
+KumikoUI.Core.Export.KumikoExportValueMode.Auto = 0 -> KumikoUI.Core.Export.KumikoExportValueMode
+KumikoUI.Core.Export.KumikoExportValueMode.DisplayText = 1 -> KumikoUI.Core.Export.KumikoExportValueMode
+KumikoUI.Core.Export.KumikoExportValueMode.RawValue = 2 -> KumikoUI.Core.Export.KumikoExportValueMode
+KumikoUI.Core.Export.KumikoFormulaInjection
+KumikoUI.Core.Export.KumikoFormulaInjection.None = 1 -> KumikoUI.Core.Export.KumikoFormulaInjection
+KumikoUI.Core.Export.KumikoFormulaInjection.Prefix = 0 -> KumikoUI.Core.Export.KumikoFormulaInjection
 KumikoUI.Core.Input.HitRegion.HeaderMenuButton = 17 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.HorizontalScrollBarThumb = 15 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.HorizontalScrollBarTrack = 16 -> KumikoUI.Core.Input.HitRegion
@@ -470,9 +599,28 @@ override KumikoUI.Core.Components.DrawnTimePicker.OnDraw(KumikoUI.Core.Rendering
 override KumikoUI.Core.Components.DrawnTimePicker.OnKeyDown(KumikoUI.Core.Input.KumikoKeyEventArgs! e) -> bool
 override KumikoUI.Core.Components.DrawnTimePicker.OnPointerDown(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
 override KumikoUI.Core.Components.DrawnTimePicker.OnPointerUp(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
+override KumikoUI.Core.Export.KumikoCsvOptions.Equals(object? obj) -> bool
+override KumikoUI.Core.Export.KumikoCsvOptions.GetHashCode() -> int
+override KumikoUI.Core.Export.KumikoCsvOptions.ToString() -> string!
+override KumikoUI.Core.Export.KumikoExportOptions.Equals(object? obj) -> bool
+override KumikoUI.Core.Export.KumikoExportOptions.GetHashCode() -> int
+override KumikoUI.Core.Export.KumikoExportOptions.ToString() -> string!
+override KumikoUI.Core.Export.KumikoExportProgress.GetHashCode() -> int
 static KumikoUI.Core.Components.DrawnMenuItem.Separator() -> KumikoUI.Core.Components.DrawnMenuItem!
 static KumikoUI.Core.Data.KumikoColumnMetadataRegistry.GetColumns(System.Type! itemType) -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Data.KumikoColumnMetadata!>!
 static KumikoUI.Core.Data.KumikoColumnMetadataRegistry.Register(System.Type! itemType, KumikoUI.Core.Data.IKumikoColumnMetadataProvider! provider) -> void
+static KumikoUI.Core.Export.KumikoCsvOptions.operator !=(KumikoUI.Core.Export.KumikoCsvOptions? left, KumikoUI.Core.Export.KumikoCsvOptions? right) -> bool
+static KumikoUI.Core.Export.KumikoCsvOptions.operator ==(KumikoUI.Core.Export.KumikoCsvOptions? left, KumikoUI.Core.Export.KumikoCsvOptions? right) -> bool
+static KumikoUI.Core.Export.KumikoExportExtensions.ExportToCsvAsync(this KumikoUI.Core.Models.KumikoSource! source, System.IO.Stream! destination, KumikoUI.Core.Export.KumikoExportOptions? options = null, KumikoUI.Core.Export.KumikoCsvOptions? csv = null, System.IProgress<KumikoUI.Core.Export.KumikoExportProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static KumikoUI.Core.Export.KumikoExportExtensions.ExportToCsvString(this KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Export.KumikoExportOptions? options = null, KumikoUI.Core.Export.KumikoCsvOptions? csv = null) -> string!
+static KumikoUI.Core.Export.KumikoExportOptions.operator !=(KumikoUI.Core.Export.KumikoExportOptions? left, KumikoUI.Core.Export.KumikoExportOptions? right) -> bool
+static KumikoUI.Core.Export.KumikoExportOptions.operator ==(KumikoUI.Core.Export.KumikoExportOptions? left, KumikoUI.Core.Export.KumikoExportOptions? right) -> bool
+static KumikoUI.Core.Export.KumikoExportProgress.operator !=(KumikoUI.Core.Export.KumikoExportProgress left, KumikoUI.Core.Export.KumikoExportProgress right) -> bool
+static KumikoUI.Core.Export.KumikoExportProgress.operator ==(KumikoUI.Core.Export.KumikoExportProgress left, KumikoUI.Core.Export.KumikoExportProgress right) -> bool
+static KumikoUI.Core.Export.KumikoExportSelection.FromItems(System.Collections.Generic.IEnumerable<object!>! items) -> KumikoUI.Core.Export.KumikoExportSelection!
+static KumikoUI.Core.Export.KumikoExportSelection.FromRows(System.Collections.Generic.IEnumerable<int>! visibleRows) -> KumikoUI.Core.Export.KumikoExportSelection!
+static KumikoUI.Core.Export.KumikoExportSelection.FromSelection(KumikoUI.Core.Models.KumikoSelectionModel! selection) -> KumikoUI.Core.Export.KumikoExportSelection!
+static KumikoUI.Core.Export.KumikoExportSnapshot.Create(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Export.KumikoExportOptions? options = null, KumikoUI.Core.Export.KumikoExportValueMode autoValueMode = KumikoUI.Core.Export.KumikoExportValueMode.DisplayText) -> KumikoUI.Core.Export.KumikoExportSnapshot!
 static KumikoUI.Core.Layout.KumikoScroller.GetRowHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style, int row) -> float
 static KumikoUI.Core.Models.KumikoAnnouncements.CheckAllBox(KumikoUI.Core.Models.KumikoStrings! strings, bool? state) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.CheckAllToggled(KumikoUI.Core.Models.KumikoStrings! strings, bool allSelected, int rowCount, System.Globalization.CultureInfo? culture = null) -> string!
@@ -489,3 +637,5 @@ static KumikoUI.Core.Models.KumikoColumnFactory.FromType(System.Type! itemType) 
 static KumikoUI.Core.Rendering.TextCellRenderer.DrawSearchHighlight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> void
 virtual KumikoUI.Core.Models.KumikoRowHeightResolver.Invoke(in KumikoUI.Core.Models.KumikoRowHeightContext context) -> float?
 virtual KumikoUI.Core.Rendering.TextCellRenderer.MeasureHeight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> float?
+~override KumikoUI.Core.Export.KumikoExportProgress.Equals(object obj) -> bool
+~override KumikoUI.Core.Export.KumikoExportProgress.ToString() -> string

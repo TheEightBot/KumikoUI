@@ -42,6 +42,7 @@
             <NavigationViewItem Content="Load More" Tag="LoadMore" />
             <NavigationViewItem Content="Selection Column" Tag="SelectionColumn" />
             <NavigationViewItem Content="Auto Columns" Tag="AutoColumns" />
+            <NavigationViewItem Content="Export" Tag="Export" />
         </NavigationView.MenuItems>
 
         <Frame x:Name="ContentFrame" />

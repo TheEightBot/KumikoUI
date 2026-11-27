@@ -1,5 +1,6 @@
 using KumikoUI.Core;
 using KumikoUI.Core.Data;
+using KumikoUI.Core.Export;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
 using KumikoUI.SkiaSharp;
@@ -72,6 +73,19 @@ source.AddTableSummaryRow(new TableSummaryRow
     Columns = { new SummaryColumnDescription(nameof(Employee.Salary), SummaryType.Sum) },
 });
 Check(source.IsGroupingActive, "grouping is active");
+
+// CSV export (#323): the filtered, grouped rows streamed to a stream, read through the generated accessors.
+// A console app has no synchronization context: block instead of awaiting, so the rest of the smoke stays on the
+// thread the source is attached to.
+using var csvStream = new MemoryStream();
+source.ExportToCsvAsync(csvStream, csv: new KumikoCsvOptions { EmitByteOrderMark = false }).GetAwaiter().GetResult();
+string csvText = System.Text.Encoding.UTF8.GetString(csvStream.ToArray());
+Check(csvText == source.ExportToCsvString(), "the streamed CSV equals the CSV string");
+var csvLines = csvText.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+int engineers = items.Count(e => e.Department == "Engineering");
+Check(csvLines.Length == 1 + 1 + engineers + 1, "CSV has a header, a group header, the filtered rows and the table summary");
+Check(csvLines[0] == "Name,Department,Salary,Hired,Active,Initials", "CSV header row");
+Check(csvLines[1].StartsWith("Department: Engineering (", StringComparison.Ordinal), "CSV group header row");
 
 // Save the layout as JSON (System.Text.Json source generation) and restore it onto a fresh source.
 source.SetDisplayIndex(active, 0);
