@@ -17,8 +17,8 @@ internal static class ScrollThumb
     /// <param name="minLength">The shortest the thumb gets.</param>
     public static float Length(float track, float viewport, float content, float minLength)
     {
-        if (!(track > 0)) return 0;
-        if (!(content > 0) || !(viewport < content)) return track;
+        if (float.IsNaN(track) || track <= 0) return 0;
+        if (float.IsNaN(content) || content <= 0 || float.IsNaN(viewport) || viewport >= content) return track;
         float min = Math.Min(float.IsFinite(minLength) ? Math.Max(0, minLength) : 0, track);
         return Math.Clamp(track * (viewport / content), min, track);
     }
@@ -47,7 +47,7 @@ internal static class ScrollThumb
     public static float OffsetAt(float thumbStart, float trackStart, float track, float thumbLength, float maxOffset)
     {
         float travel = track - thumbLength;
-        if (!(travel > 0)) return float.NaN;
+        if (float.IsNaN(travel) || travel <= 0) return float.NaN;
         return (thumbStart - trackStart) / travel * maxOffset;
     }
 

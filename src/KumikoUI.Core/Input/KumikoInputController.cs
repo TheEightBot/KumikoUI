@@ -299,8 +299,9 @@ public sealed partial class KumikoInputController
     /// <see cref="UpdateInertialScroll"/>).
     /// </summary>
     public bool IsAutoScrolling =>
-        (_isDraggingRow && _autoScrollVelocityY != 0) || (_isDraggingColumn && _autoScrollVelocityX != 0) ||
-        IsPagingScrollBar;
+        (_isDraggingRow && !InertialScroller.IsZero(_autoScrollVelocityY))
+        || (_isDraggingColumn && !InertialScroller.IsZero(_autoScrollVelocityX))
+        || IsPagingScrollBar;
 
     /// <summary>
     /// Whether the grid responds to the user. While false, pointer and key events are ignored (the grid does
