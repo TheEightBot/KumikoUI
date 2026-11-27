@@ -776,6 +776,9 @@ public sealed partial class KumikoInputController
                     e.Handled = true;
                 }
                 break;
+            case KumikoKey.ContextMenu:
+                e.Handled = TryOpenColumnMenuFromKeyboard(scroll, selection, style, dataSource);
+                break;
             case KumikoKey.C when e.HasCommand:
                 // Ctrl/Cmd+C copies the selected rows; with nothing selected the key is left to the host.
                 if (CopySelection(selection, dataSource))
@@ -1190,7 +1193,7 @@ public sealed partial class KumikoInputController
     {
         HitRegion.HeaderResizeGrip => KumikoCursor.ResizeHorizontal,
         HitRegion.HeaderFilterIcon or HitRegion.GroupChevron or HitRegion.GroupPanelChip or HitRegion.GroupPanelChipRemove
-            or HitRegion.RowDragHandle => KumikoCursor.Hand,
+            or HitRegion.RowDragHandle or HitRegion.HeaderMenuButton => KumikoCursor.Hand,
         HitRegion.Cell when !target.IsNone => KumikoCursor.Hand,
         _ => KumikoCursor.Default,
     };
@@ -1211,6 +1214,8 @@ public sealed partial class KumikoInputController
                 return new FeedbackTarget(HitRegion.HeaderCell, -1, columnIndex, -1, -1);
             case HitRegion.HeaderFilterIcon:
                 return new FeedbackTarget(HitRegion.HeaderFilterIcon, -1, columnIndex, -1, -1);
+            case HitRegion.HeaderMenuButton when IsColumnMenuEnabled:
+                return new FeedbackTarget(HitRegion.HeaderMenuButton, -1, columnIndex, -1, -1);
             case HitRegion.GroupPanelChip or HitRegion.GroupPanelChipRemove:
                 return new FeedbackTarget(region, -1, -1, group, -1);
             case HitRegion.GroupChevron or HitRegion.GroupHeaderRow:
@@ -1292,7 +1297,7 @@ public sealed partial class KumikoInputController
             _headerLongPressColumn = -1;
             var heldHit = _hitTester.HitTest(e.X, e.Y, scroll, style, columns, totalRows, dataSource, e.DeviceType);
             if (heldHit.Region == HitRegion.HeaderCell && heldHit.ColumnIndex == held)
-                RequestContext(KumikoContextTrigger.LongPress, e, heldHit, selection, dataSource);
+                RequestContext(KumikoContextTrigger.LongPress, e, heldHit, selection, dataSource, scroll, style);
             e.Handled = true;
             return;
         }
@@ -1391,6 +1396,8 @@ public sealed partial class KumikoInputController
             e.Handled = true;
             return;
         }
+
+        if (TryHandleColumnMenuButtonRelease(e, hit, scroll, selection, style, dataSource)) return;
 
         if (hit.Region == HitRegion.HeaderFilterIcon && hit.Column != null)
         {
@@ -1675,7 +1682,7 @@ public sealed partial class KumikoInputController
                 return;
             }
 
-            if (RequestContext(KumikoContextTrigger.LongPress, e, hit, selection, dataSource))
+            if (RequestContext(KumikoContextTrigger.LongPress, e, hit, selection, dataSource, scroll, style))
             {
                 RequestHaptic(KumikoHapticKind.LongPress, e.DeviceType);
                 _pressConsumedByContext = true;

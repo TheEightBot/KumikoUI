@@ -10,7 +10,8 @@ All inline cell editors inherit from `DrawnComponent` in `KumikoUI.Core.Componen
 There are **zero native UIKit / WinUI / Android widgets**: everything is drawn on canvas.
 
 Public components: `DrawnTextBox`, `DrawnComboBox`, `DrawnDatePicker`, `DrawnNumericUpDown`, `DrawnScrollPicker`,
-`DrawnFilterPopup`, `DrawnActionButtons`. `DrawnCheckBox`, `DrawnProgressBar`, `DrawnFocusManager` and `PopupManager`
+`DrawnFilterPopup`, `DrawnActionButtons`, and `DrawnMenu` (a popup menu of `DrawnMenuItem`s, the base of the column
+header menu; reuse it for other grid menus). `DrawnCheckBox`, `DrawnProgressBar`, `DrawnFocusManager` and `PopupManager`
 are internal. A new component is public only when users create it themselves (an editor a column can return);
 otherwise keep it `internal`, and follow the naming rules in CONTRIBUTING.md ("Public type names").
 

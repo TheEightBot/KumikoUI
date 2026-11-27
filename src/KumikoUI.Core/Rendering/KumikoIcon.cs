@@ -89,4 +89,10 @@ public enum KumikoIcon
     /// Default: a chevron pointing down.
     /// </summary>
     SpinDown,
+
+    /// <summary>
+    /// The column menu button of a column header (see <see cref="Input.KumikoInputController.ShowColumnMenuButton"/>).
+    /// Default: three dots stacked vertically.
+    /// </summary>
+    ColumnMenu,
 }

@@ -84,7 +84,7 @@ public sealed partial class KumikoInputController
                 if (secondary && !_nonPrimaryPressIgnored)
                 {
                     var hit = _hitTester.HitTest(e.X, e.Y, scroll, style, dataSource.Columns, dataSource.RowCount, dataSource);
-                    RequestContext(KumikoContextTrigger.SecondaryButton, e, hit, selection, dataSource);
+                    RequestContext(KumikoContextTrigger.SecondaryButton, e, hit, selection, dataSource, scroll, style);
                 }
                 _nonPrimaryPressIgnored = false;
                 break;
@@ -96,12 +96,13 @@ public sealed partial class KumikoInputController
     /// <summary>
     /// Raises <see cref="ContextRequested"/> for <paramref name="hit"/>. On a data row (a cell or its drag handle) an
     /// open edit on another cell is committed first, a row that is not selected becomes the selection, and the
-    /// current cell moves to the cell under the point. Returns false when nothing was hit; true when the event was
+    /// current cell moves to the cell under the point. On a column header that no handler marked handled, the
+    /// column menu opens when it is enabled (#319). Returns false when nothing was hit; true when the event was
     /// raised, or when a refused commit kept the editor open (no event).
     /// </summary>
     private bool RequestContext(
         KumikoContextTrigger trigger, KumikoPointerEventArgs e, KumikoHitTestResult hit,
-        KumikoSelectionModel selection, KumikoSource dataSource)
+        KumikoSelectionModel selection, KumikoSource dataSource, ScrollState scroll, KumikoStyle style)
     {
         if (hit.Region == HitRegion.None) return false;
 
@@ -121,8 +122,10 @@ public sealed partial class KumikoInputController
             item = dataSource.GetItem(row);
         }
 
-        ContextRequested?.Invoke(this, new KumikoContextRequestedEventArgs(
-            trigger, hit.Region, row, hit.ColumnIndex, hit.Column, item, e.X, e.Y, e.DeviceType));
+        var args = new KumikoContextRequestedEventArgs(
+            trigger, hit.Region, row, hit.ColumnIndex, hit.Column, item, e.X, e.Y, e.DeviceType);
+        ContextRequested?.Invoke(this, args);
+        OpenColumnMenuForContextRequest(args, scroll, selection, style, dataSource);
         return true;
     }
 }

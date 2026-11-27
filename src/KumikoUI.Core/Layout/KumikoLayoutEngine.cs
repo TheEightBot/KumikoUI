@@ -14,6 +14,15 @@ public sealed class KumikoLayoutEngine
     internal const float SortGlyphSpace = 12f;
     internal const float FilterGlyphSpace = 14f;
 
+    // Header room for the column menu button (12) and its gap (4), when the headers show it (#319).
+    internal const float MenuButtonGlyphSpace = 16f;
+
+    /// <summary>
+    /// The header room every column keeps for the column menu button: <see cref="MenuButtonGlyphSpace"/> while the
+    /// headers show it (the renderer sets it from <see cref="KumikoRenderer.ShowColumnMenuButton"/>), else 0.
+    /// </summary>
+    internal float HeaderMenuButtonSpace { get; set; }
+
     // Slack in a header-fit width, so rounding and anti-aliasing never ellipsize a header that just fits.
     internal const float HeaderFitMargin = 4f;
 
@@ -319,8 +328,9 @@ public sealed class KumikoLayoutEngine
     /// The narrowest width that shows <paramref name="column"/>'s whole header: its text measured in the header
     /// font (the <see cref="KumikoCellStyle.Font"/> of its <see cref="KumikoColumn.HeaderCellStyle"/>, else
     /// <see cref="KumikoStyle.HeaderFont"/>), the header padding on both sides, room for the sort arrow when the
-    /// column can be sorted (whether or not it is sorted now, so sorting it later does not truncate the header) and
-    /// for the filter icon when it can be filtered, and a small margin. The text measurement is cached on the column.
+    /// column can be sorted (whether or not it is sorted now, so sorting it later does not truncate the header), for
+    /// the filter icon when it can be filtered and for the column menu button when the headers show it, and a small
+    /// margin. The text measurement is cached on the column.
     /// </summary>
     public float MeasureHeaderFitWidth(KumikoColumn column, IDrawingContext measuringContext, KumikoStyle style)
     {
@@ -341,7 +351,8 @@ public sealed class KumikoLayoutEngine
             measured.Store(header, font, textWidth);
         }
 
-        float glyphs = (column.AllowSorting ? SortGlyphSpace : 0f) + (column.AllowFiltering ? FilterGlyphSpace : 0f);
+        float glyphs = (column.AllowSorting ? SortGlyphSpace : 0f) + (column.AllowFiltering ? FilterGlyphSpace : 0f)
+            + HeaderMenuButtonSpace;
         return MathF.Ceiling(measured.TextWidth) + padding * 2 + glyphs + HeaderFitMargin;
     }
 

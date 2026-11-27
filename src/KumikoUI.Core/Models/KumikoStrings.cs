@@ -162,6 +162,47 @@ public sealed record KumikoStrings
     /// <summary>The announcement when an edit fails validation. <c>{0}</c> is the column header and <c>{1}</c> the message. Default: "{0} is invalid: {1}".</summary>
     public string AnnounceValidationFailed { get; init; } = "{0} is invalid: {1}";
 
+    // ── Column menu (#319) ──
+
+    /// <summary>
+    /// The accessible name of a column's menu, announced when it opens. <c>{0}</c> is the column header. Default:
+    /// "{0} column menu".
+    /// </summary>
+    public string ColumnMenuName { get; init; } = "{0} column menu";
+
+    /// <summary>The column menu item that removes the column's sort. Default: "Clear Sort".</summary>
+    public string ColumnMenuClearSort { get; init; } = "Clear Sort";
+
+    /// <summary>The column menu item that opens the column's filter popup. Default: "Filter...".</summary>
+    public string ColumnMenuFilter { get; init; } = "Filter...";
+
+    /// <summary>The column menu item that groups the rows by the column. Default: "Group by This Column".</summary>
+    public string ColumnMenuGroupBy { get; init; } = "Group by This Column";
+
+    /// <summary>The column menu item that stops grouping by the column. Default: "Ungroup".</summary>
+    public string ColumnMenuUngroup { get; init; } = "Ungroup";
+
+    /// <summary>The column menu item that hides the column. Default: "Hide Column".</summary>
+    public string ColumnMenuHide { get; init; } = "Hide Column";
+
+    /// <summary>The column menu item that sizes the column to fit its header and cells. Default: "Auto-fit Width".</summary>
+    public string ColumnMenuAutoFit { get; init; } = "Auto-fit Width";
+
+    /// <summary>
+    /// The announcement when a menu opens. <c>{0}</c> is the menu's name and <c>{1}</c> the number of items.
+    /// Default: "{0}, {1} items".
+    /// </summary>
+    public string AnnounceMenuOpened { get; init; } = "{0}, {1} items";
+
+    /// <summary>
+    /// The announcement for a menu item that is checked (the current sort direction, say). <c>{0}</c> is the item's
+    /// text. Default: "{0}, checked".
+    /// </summary>
+    public string AnnounceMenuItemChecked { get; init; } = "{0}, checked";
+
+    /// <summary>The announcement for a menu item that cannot be used now. <c>{0}</c> is the item's text. Default: "{0}, unavailable".</summary>
+    public string AnnounceMenuItemDisabled { get; init; } = "{0}, unavailable";
+
     /// <summary>The default summary label for <paramref name="type"/>, or an empty string.</summary>
     /// <param name="type">The kind of summary.</param>
     internal string SummaryLabel(SummaryType type) => type switch

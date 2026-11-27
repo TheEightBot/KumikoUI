@@ -1,4 +1,65 @@
 #nullable enable
+KumikoUI.Core.Components.DrawnMenu
+KumikoUI.Core.Components.DrawnMenu.ApplyTheme(KumikoUI.Core.Models.KumikoStyle! style) -> void
+KumikoUI.Core.Components.DrawnMenu.BackgroundColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnMenu.BackgroundColor.set -> void
+KumikoUI.Core.Components.DrawnMenu.BorderColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnMenu.BorderColor.set -> void
+KumikoUI.Core.Components.DrawnMenu.CheckColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnMenu.CheckColor.set -> void
+KumikoUI.Core.Components.DrawnMenu.Closed -> System.EventHandler?
+KumikoUI.Core.Components.DrawnMenu.ContentHeight.get -> float
+KumikoUI.Core.Components.DrawnMenu.DisabledTextColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnMenu.DisabledTextColor.set -> void
+KumikoUI.Core.Components.DrawnMenu.DrawnMenu() -> void
+KumikoUI.Core.Components.DrawnMenu.Font.get -> KumikoUI.Core.Rendering.KumikoFont
+KumikoUI.Core.Components.DrawnMenu.Font.set -> void
+KumikoUI.Core.Components.DrawnMenu.HighlightColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnMenu.HighlightColor.set -> void
+KumikoUI.Core.Components.DrawnMenu.HighlightFirst() -> bool
+KumikoUI.Core.Components.DrawnMenu.HighlightedIndex.get -> int
+KumikoUI.Core.Components.DrawnMenu.ItemHeight.get -> float
+KumikoUI.Core.Components.DrawnMenu.ItemHeight.set -> void
+KumikoUI.Core.Components.DrawnMenu.ItemInvoked -> System.EventHandler<KumikoUI.Core.Components.DrawnMenuItem!>?
+KumikoUI.Core.Components.DrawnMenu.Items.get -> System.Collections.Generic.IList<KumikoUI.Core.Components.DrawnMenuItem!>!
+KumikoUI.Core.Components.DrawnMenu.PressedColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnMenu.PressedColor.set -> void
+KumikoUI.Core.Components.DrawnMenu.ScrollOffset.get -> float
+KumikoUI.Core.Components.DrawnMenu.ScrollbarColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnMenu.ScrollbarColor.set -> void
+KumikoUI.Core.Components.DrawnMenu.SeparatorColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnMenu.SeparatorColor.set -> void
+KumikoUI.Core.Components.DrawnMenu.TextColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnMenu.TextColor.set -> void
+KumikoUI.Core.Components.DrawnMenuItem
+KumikoUI.Core.Components.DrawnMenuItem.Action.get -> System.Action?
+KumikoUI.Core.Components.DrawnMenuItem.Action.set -> void
+KumikoUI.Core.Components.DrawnMenuItem.Command.get -> System.Windows.Input.ICommand?
+KumikoUI.Core.Components.DrawnMenuItem.Command.set -> void
+KumikoUI.Core.Components.DrawnMenuItem.CommandParameter.get -> object?
+KumikoUI.Core.Components.DrawnMenuItem.CommandParameter.set -> void
+KumikoUI.Core.Components.DrawnMenuItem.DrawnMenuItem() -> void
+KumikoUI.Core.Components.DrawnMenuItem.DrawnMenuItem(string! key, string! text, System.Action? action = null) -> void
+KumikoUI.Core.Components.DrawnMenuItem.Icon.get -> KumikoUI.Core.Rendering.KumikoIcon?
+KumikoUI.Core.Components.DrawnMenuItem.Icon.set -> void
+KumikoUI.Core.Components.DrawnMenuItem.IsChecked.get -> bool?
+KumikoUI.Core.Components.DrawnMenuItem.IsChecked.set -> void
+KumikoUI.Core.Components.DrawnMenuItem.IsEnabled.get -> bool
+KumikoUI.Core.Components.DrawnMenuItem.IsEnabled.set -> void
+KumikoUI.Core.Components.DrawnMenuItem.IsSeparator.get -> bool
+KumikoUI.Core.Components.DrawnMenuItem.IsSeparator.init -> void
+KumikoUI.Core.Components.DrawnMenuItem.Key.get -> string!
+KumikoUI.Core.Components.DrawnMenuItem.Key.init -> void
+KumikoUI.Core.Components.DrawnMenuItem.Text.get -> string!
+KumikoUI.Core.Components.DrawnMenuItem.Text.set -> void
+KumikoUI.Core.Components.KumikoColumnMenuItems
+KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs
+KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs.Cancel.get -> bool
+KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs.Cancel.set -> void
+KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs.Column.get -> KumikoUI.Core.Models.KumikoColumn!
+KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs.ColumnIndex.get -> int
+KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs.Items.get -> System.Collections.Generic.IList<KumikoUI.Core.Components.DrawnMenuItem!>!
+KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs.KumikoColumnMenuOpeningEventArgs(KumikoUI.Core.Models.KumikoColumn! column, int columnIndex, System.Collections.Generic.IList<KumikoUI.Core.Components.DrawnMenuItem!>! items) -> void
 KumikoUI.Core.Data.IKumikoColumnMetadataProvider
 KumikoUI.Core.Data.IKumikoColumnMetadataProvider.GetColumns(System.Type! itemType) -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Data.KumikoColumnMetadata!>?
 KumikoUI.Core.Data.KumikoColumnMetadata
@@ -22,10 +83,24 @@ KumikoUI.Core.Data.KumikoColumnMetadata.PropertyType.get -> System.Type!
 KumikoUI.Core.Data.KumikoColumnMetadata.ShortName.get -> string?
 KumikoUI.Core.Data.KumikoColumnMetadata.ShortName.init -> void
 KumikoUI.Core.Data.KumikoColumnMetadataRegistry
+KumikoUI.Core.Input.HitRegion.HeaderMenuButton = 17 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.HorizontalScrollBarThumb = 15 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.HorizontalScrollBarTrack = 16 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.VerticalScrollBarThumb = 13 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.VerticalScrollBarTrack = 14 -> KumikoUI.Core.Input.HitRegion
+KumikoUI.Core.Input.KumikoContextRequestedEventArgs.Handled.get -> bool
+KumikoUI.Core.Input.KumikoContextRequestedEventArgs.Handled.set -> void
+KumikoUI.Core.Input.KumikoHitTester.ShowColumnMenuButton.get -> bool
+KumikoUI.Core.Input.KumikoHitTester.ShowColumnMenuButton.set -> void
+KumikoUI.Core.Input.KumikoInputController.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
+KumikoUI.Core.Input.KumikoInputController.IsColumnMenuEnabled.get -> bool
+KumikoUI.Core.Input.KumikoInputController.IsColumnMenuEnabled.set -> void
+KumikoUI.Core.Input.KumikoInputController.ShowColumnMenu(KumikoUI.Core.Models.KumikoColumn! column, KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
+KumikoUI.Core.Input.KumikoInputController.ShowColumnMenuButton.get -> bool
+KumikoUI.Core.Input.KumikoInputController.ShowColumnMenuButton.set -> void
+KumikoUI.Core.Input.KumikoKey.ContextMenu = 23 -> KumikoUI.Core.Input.KumikoKey
+KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.get -> bool
+KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.set -> void
 KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode
 KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode.Auto = 1 -> KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode
 KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode.Merge = 2 -> KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode
@@ -43,6 +118,26 @@ KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoScrollBarVisibility.Always = 1 -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoScrollBarVisibility.Auto = 0 -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoScrollBarVisibility.Never = 2 -> KumikoUI.Core.Models.KumikoScrollBarVisibility
+KumikoUI.Core.Models.KumikoStrings.AnnounceMenuItemChecked.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceMenuItemChecked.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceMenuItemDisabled.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceMenuItemDisabled.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceMenuOpened.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceMenuOpened.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuAutoFit.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuAutoFit.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuClearSort.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuClearSort.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuFilter.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuFilter.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuGroupBy.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuGroupBy.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuHide.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuHide.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuName.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuName.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuUngroup.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuUngroup.init -> void
 KumikoUI.Core.Models.KumikoStyle.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoStyle.HorizontalScrollBarVisibility.set -> void
 KumikoUI.Core.Models.KumikoStyle.ScrollBarExpandedThickness.get -> float
@@ -61,7 +156,30 @@ KumikoUI.Core.Models.KumikoStyleOptions.HorizontalScrollBarVisibility.get -> Kum
 KumikoUI.Core.Models.KumikoStyleOptions.HorizontalScrollBarVisibility.set -> void
 KumikoUI.Core.Models.KumikoStyleOptions.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility?
 KumikoUI.Core.Models.KumikoStyleOptions.VerticalScrollBarVisibility.set -> void
+KumikoUI.Core.Rendering.KumikoIcon.ColumnMenu = 20 -> KumikoUI.Core.Rendering.KumikoIcon
+const KumikoUI.Core.Components.DrawnMenu.DefaultItemHeight = 32 -> float
+const KumikoUI.Core.Components.DrawnMenu.TouchItemHeight = 44 -> float
+const KumikoUI.Core.Components.KumikoColumnMenuItems.AutoFit = "AutoFit" -> string!
+const KumikoUI.Core.Components.KumikoColumnMenuItems.ClearSort = "ClearSort" -> string!
+const KumikoUI.Core.Components.KumikoColumnMenuItems.Filter = "Filter" -> string!
+const KumikoUI.Core.Components.KumikoColumnMenuItems.GroupBy = "GroupBy" -> string!
+const KumikoUI.Core.Components.KumikoColumnMenuItems.Hide = "Hide" -> string!
+const KumikoUI.Core.Components.KumikoColumnMenuItems.SortAscending = "SortAscending" -> string!
+const KumikoUI.Core.Components.KumikoColumnMenuItems.SortDescending = "SortDescending" -> string!
+const KumikoUI.Core.Components.KumikoColumnMenuItems.Ungroup = "Ungroup" -> string!
+override KumikoUI.Core.Components.DrawnMenu.OnDraw(KumikoUI.Core.Rendering.IDrawingContext! ctx) -> void
+override KumikoUI.Core.Components.DrawnMenu.OnKeyDown(KumikoUI.Core.Input.KumikoKeyEventArgs! e) -> bool
+override KumikoUI.Core.Components.DrawnMenu.OnPointerCancel(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> void
+override KumikoUI.Core.Components.DrawnMenu.OnPointerDown(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
+override KumikoUI.Core.Components.DrawnMenu.OnPointerMove(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
+override KumikoUI.Core.Components.DrawnMenu.OnPointerUp(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
+override KumikoUI.Core.Components.DrawnMenu.OnScroll(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
+override KumikoUI.Core.Components.DrawnMenuItem.ToString() -> string!
+static KumikoUI.Core.Components.DrawnMenuItem.Separator() -> KumikoUI.Core.Components.DrawnMenuItem!
 static KumikoUI.Core.Data.KumikoColumnMetadataRegistry.GetColumns(System.Type! itemType) -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Data.KumikoColumnMetadata!>!
 static KumikoUI.Core.Data.KumikoColumnMetadataRegistry.Register(System.Type! itemType, KumikoUI.Core.Data.IKumikoColumnMetadataProvider! provider) -> void
+static KumikoUI.Core.Models.KumikoAnnouncements.ColumnMenuName(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Models.KumikoColumn! column, int columnIndex) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.MenuItem(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Components.DrawnMenuItem! item) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.MenuOpened(KumikoUI.Core.Models.KumikoStrings! strings, string! menuName, int itemCount) -> string!
 static KumikoUI.Core.Models.KumikoColumnFactory.Create(KumikoUI.Core.Data.KumikoColumnMetadata! metadata) -> KumikoUI.Core.Models.KumikoColumn?
 static KumikoUI.Core.Models.KumikoColumnFactory.FromType(System.Type! itemType) -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Models.KumikoColumn!>!

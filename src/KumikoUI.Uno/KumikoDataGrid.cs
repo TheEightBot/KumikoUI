@@ -121,6 +121,7 @@ public partial class KumikoDataGrid : UserControl
         _inputController.FilterPopupClosed += OnFilterPopupClosed;
         _inputController.CursorChanged += OnInputControllerCursorChanged;
         _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested; // KumikoDataGrid.Haptics.cs
+        InitializeColumnMenu(); // KumikoDataGrid.ColumnMenu.cs
 
         // IsEnabled=false stops all input in Core (KumikoDataGrid.Input.cs). Own event: wired once, no leak.
         IsEnabledChanged += OnIsEnabledChanged;

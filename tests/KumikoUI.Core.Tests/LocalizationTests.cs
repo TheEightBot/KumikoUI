@@ -69,6 +69,16 @@ public class LocalizationTests
         AnnounceEditCommitted = "{0} geändert in {1}",
         AnnounceEditCanceled = "Bearbeitung von {0} beendet",
         AnnounceValidationFailed = "{0} ist ungültig: {1}",
+        ColumnMenuName = "Spaltenmenü {0}",
+        ColumnMenuClearSort = "Sortierung aufheben",
+        ColumnMenuFilter = "Filtern...",
+        ColumnMenuGroupBy = "Nach dieser Spalte gruppieren",
+        ColumnMenuUngroup = "Gruppierung aufheben",
+        ColumnMenuHide = "Spalte ausblenden",
+        ColumnMenuAutoFit = "Breite automatisch anpassen",
+        AnnounceMenuOpened = "{0}, {1} Einträge",
+        AnnounceMenuItemChecked = "{0}, ausgewählt",
+        AnnounceMenuItemDisabled = "{0}, nicht verfügbar",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>

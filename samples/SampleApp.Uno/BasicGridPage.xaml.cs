@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using KumikoUI.Core.Components;
 using KumikoUI.Core.Editing;
 using KumikoUI.Core.Input;
 using KumikoUI.Core.Models;
@@ -45,7 +46,13 @@ public sealed partial class BasicGridPage : Page
         // Rows can be dragged by their handle, as on the MAUI sample's main page (the Row Drag button cycles the modes)
         kumiko.ShowRowDragHandle = true;
 
-        // Right click (or a long press on touch) opens a context menu at the pointer
+        // A right click or a long press on a header, its menu button, or the Menu key (Shift+F10) opens the grid's own
+        // column menu: sort, filter, group by, hide and auto-fit, drawn at the pointer like the MAUI sample's
+        kumiko.IsColumnMenuEnabled = true;
+        kumiko.ShowColumnMenuButton = true;
+        kumiko.ColumnMenuOpening += OnColumnMenuOpening;
+
+        // Right click (or a long press on touch) on a row or the empty area opens a context menu at the pointer
         kumiko.ContextMenuRequested += OnGridContextMenuRequested;
 
         // The grid follows the app theme until a theme is picked: the theme button starts from the one it shows
@@ -57,18 +64,27 @@ public sealed partial class BasicGridPage : Page
         };
     }
 
+    // ── Column menu ──
+
+    // The built-in items can be removed, reordered or joined by the app's own
+    private void OnColumnMenuOpening(object? sender, KumikoColumnMenuOpeningEventArgs e)
+    {
+        e.Items.Add(DrawnMenuItem.Separator());
+        e.Items.Add(new DrawnMenuItem("ClearAllSorts", "Clear All Sorts", () => kumiko.DataSource.ClearSort())
+        {
+            IsEnabled = kumiko.Columns.Any(c => c.SortDirection != KumikoSortDirection.None),
+        });
+    }
+
     // ── Context menu ──
+    // Column headers use the grid's drawn column menu (see above); rows and the empty area get a MenuFlyout.
 
     private void OnGridContextMenuRequested(object? sender, KumikoContextRequestedEventArgs e)
     {
+        if (e.IsHeader) return; // the built-in column menu opens
+
         var menu = new MenuFlyout();
-        if (e.IsHeader && e.Column is { } column)
-        {
-            AddItem(menu, "Sort ascending", () => kumiko.DataSource.SetSort(column, KumikoSortDirection.Ascending));
-            AddItem(menu, "Sort descending", () => kumiko.DataSource.SetSort(column, KumikoSortDirection.Descending));
-            AddItem(menu, "Clear sort", () => kumiko.DataSource.ClearSort());
-        }
-        else if (e.DataItem is Employee employee)
+        if (e.DataItem is Employee employee)
         {
             // The grid selected the row first (unless it was already part of the selection)
             var selected = kumiko.Selection.SelectedItems.OfType<Employee>().ToList();

@@ -1173,11 +1173,12 @@ The keys are handled in `KumikoUI.Core`, the same way on every host. Which keys 
 | Space | Toggle a Boolean cell, toggle a group header, or toggle the current row's selection | Types a space |
 | Ctrl+A | Select all rows | Select all text |
 | Ctrl/Cmd+C | Copy the selected rows (see [Copying rows](#copying-rows)) | Copy the selected text |
+| Menu key, Shift+F10 | Open the column menu of the current cell's column (with `IsColumnMenuEnabled`, see [Column menu](#column-menu)); otherwise left to the page | |
 | Ctrl/Cmd+X, Ctrl/Cmd+V | | Cut, paste |
 | Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y | | Undo, redo (a word at a time) |
 | A character | Open the editor with that character (`Typing` trigger) | Type it |
 
-Tab stops at every visible column that isn't read-only, whatever its type, unless the column sets `AllowTabStop="False"`. Tab and Shift+Tab never trap focus: with no current cell, or no further tab stop, the grid leaves the key unhandled and the host moves focus to the next control. The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, sticky group headers and the pinned footer. The filter popup handles its own keys while it is open.
+Tab stops at every visible column that isn't read-only, whatever its type, unless the column sets `AllowTabStop="False"`. Tab and Shift+Tab never trap focus: with no current cell, or no further tab stop, the grid leaves the key unhandled and the host moves focus to the next control. The current cell is always scrolled fully into view, clear of the grouping panel, header, top summaries, frozen rows and columns, sticky group headers and the pinned footer. The filter popup and the column menu handle their own keys while they are open: in the menu, Up and Down move over the enabled items, Home and End go to the first and the last, a letter goes to the next item starting with it, Enter or Space chooses, and Escape, Tab or the Menu key closes it.
 
 ### Keys per platform
 
@@ -1192,6 +1193,7 @@ Each host captures the keyboard through a native input view, and that decides wh
 | Escape, F2, Delete | Yes | Yes | Yes | Yes |
 | Ctrl+A, editor undo / redo | Yes; Cmd works as Ctrl on macOS, iOS and WebAssembly | Yes, with Cmd | Yes (Ctrl or Meta) | Yes |
 | Ctrl/Cmd+C, X, V | Yes | Yes | Yes | Yes |
+| Menu key, Shift+F10 | Yes | Yes (a keyboard with a Menu key, or Shift+F10) | Yes (the Menu key, or Shift+F10) | Yes |
 
 On Android, pressing the grid gives it keyboard focus, so a hardware keyboard navigates it without opening an editor. The soft keyboard appears only while a cell editor or the filter popup's search box is open.
 
@@ -1488,8 +1490,10 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `RenderMode` | `KumikoRenderMode` | `Auto` | The drawing surface; `ActiveRenderMode` reports the one in use. MAUI: `Auto` rasterizes on the GPU (`SKGLView`) on Android and Mac Catalyst and on the CPU (`SKCanvasView`) on iOS and Windows; `Hardware` (the GPU view) and `Software` ask for one. Uno: `Auto` draws through Uno's GPU-backed `SKCanvasElement` on the Skia-rendered heads and through `SKXamlCanvas` elsewhere; `Hardware` and `Software` ask for one. |
 | `IsReadOnly` | `bool` | false | True refuses every edit, Boolean toggle and Tab stop; combines with `KumikoColumn.IsReadOnly`. |
 | `AllowSorting`, `AllowFiltering` | `bool` | true | False stops header-tap sorting, or hides and disables the header filter icons; a grid-level false wins over the column's setting. |
+| `IsColumnMenuEnabled` | `bool` | false | The grid's own column menu on a header right click or long press, the header menu button and the Menu key ([Column menu](#column-menu)). |
+| `ShowColumnMenuButton` | `bool` | false | A menu button (three dots) in every header that opens the column menu with a tap; shown while `IsColumnMenuEnabled` is on. |
 
-Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)), `GetLayoutState` and `ApplyLayoutState` ([Saving and restoring the layout](#saving-and-restoring-the-layout)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
+Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)), `ShowColumnMenu(column)` ([Column menu](#column-menu)), `GetLayoutState` and `ApplyLayoutState` ([Saving and restoring the layout](#saving-and-restoring-the-layout)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
 
 ### Commands
 
@@ -1507,7 +1511,7 @@ Each command is executed with the event arguments as its parameter (`SelectionCh
 
 ### Events
 
-`RowTapped`, `RowDoubleTapped`, `CellTapped`, `HeaderTapped`, `ContextMenuRequested`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled`, `SelectionChanged`, `AutoGeneratingColumn` and `AutoGeneratedColumns` ([Generated columns](#generated-columns)). Most of them forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection` (`ColumnReordered` is raised by the grid once it has moved the column), which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
+`RowTapped`, `RowDoubleTapped`, `CellTapped`, `HeaderTapped`, `ContextMenuRequested`, `ColumnMenuOpening`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled`, `SelectionChanged`, `AutoGeneratingColumn` and `AutoGeneratedColumns` ([Generated columns](#generated-columns)). Most of them forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection` (`ColumnReordered` is raised by the grid once it has moved the column), which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
 
 `DataSource.ViewChanged` reports every change of the view once, with its kind (`Redraw`, `Rebuild`, `Insert`, `Remove`); `MapRow(oldRow)` follows a row from before the change to after it, and `GetViewRow(item)` finds an item's row.
 
@@ -1542,7 +1546,41 @@ kumiko.ContextMenuRequested += (sender, e) =>
 };
 ```
 
-MAUI cannot open a menu at a point, so the sample app shows an action sheet (`DisplayActionSheetAsync`). Right clicks are reported on Windows, Mac Catalyst and iPad (with a mouse or trackpad), and Android (with a mouse); `CellTapped` and `HeaderTapped` report primary taps with the column and the position.
+MAUI cannot open a native menu at a point, so for rows the sample app shows an action sheet (`DisplayActionSheetAsync`); for column headers it turns on the grid's drawn [column menu](#column-menu), which opens at the pointer on every platform. Right clicks are reported on Windows, Mac Catalyst and iPad (with a mouse or trackpad), and Android (with a mouse); `CellTapped` and `HeaderTapped` report primary taps with the column and the position.
+
+### Column menu
+
+Set `IsColumnMenuEnabled` and a right click or a long press on a column header opens the grid's own menu, drawn like the rest of the grid, so it looks the same on every platform and opens at the pointer: sort ascending and descending (with the type-aware labels of the filter popup, the current direction checked), clear sort, filter (opens the column's filter popup), group by this column or ungroup, hide, and auto-fit width. Items follow the grid and the column: no sort items without `AllowSorting`, no filter item without `AllowFiltering`, no grouping item for a column without a `PropertyName`, no auto-fit for a column that cannot be resized, and hide is disabled for the last visible column. `ShowColumnMenuButton` adds a three-dot button to every header (left of the filter icon) that opens the menu with a tap, and the Menu key or Shift+F10 opens it for the current cell's column with its first item highlighted. `ShowColumnMenu(column)` opens it in code. The texts come from `KumikoStrings` (`ColumnMenuClearSort`, `ColumnMenuFilter`, `ColumnMenuGroupBy` and so on), and a screen reader hears the menu's name and item count when it opens and each item the keyboard moves to.
+
+A right click or a long press raises `ContextMenuRequested` first. The menu opens only when no handler set `e.Handled`, so an app that already shows its own header menu from that event sets it (for headers) before turning `IsColumnMenuEnabled` on:
+
+```csharp
+kumiko.IsColumnMenuEnabled = true;
+kumiko.ShowColumnMenuButton = true;
+kumiko.ContextMenuRequested += (sender, e) =>
+{
+    if (!e.IsHeader)
+        e.Handled = true; // rows get the app's own menu; headers get the built-in one
+};
+```
+
+`ColumnMenuOpening` runs just before the menu opens, with the column and its items (`DrawnMenuItem`): remove, reorder or change them, add your own (an `Action`, or a `Command` with a `CommandParameter`; `IsEnabled`, `IsChecked`, `Icon`), or set `Cancel`. The default items have the stable keys in `KumikoColumnMenuItems`:
+
+```csharp
+kumiko.ColumnMenuOpening += (sender, e) =>
+{
+    // No hiding of the first column, and an item of the app's own at the end
+    if (e.ColumnIndex == 0)
+    {
+        for (int i = e.Items.Count - 1; i >= 0; i--)
+            if (e.Items[i].Key == KumikoColumnMenuItems.Hide) e.Items.RemoveAt(i);
+    }
+    e.Items.Add(DrawnMenuItem.Separator());
+    e.Items.Add(new DrawnMenuItem("ClearAllSorts", "Clear All Sorts", () => kumiko.DataSource.ClearSort()));
+};
+```
+
+While the menu is open it takes the keyboard (see [What each key does](#what-each-key-does)); a click or a tap outside it closes it without doing anything else, and a finger drag scrolls a menu taller than the grid. An item the menu chose runs after the menu closed, so an item can open another popup (as Filter does).
 
 ### Precedence: explicit properties versus style and theme
 
@@ -2018,7 +2056,7 @@ This is the current state, not the goal. The 1.0 target and the plan are in [doc
 - **Screen readers see one element.** Cells, headers, editors and popups are drawn on a canvas and are not exposed to assistive technology individually, so a screen reader can't read or navigate cell contents. A per-cell accessibility tree is planned for 1.x.
   - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default: the localizable `KumikoStrings.AccessibleGridName`, "Data grid") as its semantic description and `GridHint` (default: a hint with the row and column counts and the current cell) as its hint.
   - **Uno:** the grid has a UI Automation peer with the DataGrid control type. Its name comes from `GridDescription` or `KumikoStrings.AccessibleGridName`, and its help text from `GridHint` or a computed description of the rows and columns. The peer shows up in the accessibility trees of WebAssembly (as a `role="grid"` element), Android and the Windows desktop head (UI Automation). On the macOS desktop head it is there only on the page the app opens with: Uno 6.7's macOS bridge loses the whole window's tree after a navigation, and in Debug builds that use Hot Design. The Linux desktop head (X11) had no AT-SPI bridge in Uno 6.7; Uno 7.0.65 adds one, and the grid appears in the AT-SPI tree as a single `panel` with its name and a static description, with no table, selection or action interfaces, so Orca will not navigate it as a grid yet ([docs/uno/verification.md](docs/uno/verification.md), F4 and F12). The device verification passes inspected these accessibility trees but did not drive a screen reader on any host, so test with VoiceOver, TalkBack or Narrator before relying on it.
-  - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, and validation errors to a running screen reader. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
+  - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, validation errors, and the [column menu](#column-menu) (its name and item count when it opens, then each item the keyboard moves to) to a running screen reader. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
 - **Keyboard.** The grid can be used without a pointer on Uno and on MAUI for every platform, and never traps Tab. See [Keys per platform](#keys-per-platform).
 - **Hidden input fields.** Most hosts keep an invisible native view to receive keyboard input: on MAUI, a `KeyInputResponder` on Apple platforms and an input view on Android (on Windows the grid itself takes the keyboard focus); on Uno, a `TextBox`. It is kept out of the accessibility tree and takes no pointer input.
 - **Right-to-left layout is not supported in 1.0.** Under a right-to-left ancestor (`FlowDirection`) the grid still draws left to right instead of mirroring; mirrored layout is tracked in #80.

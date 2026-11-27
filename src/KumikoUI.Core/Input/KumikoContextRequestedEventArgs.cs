@@ -79,8 +79,18 @@ public sealed class KumikoContextRequestedEventArgs : EventArgs
 
     /// <summary>
     /// Whether the point is on a column header: <see cref="HitRegion.HeaderCell"/>,
-    /// <see cref="HitRegion.HeaderFilterIcon"/> or <see cref="HitRegion.HeaderResizeGrip"/>.
+    /// <see cref="HitRegion.HeaderFilterIcon"/>, <see cref="HitRegion.HeaderResizeGrip"/> or
+    /// <see cref="HitRegion.HeaderMenuButton"/>.
     /// </summary>
     public bool IsHeader =>
-        Region is HitRegion.HeaderCell or HitRegion.HeaderFilterIcon or HitRegion.HeaderResizeGrip;
+        Region is HitRegion.HeaderCell or HitRegion.HeaderFilterIcon or HitRegion.HeaderResizeGrip
+            or HitRegion.HeaderMenuButton;
+
+    /// <summary>
+    /// Set it to true when a handler shows its own menu, so the grid shows none. With
+    /// <see cref="KumikoInputController.IsColumnMenuEnabled"/> on, a request on a column header that no handler marks
+    /// handled opens the built-in column menu; an app that already shows its own header menu from this event sets
+    /// it before turning the built-in menu on. Default false.
+    /// </summary>
+    public bool Handled { get; set; }
 }
