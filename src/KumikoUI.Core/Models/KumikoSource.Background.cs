@@ -88,6 +88,27 @@ public partial class KumikoSource
     public event EventHandler? ViewUpdated;
 
     /// <summary>
+    /// Raised on the source's thread each time <see cref="IsViewUpdatePending"/> changes: once when a background
+    /// rebuild is requested while none was pending (true), and once when the last requested view was published, a
+    /// synchronous rebuild replaced it, the build failed or the source was disposed (false). A request that follows
+    /// another before it publishes raises nothing, and nothing is raised while rebuilds are synchronous. The grids
+    /// use it to show their busy indicator (<see cref="KumikoRenderer.IsBusy"/>). It follows <see cref="ViewUpdated"/>
+    /// when the pending state ends with a publish.
+    /// </summary>
+    public event EventHandler? ViewUpdatePendingChanged;
+
+    private bool _pendingNotified; // the IsViewUpdatePending value ViewUpdatePendingChanged last reported
+
+    /// <summary>Raise <see cref="ViewUpdatePendingChanged"/> when <see cref="IsViewUpdatePending"/> differs from the last report.</summary>
+    private void NotifyPendingChanged()
+    {
+        bool pending = IsViewUpdatePending;
+        if (pending == _pendingNotified) return;
+        _pendingNotified = pending;
+        ViewUpdatePendingChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
     /// A task that completes when no background rebuild is pending: at once when none is (or rebuilds are
     /// synchronous), otherwise when the last requested view has been published (after <see cref="ViewUpdated"/>), a
     /// synchronous rebuild replaced it, or the source was disposed. Faults when the rebuild threw (for example in a
@@ -117,6 +138,7 @@ public partial class KumikoSource
     private void ScheduleBackgroundRebuild()
     {
         _bgRequested = true;
+        NotifyPendingChanged();
         if (_bgStartPosted) return;
         _bgStartPosted = true;
         _ownerContext!.Post(static state => ((KumikoSource)state!).StartBackgroundRebuild(), this);
@@ -221,6 +243,7 @@ public partial class KumikoSource
         view.RowKeys = null; // the notification record keeps them
 
         ViewUpdated?.Invoke(this, EventArgs.Empty);
+        NotifyPendingChanged();
 
         if (_bgRequested)
         {
@@ -245,6 +268,7 @@ public partial class KumikoSource
         _bgCts = null;
         _bgCancelStreak = 0;
         _bgRequested = false;
+        NotifyPendingChanged();
         var awaiters = _viewUpdated;
         _viewUpdated = null;
         if (awaiters != null)

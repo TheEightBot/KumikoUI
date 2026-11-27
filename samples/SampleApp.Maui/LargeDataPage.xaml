@@ -36,6 +36,12 @@
                     SelectedIndexChanged="OnScrollBarsChanged"
                     Margin="8,0,0,4"
                     VerticalOptions="Center" />
+            <!-- KumikoStyle.BusyIndicatorKind (#327): the grid shows it by itself while a 100K-row sort or filter rebuilds -->
+            <Picker x:Name="busyKindPicker"
+                    Title="Busy indicator"
+                    SelectedIndexChanged="OnBusyKindChanged"
+                    Margin="8,0,0,4"
+                    VerticalOptions="Center" />
             <Label x:Name="surfaceLabel" VerticalOptions="Center" Margin="8,0" />
             <Label x:Name="statusLabel" Text="No data loaded" VerticalOptions="Center" Margin="8,0" />
             <!-- Grid-wide search (#317): highlights matches; Prev/Next move between them; Ctrl/Cmd+F opens the drawn panel -->

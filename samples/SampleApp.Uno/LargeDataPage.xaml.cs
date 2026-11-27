@@ -34,6 +34,18 @@ public sealed partial class LargeDataPage : Page
         // Scroll bars: Auto fades them in while scrolling and on mouse hover; Always keeps them drawn
         scrollBarCombo.ItemsSource = Enum.GetValues<KumikoScrollBarVisibility>();
         scrollBarCombo.SelectedItem = kumiko.VerticalScrollBarVisibility;
+
+        // Busy indicator: sorting or filtering 100K rows runs in the background and the grid shows its bar meanwhile
+        busyKindCombo.ItemsSource = Enum.GetValues<KumikoBusyIndicatorKind>();
+        busyKindCombo.SelectedItem = kumiko.GridStyle.BusyIndicatorKind;
+    }
+
+    private void OnBusyKindChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (busyKindCombo.SelectedItem is not KumikoBusyIndicatorKind kind) return;
+        var style = kumiko.GridStyle;
+        style.BusyIndicatorKind = kind;
+        kumiko.GridStyle = style; // assigning the same style repaints
     }
 
     private void OnScrollBarsChanged(object sender, SelectionChangedEventArgs e)

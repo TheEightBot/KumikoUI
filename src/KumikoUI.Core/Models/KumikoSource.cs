@@ -2385,6 +2385,7 @@ public sealed partial class KumikoSource : IDisposable
         PublishView(ViewBuilder.Build(settings, _view, CancellationToken.None));
         if (!ReferenceEquals(oldItems, _view.Items)) ReturnItemBuffer(oldItems);
         CompleteViewUpdate();
+        NotifyPendingChanged(); // a synchronous view ended a pending background rebuild
     }
 
     /// <summary>Make <paramref name="view"/> the view every read answers from.</summary>

@@ -105,6 +105,8 @@ public static class KumikoTheme
             PressedOverlayColor = new KumikoColor(255, 255, 255, 41),
             ScrollBarThumbColor = new KumikoColor(255, 255, 255, 110),
             ScrollBarTrackColor = new KumikoColor(255, 255, 255, 20),
+            BusyIndicatorColor = new KumikoColor(75, 166, 251),
+            BusyOverlayColor = new KumikoColor(30, 30, 30, 170),
         };
     }
 
@@ -196,6 +198,8 @@ public static class KumikoTheme
             PressedOverlayColor = new KumikoColor(0, 255, 255, 110),
             ScrollBarThumbColor = new KumikoColor(0, 255, 255),
             ScrollBarTrackColor = new KumikoColor(255, 255, 255, 60),
+            BusyIndicatorColor = new KumikoColor(255, 255, 0),
+            BusyOverlayColor = new KumikoColor(0, 0, 0, 200),
         };
     }
 }

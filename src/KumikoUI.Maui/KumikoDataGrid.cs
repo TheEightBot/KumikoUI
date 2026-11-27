@@ -122,6 +122,7 @@ public partial class KumikoDataGrid : ContentView
 
         // Incremental "load more" loading (KumikoDataGrid.LoadMore.cs)
         InitializeLoadMore();
+        InitializeBusy(); // KumikoDataGrid.Busy.cs (#327)
         // Grid-wide search, its panel and its announcements (KumikoDataGrid.Search.cs, #317)
         InitializeSearch();
 
@@ -1072,6 +1073,7 @@ public partial class KumikoDataGrid : ContentView
         // Stop observing the app's collection and its items (the source lives on; Reconnect re-attaches it)
         _dataSource.Detach();
         DisconnectLoadMore(); // KumikoDataGrid.LoadMore.cs
+        DisconnectBusy(); // KumikoDataGrid.Busy.cs
 
         // Unsubscribe from internal owned objects
         _dataSource.ViewChanged -= OnDataSourceViewChanged;
@@ -1159,6 +1161,7 @@ public partial class KumikoDataGrid : ContentView
         // After ViewChanged is re-subscribed, so the rebuild Attach requests reaches this view
         _dataSource.Attach();
         ReconnectLoadMore(); // KumikoDataGrid.LoadMore.cs
+        ReconnectBusy(); // KumikoDataGrid.Busy.cs
         ResubscribeObservedCollections();
         _selectionBinder.Attach();
         _inputController.NeedsRedraw += OnInputControllerNeedsRedraw;

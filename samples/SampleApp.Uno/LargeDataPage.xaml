@@ -37,6 +37,11 @@
                           Header="Scroll bars"
                           MinWidth="120"
                           SelectionChanged="OnScrollBarsChanged" />
+                <!-- KumikoStyle.BusyIndicatorKind (#327): the grid shows it by itself while a 100K-row sort or filter rebuilds -->
+                <ComboBox x:Name="busyKindCombo"
+                          Header="Busy indicator"
+                          MinWidth="120"
+                          SelectionChanged="OnBusyKindChanged" />
                 <!-- Grid-wide search (#317): highlights matches; Prev/Next move between them; Ctrl/Cmd+F opens the drawn panel -->
                 <TextBox x:Name="searchBox"
                          PlaceholderText="Search all columns"
