@@ -37,7 +37,8 @@ internal sealed class XlsxLayout
 
         bool headers = snapshot.IncludeHeaders;
         FrozenRows = xlsx.FreezeHeader && headers ? 1 : 0;
-        FrozenColumns = xlsx.FreezeHeader ? Math.Min(snapshot.FrozenColumnCount, columnCount) : 0;
+        // Freezing every column would leave nothing to scroll (and no cell to the right of the split).
+        FrozenColumns = xlsx.FreezeHeader ? Math.Min(snapshot.FrozenColumnCount, columnCount - 1) : 0;
         if (xlsx.AutoFilter && headers)
         {
             AutoFilterRange = "A1:" + last;

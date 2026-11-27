@@ -77,7 +77,9 @@ Check(source.IsGroupingActive, "grouping is active");
 
 // CSV export (#323): the filtered, grouped rows streamed to a stream, read through the generated accessors.
 using var csvStream = new MemoryStream();
-await source.ExportToCsvAsync(csvStream, csv: new KumikoCsvOptions { EmitByteOrderMark = false });
+// The source belongs to this thread, and a console app has no context to bring an await back to it: block instead,
+// so the checks below keep running here (the export itself reads and writes on a pool thread).
+source.ExportToCsvAsync(csvStream, csv: new KumikoCsvOptions { EmitByteOrderMark = false }).GetAwaiter().GetResult();
 string csvText = System.Text.Encoding.UTF8.GetString(csvStream.ToArray());
 Check(csvText == source.ExportToCsvString(), "the streamed CSV equals the CSV string");
 var csvLines = csvText.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
@@ -88,7 +90,8 @@ Check(csvLines[1].StartsWith("Department: Engineering (", StringComparison.Ordin
 
 // Excel export (#324): the same rows as an .xlsx workbook, written through ZipArchive and read back here.
 using var xlsxStream = new MemoryStream();
-await source.ExportToExcelAsync(xlsxStream, xlsx: new KumikoXlsxOptions { SheetName = "Engineering", UseGridColors = true, Title = "AOT smoke" });
+source.ExportToExcelAsync(xlsxStream, xlsx: new KumikoXlsxOptions { SheetName = "Engineering", UseGridColors = true, Title = "AOT smoke" })
+    .GetAwaiter().GetResult();
 using (var zip = new System.IO.Compression.ZipArchive(new MemoryStream(xlsxStream.ToArray()), System.IO.Compression.ZipArchiveMode.Read))
 {
     Check(zip.GetEntry("xl/styles.xml") != null && zip.GetEntry("docProps/core.xml") != null, "the workbook has its styles and document properties");
