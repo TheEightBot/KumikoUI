@@ -1,0 +1,38 @@
+<Page x:Class="SampleApp.Uno.AutoColumnsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <!-- Auto columns (← SampleApp.Maui AutoColumnsPage). -->
+    <Grid Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Auto columns: generated from the item type and its DataAnnotations attributes"
+                   FontSize="16"
+                   FontWeight="Bold"
+                   TextWrapping="Wrap"
+                   Padding="16,12,16,4"
+                   Grid.Row="0" />
+
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal" Padding="16,4" Spacing="8">
+                <!-- A different item type replaces the generated columns -->
+                <Button x:Name="itemsToggle" Content="Show products" Click="OnToggleItemsClicked" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- No columns declared: AutoGenerateColumns="Auto" builds them when the items arrive -->
+        <kumiko:KumikoDataGrid x:Name="kumiko"
+                               Grid.Row="2"
+                               AutoGenerateColumns="Auto"
+                               AutoGeneratingColumn="OnAutoGeneratingColumn"
+                               GridDescription="Auto-generated columns sample grid" />
+    </Grid>
+</Page>
