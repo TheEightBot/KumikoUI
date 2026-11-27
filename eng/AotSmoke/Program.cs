@@ -3,6 +3,7 @@ using KumikoUI.Core.Data;
 using KumikoUI.Core.Export;
 using KumikoUI.Core.Models;
 using KumikoUI.Core.Rendering;
+using KumikoUI.Export.Excel;
 using KumikoUI.SkiaSharp;
 using SkiaSharp;
 
@@ -84,6 +85,23 @@ int engineers = items.Count(e => e.Department == "Engineering");
 Check(csvLines.Length == 1 + 1 + engineers + 1, "CSV has a header, a group header, the filtered rows and the table summary");
 Check(csvLines[0] == "Name,Department,Salary,Hired,Active,Initials", "CSV header row");
 Check(csvLines[1].StartsWith("Department: Engineering (", StringComparison.Ordinal), "CSV group header row");
+
+// Excel export (#324): the same rows as an .xlsx workbook, written through ZipArchive and read back here.
+using var xlsxStream = new MemoryStream();
+await source.ExportToExcelAsync(xlsxStream, xlsx: new KumikoXlsxOptions { SheetName = "Engineering", UseGridColors = true, Title = "AOT smoke" });
+using (var zip = new System.IO.Compression.ZipArchive(new MemoryStream(xlsxStream.ToArray()), System.IO.Compression.ZipArchiveMode.Read))
+{
+    Check(zip.GetEntry("xl/styles.xml") != null && zip.GetEntry("docProps/core.xml") != null, "the workbook has its styles and document properties");
+    using var sheetReader = new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+    string sheetXml = sheetReader.ReadToEnd();
+    Check(sheetXml.Split("<row ").Length - 1 == csvLines.Length, "the sheet has as many rows as the CSV");
+    Check(sheetXml.Contains("<t>Name</t>", StringComparison.Ordinal), "the sheet has the header row");
+    Check(sheetXml.Contains("<t>Department: Engineering (", StringComparison.Ordinal), "the sheet has the group header row");
+    Check(sheetXml.Contains("outlineLevel=\"1\"", StringComparison.Ordinal), "grouped rows are outlined");
+    Check(sheetXml.Contains("t=\"b\"", StringComparison.Ordinal), "booleans are typed");
+    Check(sheetXml.Contains("state=\"frozen\"", StringComparison.Ordinal) && sheetXml.Contains("<autoFilter ", StringComparison.Ordinal),
+        "the header is frozen and filterable");
+}
 
 // Save the layout as JSON (System.Text.Json source generation) and restore it onto a fresh source.
 source.SetDisplayIndex(active, 0);

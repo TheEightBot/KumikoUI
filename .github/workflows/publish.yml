@@ -131,10 +131,10 @@ jobs:
           if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # 2. Pack KumikoUI.Core and KumikoUI.SkiaSharp  (plain net10.0 — Linux is fine)
+  # 2. Pack KumikoUI.Core, KumikoUI.SkiaSharp and KumikoUI.Export.Excel  (plain net10.0 — Linux is fine)
   # ─────────────────────────────────────────────────────────────────────────────
   pack-core:
-    name: Pack Core & SkiaSharp
+    name: Pack Core, SkiaSharp & Export.Excel
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: resolve-version
@@ -159,6 +159,7 @@ jobs:
         run: |
           dotnet restore src/KumikoUI.Core/KumikoUI.Core.csproj
           dotnet restore src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj
+          dotnet restore src/KumikoUI.Export.Excel/KumikoUI.Export.Excel.csproj
 
       - name: Pack — KumikoUI.Core
         run: |
@@ -176,21 +177,29 @@ jobs:
             -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/package-notes.md" \
             -o ./artifacts
 
+      - name: Pack — KumikoUI.Export.Excel
+        run: |
+          dotnet pack src/KumikoUI.Export.Excel/KumikoUI.Export.Excel.csproj \
+            --no-restore \
+            -c Release \
+            -p:KumikoReleaseNotesFile="${{ runner.temp }}/notes/package-notes.md" \
+            -o ./artifacts
+
       - name: Verify package versions
         run: |
           ls -lh artifacts/
-          for p in KumikoUI.Core KumikoUI.SkiaSharp; do
+          for p in KumikoUI.Core KumikoUI.SkiaSharp KumikoUI.Export.Excel; do
             test -f "artifacts/$p.${VERSION}.nupkg" || { echo "::error::artifacts/$p.${VERSION}.nupkg not produced"; exit 1; }
           done
 
-      - name: Upload Core + SkiaSharp packages
+      - name: Upload Core + SkiaSharp + Export.Excel packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nuget-core-skiasharp
           path: artifacts/*.nupkg
           if-no-files-found: error
 
-      - name: Upload Core + SkiaSharp symbol packages
+      - name: Upload Core + SkiaSharp + Export.Excel symbol packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: snupkg-core-skiasharp
@@ -333,6 +342,9 @@ jobs:
           dotnet restore tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj
           dotnet test tests/KumikoUI.Core.Tests/KumikoUI.Core.Tests.csproj \
             -c Release --logger "trx" --results-directory TestResults
+          dotnet restore tests/KumikoUI.Export.Excel.Tests/KumikoUI.Export.Excel.Tests.csproj
+          dotnet test tests/KumikoUI.Export.Excel.Tests/KumikoUI.Export.Excel.Tests.csproj \
+            -c Release --logger "trx" --results-directory TestResults
           dotnet restore tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj
           dotnet test tests/KumikoUI.SourceGenerators.Tests/KumikoUI.SourceGenerators.Tests.csproj \
             -c Release --logger "trx" --results-directory TestResults
@@ -379,11 +391,11 @@ jobs:
           merge-multiple: true
 
       # Every package must ship at the release version with a matching symbol package.
-      - name: Require four packages, each with a symbol package
+      - name: Require five packages, each with a symbol package
         run: |
           ls -lh publish/
           failed=0
-          for id in KumikoUI.Core KumikoUI.SkiaSharp KumikoUI.Maui KumikoUI.Uno; do
+          for id in KumikoUI.Core KumikoUI.SkiaSharp KumikoUI.Export.Excel KumikoUI.Maui KumikoUI.Uno; do
             for ext in nupkg snupkg; do
               if [ ! -f "publish/${id}.${VERSION}.${ext}" ]; then
                 echo "::error::publish/${id}.${VERSION}.${ext} is missing"
@@ -397,8 +409,8 @@ jobs:
               failed=1
             fi
           done
-          if [ "$(find publish -maxdepth 1 -name '*.nupkg' | wc -l)" -ne 4 ]; then
-            echo "::error::Expected exactly four .nupkg files"
+          if [ "$(find publish -maxdepth 1 -name '*.nupkg' | wc -l)" -ne 5 ]; then
+            echo "::error::Expected exactly five .nupkg files"
             failed=1
           fi
           exit $failed

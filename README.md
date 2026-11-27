@@ -108,8 +108,9 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 | [`KumikoUI.Uno`](https://www.nuget.org/packages/KumikoUI.Uno) | `KumikoDataGrid` for the Uno Platform (WinUI API), `UnoActionButtonDefinition`, `KumikoFonts` | you build an Uno Platform app |
 | [`KumikoUI.SkiaSharp`](https://www.nuget.org/packages/KumikoUI.SkiaSharp) | `SkiaDrawingContext`, `SkiaResourceCache`, `SkiaFontRegistrar` | you host the engine on your own SkiaSharp surface (the host packages reference it) |
 | [`KumikoUI.Core`](https://www.nuget.org/packages/KumikoUI.Core) | Data, layout, rendering, input and editing engine; models and themes; the `[KumikoGridItem]` source generator | always (the other packages reference it); it has no UI framework or SkiaSharp dependency |
+| [`KumikoUI.Export.Excel`](https://www.nuget.org/packages/KumikoUI.Export.Excel) | `KumikoXlsxExporter`, `ExportToExcelAsync` (new in 1.1) | you export the grid to Excel (`.xlsx`), see [Exporting](#exporting) |
 
-All four packages share one version, and each depends on the exact version of the others. The current version is `1.0.0`, the first stable release. From 1.0.0 on, the public API follows the compatibility rules in [docs/VERSIONING.md](docs/VERSIONING.md): a breaking change waits for the next major. Release notes are in the [CHANGELOG](CHANGELOG.md) and [docs/release/1.0.0-release-notes.md](docs/release/1.0.0-release-notes.md).
+All the packages share one version, and each depends on the exact version of the others. The current version is `1.0.0`, the first stable release. From 1.0.0 on, the public API follows the compatibility rules in [docs/VERSIONING.md](docs/VERSIONING.md): a breaking change waits for the next major. Release notes are in the [CHANGELOG](CHANGELOG.md) and [docs/release/1.0.0-release-notes.md](docs/release/1.0.0-release-notes.md).
 
 ---
 
@@ -1298,6 +1299,23 @@ string csv = kumiko.DataSource.ExportToCsvString(options, new KumikoCsvOptions {
 ```
 
 `KumikoCsvOptions` sets the delimiter (or the culture's list separator), the line ending, the encoding and byte order mark (UTF-8 with a BOM by default, which Excel needs to read non-ASCII text), quoting and the text for `null`. Text that a spreadsheet would run as a formula (a string starting with `=`, `+`, `-`, `@`, a tab or a carriage return) gets a leading apostrophe; numbers, dates and headers are never altered, and `FormulaInjection = KumikoFormulaInjection.None` turns it off. [docs/EXPORT.md](docs/EXPORT.md) has the full guide: every option, how the rows, columns, groups and summaries are chosen, saving through the MAUI and Uno pickers, the format-neutral `IKumikoExporter` and `KumikoExportSnapshot` that other formats build on, and performance notes. Both sample apps have an Export page.
+
+For Excel, add the `KumikoUI.Export.Excel` package. It writes an `.xlsx` workbook with typed cells (numbers, dates and booleans Excel can sort and sum, in the number formats the columns' `Format` maps to), the grid's column widths, a bold, frozen header row with filter buttons and groups as collapsible row outlines, streamed row by row with no third-party dependency (trimming and Native AOT safe):
+
+```csharp
+using KumikoUI.Export.Excel;
+
+string workbookPath = Path.Combine(Path.GetTempPath(), "employees.xlsx");
+await using var workbook = File.Create(workbookPath);
+await kumiko.DataSource.ExportToExcelAsync(workbook, xlsx: new KumikoXlsxOptions
+{
+    SheetName = "Employees",
+    UseGridColors = true,             // header, group and summary rows in the grid's colors
+    Style = kumiko.GridStyle,
+});
+```
+
+The same `KumikoExportOptions` choose the rows and columns. A `Format` Excel cannot express is written as the grid's text, so the sheet never shows a different value than the grid; Excel's row and column limits are checked before anything is written. See [docs/EXPORT.md](docs/EXPORT.md#excel).
 
 ---
 

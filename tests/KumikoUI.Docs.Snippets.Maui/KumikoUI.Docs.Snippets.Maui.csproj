@@ -32,6 +32,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" />
     <ProjectReference Include="../../src/KumikoUI.Maui/KumikoUI.Maui.csproj" />
+    <!-- The Excel export package, for the export snippets of README.md and its own NuGet README. -->
+    <ProjectReference Include="../../src/KumikoUI.Export.Excel/KumikoUI.Export.Excel.csproj" />
     <!-- The KumikoUI.Core package ships the [KumikoGridItem] generator; a project reference has to wire it up. -->
     <ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

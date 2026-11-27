@@ -2,7 +2,7 @@
 
 ## One version for all packages
 
-KumikoUI.Core, KumikoUI.SkiaSharp, KumikoUI.Maui and KumikoUI.Uno are released together and always share the same version. Use the same version of every KumikoUI package in an app. Versions come from git tags (see [CONTRIBUTING.md](../CONTRIBUTING.md#versions-and-releases)).
+KumikoUI.Core, KumikoUI.SkiaSharp, KumikoUI.Maui, KumikoUI.Uno and KumikoUI.Export.Excel (new in 1.1) are released together and always share the same version. Use the same version of every KumikoUI package in an app. Versions come from git tags (see [CONTRIBUTING.md](../CONTRIBUTING.md#versions-and-releases)).
 
 ## Semantic Versioning
 
@@ -21,7 +21,7 @@ Prerelease versions (`1.0.0-preview.1`, `0.2.0-alpha.0.8`, or a later `1.1.0-pre
 
 ## What counts as public API
 
-- Every public type and member in the four packages, including XAML-settable properties and events.
+- Every public type and member in the packages, including XAML-settable properties and events.
 - Documented behavior: defaults, event order, rendering and input semantics described in the README or XML docs.
 - The supported platforms and minimum versions in the README.
 

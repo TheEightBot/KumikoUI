@@ -40,6 +40,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/KumikoUI.Core/KumikoUI.Core.csproj" />
     <ProjectReference Include="../../src/KumikoUI.SkiaSharp/KumikoUI.SkiaSharp.csproj" />
+    <!-- The Excel export package (#324): its ZipArchive and XML writer must publish without trimming or AOT warnings. -->
+    <ProjectReference Include="../../src/KumikoUI.Export.Excel/KumikoUI.Export.Excel.csproj" />
     <!-- Core's package ships the generator as an analyzer; a project reference has to wire it up itself. -->
     <ProjectReference Include="../../src/KumikoUI.SourceGenerators/KumikoUI.SourceGenerators.csproj"
                       OutputItemType="Analyzer"
