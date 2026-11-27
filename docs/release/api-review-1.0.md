@@ -33,7 +33,7 @@ parameter means, whether a class has virtual members). Usage was checked with se
   prefix for grid types, `Drawn` for drawn components and what belongs to them, descriptive unprefixed names allowed
   when `eng/TypeNameCheck` passes, no new `Grid*`/`DataGrid*` types. `eng/TypeNameCheck` was run on this commit over
   KumikoUI.Core and KumikoUI.SkiaSharp: 174 public types, no collision (CI runs it over the host assemblies too).
-- The decisions in [docs/ROADMAP.md §2](../ROADMAP.md#2-decisions-record) and the compatibility rules in
+- The decisions in [docs/release/roadmap-to-1.0.md §2](roadmap-to-1.0.md#2-decisions-record) and the compatibility rules in
   [docs/VERSIONING.md](../VERSIONING.md) (documented defaults and behavior are public API).
 - FDG: names and casing, abbreviations, Boolean names, events and event arguments, collections, async, nullable
   annotations, sealing, optional parameters, and members that should not be public.
@@ -76,7 +76,7 @@ size is measured and Uno is checked with HarfBuzzSharp 14 (D4).
 | ID | Member | Problem | Proposed change | Breaking | Severity |
 |---|---|---|---|---|---|
 | X1 | `eng/update-public-api.sh:99`, `:103-105` | The script is written for the pre-freeze state. After `Unshipped` is moved into `Shipped`, its next run (1) appends the five generated `GlobalStaticResources` lines (`generated_for`, line 37) to each Uno head's `PublicAPI/<tfm>/PublicAPI.Unshipped.txt` although they are now in that head's `Shipped` file: RS0025 (a symbol listed twice), an error (`Directory.Build.targets:48`), on every Uno head; and (2) deletes a head's `PublicAPI.Shipped.txt` whenever that head's `Unshipped` comes out empty (line 104). After the freeze an empty `Unshipped` is the normal case, so once (1) is fixed the shipped lines of the Uno heads would be deleted and RS0016 fires. | Before or with the freeze commit: filter the `generated_for` lines against the head's `Shipped` file (`comm -23` on sorted copies), and remove a head's folder only when both of its files are empty. Test it by running the script right after the move in step 3 of [Steps at the 1.0 tag](#steps-at-the-10-tag): `git diff` must stay empty. | No (tooling) | must-fix |
-| X2 | `docs/ROADMAP.md:21` ("Naming" row of §2) | The recorded decision says "`DataGrid*` for model/host types, `Grid*` for primitives and engine, `Drawn*` for editors; no other `Kumiko*` types". The code and the policy in `CONTRIBUTING.md:193` do the opposite (one `Kumiko` prefix, no new `Grid*`/`DataGrid*` types), which #16 and the first pass settled. A reader who checks the roadmap gets the wrong rule. | Add an "Update" sentence to the row, like the "Package scope" row has, pointing at CONTRIBUTING's "Public type names". | No (docs) | should |
+| X2 | `docs/release/roadmap-to-1.0.md:21` ("Naming" row of §2) | The recorded decision says "`DataGrid*` for model/host types, `Grid*` for primitives and engine, `Drawn*` for editors; no other `Kumiko*` types". The code and the policy in `CONTRIBUTING.md:193` do the opposite (one `Kumiko` prefix, no new `Grid*`/`DataGrid*` types), which #16 and the first pass settled. A reader who checks the roadmap gets the wrong rule. | Add an "Update" sentence to the row, like the "Package scope" row has, pointing at CONTRIBUTING's "Public type names". | No (docs) | should |
 
 ## KumikoUI.Core
 

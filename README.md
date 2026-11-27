@@ -118,6 +118,8 @@ All the packages share one version, and each depends on the exact version of the
 
 All packages target **.NET 10** and **SkiaSharp 4.157.0**.
 
+The table below is the shipped datagrid. KumikoUI is growing into a control suite on more frameworks: the status of every control on every framework is in the [support matrix](docs/SUPPORT-MATRIX.md), and the plan is in the [roadmap](docs/ROADMAP.md).
+
 | Package | Platform (target framework) | Minimum OS | App build host | Verification |
 |---|---|---|---|---|
 | KumikoUI.Core, KumikoUI.SkiaSharp | any .NET 10 runtime (`net10.0`) | — | any OS | Unit tests in CI |
@@ -2378,7 +2380,7 @@ The generator reports `KUMIKO001` for generic types and `KUMIKO002` for types it
 
 ## Accessibility
 
-This is the current state, not the goal. The 1.0 target and the plan are in [docs/ROADMAP.md](docs/ROADMAP.md) (track L).
+This is the current state, not the goal. The 1.0 target and the plan are in [docs/release/roadmap-to-1.0.md](docs/release/roadmap-to-1.0.md) (track L); what comes next for accessibility is in the [suite roadmap](docs/ROADMAP.md).
 
 - **Screen readers see one element.** Cells, headers, editors and popups are drawn on a canvas and are not exposed to assistive technology individually, so a screen reader can't read or navigate cell contents. A per-cell accessibility tree is planned for 1.x.
   - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default: the localizable `KumikoStrings.AccessibleGridName`, "Data grid") as its semantic description and `GridHint` (default: a hint with the row and column counts and the current cell) as its hint.
