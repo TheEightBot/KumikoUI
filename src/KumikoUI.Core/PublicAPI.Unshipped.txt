@@ -317,23 +317,35 @@ KumikoUI.Core.Input.HitRegion.HeaderMenuButton = 17 -> KumikoUI.Core.Input.HitRe
 KumikoUI.Core.Input.HitRegion.HorizontalScrollBarThumb = 15 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.HorizontalScrollBarTrack = 16 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.LoadMoreRow = 18 -> KumikoUI.Core.Input.HitRegion
+KumikoUI.Core.Input.HitRegion.SwipeItem = 19 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.VerticalScrollBarThumb = 13 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.VerticalScrollBarTrack = 14 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.KumikoContextRequestedEventArgs.Handled.get -> bool
 KumikoUI.Core.Input.KumikoContextRequestedEventArgs.Handled.set -> void
+KumikoUI.Core.Input.KumikoFullSwipeMode
+KumikoUI.Core.Input.KumikoFullSwipeMode.Both = 3 -> KumikoUI.Core.Input.KumikoFullSwipeMode
+KumikoUI.Core.Input.KumikoFullSwipeMode.Leading = 1 -> KumikoUI.Core.Input.KumikoFullSwipeMode
+KumikoUI.Core.Input.KumikoFullSwipeMode.None = 0 -> KumikoUI.Core.Input.KumikoFullSwipeMode
+KumikoUI.Core.Input.KumikoFullSwipeMode.Trailing = 2 -> KumikoUI.Core.Input.KumikoFullSwipeMode
 KumikoUI.Core.Input.KumikoHapticKind.RefreshThreshold = 3 -> KumikoUI.Core.Input.KumikoHapticKind
+KumikoUI.Core.Input.KumikoHapticKind.SwipeThreshold = 4 -> KumikoUI.Core.Input.KumikoHapticKind
 KumikoUI.Core.Input.KumikoHitTester.ShowColumnMenuButton.get -> bool
 KumikoUI.Core.Input.KumikoHitTester.ShowColumnMenuButton.set -> void
 KumikoUI.Core.Input.KumikoInputController.AllowDeleting.get -> bool
 KumikoUI.Core.Input.KumikoInputController.AllowDeleting.set -> void
 KumikoUI.Core.Input.KumikoInputController.AllowSearchPanel.get -> bool
 KumikoUI.Core.Input.KumikoInputController.AllowSearchPanel.set -> void
+KumikoUI.Core.Input.KumikoInputController.AllowSwiping.get -> bool
+KumikoUI.Core.Input.KumikoInputController.AllowSwiping.set -> void
 KumikoUI.Core.Input.KumikoInputController.CheckAllToggled -> System.EventHandler<bool>?
 KumikoUI.Core.Input.KumikoInputController.CloseSearchPanel() -> void
+KumikoUI.Core.Input.KumikoInputController.CloseSwipe() -> void
 KumikoUI.Core.Input.KumikoInputController.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
 KumikoUI.Core.Input.KumikoInputController.DeleteSelectedRows(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.FindNext(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.FindPrevious(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
+KumikoUI.Core.Input.KumikoInputController.FullSwipeMode.get -> KumikoUI.Core.Input.KumikoFullSwipeMode
+KumikoUI.Core.Input.KumikoInputController.FullSwipeMode.set -> void
 KumikoUI.Core.Input.KumikoInputController.IsColumnMenuEnabled.get -> bool
 KumikoUI.Core.Input.KumikoInputController.IsColumnMenuEnabled.set -> void
 KumikoUI.Core.Input.KumikoInputController.IsPullToRefreshEnabled.get -> bool
@@ -342,6 +354,7 @@ KumikoUI.Core.Input.KumikoInputController.IsRefreshing.get -> bool
 KumikoUI.Core.Input.KumikoInputController.IsRefreshing.set -> void
 KumikoUI.Core.Input.KumikoInputController.IsRefreshingChanged -> System.EventHandler?
 KumikoUI.Core.Input.KumikoInputController.IsSearchPanelOpen.get -> bool
+KumikoUI.Core.Input.KumikoInputController.LeadingSwipeItems.get -> System.Collections.Generic.IList<KumikoUI.Core.Rendering.IActionButtonDefinition!>!
 KumikoUI.Core.Input.KumikoInputController.PullToRefreshThreshold.get -> float
 KumikoUI.Core.Input.KumikoInputController.PullToRefreshThreshold.set -> void
 KumikoUI.Core.Input.KumikoInputController.RefreshRequested -> System.EventHandler?
@@ -351,6 +364,11 @@ KumikoUI.Core.Input.KumikoInputController.ShowColumnMenu(KumikoUI.Core.Models.Ku
 KumikoUI.Core.Input.KumikoInputController.ShowColumnMenuButton.get -> bool
 KumikoUI.Core.Input.KumikoInputController.ShowColumnMenuButton.set -> void
 KumikoUI.Core.Input.KumikoInputController.ShowSearchPanel(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> void
+KumikoUI.Core.Input.KumikoInputController.SwipeEnded -> System.EventHandler<KumikoUI.Core.Input.KumikoSwipeEndedEventArgs!>?
+KumikoUI.Core.Input.KumikoInputController.SwipeItemWidth.get -> float
+KumikoUI.Core.Input.KumikoInputController.SwipeItemWidth.set -> void
+KumikoUI.Core.Input.KumikoInputController.SwipeStarting -> System.EventHandler<KumikoUI.Core.Input.KumikoSwipeStartingEventArgs!>?
+KumikoUI.Core.Input.KumikoInputController.TrailingSwipeItems.get -> System.Collections.Generic.IList<KumikoUI.Core.Rendering.IActionButtonDefinition!>!
 KumikoUI.Core.Input.KumikoKey.ContextMenu = 23 -> KumikoUI.Core.Input.KumikoKey
 KumikoUI.Core.Input.KumikoKey.F = 24 -> KumikoUI.Core.Input.KumikoKey
 KumikoUI.Core.Input.KumikoRowsDeleteTrigger
@@ -366,6 +384,21 @@ KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Cancel.set -> void
 KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Items.get -> System.Collections.Generic.IReadOnlyList<object!>!
 KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.KumikoRowsDeletingEventArgs(System.Collections.Generic.IReadOnlyList<object!>! items, KumikoUI.Core.Input.KumikoRowsDeleteTrigger trigger) -> void
 KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Trigger.get -> KumikoUI.Core.Input.KumikoRowsDeleteTrigger
+KumikoUI.Core.Input.KumikoSwipeDirection
+KumikoUI.Core.Input.KumikoSwipeDirection.Leading = 0 -> KumikoUI.Core.Input.KumikoSwipeDirection
+KumikoUI.Core.Input.KumikoSwipeDirection.Trailing = 1 -> KumikoUI.Core.Input.KumikoSwipeDirection
+KumikoUI.Core.Input.KumikoSwipeEndedEventArgs
+KumikoUI.Core.Input.KumikoSwipeEndedEventArgs.DataItem.get -> object!
+KumikoUI.Core.Input.KumikoSwipeEndedEventArgs.Direction.get -> KumikoUI.Core.Input.KumikoSwipeDirection
+KumikoUI.Core.Input.KumikoSwipeEndedEventArgs.InvokedItem.get -> KumikoUI.Core.Rendering.IActionButtonDefinition?
+KumikoUI.Core.Input.KumikoSwipeEndedEventArgs.KumikoSwipeEndedEventArgs(object! dataItem, KumikoUI.Core.Input.KumikoSwipeDirection direction, KumikoUI.Core.Rendering.IActionButtonDefinition? invokedItem) -> void
+KumikoUI.Core.Input.KumikoSwipeStartingEventArgs
+KumikoUI.Core.Input.KumikoSwipeStartingEventArgs.Cancel.get -> bool
+KumikoUI.Core.Input.KumikoSwipeStartingEventArgs.Cancel.set -> void
+KumikoUI.Core.Input.KumikoSwipeStartingEventArgs.DataItem.get -> object!
+KumikoUI.Core.Input.KumikoSwipeStartingEventArgs.Direction.get -> KumikoUI.Core.Input.KumikoSwipeDirection
+KumikoUI.Core.Input.KumikoSwipeStartingEventArgs.KumikoSwipeStartingEventArgs(object! dataItem, int rowIndex, KumikoUI.Core.Input.KumikoSwipeDirection direction) -> void
+KumikoUI.Core.Input.KumikoSwipeStartingEventArgs.RowIndex.get -> int
 KumikoUI.Core.KumikoRenderer.EmptyViewRenderer.get -> KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer?
 KumikoUI.Core.KumikoRenderer.EmptyViewRenderer.set -> void
 KumikoUI.Core.KumikoRenderer.EmptyViewText.get -> string?

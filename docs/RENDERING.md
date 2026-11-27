@@ -39,6 +39,8 @@ KumikoRenderer.RenderFrame(ctx, source, scroll, selection, style, drag state, ed
 │ F. Pass 3, right-frozen columns: DrawRightFrozenBackground, the same five   │
 │      calls, then DrawRightFrozenColumnDivider                               │
 │ G. DrawFrozenRowDivider                                                     │
+│ G2. DrawSwipedRow (#329): the row a finger swipes, drawn again moved by     │
+│      its offset in every pane, and the items it uncovers                    │
 │ H. DrawTableSummaryRows: top summaries, and bottom ones that scroll         │
 │ I. Full-width rows, clipped to the data area:                               │
 │      DrawGroupHeaderRow / DrawGroupSummaryRow for each visible group row    │

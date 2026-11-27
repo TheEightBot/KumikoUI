@@ -462,6 +462,8 @@ public sealed partial class KumikoRenderer : IDisposable
         _scrollPane = (scrollClipLeft, scrollClipWidth);
         _leftPane = (handleOffset, frozenWidth);
         _rightPane = (scroll.ViewportWidth - rightHandleWidth - rightFrozenWidth, rightFrozenWidth);
+        DrawSwipedRow(ctx, dataSource, scroll, selection, style, editSession, topSummaryHeight, frozenRowCount,
+            frozenWidth); // KumikoRenderer.Swipe.cs (#329)
 
         // ── Draw table summary rows outside clip regions (they span full width) ──
         // Reuse allCols list to avoid per-frame allocation
