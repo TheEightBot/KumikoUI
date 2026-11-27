@@ -405,6 +405,7 @@ public sealed partial class KumikoInputController
 
         var columns = dataSource.Columns;
         int totalRows = dataSource.RowCount;
+        _selectionMode = selection.Mode;
 
         switch (action)
         {
@@ -811,8 +812,13 @@ public sealed partial class KumikoInputController
                 }
                 break;
             case KumikoKey.Space:
-                // Space toggles the current Boolean cell; on any other cell it toggles the row's selection.
-                if (!e.HasControl && !e.HasShift && CanToggleBooleanCell(selection.CurrentCell, dataSource))
+                // Space toggles the box of a selection column's cell (Shift+Space a range); the current Boolean cell;
+                // on any other cell it toggles the row's selection.
+                if (!e.HasControl && TryToggleCurrentSelectionCell(selection, dataSource, e.HasShift))
+                {
+                    e.Handled = true;
+                }
+                else if (!e.HasControl && !e.HasShift && CanToggleBooleanCell(selection.CurrentCell, dataSource))
                 {
                     var current = selection.CurrentCell;
                     _editSession!.ToggleBooleanCell(current.Row, current.Column, dataSource.Columns[current.Column], dataSource);
@@ -821,7 +827,7 @@ public sealed partial class KumikoInputController
                 }
                 else if (selection.CurrentCell.IsValid)
                 {
-                    selection.HandleRowSelection(selection.CurrentCell.Row, false, true);
+                    selection.HandleRowSelectionByKey(selection.CurrentCell.Row, false, true);
                     Redraw();
                     e.Handled = true;
                 }
@@ -1123,6 +1129,7 @@ public sealed partial class KumikoInputController
                 if (startHit.Region == HitRegion.Cell && style.AllowRowDragDrop &&
                     _pressDeviceType != KumikoPointerDeviceType.Touch &&
                     Math.Abs(e.Y - _lastPanY) > Math.Abs(e.X - _lastPanX) &&
+                    startHit.Column?.ColumnType != KumikoColumnType.Selection &&
                     IsDataRow(dataSource, startHit.RowIndex) &&
                     CommitEditBeforeViewChange(dataSource, selection))
                 {
@@ -1227,6 +1234,11 @@ public sealed partial class KumikoInputController
                 return new FeedbackTarget(HitRegion.GroupHeaderRow, row, -1, -1, -1);
             case HitRegion.LoadMoreRow when IsLoadMoreRowActionable(dataSource):
                 return new FeedbackTarget(HitRegion.LoadMoreRow, -1, -1, -1, -1);
+            case HitRegion.Cell when column?.ColumnType == KumikoColumnType.Selection && row >= 0 &&
+                                     row < dataSource.RowCount && !dataSource.IsNonDataRow(row):
+                // The whole cell is the box's target, unless the mode has no selection
+                return _selectionMode == KumikoSelectionMode.None ? FeedbackTarget.None
+                    : new FeedbackTarget(HitRegion.Cell, row, columnIndex, -1, 0);
             case HitRegion.Cell when column != null && row >= 0 && row < dataSource.RowCount && !dataSource.IsNonDataRow(row):
                 if (GetInteractiveRenderer(column) is { } interactive)
                 {
@@ -1423,6 +1435,8 @@ public sealed partial class KumikoInputController
             return;
         }
 
+        if (TryHandleSelectionHeaderRelease(e, hit, selection, dataSource)) return;
+
         if (hit.Region == HitRegion.HeaderCell && hit.Column != null)
         {
             // A header sorts only when it was pressed too (a press on a cell that slides up onto it does not)
@@ -1472,6 +1486,8 @@ public sealed partial class KumikoInputController
             e.Handled = true;
             return;
         }
+
+        if (TryHandleSelectionCellRelease(e, hit, selection, dataSource)) return;
 
         if (hit.Region == HitRegion.Cell && hit.RowIndex >= 0)
         {
@@ -1807,6 +1823,7 @@ public sealed partial class KumikoInputController
 
         bool onHandle = hit.Region == HitRegion.RowDragHandle && style.ShowRowDragHandle;
         bool onCell = hit.Region == HitRegion.Cell && style.AllowRowDragDrop &&
+                      hit.Column?.ColumnType != KumikoColumnType.Selection &&
                       !(_editSession != null && hit.Column != null &&
                         (GetEffectiveEditTriggers(hit.Column) & EditTrigger.LongPress) != 0);
         if (!onHandle && !onCell) return false;
@@ -2161,7 +2178,8 @@ public sealed partial class KumikoInputController
     /// used, falling back to <see cref="EditTrigger.Default"/> if the session is null.
     /// </summary>
     private EditTrigger GetEffectiveEditTriggers(KumikoColumn? column)
-        => column?.EditTriggers ?? _editSession?.EditTriggers ?? EditTrigger.Default;
+        => column?.ColumnType == KumikoColumnType.Selection ? EditTrigger.None
+            : column?.EditTriggers ?? _editSession?.EditTriggers ?? EditTrigger.Default;
 
     /// <summary>
     /// Try to begin editing the current cell, after scrolling it into view. Returns whether an edit started.
@@ -2341,7 +2359,7 @@ public sealed partial class KumikoInputController
         if (!target.IsValid) return false;
 
         selection.CurrentCell = target;
-        selection.HandleRowSelection(target.Row, false, false);
+        selection.HandleRowSelectionByKey(target.Row, false, false);
         EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
         return true;
     }

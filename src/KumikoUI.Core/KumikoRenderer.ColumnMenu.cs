@@ -41,6 +41,7 @@ public sealed partial class KumikoRenderer
         if (!_showColumnMenuButton) return;
         foreach (var (col, colX, columnIndex) in visibleCols)
         {
+            if (col.ColumnType == KumikoColumnType.Selection) continue; // its header is the check-all box
             float screenX = ColumnScreenX(colX, scroll, col.Pane);
             // Left of the filter icon when one is drawn; the hit tester uses the same geometry
             var rect = InteractionGeometry.MenuButtonRect(screenX, col, style, AllowFiltering && col.AllowFiltering);

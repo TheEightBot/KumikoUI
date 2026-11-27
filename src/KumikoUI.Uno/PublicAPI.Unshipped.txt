@@ -52,10 +52,14 @@ KumikoUI.Uno.KumikoDataGrid.SearchFiltersRows.set -> void
 KumikoUI.Uno.KumikoDataGrid.SearchMatchCount.get -> int
 KumikoUI.Uno.KumikoDataGrid.SearchText.get -> string!
 KumikoUI.Uno.KumikoDataGrid.SearchText.set -> void
+KumikoUI.Uno.KumikoDataGrid.SelectOnRowClick.get -> bool
+KumikoUI.Uno.KumikoDataGrid.SelectOnRowClick.set -> void
 KumikoUI.Uno.KumikoDataGrid.ShowColumnMenu(KumikoUI.Core.Models.KumikoColumn! column) -> bool
 KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButton.get -> bool
 KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButton.set -> void
 KumikoUI.Uno.KumikoDataGrid.ShowSearchPanel() -> void
+KumikoUI.Uno.KumikoDataGrid.ShowSelectionColumn.get -> bool
+KumikoUI.Uno.KumikoDataGrid.ShowSelectionColumn.set -> void
 KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibility.set -> void
 static readonly KumikoUI.Uno.KumikoDataGrid.AllowSearchPanelProperty -> Microsoft.UI.Xaml.DependencyProperty!
@@ -78,5 +82,7 @@ static readonly KumikoUI.Uno.KumikoDataGrid.RowHeightModeProperty -> Microsoft.U
 static readonly KumikoUI.Uno.KumikoDataGrid.RowHeightResolverProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.SearchFiltersRowsProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.SearchTextProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SelectOnRowClickProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButtonProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.ShowSelectionColumnProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibilityProperty -> Microsoft.UI.Xaml.DependencyProperty!

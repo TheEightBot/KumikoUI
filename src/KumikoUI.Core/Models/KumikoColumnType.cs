@@ -32,5 +32,11 @@ public enum KumikoColumnType
     /// <see cref="KumikoColumn.ProgressShowText"/>, <see cref="KumikoColumn.ProgressFillColor"/> and
     /// <see cref="KumikoColumn.Format"/>. Sorts and filters as numbers.
     /// </summary>
-    ProgressBar
+    ProgressBar,
+    /// <summary>
+    /// A column of row check boxes bound to the grid's <see cref="KumikoSelectionModel"/>, with a tri-state check-all
+    /// box in its header. Use <see cref="KumikoSelectionColumn"/>, which applies the column's defaults. It has no
+    /// cell text, is never edited, sorted or filtered, and is left out of copy.
+    /// </summary>
+    Selection
 }

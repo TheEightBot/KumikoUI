@@ -1,3 +1,5 @@
+using KumikoUI.Core.Components;
+
 namespace KumikoUI.Core.Rendering;
 
 /// <summary>
@@ -11,10 +13,7 @@ public class BooleanCellRenderer : ICellRenderer
     /// <summary>The check box drawn in <paramref name="cellRect"/>: at most 16 px square, centered.</summary>
     internal static KumikoRect GetCheckBoxBounds(KumikoRect cellRect)
     {
-        float boxSize = Math.Min(16f, cellRect.Height - 8);
-        float centerY = cellRect.Y + (cellRect.Height - boxSize) / 2;
-        float centerX = cellRect.X + (cellRect.Width - boxSize) / 2;
-        return new KumikoRect(centerX, centerY, boxSize, boxSize);
+        return CheckBoxGlyph.BoxBounds(cellRect);
     }
 
     /// <summary>
@@ -43,13 +42,10 @@ public class BooleanCellRenderer : ICellRenderer
         if (cell.PointerPosition is { } pointer && GetCheckBoxHitBounds(cell.Bounds).Contains(pointer.X, pointer.Y))
             ctx.FillRoundRect(boxRect.Inflate(4, 4), 4, cell.IsPointerPressed ? cell.Paints.PressedOverlay : cell.Paints.HoverOverlay);
 
-        // Checkbox border
-        ctx.DrawRect(boxRect, cell.Paints.CheckBoxBorder);
-
         // Indeterminate: a three-state column's null is the indeterminate mark, the other columns' null is unchecked
-        if (cell.Value is null && cell.Column.IsThreeState)
-            cell.Style.IconProvider.DrawIcon(ctx, KumikoIcon.Indeterminate, boxRect, cell.Paints.CheckIndeterminate);
-        else if (isChecked)
-            cell.Style.IconProvider.DrawIcon(ctx, KumikoIcon.Check, boxRect, cell.Paints.CheckMark);
+        var state = cell.Value is null && cell.Column.IsThreeState ? DrawnCheckState.Indeterminate
+            : isChecked ? DrawnCheckState.Checked
+            : DrawnCheckState.Unchecked;
+        CheckBoxGlyph.Draw(ctx, boxRect, state, cell.Style, cell.Paints);
     }
 }

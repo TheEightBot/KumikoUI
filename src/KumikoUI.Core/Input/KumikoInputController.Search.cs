@@ -95,7 +95,7 @@ public sealed partial class KumikoInputController
 
         selection.CurrentCell = new CellPosition(row, columnIndex);
         if (selection.Mode is KumikoSelectionMode.Single or KumikoSelectionMode.Extended)
-            selection.HandleRowSelection(row, false, false);
+            selection.HandleRowSelectionByKey(row, false, false);
         EnsureCurrentCellVisible(scroll, selection, style, dataSource.Columns, dataSource);
         SearchMatchNavigated?.Invoke(this, EventArgs.Empty);
         Redraw();

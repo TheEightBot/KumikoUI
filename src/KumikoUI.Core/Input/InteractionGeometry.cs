@@ -110,6 +110,7 @@ internal static class InteractionGeometry
     /// </summary>
     public static bool IsOnDrawnMenuButton(float x, float columnLeft, KumikoColumn column, KumikoStyle style, bool filterShown)
     {
+        if (column.ColumnType == KumikoColumnType.Selection) return false; // its header is the check-all box
         float left = columnLeft + MenuButtonOffset(column, style, filterShown);
         return x >= left && x <= left + MenuButtonSize;
     }
@@ -122,6 +123,7 @@ internal static class InteractionGeometry
     public static bool IsOnMenuButton(float x, float columnLeft, KumikoColumn column, KumikoStyle style, bool filterShown,
         KumikoPointerDeviceType device, float gripHalfWidth)
     {
+        if (column.ColumnType == KumikoColumnType.Selection) return false; // its header is the check-all box
         float slop = device == KumikoPointerDeviceType.Touch ? FilterIconTouchSlop : FilterIconMouseSlop;
         float buttonLeft = columnLeft + MenuButtonOffset(column, style, filterShown);
         float left = Math.Max(columnLeft, buttonLeft - slop);

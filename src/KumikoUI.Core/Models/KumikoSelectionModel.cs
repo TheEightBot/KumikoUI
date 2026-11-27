@@ -8,7 +8,7 @@ namespace KumikoUI.Core.Models;
 /// cell stays on its item and column. Items that are no longer visible leave the selection. Only data rows can
 /// be selected; group header and group summary rows can hold the current cell but are never selected.
 /// </summary>
-public sealed class KumikoSelectionModel
+public sealed partial class KumikoSelectionModel
 {
     private readonly HashSet<object> _items = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, int> _rowOfItem = new(ReferenceEqualityComparer.Instance);
@@ -202,17 +202,31 @@ public sealed class KumikoSelectionModel
     /// <summary>
     /// Processes a row click, applying the selection logic for the current <see cref="Mode"/>: single-select,
     /// toggle (Multiple), or Shift/Ctrl range and toggle selection (Extended). The current cell moves to the row.
-    /// Group rows take the current cell but never join the selection.
+    /// Group rows take the current cell but never join the selection. With <see cref="SelectOnRowClick"/> off
+    /// only the current cell moves.
     /// </summary>
     /// <param name="row">Zero-based visible row index that was clicked.</param>
     /// <param name="shift">Whether the Shift modifier is held (range select in Extended mode).</param>
     /// <param name="control">Whether the Ctrl (or Command) modifier is held (toggle in Extended mode).</param>
-    public void HandleRowSelection(int row, bool shift, bool control)
+    public void HandleRowSelection(int row, bool shift, bool control) =>
+        ApplyRowSelection(row, shift, control, tap: true);
+
+    /// <summary>
+    /// <see cref="HandleRowSelection"/> for the keyboard: it selects whatever <see cref="SelectOnRowClick"/> says,
+    /// because that setting is about taps on rows, not about arrow keys and Space.
+    /// </summary>
+    internal void HandleRowSelectionByKey(int row, bool shift, bool control) =>
+        ApplyRowSelection(row, shift, control, tap: false);
+
+    private void ApplyRowSelection(int row, bool shift, bool control, bool tap)
     {
         if (row < 0 || row >= Source.RowCount) return;
 
         // The current cell moves first, so SelectionChanged reports where it now is.
         SetCurrentCell(row, _currentCell.IsValid ? _currentCell.Column : 0);
+
+        // SelectOnRowClick off: a tap only moves the current cell (the check boxes select)
+        if (tap && !SelectOnRowClick) return;
 
         if (Mode != KumikoSelectionMode.None)
         {
@@ -349,7 +363,7 @@ public sealed class KumikoSelectionModel
 
         SetCurrentCell(row, col);
         if (totalRows > 0)
-            HandleRowSelection(row, shift, false);
+            HandleRowSelectionByKey(row, shift, false);
     }
 
     // ── View changes ──

@@ -133,6 +133,11 @@ public partial class KumikoDataGrid
         if (_dataSource.IsGroupHeaderRow(cell.Row)) return;
 
         var column = _dataSource.Columns[cell.Column];
+        if (column.ColumnType == KumikoColumnType.Selection)
+        {
+            Announce(KumikoAnnouncements.SelectionBox(_dataSource.Strings, _selection.IsRowSelected(cell.Row)));
+            return;
+        }
         Announce(KumikoAnnouncements.CurrentCell(_dataSource.Strings, column, DisplayColumnIndex(cell.Column), cell.Row,
             _dataSource.GetCellDisplayText(cell.Row, column)));
     }

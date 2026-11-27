@@ -146,7 +146,7 @@ public sealed partial class KumikoInputController
     {
         EnsurePopupRedrawWired();
         int columnIndex = IndexOfColumn(dataSource.Columns, column);
-        if (columnIndex < 0 || !column.IsVisible) return false;
+        if (columnIndex < 0 || !column.IsVisible || column.ColumnType == KumikoColumnType.Selection) return false; // chrome: no menu
 
         var items = BuildColumnMenuItems(column, columnIndex, scroll, selection, style, dataSource);
         if (ColumnMenuOpening is { } handler)
