@@ -166,6 +166,9 @@ public sealed class InertialScroller
     /// <summary>Exact zero test written as a magnitude comparison so no floating point equality is used.</summary>
     internal static bool IsZero(float value) => MathF.Abs(value) < float.Epsilon;
 
+    /// <summary>Inequality written as ordered comparisons so no floating point equality is used; NaN differs from everything.</summary>
+    internal static bool Differs(float a, float b) => float.IsNaN(a) || float.IsNaN(b) || a > b || a < b;
+
     /// <summary>
     /// Call each frame to get the scroll delta.
     /// Returns (dx, dy) to apply to scroll offset.

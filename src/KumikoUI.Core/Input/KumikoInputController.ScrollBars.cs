@@ -121,7 +121,7 @@ public sealed partial class KumikoInputController
         float oldX = scroll.OffsetX, oldY = scroll.OffsetY;
         if (bar.IsVertical) scroll.ScrollTo(oldX, offset);
         else scroll.ScrollTo(offset, oldY);
-        if (scroll.OffsetX != oldX || scroll.OffsetY != oldY) Redraw();
+        if (InertialScroller.Differs(scroll.OffsetX, oldX) || InertialScroller.Differs(scroll.OffsetY, oldY)) Redraw();
     }
 
     /// <summary>
@@ -200,7 +200,7 @@ public sealed partial class KumikoInputController
         float oldX = scroll.OffsetX, oldY = scroll.OffsetY;
         float delta = _pageDirection * _pageSize;
         scroll.ScrollBy(vertical ? 0 : delta, vertical ? delta : 0);
-        if (scroll.OffsetX != oldX || scroll.OffsetY != oldY) Redraw();
+        if (InertialScroller.Differs(scroll.OffsetX, oldX) || InertialScroller.Differs(scroll.OffsetY, oldY)) Redraw();
         else _pagePointerOnTrack = false; // at the content edge
     }
 

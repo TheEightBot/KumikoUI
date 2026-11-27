@@ -166,8 +166,8 @@ internal sealed class InteractionAnimations
         if (Done(_horizontalBarStart, ScrollBarHoldMs + ScrollBarFadeMs)) _horizontalBarStart = float.NaN;
 
         ChangedVisibly = transitioning
-            || verticalBar != ScrollBarOpacity(vertical: true, fade: true)
-            || horizontalBar != ScrollBarOpacity(vertical: false, fade: true);
+            || InertialScroller.Differs(verticalBar, ScrollBarOpacity(vertical: true, fade: true))
+            || InertialScroller.Differs(horizontalBar, ScrollBarOpacity(vertical: false, fade: true));
         return IsActive;
     }
 
