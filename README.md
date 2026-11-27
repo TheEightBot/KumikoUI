@@ -62,6 +62,7 @@ Each grid is one SkiaSharp canvas. Cells, headers, editors, the filter popup, pi
 - [Icons](#icons)
 - [Scrolling](#scrolling)
 - [Incremental Loading](#incremental-loading)
+- [Empty View](#empty-view)
 - [Performance](#performance)
 - [Live Data](#live-data)
 - [Native AOT and Trimming](#native-aot-and-trimming)
@@ -1183,7 +1184,7 @@ source.Strings = KumikoStrings.Default with
 };
 ```
 
-`KumikoStrings` is a record: start from `KumikoStrings.Default` (English) and replace what you need. It covers the grouping panel label and the group for empty values, the default summary labels, the filter popup (including its type-aware sort rows, its `FilterValuesTab` and `FilterConditionsTab`, `FilterAnd`, `FilterOr`, `FilterValuePlaceholder` and one string per condition operator: `FilterText*`, `FilterNumber*` and `FilterDate*`), the search panel and the validation messages. A message with `{0}` is a format string; keep the placeholder. Setting `Strings` or `Culture` rebuilds the view, so group headers and summaries follow.
+`KumikoStrings` is a record: start from `KumikoStrings.Default` (English) and replace what you need. It covers the grouping panel label and the group for empty values, the default summary labels, the filter popup (including its type-aware sort rows, its `FilterValuesTab` and `FilterConditionsTab`, `FilterAnd`, `FilterOr`, `FilterValuePlaceholder` and one string per condition operator: `FilterText*`, `FilterNumber*` and `FilterDate*`), the search panel, the empty view (`EmptyViewNoItems` and `EmptyViewNoMatches`) and the validation messages. A message with `{0}` is a format string; keep the placeholder. Setting `Strings` or `Culture` rebuilds the view, so group headers and summaries follow.
 
 ---
 
@@ -1619,6 +1620,12 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | `ScrollBarThumbColor` | `KumikoColor` | 0, 0, 0, 110 | Thumb; a fading bar scales its alpha (white on Dark, cyan on HighContrast) |
 | `ScrollBarTrackColor` | `KumikoColor` | 0, 0, 0, 20 | Track, drawn only while the bar is expanded |
 
+| Empty view | Type | Light | Meaning |
+|---|---|---|---|
+| `ShowEmptyView` | `bool` | true | Draw the message while the view has no rows (also the grid's `ShowEmptyView`; see [Empty View](#empty-view)) |
+| `EmptyViewTextColor` | `KumikoColor` | 110, 110, 110 | The message's color (150 on Dark, white on HighContrast) |
+| `EmptyViewFont` | `KumikoFont?` | null | The message's font; null uses `CellFont` |
+
 | Icons | Type | Light | Meaning |
 |---|---|---|---|
 | `IconProvider` | `IKumikoIconProvider` | `KumikoIconProvider.Default` | Draws every built-in glyph of the grid and of its editors and filter popup (see [Icons](#icons)); never null |
@@ -1661,6 +1668,9 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `AlternateRowBackground` | `Color?` | null (style) | Color of alternate rows; setting it also turns shading on. |
 | `AllowRowDragDrop` | `bool?` | null (style: off) | Drag a row from any cell. |
 | `ShowRowDragHandle` | `bool?` | null (style: off) | Drag handle on each row. |
+| `ShowEmptyView` | `bool?` | null (style: on) | Draw the empty-state message while the view has no rows ([Empty View](#empty-view)). |
+| `EmptyViewText` | `string?` | null (strings) | Replaces `KumikoStrings.EmptyViewNoItems` and `EmptyViewNoMatches`. |
+| `EmptyViewRenderer` | `IKumikoEmptyViewRenderer?` | null (centered text) | Draws the empty view instead of the built-in text. |
 | `VerticalScrollBarVisibility`, `HorizontalScrollBarVisibility` | `KumikoScrollBarVisibility` | `Auto` | When each scroll bar is drawn ([Scroll bars](#scroll-bars)); once set, wins over the style and theme. |
 | `ShowFrameStats` | `bool` | false | Frame-time overlay ([Performance](#performance)). |
 | `GridDescription` | `string?` | null ("Data grid") | Accessible name; null uses `KumikoStrings.AccessibleGridName` ([Accessibility](#accessibility)). |
@@ -1775,7 +1785,7 @@ While the menu is open it takes the keyboard (see [What each key does](#what-eac
 
 From highest to lowest: the explicit properties below, together with `RowHeight` and `HeaderHeight`; then whichever of `Theme` or `GridStyle` was assigned last; then the system theme, while `FollowSystemTheme` is on. The order of attributes in XAML does not matter. Assigning `GridStyle` or `ScrollSettings` null resets it to the preset or the default settings.
 
-`ShowHorizontalGridLines`, `ShowVerticalGridLines`, `AlternateRowBackground`, `AllowRowDragDrop` and `ShowRowDragHandle` are nullable. Null leaves the value to `GridStyle` and `Theme`; a value overrides it. Setting one writes it into the current style immediately, and assigning `GridStyle` or `Theme` afterwards re-applies every explicit value to the new style, so an explicit property wins over the theme in either order. Setting a property back to null stops overriding but doesn't restore the earlier value until the next style or theme assignment. `VerticalScrollBarVisibility` and `HorizontalScrollBarVisibility` are not nullable (default `Auto`); once set, they override the style the same way.
+`ShowHorizontalGridLines`, `ShowVerticalGridLines`, `AlternateRowBackground`, `AllowRowDragDrop`, `ShowRowDragHandle` and `ShowEmptyView` are nullable. Null leaves the value to `GridStyle` and `Theme`; a value overrides it. Setting one writes it into the current style immediately, and assigning `GridStyle` or `Theme` afterwards re-applies every explicit value to the new style, so an explicit property wins over the theme in either order. Setting a property back to null stops overriding but doesn't restore the earlier value until the next style or theme assignment. `VerticalScrollBarVisibility` and `HorizontalScrollBarVisibility` are not nullable (default `Auto`); once set, they override the style the same way.
 
 ### Repainting
 
@@ -2200,6 +2210,56 @@ kumiko.ScrollToItem(target, KumikoScrollPosition.Center);
 
 ---
 
+## Empty View
+
+While the view has no rows, the grid draws a message centered in the data area (below the header, the grouping panel and the top summaries, above a pinned footer, across the full viewport width), so users can tell an empty collection from a filter that hides everything. The header stays drawn and interactive, so the filter icon can still clear a filter. The text depends on why there are no rows:
+
+| Situation | Text (`KumikoStrings`) |
+|---|---|
+| The bound collection has no items | `EmptyViewNoItems`: "No items to show" |
+| The collection has items, and a column filter, `SetFilter` or a row-filtering search (`SearchFiltersRows`) hides every one | `EmptyViewNoMatches`: "No rows match the current filters" |
+
+```csharp
+// Replace both texts with one of your own
+kumiko.EmptyViewText = "Nothing here yet";
+
+// Or localize the two strings like the rest of the grid's texts
+kumiko.DataSource.Strings = KumikoStrings.Default with
+{
+    EmptyViewNoItems = "Keine Einträge",
+    EmptyViewNoMatches = "Keine Zeile passt zu den Filtern",
+};
+
+// Turn the empty view off; null goes back to the style's value
+kumiko.ShowEmptyView = false;
+```
+
+`ShowEmptyView` defaults to on, so a grid that had no rows in 1.0 now shows the message; set it to `false` to keep the blank area. Like the other style settings it survives a `Theme` or `GridStyle` change. The text's look comes from `KumikoStyle` (`EmptyViewTextColor`, a muted color in each built-in theme, and `EmptyViewFont`, which defaults to `CellFont`). `KumikoSource.ItemCount` (the non-null items of the bound collection, whatever the filters hide) and `IsFiltered` (a column filter, a predicate or a row-filtering search is active) let an app make the same distinction.
+
+The message is not drawn while a load-more row occupies the data area (the first batch of [incremental loading](#incremental-loading) is loading, or a "Load more" button or an error shows), nor while a background rebuild that started from a view with rows is still pending, so the message does not flash. A tap on the area still clears the selection, as a tap on any empty area does.
+
+To draw something else, implement `IKumikoEmptyViewRenderer` and set `EmptyViewRenderer`. It gets the data area, why there are no rows and the text the built-in view would draw. As with a cell renderer, `Render` runs on every frame while the view is empty: create paints once and reuse them.
+
+```csharp
+kumiko.EmptyViewRenderer = new IllustratedEmptyView();
+
+public sealed class IllustratedEmptyView : IKumikoEmptyViewRenderer
+{
+    private readonly KumikoPaint _text = new() { IsAntiAlias = true };
+
+    public void Render(IDrawingContext ctx, KumikoRect bounds, KumikoEmptyViewKind kind, string text, KumikoStyle style)
+    {
+        _text.Color = style.EmptyViewTextColor;
+        _text.Font = new KumikoFont("Default", 16, bold: kind == KumikoEmptyViewKind.NoMatches);
+        ctx.DrawTextInRect(text, bounds, _text, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
+    }
+}
+```
+
+Screen readers: while the view is empty, the grid's hint (unless `GridHint` is set) is the empty text instead of the row and column counts, and the text is announced once when a filter or a search change empties a view that had rows (`AnnounceChanges`).
+
+---
+
 ## Performance
 
 ### What the grid does for you
@@ -2381,7 +2441,7 @@ The generator reports `KUMIKO001` for generic types and `KUMIKO002` for types it
 This is the current state, not the goal. The 1.0 target and the plan are in [docs/ROADMAP.md](docs/ROADMAP.md) (track L).
 
 - **Screen readers see one element.** Cells, headers, editors and popups are drawn on a canvas and are not exposed to assistive technology individually, so a screen reader can't read or navigate cell contents. A per-cell accessibility tree is planned for 1.x.
-  - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default: the localizable `KumikoStrings.AccessibleGridName`, "Data grid") as its semantic description and `GridHint` (default: a hint with the row and column counts and the current cell) as its hint.
+  - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default: the localizable `KumikoStrings.AccessibleGridName`, "Data grid") as its semantic description and `GridHint` (default: a hint with the row and column counts and the current cell) as its hint (while the view has no rows and the empty view is on, the empty text instead).
   - **Uno:** the grid has a UI Automation peer with the DataGrid control type. Its name comes from `GridDescription` or `KumikoStrings.AccessibleGridName`, and its help text from `GridHint` or a computed description of the rows and columns. The peer shows up in the accessibility trees of WebAssembly (as a `role="grid"` element), Android and the Windows desktop head (UI Automation). On the macOS desktop head it is there only on the page the app opens with: Uno 6.7's macOS bridge loses the whole window's tree after a navigation, and in Debug builds that use Hot Design. The Linux desktop head (X11) had no AT-SPI bridge in Uno 6.7; Uno 7.0.65 adds one, and the grid appears in the AT-SPI tree as a single `panel` with its name and a static description, with no table, selection or action interfaces, so Orca will not navigate it as a grid yet ([docs/uno/verification.md](docs/uno/verification.md), F4 and F12). The device verification passes inspected these accessibility trees but did not drive a screen reader on any host, so test with VoiceOver, TalkBack or Narrator before relying on it.
   - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, validation errors, the number of search matches and each match the search moves to, and the [column menu](#column-menu) (its name and item count when it opens, then each item the keyboard moves to) to a running screen reader. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
 - **Keyboard.** The grid can be used without a pointer on Uno and on MAUI for every platform, and never traps Tab. See [Keys per platform](#keys-per-platform).

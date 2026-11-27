@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.EmptyViewPage"
+             Title="Empty View">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="0">
+        <Label x:Name="statusLabel"
+               Text="Empty View"
+               FontSize="20"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+            <HorizontalStackLayout Padding="16,4" Spacing="12">
+                <Button Text="Load data" Clicked="OnLoadClicked" />
+                <Button Text="Clear data" Clicked="OnClearClicked" />
+                <Button Text="Filter everything out" Clicked="OnFilterOutClicked" />
+                <Button Text="Clear filter" Clicked="OnClearFilterClicked" />
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="showCheck" IsChecked="True" CheckedChanged="OnShowChanged" />
+                    <Label Text="Show empty view" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="customTextCheck" IsChecked="False" CheckedChanged="OnCustomTextChanged" />
+                    <Label Text="Custom text" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="2"
+                           AllowSorting="True"
+                           GridDescription="People, with a message when no rows show"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill">
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="Name" PropertyName="Name" Width="180" />
+                <core:KumikoColumn Header="City" PropertyName="City" Width="140" />
+                <core:KumikoColumn Header="Age" PropertyName="Age" Width="90" ColumnType="Numeric" />
+            </dg:KumikoDataGrid.Columns>
+        </dg:KumikoDataGrid>
+    </Grid>
+
+</ContentPage>

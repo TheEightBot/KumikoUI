@@ -40,11 +40,14 @@ public sealed class KumikoStyleOptions
     /// <summary>When the horizontal scroll bar is drawn (<see cref="KumikoStyle.HorizontalScrollBarVisibility"/>).</summary>
     public KumikoScrollBarVisibility? HorizontalScrollBarVisibility { get; set; }
 
+    /// <summary>Whether the grid draws an empty view while the view has no rows (<see cref="KumikoStyle.ShowEmptyView"/>).</summary>
+    public bool? ShowEmptyView { get; set; }
+
     /// <summary>True when at least one setting is set.</summary>
     public bool HasOverrides =>
         RowHeight.HasValue || HeaderHeight.HasValue || ShowHorizontalGridLines.HasValue || ShowVerticalGridLines.HasValue ||
         AllowRowDragDrop.HasValue || ShowRowDragHandle.HasValue || AlternateRowBackground.HasValue ||
-        VerticalScrollBarVisibility.HasValue || HorizontalScrollBarVisibility.HasValue;
+        VerticalScrollBarVisibility.HasValue || HorizontalScrollBarVisibility.HasValue || ShowEmptyView.HasValue;
 
     /// <summary>Write every setting that is set into <paramref name="style"/>; unset ones leave it untouched.</summary>
     public void Apply(KumikoStyle style)
@@ -64,5 +67,6 @@ public sealed class KumikoStyleOptions
         }
         if (VerticalScrollBarVisibility is { } verticalBar) style.VerticalScrollBarVisibility = verticalBar;
         if (HorizontalScrollBarVisibility is { } horizontalBar) style.HorizontalScrollBarVisibility = horizontalBar;
+        if (ShowEmptyView is { } showEmpty) style.ShowEmptyView = showEmpty;
     }
 }

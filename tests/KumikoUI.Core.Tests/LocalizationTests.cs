@@ -89,6 +89,8 @@ public class LocalizationTests
         AnnounceLoadMoreCompleted = "{0} weitere Zeilen geladen.",
         AnnounceAllRowsLoaded = "Alle Zeilen geladen.",
         AnnounceLoadMoreFailed = "Weitere Zeilen konnten nicht geladen werden. {0}",
+        EmptyViewNoItems = "Keine Einträge vorhanden",
+        EmptyViewNoMatches = "Keine Zeile entspricht den Filtern",
         SelectAllRows = "Alle Zeilen auswählen",
         SelectRow = "Zeile auswählen",
         AllRowsSelected = "Alle {0} Zeilen ausgewählt",

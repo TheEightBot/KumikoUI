@@ -59,6 +59,23 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_EmptyView_AllocatesNothing()
+    {
+        // The empty view (#326): no items, then every row filtered out, then drawn through a custom renderer.
+        var grid = CreateGrid(featured: false);
+        grid.Source.SetItems(new List<Row>());
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+
+        grid.Source.SetItems(Enumerable.Range(0, 50).Select(i => new Row { Name = $"R{i}" }).ToList());
+        grid.Source.SetFilter(_ => false);
+        Assert.Equal(0, grid.Source.RowCount);
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+
+        grid.Renderer.EmptyViewText = "Nothing matches";
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
     public void SteadyState_GridUsingEveryPerFrameFeature_AllocatesNothing()
     {
         var grid = CreateGrid(featured: true);

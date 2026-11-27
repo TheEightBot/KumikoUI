@@ -552,6 +552,8 @@ public sealed partial class KumikoRenderer : IDisposable
                 dataSource.ComputedBottomSummaries, pinnedBottomSummaryY, handleOffset);
         }
 
+        DrawEmptyView(ctx, dataSource, style, new KumikoRect(0, dataAreaTop, scroll.ViewportWidth, dataClipHeight)); // #326
+
         var animations = _inputController?.Animations;
         if (dragColumnIndex >= 0)
         {

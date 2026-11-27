@@ -92,7 +92,7 @@ public partial class KumikoDataGrid
     {
         var strings = _dataSource.Strings;
         SemanticProperties.SetDescription(this, GridDescription ?? strings.AccessibleGridName);
-        SemanticProperties.SetHint(this, GridHint ?? KumikoAnnouncements.GridHint(
+        SemanticProperties.SetHint(this, GridHint ?? GetEmptyViewHint() ?? KumikoAnnouncements.GridHint(
             strings, _dataSource.RowCount, _dataSource.DisplayColumns.Count, ToDisplayCell(_selection.CurrentCell)));
     }
 
