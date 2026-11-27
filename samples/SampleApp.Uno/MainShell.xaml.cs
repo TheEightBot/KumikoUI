@@ -80,6 +80,7 @@ public sealed partial class MainShell : Page
             "LoadMore" => typeof(LoadMorePage),
             "SelectionColumn" => typeof(SelectionColumnPage),
             "AutoColumns" => typeof(AutoColumnsPage),
+            "EmptyView" => typeof(EmptyViewPage),
             "Export" => typeof(ExportPage),
             _ => null,
         };

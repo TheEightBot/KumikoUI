@@ -1,0 +1,49 @@
+<Page x:Class="SampleApp.Uno.EmptyViewPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      xmlns:core="using:KumikoUI.Core.Models"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="statusLabel"
+                   Text="Empty View"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   Padding="16,12"
+                   Grid.Row="0" />
+
+        <!-- Scrolls horizontally so every option stays reachable on phone-width viewports. -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal" Padding="16,4" Spacing="8">
+                <Button Content="Load data" Click="OnLoadClicked" />
+                <Button Content="Clear data" Click="OnClearClicked" />
+                <Button Content="Filter everything out" Click="OnFilterOutClicked" />
+                <Button Content="Clear filter" Click="OnClearFilterClicked" />
+                <ToggleSwitch x:Name="showSwitch" IsOn="True" OnContent="Show empty view" OffContent="Show empty view"
+                              Toggled="OnShowToggled" />
+                <ToggleSwitch x:Name="customTextSwitch" IsOn="False" OnContent="Custom text" OffContent="Custom text"
+                              Toggled="OnCustomTextToggled" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <kumiko:KumikoDataGrid x:Name="kumiko"
+                               Grid.Row="2"
+                               AllowSorting="True"
+                               GridDescription="People, with a message when no rows show">
+            <kumiko:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="Name" PropertyName="Name" Width="180" />
+                <core:KumikoColumn Header="City" PropertyName="City" Width="140" />
+                <core:KumikoColumn Header="Age" PropertyName="Age" Width="90" ColumnType="Numeric" />
+            </kumiko:KumikoDataGrid.Columns>
+        </kumiko:KumikoDataGrid>
+    </Grid>
+</Page>

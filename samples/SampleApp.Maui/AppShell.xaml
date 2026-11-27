@@ -68,6 +68,12 @@
             Route="LoadMorePage" />
 
         <ShellContent
+            Title="Empty View"
+            Icon="icon_grid.png"
+            ContentTemplate="{DataTemplate local:EmptyViewPage}"
+            Route="EmptyViewPage" />
+
+        <ShellContent
             Title="Export"
             Icon="icon_data.png"
             ContentTemplate="{DataTemplate local:ExportPage}"
