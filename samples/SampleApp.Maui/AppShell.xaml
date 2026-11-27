@@ -90,6 +90,12 @@
             Icon="icon_grid.png"
             ContentTemplate="{DataTemplate local:AutoColumnsPage}"
             Route="AutoColumnsPage" />
+
+        <ShellContent
+            Title="Swipe Actions"
+            Icon="icon_actions.png"
+            ContentTemplate="{DataTemplate local:SwipeActionsPage}"
+            Route="SwipeActionsPage" />
     </TabBar>
 
 </Shell>

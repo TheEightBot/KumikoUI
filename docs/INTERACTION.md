@@ -15,6 +15,9 @@ Every timing, distance and target size the grid uses to read a gesture or play f
 | Stale pointer | 1000 ms | Core (`StalePointerMs`), both hosts | While one pointer is down, others are ignored, unless it has been silent this long (its release was lost). |
 | Text box multi-click | 500 ms, 4 px | Core `DrawnTextBox` | Double click selects a word, triple click everything. |
 | Scroll bar track press | one page, then every 50 ms after 400 ms | Core `KumikoInputController` (`ScrollBarPageDelayMs`, `ScrollBarPageRepeatMs`) | Mouse or pen. The first page is at once; the press repeats while held until the thumb reaches the pointer, pauses while the pointer is off the bar. A page is the scrolling rows' height (or the scrolling columns' width). A press on the thumb drags it instead. Neither selects, pans or drags a row. |
+| Row swipe start | past the pan threshold, sideways more than 2 × up or down | Core `KumikoInputController.Swipe.cs` (`RowSwipe.DirectionRatio`) | Touch only, with `AllowSwiping`, toward a side that has items; anything else pans. The row stays under the finger from where it was pressed. |
+| Row swipe open / close | half an item (36 px at the default 72), or a fling of 0.5 px/ms | Core (`SwipeItemWidth`, `RowSwipe.FlingVelocity`) | On release; a fling toward open opens and toward closed closes, whatever the distance. A finger that rested 100 ms before lifting does not fling. Past the items the row follows 30% of the pull (`RowSwipe.RubberBandFactor`). |
+| Full swipe | 60% of the row's width | Core (`RowSwipe.FullSwipeFraction`, `FullSwipeMode`) | Past it the outermost item takes the uncovered space and lifting runs it; crossing the point either way asks for the `SwipeThreshold` haptic. Without a full swipe on that side the row rubber-bands instead. |
 | Editor list drag | 6 px | Core `DrawnComboBox`, `DrawnFilterPopup`, `DrawnScrollPicker` | Movement before a press in a list scrolls it instead of picking. Year list in `DrawnDatePicker`: 4 px. |
 
 ## Targets
@@ -54,11 +57,12 @@ The MAUI grid picks the iOS preset on iPhone and iPad, Android on Android and De
 | Group expand / collapse | 200 ms | The rows after the header slide by the rows added or removed (at most the height below the header). |
 | Column header lift | 120 ms | The dragged header's shadow grows. |
 | Column header drop | 180 ms | The header settles from where it was released into its slot (back to its old one when the drag is canceled). |
+| Swiped row snap | 200 ms | The row settles open, or slides shut, from where the finger lifted (`InteractionAnimations.SwipeSnapMs`). The row counts as closed at once; it only slides. |
 | Selection fade-in | 120 ms | The current row's highlight, when the current row shows another item. |
 | Easing | ease-out cubic | All transitions. `KumikoStyle.EnableAnimations` = false, or the platform's reduced-motion setting, shows every change at once. |
 | Scroll bar expand | 4 px to 10 px | `KumikoStyle.ScrollBarThickness`, `ScrollBarExpandedThickness`. Mouse and pen hover or a press on the bar; the track (`ScrollBarTrackColor`) shows while expanded. At once, no transition. |
 | Scroll bar (`Auto`) hold and fade | 1000 ms, then 250 ms | Shown while the grid scrolls (any cause) or a mouse rests over the bar, held for 1000 ms after the last scroll or after the pointer leaves, then faded out linearly. With animations off it hides at once after the hold. Frames during the hold are not redrawn. |
-| Haptics | drag start, drop, long press | `KumikoDataGrid.EnableHaptics` (off by default); finger and pen only. iOS `UIImpactFeedbackGenerator`, Android `PerformHapticFeedback`. |
+| Haptics | drag start, drop, long press, a swipe crossing the full-swipe point | `KumikoDataGrid.EnableHaptics` (off by default); finger and pen only. iOS `UIImpactFeedbackGenerator`, Android `PerformHapticFeedback`. |
 
 ## Editors and frame loop
 

@@ -139,6 +139,7 @@ RenderFrame
   ├─ pass 3  right-frozen columns DrawRightFrozenBackground, the same calls, then DrawRightFrozenColumnDivider
   │            (DrawPaneRows = DrawRowBand: DrawRows, DrawCurrentCellBorder, DrawGridLines)
   ├─ DrawFrozenRowDivider
+  ├─ DrawSwipedRow                 the swiped row (#329) again, moved in every pane, and its items
   ├─ DrawTableSummaryRows          top summaries, and bottom ones that scroll with the rows
   ├─ DrawGroupHeaderRow / DrawGroupSummaryRow   full-width rows, outside the column clips
   ├─ sticky group headers          DrawGroupHeaderRow for each PinnedGroupHeaders entry

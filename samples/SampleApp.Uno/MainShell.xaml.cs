@@ -81,6 +81,7 @@ public sealed partial class MainShell : Page
             "SelectionColumn" => typeof(SelectionColumnPage),
             "AutoColumns" => typeof(AutoColumnsPage),
             "Export" => typeof(ExportPage),
+            "SwipeActions" => typeof(SwipeActionsPage),
             _ => null,
         };
 

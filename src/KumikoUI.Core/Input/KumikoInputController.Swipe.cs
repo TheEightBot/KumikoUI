@@ -165,6 +165,9 @@ public sealed partial class KumikoInputController
         var swipe = Swipe;
         if (!_allowSwiping && swipe.Phase == SwipePhase.None) return false;
 
+        // A row that finished sliding shut lets go of its item
+        if (swipe.Phase == SwipePhase.Closing && !_animations.IsSwipeSnapping) swipe.Clear();
+
         // A change of the rows (a sort, a filter, rows added or removed) closes the row, without a transition
         if (swipe.IsActive && !swipe.IsCurrent(dataSource)) AbortSwipe();
 
