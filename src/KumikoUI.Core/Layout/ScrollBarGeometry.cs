@@ -106,7 +106,8 @@ internal static class ScrollBarGeometry
     {
         float viewportWidth = scroll.ViewportWidth, viewportHeight = scroll.ViewportHeight;
         float thickness = ExpandedThickness(style);
-        if (!(thickness > 0) || !(viewportWidth > 0) || !(viewportHeight > 0)) return default;
+        if (float.IsNaN(thickness) || thickness <= 0 || float.IsNaN(viewportWidth) || viewportWidth <= 0
+            || float.IsNaN(viewportHeight) || viewportHeight <= 0) return default;
 
         // The scrolling rows band
         float rowsBand = KumikoScroller.GetScrollableRowsViewportHeight(scroll, style, source);

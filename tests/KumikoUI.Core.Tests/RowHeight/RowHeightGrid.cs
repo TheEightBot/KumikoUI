@@ -64,7 +64,7 @@ internal sealed class RowHeightGrid
     public static string Lines(int lines) => new('x', 16 * (lines - 1) + 4);
 
     /// <summary>The Auto height of a row whose note has <paramref name="lines"/> lines.</summary>
-    public static float AutoHeight(int lines) => Math.Max(36f, 14 + 16 * (lines - 1) + 12);
+    public static float AutoHeight(int lines) => Math.Max(36f, 14 + 16f * (lines - 1) + 12);
 
     public List<Note> Items { get; }
     public KumikoSource Source { get; } = new();
@@ -79,6 +79,7 @@ internal sealed class RowHeightGrid
     public KumikoColumn NotesColumn { get; } = new() { Header = "Notes", PropertyName = nameof(Note.Text), Width = 150, TextWrap = KumikoTextWrap.Character };
     public KumikoColumn AgeColumn { get; } = new() { Header = "Age", PropertyName = nameof(Note.Age), Width = 100, ColumnType = KumikoColumnType.Numeric };
 
+    /// <summary>Builds a grid of notes whose length follows <paramref name="lines"/>.</summary>
     /// <param name="lines">The number of lines of each row's note, by row index.</param>
     /// <param name="rows">How many rows.</param>
     public RowHeightGrid(Func<int, int> lines, int rows = 40)
