@@ -16,6 +16,7 @@ Every timing, distance and target size the grid uses to read a gesture or play f
 | Text box multi-click | 500 ms, 4 px | Core `DrawnTextBox` | Double click selects a word, triple click everything. |
 | Scroll bar track press | one page, then every 50 ms after 400 ms | Core `KumikoInputController` (`ScrollBarPageDelayMs`, `ScrollBarPageRepeatMs`) | Mouse or pen. The first page is at once; the press repeats while held until the thumb reaches the pointer, pauses while the pointer is off the bar. A page is the scrolling rows' height (or the scrolling columns' width). A press on the thumb drags it instead. Neither selects, pans or drags a row. |
 | Editor list drag | 6 px | Core `DrawnComboBox`, `DrawnFilterPopup`, `DrawnScrollPicker` | Movement before a press in a list scrolls it instead of picking. Year list in `DrawnDatePicker`: 4 px. |
+| Pull to refresh | 64 px of indicator travel; half the finger's movement, at most 128 px | Core `KumikoInputController` (`PullToRefreshThreshold`), `PullToRefreshState` (`Resistance`, `MaxPullFactor`) | Finger or pen, with `IsPullToRefreshEnabled`. Only a pan that is mostly vertical past the pan threshold and starts with the grid at the top (within 0.5 px) pulls; moving back up shrinks the pull, then scrolls. A pan that starts lower, a fling, the wheel and a mouse never pull. Released at or past the threshold it refreshes; a canceled touch never does. Ignored while refreshing. |
 
 ## Targets
 
@@ -58,7 +59,8 @@ The MAUI grid picks the iOS preset on iPhone and iPad, Android on Android and De
 | Easing | ease-out cubic | All transitions. `KumikoStyle.EnableAnimations` = false, or the platform's reduced-motion setting, shows every change at once. |
 | Scroll bar expand | 4 px to 10 px | `KumikoStyle.ScrollBarThickness`, `ScrollBarExpandedThickness`. Mouse and pen hover or a press on the bar; the track (`ScrollBarTrackColor`) shows while expanded. At once, no transition. |
 | Scroll bar (`Auto`) hold and fade | 1000 ms, then 250 ms | Shown while the grid scrolls (any cause) or a mouse rests over the bar, held for 1000 ms after the last scroll or after the pointer leaves, then faded out linearly. With animations off it hides at once after the hold. Frames during the hold are not redrawn. |
-| Haptics | drag start, drop, long press | `KumikoDataGrid.EnableHaptics` (off by default); finger and pen only. iOS `UIImpactFeedbackGenerator`, Android `PerformHapticFeedback`. |
+| Pull-to-refresh indicator | 200 ms back, 150 ms to the hold, 200 ms in, 250 ms away; spinner 1 turn per 1000 ms | Core `PullToRefreshState` (`CancelMs`, `HoldMs`, `ShowMs`, `HideMs`, `SpinPeriodMs`). A pull released short of the threshold slides back out of sight; one released past it moves to the hold position (the threshold) and spins until `IsRefreshing` turns false, then slides away; `IsRefreshing` set in code slides it in. A held finger moves it directly. The frame loop runs only while it slides or spins; with animations off it moves at once and the spinner stands still, so no frames run. |
+| Haptics | drag start, drop, long press, pull-to-refresh threshold | `KumikoDataGrid.EnableHaptics` (off by default); finger and pen only. iOS `UIImpactFeedbackGenerator`, Android `PerformHapticFeedback`. |
 
 ## Editors and frame loop
 
