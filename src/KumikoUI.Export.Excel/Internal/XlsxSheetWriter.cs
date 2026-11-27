@@ -141,7 +141,7 @@ internal sealed class XlsxSheetWriter
                 WriteSerial(x, c, number, XlsxDates.FromDateTime(date.ToDateTime(TimeOnly.MinValue)), xfs[styleBase + (int)XlsxValueKind.Date], value, column);
                 return;
             case TimeOnly time:
-                WriteSerial(x, c, number, (double)time.Ticks / TimeSpan.TicksPerDay, xfs[styleBase + (int)XlsxValueKind.Time], value, column);
+                WriteSerial(x, c, number, XlsxDates.TimeFraction(time.Ticks), xfs[styleBase + (int)XlsxValueKind.Time], value, column);
                 return;
             case TimeSpan span:
                 WriteSerial(x, c, number, span.Ticks >= 0 ? (double)span.Ticks / TimeSpan.TicksPerDay : null,
