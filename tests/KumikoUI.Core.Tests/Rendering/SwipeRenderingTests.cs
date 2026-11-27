@@ -124,6 +124,24 @@ public class SwipeRenderingTests
     }
 
     [Fact]
+    public void TheItems_DrawOnlyRectanglesAndText_SoAMovingRowBuildsNoPathPerFrame()
+    {
+        // The Skia context caches one path per polygon shape: a shape that changes while the row slides would build a
+        // path every frame. The items are rectangles and text, and the row's cells are drawn translated, so the points
+        // they pass do not change with the offset.
+        var g = Grid();
+        var before = g.RenderRecorded();
+        Drag(g, 2, -77.3f, release: false);
+
+        var ctx = g.RenderRecorded();
+
+        Assert.Equal(before.Polygons.Count(), ctx.Polygons.Count());
+        Assert.Equal(before.Polylines.Count(), ctx.Polylines.Count());
+        Assert.DoesNotContain(ctx.Ops, o => o.Kind is DrawOpKind.FillRoundRect or DrawOpKind.DrawRoundRect &&
+                                           o.Rect.Y >= 112 && o.Rect.Bottom <= 148);
+    }
+
+    [Fact]
     public void PastTheFullSwipePoint_TheOutermostItemTakesAllTheSpace()
     {
         var g = Grid(x => x.Input.FullSwipeMode = KumikoFullSwipeMode.Trailing);
