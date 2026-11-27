@@ -83,7 +83,7 @@ public partial class KumikoDataGrid
     /// The text a screen reader announces after the name: <see cref="GridHint"/>, or the size of the grid and
     /// its current cell.
     /// </summary>
-    internal string GetAccessibilityHint() => GridHint ?? KumikoAnnouncements.GridHint(
+    internal string GetAccessibilityHint() => GridHint ?? GetEmptyViewHint() ?? KumikoAnnouncements.GridHint(
         _dataSource.Strings, _dataSource.RowCount, _dataSource.DisplayColumns.Count, ToDisplayCell(_selection.CurrentCell));
 
     /// <summary>Mirrors an explicit <see cref="GridDescription"/> into AutomationProperties.Name; null clears it.</summary>
@@ -120,7 +120,11 @@ public partial class KumikoDataGrid
             "KumikoDataGrid");
     }
 
-    private void OnAccessibilityViewChanged(object? sender, KumikoViewChangedEventArgs e) => RaiseAccessibilityHintChanged();
+    private void OnAccessibilityViewChanged(object? sender, KumikoViewChangedEventArgs e)
+    {
+        RaiseAccessibilityHintChanged();
+        if (e.IsStructural) AnnounceEmptyView(); // #326
+    }
 
     private void OnAccessibilityCurrentCellChanged(object? sender, EventArgs e)
     {

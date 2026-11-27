@@ -981,7 +981,10 @@ public partial class KumikoDataGrid : ContentView
     {
         RequestRedraw();
         if (e.IsStructural)
+        {
             UpdateAccessibilityHint();
+            AnnounceEmptyView(); // #326
+        }
     }
 
     // A background rebuild's view was swapped in (#254): draw it. The scroll offset is kept and clamped to the new
