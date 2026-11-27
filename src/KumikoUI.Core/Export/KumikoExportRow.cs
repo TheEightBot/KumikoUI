@@ -1,3 +1,5 @@
+using KumikoUI.Core.Models;
+
 namespace KumikoUI.Core.Export;
 
 /// <summary>
@@ -47,5 +49,6 @@ public sealed class KumikoExportRow
         Array.Clear(_cells, 0, count);
     }
 
-    internal void Set(int index, object? value, string text) => _cells[index] = new KumikoExportCell(value, text);
+    internal void Set(int index, object? value, string text, SummaryType? summaryType = null) =>
+        _cells[index] = new KumikoExportCell(value, text, summaryType);
 }

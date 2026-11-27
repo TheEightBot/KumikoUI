@@ -273,6 +273,20 @@ public class ExportGroupTests
     }
 
     [Fact]
+    public void SummaryCells_CarryTheirSummaryType()
+    {
+        var source = Grouped();
+        var rows = KumikoExportSnapshot.Create(source, new KumikoExportOptions { ValueMode = KumikoExportValueMode.RawValue }).Rows
+            .Select(r => (r.Kind, Name: r.Cells[0].SummaryType, Salary: r.Cells[2].SummaryType)).ToList();
+
+        Assert.Contains((KumikoExportRowKind.TableSummary, (SummaryType?)null, (SummaryType?)SummaryType.Sum), rows); // Grand
+        Assert.Contains((KumikoExportRowKind.TableSummary, (SummaryType?)SummaryType.Count, (SummaryType?)null), rows); // Count
+        Assert.Contains((KumikoExportRowKind.GroupSummary, (SummaryType?)null, (SummaryType?)SummaryType.Sum), rows); // Subtotal
+        Assert.All(rows.Where(r => r.Kind is KumikoExportRowKind.Data or KumikoExportRowKind.Header or KumikoExportRowKind.GroupHeader),
+            r => Assert.True(r.Name == null && r.Salary == null));
+    }
+
+    [Fact]
     public void IncludeSummariesFalse_OmitsThemAll()
     {
         var source = Grouped();

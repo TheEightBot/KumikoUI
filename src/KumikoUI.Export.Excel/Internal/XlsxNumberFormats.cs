@@ -383,6 +383,10 @@ internal static class XlsxNumberFormats
 
         if (literal.Length > 0) tokens.Add((Token.Literal, literal.ToString()));
 
+        // A pattern with no date or time part (a number format such as "C2" applied to a date) is not a date format:
+        // as a format code it would show only its text, so the cell gets the display text instead.
+        if (tokens.TrueForAll(static t => t.Kind == Token.Literal)) return null;
+
         // Excel prints AM/PM with a 12-hour clock and a 24-hour clock without it; .NET decides per specifier.
         if (has12 && (has24 || !hasAmPm)) return null;
         if (has24 && hasAmPm) return null;

@@ -128,7 +128,7 @@ custom numeric formats made of `0 # . , %`, exponents, literals and up to three 
 (`d`, `D`, `f`, `F`, `g`, `G`, `M`, `s`, `t`, `T`, `Y` and custom ones such as `yyyy-MM-dd`, `HH:mm` or `dd MMM yyyy`).
 Currency symbols and patterns, percent patterns, separators and month names come from the export culture (with a
 locale prefix for names). A format Excel cannot show exactly (`X`, per mille, eras, offsets, a 12-hour clock without
-AM/PM, a one-digit year, more than three fraction digits) writes the grid's display text instead, so the sheet never
+AM/PM, a one-digit year, more than three fraction digits, or a number format such as `C2` on a date) writes the grid's display text instead, so the sheet never
 shows a different value than the grid. Excel draws digit grouping and the decimal separator in the reader's locale.
 `ValueMode = DisplayText` writes every cell as the grid's text.
 
@@ -145,8 +145,9 @@ shows a different value than the grid. Excel draws digit grouping and the decima
 | `Title`, `Author` | `null` | The workbook's document properties. |
 
 Group headers (`GroupLayout = Rows`) become rows with outline levels, so Excel shows collapsible groups with the button
-on the group header row; summary rows follow their group. Summary values are numbers in Excel's General format (a
-count of a currency column is not currency). Excel's limits are checked before any byte is written: more than
+on the group header row; summary rows follow their group. A sum, average, minimum or maximum takes the
+column's number format; a count or a custom summary uses Excel's General format (a count of a currency column is not
+currency). Excel's limits are checked before any byte is written: more than
 1,048,576 rows (the header and summaries included) or 16,384 columns throws `ArgumentException`; text over 32,767
 characters is cut. Characters XML cannot hold (control characters other than tab, CR and LF) are removed.
 

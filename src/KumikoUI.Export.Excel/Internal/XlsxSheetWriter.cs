@@ -104,7 +104,7 @@ internal sealed class XlsxSheetWriter
                 continue;
             }
 
-            WriteTyped(x, c, number, value, xfs, styleBase, rowStyle, columns[c]);
+            WriteTyped(x, c, number, value, xfs, styleBase, rowStyle, columns[c], cell.SummaryType);
         }
 
         x.Raw("</row>");
@@ -119,9 +119,12 @@ internal sealed class XlsxSheetWriter
     }
 
     private void WriteTyped(XmlText x, int c, int number, object value, int[] xfs, int styleBase, XlsxRowStyle rowStyle,
-        KumikoExportColumn column)
+        KumikoExportColumn column, SummaryType? summaryType)
     {
-        bool summary = rowStyle is XlsxRowStyle.GroupSummary or XlsxRowStyle.TableSummary;
+        // A sum, average, minimum or maximum is in the column's unit and takes its number format; any other summary
+        // value (a count of a currency column is not currency, a custom aggregate is unknown) keeps Excel's General format.
+        bool generalSummary = rowStyle is XlsxRowStyle.GroupSummary or XlsxRowStyle.TableSummary
+            && summaryType is not (SummaryType.Sum or SummaryType.Average or SummaryType.Min or SummaryType.Max);
         switch (value)
         {
             case string text:
@@ -149,8 +152,6 @@ internal sealed class XlsxSheetWriter
                 return;
         }
 
-        // A summary value is the aggregate the grid shows with its own format (a count of a currency column is not
-        // currency), so it keeps Excel's General format.
         bool integer;
         switch (value)
         {
@@ -169,8 +170,8 @@ internal sealed class XlsxSheetWriter
                 return;
         }
 
-        int xf = xfs[styleBase + (int)(summary ? XlsxValueKind.General : XlsxValueKind.Number)];
-        if (xf < 0 || (!summary && !integer && _layout.IntegerOnly[c]))
+        int xf = xfs[styleBase + (int)(generalSummary ? XlsxValueKind.General : XlsxValueKind.Number)];
+        if (xf < 0 || (!generalSummary && !integer && _layout.IntegerOnly[c]))
         {
             WriteText(x, c, number, xfs[styleBase], DisplayText(value, column));
             return;
