@@ -77,7 +77,7 @@ public sealed partial class ExportPage : Page
 
             statusLabel.Text = "Exported.";
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException))
         {
             statusLabel.Text = "Export failed: " + ex.Message;
         }

@@ -82,6 +82,14 @@ public sealed partial record KumikoStrings
     /// <param name="op">The boxed operator.</param>
     internal string FilterOperatorLabel(object? op) => op switch
     {
+        TextFilterOperator text => TextOperatorLabel(text),
+        NumericFilterOperator number => NumericOperatorLabel(number),
+        DateFilterOperator date => DateOperatorLabel(date),
+        _ => op?.ToString() ?? string.Empty,
+    };
+
+    private string TextOperatorLabel(TextFilterOperator op) => op switch
+    {
         TextFilterOperator.Equals => FilterTextEquals,
         TextFilterOperator.NotEquals => FilterTextNotEquals,
         TextFilterOperator.Contains => FilterTextContains,
@@ -90,18 +98,28 @@ public sealed partial record KumikoStrings
         TextFilterOperator.EndsWith => FilterTextEndsWith,
         TextFilterOperator.Empty => FilterTextEmpty,
         TextFilterOperator.NotEmpty => FilterTextNotEmpty,
+        _ => op.ToString(),
+    };
+
+    private string NumericOperatorLabel(NumericFilterOperator op) => op switch
+    {
         NumericFilterOperator.Equals => FilterNumberEquals,
         NumericFilterOperator.NotEquals => FilterNumberNotEquals,
         NumericFilterOperator.LessThan => FilterNumberLessThan,
         NumericFilterOperator.LessThanOrEqual => FilterNumberLessThanOrEqual,
         NumericFilterOperator.GreaterThan => FilterNumberGreaterThan,
         NumericFilterOperator.GreaterThanOrEqual => FilterNumberGreaterThanOrEqual,
+        _ => op.ToString(),
+    };
+
+    private string DateOperatorLabel(DateFilterOperator op) => op switch
+    {
         DateFilterOperator.Equals => FilterDateEquals,
         DateFilterOperator.NotEquals => FilterDateNotEquals,
         DateFilterOperator.Before => FilterDateBefore,
         DateFilterOperator.After => FilterDateAfter,
         DateFilterOperator.BeforeOrEqual => FilterDateBeforeOrEqual,
         DateFilterOperator.AfterOrEqual => FilterDateAfterOrEqual,
-        _ => op?.ToString() ?? string.Empty,
+        _ => op.ToString(),
     };
 }

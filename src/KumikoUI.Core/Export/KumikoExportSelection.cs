@@ -53,16 +53,13 @@ public sealed class KumikoExportSelection
         var set = new HashSet<object>(ReferenceEqualityComparer.Instance);
         if (_items != null)
         {
-            foreach (var item in _items)
-                if (item != null) set.Add(item);
+            set.UnionWith(_items.OfType<object>());
         }
         else if (_rows != null)
         {
-            foreach (int row in _rows)
-            {
-                if (row < 0 || row >= source.RowCount || source.IsNonDataRow(row)) continue;
-                set.Add(source.GetItem(row));
-            }
+            set.UnionWith(_rows
+                .Where(row => row >= 0 && row < source.RowCount && !source.IsNonDataRow(row))
+                .Select(source.GetItem));
         }
         else if (_model != null)
         {

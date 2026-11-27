@@ -37,7 +37,19 @@ public class ExportAsyncTests
         int reads = 0;
         source.SetColumns(new[]
         {
-            new KumikoColumn { Header = "N", ValueAccessor = i => { if (Interlocked.Increment(ref reads) == 1000) cts.Cancel(); return ((Person)i).Name; } },
+            new KumikoColumn
+            {
+                Header = "N",
+                ValueAccessor = i =>
+                {
+                    if (Interlocked.Increment(ref reads) == 1000)
+                    {
+                        cts.Cancel();
+                    }
+
+                    return ((Person)i).Name;
+                },
+            },
         });
         var stream = new CountingStream();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => source.ExportToCsvAsync(stream, cancellationToken: cts.Token));
@@ -187,7 +199,8 @@ public class ExportAsyncTests
 
         var stream = new CountingStream();
         long peak = 0;
-        var progress = new SyncProgress(_ => peak = Math.Max(peak, GC.GetTotalMemory(false)));
+        // Collect at each report (at most every 100 ms) so the peak is live memory, not garbage the runner's GC has not reached yet.
+        var progress = new SyncProgress(_ => peak = Math.Max(peak, GC.GetTotalMemory(true)));
 
         // The source belongs to this thread: take what needs it before the first await.
         var snapshot = KumikoExportSnapshot.Create(source);
@@ -202,12 +215,10 @@ public class ExportAsyncTests
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Assert.True(allocated < 10_000_000, $"allocated {allocated} bytes streaming 1M cells");
 
-        GC.Collect();
-        long baseline = GC.GetTotalMemory(true);
+        long baseline = GC.GetTotalMemory(true); // collects first
         await source.ExportToCsvAsync(stream, progress: progress);
 
         Assert.True(stream.BytesWritten > 10_000_000, $"output was {stream.BytesWritten} bytes");
-        GC.Collect();
         Assert.True(GC.GetTotalMemory(true) - baseline < 8_000_000, "memory retained after the export");
         Assert.True(peak - baseline < 60_000_000, $"peak {peak - baseline} above the baseline");
     }
