@@ -41,6 +41,7 @@ public partial class KumikoDataGrid
         _inputController.RowTapped += OnRowTappedForCommand;
         _inputController.CellTapped += OnCellTappedForCommand;
         _inputController.HeaderTapped += OnHeaderTappedForCommand;
+        _inputController.CheckAllToggled += OnCheckAllToggled;
         _inputController.ContextRequested += OnContextMenuRequestedForCommand;
         _editSession.CellValueChanged += OnCellValueChangedForCommand;
         _dataSource.SortColumnsChanged += OnSortChangedForCommand;

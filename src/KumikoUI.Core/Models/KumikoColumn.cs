@@ -21,7 +21,7 @@ namespace KumikoUI.Core.Models;
 /// <see cref="KumikoSource.SetColumnFilter"/>. The editor settings (<c>Editor*</c> properties and editor factories)
 /// are read when an editor opens and raise no notification.
 /// </remarks>
-public sealed class KumikoColumn : INotifyPropertyChanged
+public class KumikoColumn : INotifyPropertyChanged
 {
     /// <summary>
     /// Raised after a configuration property changed; <see cref="PropertyChangedEventArgs.PropertyName"/> names it.
@@ -373,7 +373,7 @@ public sealed class KumikoColumn : INotifyPropertyChanged
     internal bool IsSearchable =>
         _allowSearching && IsVisible &&
         ColumnType is not (KumikoColumnType.Boolean or KumikoColumnType.Image or KumikoColumnType.Template
-            or KumikoColumnType.ProgressBar) &&
+            or KumikoColumnType.ProgressBar or KumikoColumnType.Selection) &&
         CustomCellRenderer is not IInteractiveCellRenderer;
 
     /// <summary>

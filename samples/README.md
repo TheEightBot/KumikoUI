@@ -53,6 +53,7 @@ grid scrolls the edited cell into view (see [docs/TEXT-INPUT.md](../docs/TEXT-IN
 | **Grouping** (`GroupingPage`) | Nested groups, the grouping panel, filter popups, sorting, group summaries, sticky headers | Grouping, Sorting and Filtering, Summaries |
 | **Large Data** (`LargeDataPage`) | 100,000 rows, load timings, the frame-time overlay, scrolling | Performance, Scrolling |
 | **Wrapped Text** (`WrappedTextPage`) | 100,000 rows with two wrapping columns in `RowHeightMode="Auto"`, `MaxRowHeight`, a `RowHeightResolver`, a jump to row 75,000, the frame-time overlay | Row height, Text wrapping |
+| **Selection Column** (`SelectionColumnPage`) | `ShowSelectionColumn` with its tri-state check-all header, `SelectOnRowClick` for checkbox-only selection, the four selection modes | Selection column |
 | **Theming** (`ThemingPage`) | Light, Dark, HighContrast, custom colors and `FollowSystemTheme` | Theming and Styling |
 | **MVVM Actions** (`MvvmActionsPage`) | Action button columns bound to commands, per-column `EditTriggers`, `SelectedItem`, `SelectedItems` and `SelectionChangedCommand` | Action Button Columns, Selection in MVVM |
 | **Custom Fonts** (`CustomFontsPage`) | Noto Sans JP headers, Material Icons columns, registered fonts | Custom Fonts |

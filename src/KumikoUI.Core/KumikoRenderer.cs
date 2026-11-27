@@ -154,6 +154,7 @@ public sealed partial class KumikoRenderer : IDisposable
         _cellRenderers[KumikoColumnType.Boolean] = new BooleanCellRenderer();
         _cellRenderers[KumikoColumnType.Image] = new ImageCellRenderer();
         _cellRenderers[KumikoColumnType.ProgressBar] = new ProgressBarCellRenderer { UsesColumnOptions = true };
+        _cellRenderers[KumikoColumnType.Selection] = _selectionRenderer;
     }
 
     /// <summary>Stops listening to the interactive cell renderers it has drawn.</summary>
@@ -290,6 +291,7 @@ public sealed partial class KumikoRenderer : IDisposable
         scroll.ClampOffset();
 
         _paintCache.Update(style);
+        BeginSelectionColumnFrame(selection);
         _search.BeginFrame(dataSource, selection);
         CaptureFeedback(scroll, style, groupPanelOffset);
 
@@ -959,6 +961,12 @@ public sealed partial class KumikoRenderer : IDisposable
             if (OverlayFor(HitRegion.HeaderCell, -1, columnIndex, -1) is { } headerOverlay)
                 ctx.FillRect(new KumikoRect(screenX, 0, col.Width, style.HeaderHeight), headerOverlay);
 
+            if (col.ColumnType == KumikoColumnType.Selection)
+            {
+                DrawSelectionHeader(ctx, col, screenX, style); // the check-all box, no text
+                continue;
+            }
+
             float padding = hStyle?.Padding ?? style.HeaderPadding;
 
             // Reserve right-side space for the glyphs this column actually shows (sort arrow, filter icon),
@@ -1123,7 +1131,11 @@ public sealed partial class KumikoRenderer : IDisposable
 
             var renderer = col.CustomCellRenderer ?? GetCellRenderer(col.ColumnType);
             TrackInteractive(renderer);
-            string displayText = dataSource.GetCachedCellText(row, dataItem, col, out object? value);
+            // A selection column has no value: its box shows whether the row is selected
+            object? value = null;
+            string displayText = col.ColumnType == KumikoColumnType.Selection
+                ? string.Empty
+                : dataSource.GetCachedCellText(row, dataItem, col, out value);
 
             var cell = new CellRenderContext(cellRect, row, value, displayText, col, style, colCellStyle, isSelected,
                 _paintCache, _paintCache.CellTextPaint(colCellStyle, style, isSelected),
@@ -1491,7 +1503,7 @@ public sealed partial class KumikoRenderer : IDisposable
     {
         foreach (var (col, colX, columnIndex) in visibleCols)
         {
-            if (!AllowFiltering || !col.AllowFiltering) continue;
+            if (!AllowFiltering || !col.AllowFiltering || col.ColumnType == KumikoColumnType.Selection) continue;
 
             float screenX = ColumnScreenX(colX, scroll, col.Pane);
             bool hasActiveFilter = col.ActiveFilter != null && col.ActiveFilter.IsActive;
