@@ -103,9 +103,7 @@ public partial class KumikoSource
     /// <summary>The searchable columns in display order, with readers for one pass over the items.</summary>
     internal SearchSpec CaptureSearchSpec(KumikoComparer comparer)
     {
-        var columns = new List<KumikoColumn>();
-        foreach (var column in DisplayColumns)
-            if (column.IsSearchable) columns.Add(column);
+        var columns = DisplayColumns.Where(column => column.IsSearchable).ToList();
         return new SearchSpec(_searchText, comparer, columns);
     }
 
@@ -113,9 +111,8 @@ public partial class KumikoSource
     private bool SearchFilterReads(string propName)
     {
         if (!_searchFiltersRows || _searchText.Length == 0) return false;
-        foreach (var col in _columns)
+        foreach (var col in _columns.Where(c => c.IsSearchable))
         {
-            if (!col.IsSearchable) continue;
             // A value accessor or the item itself (empty path) may depend on any property.
             if (col.ValueAccessor != null || string.IsNullOrEmpty(col.PropertyName) ||
                 PropertyPathAffected(col.PropertyName, propName))

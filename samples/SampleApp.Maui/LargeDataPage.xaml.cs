@@ -64,7 +64,8 @@ public partial class LargeDataPage : ContentPage
     // The text follows the grid too, which changes it when the user types in the drawn search panel.
     private void OnSearchChanged(object? sender, EventArgs e)
     {
-        if (searchEntry.Text != kumiko.SearchText) searchEntry.Text = kumiko.SearchText;
+        string searchText = kumiko.SearchText;
+        if (searchEntry.Text != searchText) searchEntry.Text = searchText;
         int count = kumiko.SearchMatchCount;
         searchLabel.Text = kumiko.SearchText.Length == 0 ? string.Empty
             : count < 0 ? "Counting..."

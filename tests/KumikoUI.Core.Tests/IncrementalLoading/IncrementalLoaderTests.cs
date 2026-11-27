@@ -196,9 +196,9 @@ public class IncrementalLoaderTests
     [Fact]
     public void ModeNone_AndManual_NeverLoadOnTheirOwn()
     {
-        foreach (var mode in new[] { KumikoLoadMoreMode.None, KumikoLoadMoreMode.Manual })
+        foreach (var grid in new[] { KumikoLoadMoreMode.None, KumikoLoadMoreMode.Manual }
+            .Select(mode => new LoadMoreGrid(configure: g => g.Loader.Mode = mode)))
         {
-            var grid = new LoadMoreGrid(configure: g => g.Loader.Mode = mode);
             grid.Frame();
             grid.Frame();
             Assert.Empty(grid.Fake.Calls);
@@ -467,12 +467,13 @@ public class IncrementalLoaderTests
         var grid = new LoadMoreGrid();
         grid.Frame();
 
-        var scope = grid.Source.BeginUpdate();
-        grid.Fake.Complete(30);
-        grid.Frame();
-        Assert.Equal(KumikoLoadMoreState.Loading, grid.Loader.State);
+        using (grid.Source.BeginUpdate())
+        {
+            grid.Fake.Complete(30);
+            grid.Frame();
+            Assert.Equal(KumikoLoadMoreState.Loading, grid.Loader.State);
+        }
 
-        scope.Dispose();
         grid.Frame();
         Assert.Equal(KumikoLoadMoreState.Idle, grid.Loader.State);
         Assert.Equal(30, grid.Completions[0].RowsAdded);
