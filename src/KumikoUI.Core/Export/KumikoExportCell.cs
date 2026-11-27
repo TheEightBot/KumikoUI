@@ -1,12 +1,15 @@
+using KumikoUI.Core.Models;
+
 namespace KumikoUI.Core.Export;
 
 /// <summary>One cell of an exported row: the value and the text a format writes for it.</summary>
 public readonly struct KumikoExportCell
 {
-    internal KumikoExportCell(object? value, string text)
+    internal KumikoExportCell(object? value, string text, SummaryType? summaryType = null)
     {
         Value = value;
         _text = text;
+        SummaryType = summaryType;
     }
 
     private readonly string? _text;
@@ -23,4 +26,11 @@ public readonly struct KumikoExportCell
     /// Never <c>null</c>; empty for a missing value.
     /// </summary>
     public string Text => _text ?? string.Empty;
+
+    /// <summary>
+    /// For a value cell of a group or table summary row, the summary type of the aggregate in <see cref="Value"/> (the
+    /// first one when several aggregates share the column); otherwise <c>null</c>. A typed writer uses it to choose a
+    /// format: a sum, average, minimum or maximum is in the column's unit, a count is not.
+    /// </summary>
+    public SummaryType? SummaryType { get; }
 }

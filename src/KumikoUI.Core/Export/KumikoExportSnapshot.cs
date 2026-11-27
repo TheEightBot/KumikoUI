@@ -289,12 +289,25 @@ public sealed class KumikoExportSnapshot
             if (property.Length == 0 || !summary.Values.TryGetValue(property, out var text)) continue;
             summary.RawValues.TryGetValue(property, out var raw);
             // The text is what the grid shows (the label and the value; several aggregates are joined, as the renderer does).
-            row.Set(c, raw, _raw ? KumikoExportText.Invariant(raw) : text);
+            row.Set(c, raw, _raw ? KumikoExportText.Invariant(raw) : text, FirstSummaryType(summary, property));
         }
 
         // The title goes in the first column when no value does.
         if (!string.IsNullOrEmpty(summary.Title) && row.Cells[0].Text.Length == 0)
             row.Set(0, summary.Title, summary.Title);
+    }
+
+    /// <summary>The summary type of the first aggregate of <paramref name="property"/>, the one in <c>RawValues</c>.</summary>
+    private static SummaryType? FirstSummaryType(ComputedSummaryRow summary, string property)
+    {
+        var aggregates = summary.Aggregates;
+        for (int i = 0; i < aggregates.Count; i++)
+        {
+            if (string.Equals(aggregates[i].PropertyName, property, StringComparison.OrdinalIgnoreCase))
+                return aggregates[i].SummaryType;
+        }
+
+        return null;
     }
 
     /// <summary>
