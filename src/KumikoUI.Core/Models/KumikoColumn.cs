@@ -353,6 +353,18 @@ public class KumikoColumn : INotifyPropertyChanged
     private bool _allowFiltering = true;
 
     /// <summary>
+    /// Whether the filter popup offers condition filters (an operator and a typed value, #325) for this column. Default
+    /// true. Only Text, ComboBox, Picker, Numeric, ProgressBar and Date columns have them; the others, and a column
+    /// with this set to false, show only the value checklist. Conditions set from code still apply.
+    /// </summary>
+    public bool AllowConditionFilter
+    {
+        get => _allowConditionFilter;
+        set => SetField(ref _allowConditionFilter, value);
+    }
+    private bool _allowConditionFilter = true;
+
+    /// <summary>
     /// Whether the grid-wide search (<see cref="KumikoSource.SearchText"/>) looks at this column's display text.
     /// Default true. Columns without a text representation are never searched, whatever this says:
     /// <see cref="KumikoColumnType.Boolean"/>, <see cref="KumikoColumnType.Image"/>,

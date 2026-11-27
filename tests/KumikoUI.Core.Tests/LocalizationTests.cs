@@ -102,6 +102,31 @@ public class LocalizationTests
         SearchNoMatches = "Keine Treffer",
         SearchCountPending = "…",
         AnnounceSearchMatch = "{0}: {1}, Zeile {2}",
+        FilterValuesTab = "Werte",
+        FilterConditionsTab = "Bedingungen",
+        FilterAnd = "Und",
+        FilterOr = "Oder",
+        FilterValuePlaceholder = "Wert",
+        FilterTextEquals = "Ist gleich",
+        FilterTextNotEquals = "Ist ungleich",
+        FilterTextContains = "Enthält",
+        FilterTextNotContains = "Enthält nicht",
+        FilterTextStartsWith = "Beginnt mit",
+        FilterTextEndsWith = "Endet mit",
+        FilterTextEmpty = "Ist leer",
+        FilterTextNotEmpty = "Ist nicht leer",
+        FilterNumberEquals = "Gleich",
+        FilterNumberNotEquals = "Ungleich",
+        FilterNumberLessThan = "Kleiner als",
+        FilterNumberLessThanOrEqual = "Kleiner oder gleich",
+        FilterNumberGreaterThan = "Größer als",
+        FilterNumberGreaterThanOrEqual = "Größer oder gleich",
+        FilterDateEquals = "Am",
+        FilterDateNotEquals = "Nicht am",
+        FilterDateBefore = "Vor dem",
+        FilterDateAfter = "Nach dem",
+        FilterDateBeforeOrEqual = "Am oder vor dem",
+        FilterDateAfterOrEqual = "Am oder nach dem",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>
@@ -214,6 +239,14 @@ public class LocalizationTests
         {
             new PopupManager().Show(popup, new KumikoRect(0, 0, 150, 0));
             var ctx = new RecordingDrawingContext();
+            popup.OnDraw(ctx);
+            drawn.AddRange(ctx.Texts.Select(t => t.Text!));
+
+            // Its Conditions page (#325), with the operator list open
+            popup.Mode = KumikoFilterPopupMode.Conditions;
+            popup.OnDraw(new RecordingDrawingContext()); // places the editors
+            popup.OperatorBox(0).OpenDropdown();
+            ctx = new RecordingDrawingContext();
             popup.OnDraw(ctx);
             drawn.AddRange(ctx.Texts.Select(t => t.Text!));
         }

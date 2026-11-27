@@ -25,7 +25,7 @@ Under the new contract, Core owns the text, and each host supplies a thin adapte
 | Handles editing keys (arrows, Home/End, Backspace/Delete, Ctrl/Cmd+A/C/V/X/Z/Y) | Forwards keys that are not text to `KumikoInputController.HandleKey` |
 | Raises clipboard requests through `EditSession` | Reads and writes the system clipboard |
 
-`EditSession.ActiveTextInput` is the session of the open editor, or null when no edit is open or the editor takes no text. Every call happens on the UI thread.
+`EditSession.ActiveTextInput` is the session of the open editor, or null when no edit is open or the editor takes no text. Hosts read `KumikoInputController.ActiveTextInput`, which is the open filter popup's focused text box (its search box, or a condition's value box, #325) while the popup is open, and null while the popup's keyboard is on something else (an operator drop-down, a date picker: those take key events). Every call happens on the UI thread.
 
 ## The interface
 
@@ -134,7 +134,7 @@ The MAUI host on Android has no hidden `Entry`. Its adapter has three parts:
 
 ### Focus and the soft keyboard
 
-- Pressing the grid focuses the input view, so a hardware keyboard drives the grid without an editor open. The soft keyboard doesn't appear, because the view is a text editor only while an editor that takes typed text (a text box) or the filter popup's search box is open.
+- Pressing the grid focuses the input view, so a hardware keyboard drives the grid without an editor open. The soft keyboard doesn't appear, because the view is a text editor only while an editor that takes typed text (a text box) or a text box of the filter popup (its search box or a condition's value box) is open.
 - When an edit with a text surface begins, the view takes focus, the input method restarts with the editor's keyboard type, and `InputMethodManager.showSoftInput` shows the keyboard.
 - An editor with no text surface (a combo box, a date picker or a scroll picker) raises no soft keyboard: it is operated by touch, and by the hardware keyboard through the focused input view. Moving from a text editor to one of these (Tab) hides the keyboard.
 - When the edit ends, the keyboard is hidden and the connection is dropped.
