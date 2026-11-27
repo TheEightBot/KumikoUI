@@ -59,7 +59,7 @@ public sealed partial class ExportPage : Page
             await kumiko.DataSource.ExportToCsvAsync(stream, options, progress: progress);
             statusLabel.Text = "Exported.";
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException))
         {
             statusLabel.Text = "Export failed: " + ex.Message;
         }

@@ -39,7 +39,7 @@ public partial class ExportPage : ContentPage
 
         try
         {
-            string path = Path.Combine(FileSystem.CacheDirectory, "employees.csv");
+            string path = Path.Join(FileSystem.CacheDirectory, "employees.csv");
             var progress = new Progress<KumikoExportProgress>(p => statusLabel.Text = $"{p.RowsWritten} of {p.TotalRows} rows");
             await using (var file = File.Create(path))
             {
@@ -54,7 +54,7 @@ public partial class ExportPage : ContentPage
                 File = new ShareFile(path, "text/csv"),
             });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException))
         {
             statusLabel.Text = "Export failed: " + ex.Message;
         }

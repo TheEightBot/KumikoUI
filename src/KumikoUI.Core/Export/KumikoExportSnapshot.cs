@@ -195,10 +195,9 @@ public sealed class KumikoExportSnapshot
         }
         else
         {
-            foreach (int index in v.ViewIndices)
+            var items = v.ViewIndices.Select(index => v.Items[index]).OfType<object>();
+            foreach (var item in selected == null ? items : items.Where(selected.Contains))
             {
-                if (v.Items[index] is not { } item) continue;
-                if (selected != null && !selected.Contains(item)) continue;
                 entries.Add(new ExportEntry(KumikoExportRowKind.Data, 0, item, null, null));
             }
         }
