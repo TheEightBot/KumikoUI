@@ -131,21 +131,21 @@ internal sealed class XlsxSheetWriter
                 Start(x, c, number, xfs[styleBase + (int)XlsxValueKind.General]).Raw(" t=\"b\"><v>").Raw(b ? "1" : "0").Raw("</v></c>");
                 return;
             case DateTime dateTime:
-                WriteSerial(x, c, number, XlsxDates.FromDateTime(dateTime), xfs[styleBase + (int)XlsxValueKind.DateTime], value, column);
+                WriteSerial(x, c, number, XlsxDates.FromDateTime(dateTime), xfs[styleBase + (int)XlsxValueKind.DateTime], xfs[styleBase], value, column);
                 return;
             case DateTimeOffset offset:
                 // The clock time in the value's own offset: what the grid shows for it.
-                WriteSerial(x, c, number, XlsxDates.FromDateTime(offset.DateTime), xfs[styleBase + (int)XlsxValueKind.DateTime], value, column);
+                WriteSerial(x, c, number, XlsxDates.FromDateTime(offset.DateTime), xfs[styleBase + (int)XlsxValueKind.DateTime], xfs[styleBase], value, column);
                 return;
             case DateOnly date:
-                WriteSerial(x, c, number, XlsxDates.FromDateTime(date.ToDateTime(TimeOnly.MinValue)), xfs[styleBase + (int)XlsxValueKind.Date], value, column);
+                WriteSerial(x, c, number, XlsxDates.FromDateTime(date.ToDateTime(TimeOnly.MinValue)), xfs[styleBase + (int)XlsxValueKind.Date], xfs[styleBase], value, column);
                 return;
             case TimeOnly time:
-                WriteSerial(x, c, number, XlsxDates.TimeFraction(time.Ticks), xfs[styleBase + (int)XlsxValueKind.Time], value, column);
+                WriteSerial(x, c, number, XlsxDates.TimeFraction(time.Ticks), xfs[styleBase + (int)XlsxValueKind.Time], xfs[styleBase], value, column);
                 return;
             case TimeSpan span:
                 WriteSerial(x, c, number, span.Ticks >= 0 ? (double)span.Ticks / TimeSpan.TicksPerDay : null,
-                    xfs[styleBase + (int)XlsxValueKind.Duration], value, column);
+                    xfs[styleBase + (int)XlsxValueKind.Duration], xfs[styleBase], value, column);
                 return;
         }
 
@@ -196,12 +196,12 @@ internal sealed class XlsxSheetWriter
         x.Raw("</v></c>");
     }
 
-    private void WriteSerial(XmlText x, int c, int number, double? serial, int xf, object value, KumikoExportColumn column)
+    private void WriteSerial(XmlText x, int c, int number, double? serial, int xf, int textXf, object value, KumikoExportColumn column)
     {
         if (serial is not { } days || xf < 0)
         {
             // Before 1900, a negative duration or a format Excel cannot show: the text the grid shows.
-            WriteText(x, c, number, _layout.ColumnXfs[c][0], DisplayText(value, column));
+            WriteText(x, c, number, textXf, DisplayText(value, column));
             return;
         }
 

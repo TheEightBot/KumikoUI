@@ -59,7 +59,8 @@ Check public type names after building (see [Public type names](#public-type-nam
 ```bash
 dotnet run --project eng/TypeNameCheck -c Release -- \
   src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll \
-  src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
+  src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll \
+  src/KumikoUI.Export.Excel/bin/Release/net10.0/KumikoUI.Export.Excel.dll
 ```
 
 Hosts and samples (one head at a time with `-f`):
@@ -84,7 +85,7 @@ dotnet run --project samples/SampleApp.Uno -f net10.0-desktop
 
 Package versions come from git tags through [MinVer](https://github.com/adamralph/minver); no project file contains a version.
 
-- A commit tagged `vX.Y.Z` (or `vX.Y.Z-suffix`) builds exactly that version for all four packages.
+- A commit tagged `vX.Y.Z` (or `vX.Y.Z-suffix`) builds exactly that version for all five packages.
 - Any other commit builds the next version as a prerelease, for example `1.0.1-alpha.0.8`: eight commits after the `v1.0.0` tag. After a prerelease tag it is that version with the commit count appended (`1.1.0-preview.1.5`). `MinVerMinimumMajorMinor` in `Directory.Build.props` sets the floor (currently 1.0; it only affects builds whose computed version would be lower).
 - Clones need tags and history (`git fetch --tags`, no shallow clone) or MinVer falls back to `0.2.0-alpha.0`.
 
@@ -105,7 +106,7 @@ A tag with a suffix (`v1.1.0-preview.1`) is a prerelease on NuGet.org and on Git
 
 The section becomes the GitHub release notes, and every package links to the CHANGELOG. Versioning rules (SemVer, lockstep packages, deprecation, support window) are in [docs/VERSIONING.md](docs/VERSIONING.md).
 
-The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. It then runs the Core and Uno test suites, packs all four packages, and fails unless each `.nupkg` has a matching `.snupkg` symbol package and carries the CHANGELOG section as its release notes. The publish job then waits for approval in the `nuget-publish` environment before pushing to NuGet.org. Only admins can create `v*` tags.
+The publish workflow refuses to run unless the ref is a version tag, the tagged commit is on `main`, and MinVer computes the same version as the tag. It then runs the Core and Uno test suites, packs all five packages (Core, SkiaSharp, Export.Excel, Maui, Uno), and fails unless each `.nupkg` has a matching `.snupkg` symbol package and carries the CHANGELOG section as its release notes. The publish job then waits for approval in the `nuget-publish` environment before pushing to NuGet.org. Only admins can create `v*` tags.
 
 To rehearse a release, run the **Publish NuGet Packages** workflow manually with **dry run** on (the default), from any branch. It runs the same resolve, test, pack and validate jobs as a tag push but never pushes to NuGet.org or creates a GitHub Release. To retry a failed publish, run it from the `vX.Y.Z` tag with dry run off. Runs are serialized per ref, so a tag push and a manual retry cannot publish at the same time.
 
@@ -113,7 +114,7 @@ To rehearse a release, run the **Publish NuGet Packages** workflow manually with
 
 The workflow authenticates to NuGet.org with [Trusted Publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing): the publish job exchanges a GitHub OIDC token for a short-lived API key through `NuGet/login`. No API key is stored as a secret. Before the first release with this workflow:
 
-1. Sign in to nuget.org as the owner of the four packages (or of the organization that owns them), open **Trusted Publishing**, and add a policy with:
+1. Sign in to nuget.org as the owner of the packages (or of the organization that owns them), open **Trusted Publishing**, and add a policy with:
    - Repository owner: `TheEightBot`
    - Repository: `KumikoUI`
    - Workflow file: `publish.yml`
@@ -163,7 +164,7 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 ### Code
 
 - Follow the conventions in [`.github/instructions/`](.github/instructions) and the surrounding code: nullable enabled, `float` coordinates, `KumikoColor` for colors, no LINQ or allocations in the render loop.
-- Every public member gets an XML doc comment (summary, plus `<param>`/`<returns>` where they add information; `<inheritdoc/>` for overrides and interface implementations; document each enum member). The build enforces it: in the four shipped libraries a missing comment (CS1591) or a malformed or unresolvable one (CS1570-CS1734, see `Directory.Build.targets`) is a compile error, not a warning.
+- Every public member gets an XML doc comment (summary, plus `<param>`/`<returns>` where they add information; `<inheritdoc/>` for overrides and interface implementations; document each enum member). The build enforces it: in the shipped libraries a missing comment (CS1591) or a malformed or unresolvable one (CS1570-CS1734, see `Directory.Build.targets`) is a compile error, not a warning.
 - One public type per file, in a file named after the type (`KumikoStyle` lives in `KumikoStyle.cs`). Small enums and event-args types get their own file too.
 - Public type names follow the rules in [Public type names](#public-type-names).
 - KumikoUI.Core must stay free of UI-framework and SkiaSharp references; host-specific code belongs in KumikoUI.Maui or KumikoUI.Uno.
@@ -171,11 +172,11 @@ Scopes name the area: `core`, `skiasharp`, `maui`, `uno`, `samples`. Mark breaki
 
 ### Public API and formatting
 
-**Recording an API change.** The public surface of the four shipped libraries (Core, SkiaSharp, Maui, Uno) is recorded in `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to each project and checked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Adding, changing or removing a public or protected member without updating those files fails the build (RS0016 for an unrecorded member, RS0017 for a recorded one that no longer exists). RS0026 and RS0027 are errors as well: only one overload of a method may have optional parameters, and it must be the one with the most parameters, so a later optional parameter can be added without a break. The `Shipped` files hold the surface of the last stable release (`1.0.0`, frozen in #112); a new member goes into `Unshipped` and moves into `Shipped` when the next release is cut (the steps are in [the 1.0 API review](docs/release/api-review-1.0.md#steps-at-the-10-tag)). A removed or changed `Shipped` line is a breaking change: it needs a new major version (or a documented exception) and a **Breaking:** entry in the CHANGELOG. `eng/update-public-api.sh` never removes a `Shipped` line; that stays a deliberate edit by hand.
+**Recording an API change.** The public surface of the shipped libraries (Core, SkiaSharp, Export.Excel, Maui, Uno) is recorded in `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to each project and checked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Adding, changing or removing a public or protected member without updating those files fails the build (RS0016 for an unrecorded member, RS0017 for a recorded one that no longer exists). RS0026 and RS0027 are errors as well: only one overload of a method may have optional parameters, and it must be the one with the most parameters, so a later optional parameter can be added without a break. The `Shipped` files hold the surface of the last stable release (`1.0.0`, frozen in #112); a new member goes into `Unshipped` and moves into `Shipped` when the next release is cut (the steps are in [the 1.0 API review](docs/release/api-review-1.0.md#steps-at-the-10-tag)). A removed or changed `Shipped` line is a breaking change: it needs a new major version (or a documented exception) and a **Breaking:** entry in the CHANGELOG. `eng/update-public-api.sh` never removes a `Shipped` line; that stays a deliberate edit by hand.
 
 To record a change, either:
 
-- run `eng/update-public-api.sh` (all four libraries) or `eng/update-public-api.sh Core` (named ones), which rewrites the `Unshipped` files from the current source for every target framework the machine can build, then review `git diff -- '*PublicAPI*.txt'`; or
+- run `eng/update-public-api.sh` (all five libraries) or `eng/update-public-api.sh Core` (named ones), which rewrites the `Unshipped` files from the current source for every target framework the machine can build, then review `git diff -- '*PublicAPI*.txt'`; or
 - apply the RS0016 code fix in your IDE ("Add to public API"), or edit `PublicAPI.Unshipped.txt` by hand. Lines are sorted and look like `KumikoUI.Core.Models.KumikoColumn.Header.get -> string!`; the first line of a file is `#nullable enable` in the `Shipped` file.
 
 KumikoUI.Maui and KumikoUI.Uno target several frameworks. Members every framework has live in the project's own `PublicAPI.Unshipped.txt`; members only some frameworks have (for example the `GlobalStaticResources` class the Uno XAML generator adds to every Uno head) live in `PublicAPI/<target framework>/PublicAPI.Unshipped.txt`. The Windows heads cannot be built on macOS or Linux, so CI is the first to check them; if the Windows build reports RS0016 or RS0017, add or remove the line in `PublicAPI/net10.0-windows10.0.19041.0/` (Maui) or `PublicAPI/net10.0-windows10.0.26100/` (Uno), each with its own `PublicAPI.Shipped.txt` containing `#nullable enable`.
@@ -212,7 +213,7 @@ Do not introduce new `DataGrid*` or `Grid*` type names. Other types keep descrip
 CI enforces this with `eng/TypeNameCheck`, a small console tool (not part of `KumikoUI.sln` and not packed). It lists the public top-level type names in the built KumikoUI assemblies and compares them with each other and with the names read, via `System.Reflection.Metadata`, from pinned packages: `Microsoft.Maui.Controls.Core`, `.Xaml`, `Microsoft.Maui.Core` and `Microsoft.Maui.Graphics` (at `MauiVersion`); `Microsoft.WindowsAppSDK.WinUI` and `Uno.WinUI`; `Microsoft.WindowsDesktop.App.Ref`; `CommunityToolkit.WinUI.UI.Controls.DataGrid`; `CommunityToolkit.Maui`; `Avalonia` and `Avalonia.Controls.DataGrid`. The versions are in `Directory.Packages.props`; the tool needs no workloads and runs on any OS:
 
 ```bash
-dotnet run --project eng/TypeNameCheck -c Release -- src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll
+dotnet run --project eng/TypeNameCheck -c Release -- src/KumikoUI.Core/bin/Release/net10.0/KumikoUI.Core.dll src/KumikoUI.SkiaSharp/bin/Release/net10.0/KumikoUI.SkiaSharp.dll src/KumikoUI.Export.Excel/bin/Release/net10.0/KumikoUI.Export.Excel.dll
 ```
 
 It exits non-zero and lists every collision. Raising one of those versions can surface a new collision, which is then fixed by renaming the KumikoUI type.
