@@ -263,6 +263,35 @@ public class RenderAllocationTests
         }));
     }
 
+    [Theory]
+    [InlineData(KumikoBusyIndicatorKind.Bar, true)]
+    [InlineData(KumikoBusyIndicatorKind.Overlay, true)]
+    [InlineData(KumikoBusyIndicatorKind.Bar, false)]
+    [InlineData(KumikoBusyIndicatorKind.Overlay, false)]
+    public void SteadyState_ABusyFrame_AllocatesNothing(KumikoBusyIndicatorKind kind, bool animate)
+    {
+        // The busy indicator (#327) repaints about every 33 ms while it animates: a bar sweeping, a spinner turning.
+        var grid = CreateGrid(featured: true);
+        grid.Style.BusyIndicatorKind = kind;
+        grid.Style.EnableAnimations = animate;
+        grid.Renderer.IsBusy = true;
+        long clock = 0;
+        grid.Renderer.BusyClock = () => clock;
+        grid.Render(new NoOpDrawingContext());
+
+        var check = new RecordingDrawingContext();
+        grid.Render(check);
+        Assert.Contains(check.Ops, o => o.Color.R == grid.Style.BusyIndicatorColor.R && o.Color.G == grid.Style.BusyIndicatorColor.G
+            && o.Color.B == grid.Style.BusyIndicatorColor.B);
+        Assert.Equal(animate, grid.Renderer.IsBusyIndicatorAnimating);
+
+        Assert.Equal(0, MeasureSteadyState(ctx =>
+        {
+            clock += 33;
+            grid.Render(ctx);
+        }));
+    }
+
     private sealed class PendingIncrementalSource(Task<int> pending) : KumikoUI.Core.Data.IKumikoIncrementalSource
     {
         public bool HasMoreItems => true;

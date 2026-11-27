@@ -552,6 +552,8 @@ public sealed partial class KumikoRenderer : IDisposable
                 dataSource.ComputedBottomSummaries, pinnedBottomSummaryY, handleOffset);
         }
 
+        DrawBusyIndicator(ctx, style, scroll.ViewportWidth, dataAreaTop, dataClipBottom); // KumikoRenderer.Busy.cs (#327)
+
         var animations = _inputController?.Animations;
         if (dragColumnIndex >= 0)
         {

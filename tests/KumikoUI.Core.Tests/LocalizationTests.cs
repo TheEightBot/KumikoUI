@@ -89,6 +89,7 @@ public class LocalizationTests
         AnnounceLoadMoreCompleted = "{0} weitere Zeilen geladen.",
         AnnounceAllRowsLoaded = "Alle Zeilen geladen.",
         AnnounceLoadMoreFailed = "Weitere Zeilen konnten nicht geladen werden. {0}",
+        AnnounceBusy = "Wird geladen",
         SelectAllRows = "Alle Zeilen auswählen",
         SelectRow = "Zeile auswählen",
         AllRowsSelected = "Alle {0} Zeilen ausgewählt",

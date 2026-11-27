@@ -164,6 +164,7 @@ public partial class KumikoDataGrid
             _editSession, _inputController.PopupManager);
         OnKeyboardFrameRendered(); // KumikoDataGrid.KeyboardAvoidance.cs
         UpdateLoadMoreIndicator(); // KumikoDataGrid.LoadMore.cs
+        UpdateBusyIndicator(); // KumikoDataGrid.Busy.cs
 
         // The frame may have started a transition (the current row's highlight fading in), or one runs on: the frame
         // loop steps it
