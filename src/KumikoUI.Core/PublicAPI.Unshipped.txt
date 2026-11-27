@@ -62,6 +62,9 @@ KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs.Items.get -> System.Co
 KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs.KumikoColumnMenuOpeningEventArgs(KumikoUI.Core.Models.KumikoColumn! column, int columnIndex, System.Collections.Generic.IList<KumikoUI.Core.Components.DrawnMenuItem!>! items) -> void
 KumikoUI.Core.Data.IKumikoColumnMetadataProvider
 KumikoUI.Core.Data.IKumikoColumnMetadataProvider.GetColumns(System.Type! itemType) -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Data.KumikoColumnMetadata!>?
+KumikoUI.Core.Data.IKumikoIncrementalSource
+KumikoUI.Core.Data.IKumikoIncrementalSource.HasMoreItems.get -> bool
+KumikoUI.Core.Data.IKumikoIncrementalSource.LoadMoreItemsAsync(int count, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
 KumikoUI.Core.Data.KumikoColumnMetadata
 KumikoUI.Core.Data.KumikoColumnMetadata.AutoGenerate.get -> bool
 KumikoUI.Core.Data.KumikoColumnMetadata.AutoGenerate.init -> void
@@ -83,9 +86,64 @@ KumikoUI.Core.Data.KumikoColumnMetadata.PropertyType.get -> System.Type!
 KumikoUI.Core.Data.KumikoColumnMetadata.ShortName.get -> string?
 KumikoUI.Core.Data.KumikoColumnMetadata.ShortName.init -> void
 KumikoUI.Core.Data.KumikoColumnMetadataRegistry
+KumikoUI.Core.Data.KumikoIncrementalCollection<T>
+KumikoUI.Core.Data.KumikoIncrementalCollection<T>.AddRange(System.Collections.Generic.IReadOnlyList<T>! items) -> void
+KumikoUI.Core.Data.KumikoIncrementalCollection<T>.HasMoreItems.get -> bool
+KumikoUI.Core.Data.KumikoIncrementalCollection<T>.HasMoreItems.set -> void
+KumikoUI.Core.Data.KumikoIncrementalCollection<T>.KumikoIncrementalCollection(System.Func<int, int, System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<T>!>!>! fetch, bool hasMoreItems = true) -> void
+KumikoUI.Core.Data.KumikoIncrementalCollection<T>.LoadMoreItemsAsync(int count, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+KumikoUI.Core.Data.KumikoIncrementalCollection<T>.RefreshAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+KumikoUI.Core.Data.KumikoIncrementalLoader
+KumikoUI.Core.Data.KumikoIncrementalLoader.BatchSize.get -> int
+KumikoUI.Core.Data.KumikoIncrementalLoader.BatchSize.set -> void
+KumikoUI.Core.Data.KumikoIncrementalLoader.ErrorText.get -> string?
+KumikoUI.Core.Data.KumikoIncrementalLoader.ErrorText.set -> void
+KumikoUI.Core.Data.KumikoIncrementalLoader.IsPartial.get -> bool
+KumikoUI.Core.Data.KumikoIncrementalLoader.LastError.get -> System.Exception?
+KumikoUI.Core.Data.KumikoIncrementalLoader.LoadMoreAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+KumikoUI.Core.Data.KumikoIncrementalLoader.LoadMoreCompleted -> System.EventHandler<KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs!>?
+KumikoUI.Core.Data.KumikoIncrementalLoader.LoadMoreRequested -> System.EventHandler<KumikoUI.Core.Data.KumikoLoadMoreRequestedEventArgs!>?
+KumikoUI.Core.Data.KumikoIncrementalLoader.Mode.get -> KumikoUI.Core.Data.KumikoLoadMoreMode
+KumikoUI.Core.Data.KumikoIncrementalLoader.Mode.set -> void
+KumikoUI.Core.Data.KumikoIncrementalLoader.Reset() -> void
+KumikoUI.Core.Data.KumikoIncrementalLoader.Source.get -> KumikoUI.Core.Data.IKumikoIncrementalSource?
+KumikoUI.Core.Data.KumikoIncrementalLoader.State.get -> KumikoUI.Core.Data.KumikoLoadMoreState
+KumikoUI.Core.Data.KumikoIncrementalLoader.StateChanged -> System.EventHandler?
+KumikoUI.Core.Data.KumikoIncrementalLoader.Threshold.get -> int
+KumikoUI.Core.Data.KumikoIncrementalLoader.Threshold.set -> void
+KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs
+KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs.Error.get -> System.Exception?
+KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs.ErrorText.get -> string?
+KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs.ErrorText.set -> void
+KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs.ItemsLoaded.get -> int
+KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs.RowsAdded.get -> int
+KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs.State.get -> KumikoUI.Core.Data.KumikoLoadMoreState
+KumikoUI.Core.Data.KumikoLoadMoreException
+KumikoUI.Core.Data.KumikoLoadMoreException.KumikoLoadMoreException() -> void
+KumikoUI.Core.Data.KumikoLoadMoreException.KumikoLoadMoreException(string? message) -> void
+KumikoUI.Core.Data.KumikoLoadMoreException.KumikoLoadMoreException(string? message, System.Exception? innerException) -> void
+KumikoUI.Core.Data.KumikoLoadMoreMode
+KumikoUI.Core.Data.KumikoLoadMoreMode.Automatic = 1 -> KumikoUI.Core.Data.KumikoLoadMoreMode
+KumikoUI.Core.Data.KumikoLoadMoreMode.Manual = 2 -> KumikoUI.Core.Data.KumikoLoadMoreMode
+KumikoUI.Core.Data.KumikoLoadMoreMode.None = 0 -> KumikoUI.Core.Data.KumikoLoadMoreMode
+KumikoUI.Core.Data.KumikoLoadMoreRequestedEventArgs
+KumikoUI.Core.Data.KumikoLoadMoreRequestedEventArgs.CancellationToken.get -> System.Threading.CancellationToken
+KumikoUI.Core.Data.KumikoLoadMoreRequestedEventArgs.Count.get -> int
+KumikoUI.Core.Data.KumikoLoadMoreRequestedEventArgs.Trigger.get -> KumikoUI.Core.Data.KumikoLoadMoreTrigger
+KumikoUI.Core.Data.KumikoLoadMoreState
+KumikoUI.Core.Data.KumikoLoadMoreState.Completed = 3 -> KumikoUI.Core.Data.KumikoLoadMoreState
+KumikoUI.Core.Data.KumikoLoadMoreState.Failed = 2 -> KumikoUI.Core.Data.KumikoLoadMoreState
+KumikoUI.Core.Data.KumikoLoadMoreState.Idle = 0 -> KumikoUI.Core.Data.KumikoLoadMoreState
+KumikoUI.Core.Data.KumikoLoadMoreState.Loading = 1 -> KumikoUI.Core.Data.KumikoLoadMoreState
+KumikoUI.Core.Data.KumikoLoadMoreTrigger
+KumikoUI.Core.Data.KumikoLoadMoreTrigger.Keyboard = 1 -> KumikoUI.Core.Data.KumikoLoadMoreTrigger
+KumikoUI.Core.Data.KumikoLoadMoreTrigger.NearEnd = 0 -> KumikoUI.Core.Data.KumikoLoadMoreTrigger
+KumikoUI.Core.Data.KumikoLoadMoreTrigger.Programmatic = 3 -> KumikoUI.Core.Data.KumikoLoadMoreTrigger
+KumikoUI.Core.Data.KumikoLoadMoreTrigger.Tap = 2 -> KumikoUI.Core.Data.KumikoLoadMoreTrigger
 KumikoUI.Core.Input.HitRegion.HeaderMenuButton = 17 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.HorizontalScrollBarThumb = 15 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.HorizontalScrollBarTrack = 16 -> KumikoUI.Core.Input.HitRegion
+KumikoUI.Core.Input.HitRegion.LoadMoreRow = 18 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.VerticalScrollBarThumb = 13 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.HitRegion.VerticalScrollBarTrack = 14 -> KumikoUI.Core.Input.HitRegion
 KumikoUI.Core.Input.KumikoContextRequestedEventArgs.Handled.get -> bool
@@ -118,6 +176,17 @@ KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoScrollBarVisibility.Always = 1 -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoScrollBarVisibility.Auto = 0 -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoScrollBarVisibility.Never = 2 -> KumikoUI.Core.Models.KumikoScrollBarVisibility
+KumikoUI.Core.Models.KumikoSource.IncrementalLoading.get -> KumikoUI.Core.Data.KumikoIncrementalLoader!
+KumikoUI.Core.Models.KumikoSource.IncrementalSource.get -> KumikoUI.Core.Data.IKumikoIncrementalSource?
+KumikoUI.Core.Models.KumikoSource.IncrementalSource.set -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceAllRowsLoaded.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceAllRowsLoaded.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreCompleted.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreCompleted.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreFailed.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreFailed.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreStarted.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreStarted.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceMenuItemChecked.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AnnounceMenuItemChecked.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceMenuItemDisabled.get -> string!
@@ -138,8 +207,28 @@ KumikoUI.Core.Models.KumikoStrings.ColumnMenuName.get -> string!
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuName.init -> void
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuUngroup.get -> string!
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuUngroup.init -> void
+KumikoUI.Core.Models.KumikoStrings.LoadMoreButton.get -> string!
+KumikoUI.Core.Models.KumikoStrings.LoadMoreButton.init -> void
+KumikoUI.Core.Models.KumikoStrings.LoadMoreFailed.get -> string!
+KumikoUI.Core.Models.KumikoStrings.LoadMoreFailed.init -> void
+KumikoUI.Core.Models.KumikoStrings.LoadMoreLoading.get -> string!
+KumikoUI.Core.Models.KumikoStrings.LoadMoreLoading.init -> void
+KumikoUI.Core.Models.KumikoStrings.LoadMoreRetry.get -> string!
+KumikoUI.Core.Models.KumikoStrings.LoadMoreRetry.init -> void
 KumikoUI.Core.Models.KumikoStyle.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Core.Models.KumikoStyle.HorizontalScrollBarVisibility.set -> void
+KumikoUI.Core.Models.KumikoStyle.LoadMoreErrorTextColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Models.KumikoStyle.LoadMoreErrorTextColor.set -> void
+KumikoUI.Core.Models.KumikoStyle.LoadMoreFont.get -> KumikoUI.Core.Rendering.KumikoFont?
+KumikoUI.Core.Models.KumikoStyle.LoadMoreFont.set -> void
+KumikoUI.Core.Models.KumikoStyle.LoadMoreIndicatorColor.get -> KumikoUI.Core.Rendering.KumikoColor?
+KumikoUI.Core.Models.KumikoStyle.LoadMoreIndicatorColor.set -> void
+KumikoUI.Core.Models.KumikoStyle.LoadMoreRowBackgroundColor.get -> KumikoUI.Core.Rendering.KumikoColor?
+KumikoUI.Core.Models.KumikoStyle.LoadMoreRowBackgroundColor.set -> void
+KumikoUI.Core.Models.KumikoStyle.LoadMoreRowHeight.get -> float
+KumikoUI.Core.Models.KumikoStyle.LoadMoreRowHeight.set -> void
+KumikoUI.Core.Models.KumikoStyle.LoadMoreTextColor.get -> KumikoUI.Core.Rendering.KumikoColor?
+KumikoUI.Core.Models.KumikoStyle.LoadMoreTextColor.set -> void
 KumikoUI.Core.Models.KumikoStyle.ScrollBarExpandedThickness.get -> float
 KumikoUI.Core.Models.KumikoStyle.ScrollBarExpandedThickness.set -> void
 KumikoUI.Core.Models.KumikoStyle.ScrollBarMinThumbLength.get -> float
@@ -179,6 +268,8 @@ static KumikoUI.Core.Components.DrawnMenuItem.Separator() -> KumikoUI.Core.Compo
 static KumikoUI.Core.Data.KumikoColumnMetadataRegistry.GetColumns(System.Type! itemType) -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Data.KumikoColumnMetadata!>!
 static KumikoUI.Core.Data.KumikoColumnMetadataRegistry.Register(System.Type! itemType, KumikoUI.Core.Data.IKumikoColumnMetadataProvider! provider) -> void
 static KumikoUI.Core.Models.KumikoAnnouncements.ColumnMenuName(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Models.KumikoColumn! column, int columnIndex) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.LoadMoreCompleted(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs! e, System.Globalization.CultureInfo? culture = null) -> string?
+static KumikoUI.Core.Models.KumikoAnnouncements.LoadMoreStarted(KumikoUI.Core.Models.KumikoStrings! strings) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.MenuItem(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Components.DrawnMenuItem! item) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.MenuOpened(KumikoUI.Core.Models.KumikoStrings! strings, string! menuName, int itemCount) -> string!
 static KumikoUI.Core.Models.KumikoColumnFactory.Create(KumikoUI.Core.Data.KumikoColumnMetadata! metadata) -> KumikoUI.Core.Models.KumikoColumn?

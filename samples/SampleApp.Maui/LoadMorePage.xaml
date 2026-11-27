@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             x:Class="SampleApp.Maui.LoadMorePage"
+             Title="Load More">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <Label Text="Load More — orders loaded in batches from a simulated server"
+               FontSize="20"
+               FontAttributes="Bold"
+               Padding="16,12"
+               Grid.Row="0" />
+
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+            <HorizontalStackLayout Padding="16,4" Spacing="8">
+                <Picker x:Name="modePicker" Title="Mode" SelectedIndexChanged="OnModeChanged" VerticalOptions="Center" />
+                <HorizontalStackLayout VerticalOptions="Center">
+                    <CheckBox x:Name="failCheck" CheckedChanged="OnFailChanged" />
+                    <Label Text="Fail next request" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Button Text="Start over" Clicked="OnStartOverClicked" />
+                <Label x:Name="statusLabel" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <!-- The items are a KumikoIncrementalCollection: the grid loads the next batch as the user nears the end,
+             shows a loading row meanwhile and an error row with Retry when a batch fails. Sorting applies to the
+             loaded rows; the totals are over the loaded rows too. -->
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="2"
+                           AllowSorting="True"
+                           AllowFiltering="True"
+                           LoadMoreRequested="OnLoadMoreRequested"
+                           LoadMoreCompleted="OnLoadMoreCompleted"
+                           GridDescription="Orders loaded on demand">
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="Order" PropertyName="Id" Width="90" ColumnType="Numeric" IsReadOnly="True" />
+                <core:KumikoColumn Header="Customer" PropertyName="Customer" Width="140" />
+                <core:KumikoColumn Header="Region" PropertyName="Region" Width="110" />
+                <core:KumikoColumn Header="Total" PropertyName="Total" Width="110" ColumnType="Numeric" Format="C2" TextAlignment="Right" />
+                <core:KumikoColumn Header="Placed" PropertyName="Placed" Width="150" ColumnType="Date" Format="g" />
+            </dg:KumikoDataGrid.Columns>
+            <dg:KumikoDataGrid.TableSummaryRows>
+                <core:TableSummaryRow Name="Loaded" Position="Bottom" Title="Loaded">
+                    <core:TableSummaryRow.Columns>
+                        <core:SummaryColumnDescription PropertyName="Id" SummaryType="Count" Format="N0" />
+                        <core:SummaryColumnDescription PropertyName="Total" SummaryType="Sum" Format="C0" />
+                    </core:TableSummaryRow.Columns>
+                </core:TableSummaryRow>
+            </dg:KumikoDataGrid.TableSummaryRows>
+        </dg:KumikoDataGrid>
+    </Grid>
+</ContentPage>

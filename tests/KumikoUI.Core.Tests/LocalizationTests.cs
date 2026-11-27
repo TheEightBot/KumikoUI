@@ -79,6 +79,14 @@ public class LocalizationTests
         AnnounceMenuOpened = "{0}, {1} Einträge",
         AnnounceMenuItemChecked = "{0}, ausgewählt",
         AnnounceMenuItemDisabled = "{0}, nicht verfügbar",
+        LoadMoreLoading = "Weitere werden geladen...",
+        LoadMoreButton = "Mehr laden",
+        LoadMoreFailed = "Weitere Zeilen konnten nicht geladen werden.",
+        LoadMoreRetry = "Wiederholen",
+        AnnounceLoadMoreStarted = "Weitere Zeilen werden geladen.",
+        AnnounceLoadMoreCompleted = "{0} weitere Zeilen geladen.",
+        AnnounceAllRowsLoaded = "Alle Zeilen geladen.",
+        AnnounceLoadMoreFailed = "Weitere Zeilen konnten nicht geladen werden. {0}",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>
