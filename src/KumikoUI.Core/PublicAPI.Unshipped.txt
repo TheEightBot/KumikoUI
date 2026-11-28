@@ -404,6 +404,8 @@ KumikoUI.Core.KumikoRenderer.EmptyViewRenderer.get -> KumikoUI.Core.Rendering.IK
 KumikoUI.Core.KumikoRenderer.EmptyViewRenderer.set -> void
 KumikoUI.Core.KumikoRenderer.EmptyViewText.get -> string?
 KumikoUI.Core.KumikoRenderer.EmptyViewText.set -> void
+KumikoUI.Core.KumikoRenderer.GroupHeaderRenderer.get -> KumikoUI.Core.Rendering.IGroupHeaderRenderer?
+KumikoUI.Core.KumikoRenderer.GroupHeaderRenderer.set -> void
 KumikoUI.Core.KumikoRenderer.IsBusy.get -> bool
 KumikoUI.Core.KumikoRenderer.IsBusy.set -> void
 KumikoUI.Core.KumikoRenderer.IsBusyIndicatorAnimating.get -> bool
@@ -412,6 +414,9 @@ KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.set -> void
 KumikoUI.Core.Layout.KumikoLayoutEngine.GetContentHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style) -> float
 KumikoUI.Core.Layout.KumikoLayoutEngine.GetFrozenRowHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style) -> float
 KumikoUI.Core.Layout.KumikoLayoutEngine.GetVisibleRowRangeWithOffset(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! source, float topOffset) -> (int First, int Last)
+KumikoUI.Core.Models.GroupDescription.CustomHeaderRenderer.get -> KumikoUI.Core.Rendering.IGroupHeaderRenderer?
+KumikoUI.Core.Models.GroupDescription.CustomHeaderRenderer.set -> void
+KumikoUI.Core.Models.GroupHeaderInfo.GetCaptionValue(string! propertyName, KumikoUI.Core.Models.SummaryType type) -> object?
 KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode
 KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode.Auto = 1 -> KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode
 KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode.Merge = 2 -> KumikoUI.Core.Models.KumikoAutoGenerateColumnsMode
@@ -684,14 +689,39 @@ KumikoUI.Core.Rendering.CellRenderContext.SearchMatchLength.get -> int
 KumikoUI.Core.Rendering.CellRenderContext.SearchMatchLength.init -> void
 KumikoUI.Core.Rendering.CellRenderContext.SearchMatchStart.get -> int
 KumikoUI.Core.Rendering.CellRenderContext.SearchMatchStart.init -> void
+KumikoUI.Core.Rendering.GroupHeaderRenderContext
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.Bounds.get -> KumikoUI.Core.Rendering.KumikoRect
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.CaptionText.get -> string?
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.CountText.get -> string!
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.Description.get -> KumikoUI.Core.Models.GroupDescription!
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.Group.get -> KumikoUI.Core.Models.GroupHeaderInfo!
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.GroupHeaderRenderContext() -> void
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.GroupHeaderRenderContext(KumikoUI.Core.Rendering.KumikoRect bounds, KumikoUI.Core.Rendering.KumikoRect rowBounds, int row, bool isPinned, KumikoUI.Core.Models.GroupHeaderInfo! group, KumikoUI.Core.Models.GroupDescription! description, string! title, string! countText, string? captionText, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Rendering.PaintCache! paints) -> void
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.IsPinned.get -> bool
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.Paints.get -> KumikoUI.Core.Rendering.PaintCache!
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.Row.get -> int
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.RowBounds.get -> KumikoUI.Core.Rendering.KumikoRect
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.Style.get -> KumikoUI.Core.Models.KumikoStyle!
+KumikoUI.Core.Rendering.GroupHeaderRenderContext.Title.get -> string!
 KumikoUI.Core.Rendering.IDrawingContext.MeasureText(string! text, int start, int length, KumikoUI.Core.Rendering.KumikoPaint! paint) -> KumikoUI.Core.Rendering.KumikoSize
+KumikoUI.Core.Rendering.IGroupHeaderRenderer
+KumikoUI.Core.Rendering.IGroupHeaderRenderer.GetAccessibleText(in KumikoUI.Core.Rendering.GroupHeaderRenderContext context) -> string?
+KumikoUI.Core.Rendering.IGroupHeaderRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.GroupHeaderRenderContext context) -> void
 KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer
 KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, KumikoUI.Core.Rendering.KumikoRect bounds, KumikoUI.Core.Models.KumikoEmptyViewKind kind, string! text, KumikoUI.Core.Models.KumikoStyle! style) -> void
 KumikoUI.Core.Rendering.IMeasurableCellRenderer
 KumikoUI.Core.Rendering.IMeasurableCellRenderer.MeasureHeight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> float?
 KumikoUI.Core.Rendering.KumikoIcon.ColumnMenu = 20 -> KumikoUI.Core.Rendering.KumikoIcon
+KumikoUI.Core.Rendering.PaintCache.CaptionSummaryText.get -> KumikoUI.Core.Rendering.KumikoPaint!
+KumikoUI.Core.Rendering.PaintCache.GroupHeaderBackground.get -> KumikoUI.Core.Rendering.KumikoPaint!
+KumikoUI.Core.Rendering.PaintCache.GroupHeaderCount.get -> KumikoUI.Core.Rendering.KumikoPaint!
+KumikoUI.Core.Rendering.PaintCache.GroupHeaderText.get -> KumikoUI.Core.Rendering.KumikoPaint!
 KumikoUI.Core.Rendering.PaintCache.SearchCurrentHighlight.get -> KumikoUI.Core.Rendering.KumikoPaint!
 KumikoUI.Core.Rendering.PaintCache.SearchHighlight.get -> KumikoUI.Core.Rendering.KumikoPaint!
+KumikoUI.Core.Rendering.TextGroupHeaderRenderer
+KumikoUI.Core.Rendering.TextGroupHeaderRenderer.GetAccessibleText(in KumikoUI.Core.Rendering.GroupHeaderRenderContext context) -> string?
+KumikoUI.Core.Rendering.TextGroupHeaderRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.GroupHeaderRenderContext context) -> void
+KumikoUI.Core.Rendering.TextGroupHeaderRenderer.TextGroupHeaderRenderer() -> void
 const KumikoUI.Core.Components.DrawnMenu.DefaultItemHeight = 32 -> float
 const KumikoUI.Core.Components.DrawnMenu.TouchItemHeight = 44 -> float
 const KumikoUI.Core.Components.KumikoColumnMenuItems.AutoFit = "AutoFit" -> string!

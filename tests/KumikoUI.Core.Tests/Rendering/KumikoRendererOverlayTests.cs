@@ -92,8 +92,8 @@ public class KumikoRendererOverlayTests
         var count = Assert.Single(ctx.Texts, t => t.Color == h.Style.GroupHeaderCountColor && Near(t.Rect.Y, 80));
         Assert.Equal(" (10)", count.Text);
         Assert.Equal(title.Rect.X + "City: Oslo".Length * RecordingDrawingContext.CharWidth, count.Rect.X);
-        // Full-width rows are clipped to the data area, below the header.
-        Assert.Equal(new KumikoRect(0, 80, 600, 320), title.Clip);
+        // The header's content is clipped to the part right of the chevron (#332), inside the data area below the header.
+        Assert.Equal(new KumikoRect(30, 80, 562, 36), title.Clip);
         Assert.Contains(ctx.Fills, f => f.Kind == DrawOpKind.FillRoundRect && f.Color == h.Style.GroupChevronBackgroundColor && f.Rect.Top > 80 && f.Rect.Bottom < 116);
     }
 
