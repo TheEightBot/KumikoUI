@@ -1893,12 +1893,33 @@ Set `IsRowMenuEnabled` and a right click, or a long press with a finger or a pen
 
 The right click or long press raises `ContextMenuRequested` first, and the menu opens only when no handler set `e.Handled`. The Menu key or Shift+F10 opens it for the current row, with the first item highlighted; with `IsColumnMenuEnabled` on too, the key opens the row menu while a row is current and the column menu otherwise. On a touch row where a long press starts a row drag (`AllowRowDragDrop`, or the drag handle), lift the finger without moving to open the menu; moving drags the row as before.
 
-`RowMenuItems` are shown after a separator; a command's parameter is the row's data item unless the item sets `CommandParameter`. `RowMenuOpening` runs last with the row (`DataItem`, null on a group header row; `RowIndex`, `Column`, `Region`) and the final items, which it can remove, reorder or add to, or it can set `Cancel`. The default items have the stable keys in `KumikoRowMenuItems`, and the swipe items start with `KumikoRowMenuItems.SwipeItemKeyPrefix`.
+The app's items follow a separator. In XAML declare `RowMenuItems` as `MauiRowMenuItem`s (MAUI) or `UnoRowMenuItem`s (Uno) with `Text`, `Command`, `CommandParameter` and `IsEnabled`: like swipe items, they get the grid's `BindingContext` (MAUI) or `DataContext` (Uno), so commands bind to the page's view model. A command's parameter is the row's data item (null on a group header row) unless the item sets `CommandParameter`, and an item is disabled while its command cannot execute. In code, `InputController.RowMenuItems` takes `DrawnMenuItem`s.
+
+<!-- snippet: maui -->
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Employees}" IsRowMenuEnabled="True">
+    <kumiko:KumikoDataGrid.RowMenuItems>
+        <kumiko:MauiRowMenuItem Text="Duplicate" Command="{Binding DuplicateCommand}" />
+        <kumiko:MauiRowMenuItem Text="Give a 5% raise" Command="{Binding RaiseCommand}" />
+    </kumiko:KumikoDataGrid.RowMenuItems>
+    <core:KumikoColumn Header="Name" PropertyName="Name" />
+</kumiko:KumikoDataGrid>
+```
+
+<!-- snippet: uno -->
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Employees}" IsRowMenuEnabled="True">
+    <kumiko:KumikoDataGrid.RowMenuItems>
+        <kumiko:UnoRowMenuItem Text="Duplicate" Command="{Binding DuplicateCommand}" />
+    </kumiko:KumikoDataGrid.RowMenuItems>
+    <core:KumikoColumn Header="Name" PropertyName="Name" />
+</kumiko:KumikoDataGrid>
+``` `RowMenuOpening` runs last with the row (`DataItem`, null on a group header row; `RowIndex`, `Column`, `Region`) and the final items, which it can remove, reorder or add to, or it can set `Cancel`. The default items have the stable keys in `KumikoRowMenuItems`, and the swipe items start with `KumikoRowMenuItems.SwipeItemKeyPrefix`.
 
 ```csharp
 kumiko.IsRowMenuEnabled = true;
 kumiko.AllowDeleting = true;
-kumiko.RowMenuItems.Add(new DrawnMenuItem("Refresh", "Refresh the list", () => kumiko.DataSource.Refresh()));
+kumiko.InputController.RowMenuItems.Add(new DrawnMenuItem("Refresh", "Refresh the list", () => kumiko.DataSource.Refresh()));
 kumiko.RowMenuOpening += (sender, e) =>
 {
     // Rows of one employee only: the app's own item for them, and no Edit on the first row

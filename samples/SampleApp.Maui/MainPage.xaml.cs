@@ -26,6 +26,8 @@ public partial class MainPage : ContentPage
 
 	public MainPage()
 	{
+		_viewModel.DuplicateCommand = new Command<Employee>(DuplicateRow);
+		_viewModel.RaiseCommand = new Command<Employee>(employee => employee.Salary = Math.Round(employee.Salary * 1.05m, 0));
 		InitializeComponent();
 		BindingContext = _viewModel;
 		LoadSampleData();
@@ -42,16 +44,9 @@ public partial class MainPage : ContentPage
 		kumiko.ColumnMenuOpening += OnColumnMenuOpening;
 
 		// Right click (or a long press on touch) on a row opens the grid's own row menu: copy, copy with headers, edit and
-		// delete, plus the app's items below. The empty area has no built-in menu, so the app answers it itself.
+		// delete, plus the app's items below (declared in the XAML as
+		// RowMenuItems, bound to the view model's commands). The empty area has no built-in menu, so the app answers it itself.
 		kumiko.IsRowMenuEnabled = true;
-		kumiko.RowMenuItems.Add(new DrawnMenuItem("Duplicate", "Duplicate")
-		{
-			Command = new Command<Employee>(employee => DuplicateRow(employee)), // the row's item is the parameter
-		});
-		kumiko.RowMenuItems.Add(new DrawnMenuItem("Raise", "Give a 5% raise")
-		{
-			Command = new Command<Employee>(employee => employee.Salary = Math.Round(employee.Salary * 1.05m, 0)),
-		});
 		kumiko.RowMenuOpening += OnRowMenuOpening;
 		kumiko.ContextMenuRequested += OnGridContextMenuRequested;
 
@@ -330,6 +325,12 @@ public partial class MainPage : ContentPage
 public class MainPageViewModel
 {
 	public ObservableCollection<Employee> Employees { get; } = new();
+
+	/// <summary>Duplicates a row; the row menu passes the row's employee.</summary>
+	public System.Windows.Input.ICommand? DuplicateCommand { get; set; }
+
+	/// <summary>Gives a row's employee a 5% raise; the row menu passes the row's employee.</summary>
+	public System.Windows.Input.ICommand? RaiseCommand { get; set; }
 }
 
 /// <summary>

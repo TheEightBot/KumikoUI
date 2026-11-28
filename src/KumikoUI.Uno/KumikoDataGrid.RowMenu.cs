@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using KumikoUI.Core.Components;
 using KumikoUI.Core.Input;
 using Microsoft.UI.Xaml;
@@ -12,6 +14,19 @@ namespace KumikoUI.Uno;
 /// </summary>
 public partial class KumikoDataGrid
 {
+    private readonly ObservableCollection<UnoRowMenuItem> _rowMenuItems = new();
+
+    /// <summary>
+    /// Wires <see cref="RowMenuItems"/>. It subscribes to the controller's <c>RowMenuOpening</c> before any app handler
+    /// can, so the declared items are in the menu when handlers see it.
+    /// </summary>
+    private void InitializeRowMenu()
+    {
+        _rowMenuItems.CollectionChanged += OnRowMenuItemsChanged;
+        DataContextChanged += OnRowMenuDataContextChanged;
+        _inputController.RowMenuOpening += OnRowMenuOpeningAddDeclaredItems;
+    }
+
     // ── IsRowMenuEnabled ──
 
     /// <summary>Identifies the <see cref="IsRowMenuEnabled"/> dependency property.</summary>
@@ -36,11 +51,13 @@ public partial class KumikoDataGrid
     }
 
     /// <summary>
-    /// Items the app adds to every row menu, after the grid's own items and a separator. Choosing one runs its
-    /// <see cref="DrawnMenuItem.Action"/> and <see cref="DrawnMenuItem.Command"/>; the command's parameter is the row's
-    /// data item (null on a group header row) unless <see cref="DrawnMenuItem.CommandParameter"/> is set.
+    /// Items the app adds to every row menu, after the grid's own items and a separator. Declare them in XAML as
+    /// <see cref="UnoRowMenuItem"/>s: the grid hands them its <c>DataContext</c>, so
+    /// <c>Command="{Binding DuplicateCommand}"</c> binds to the page's view model, and the command receives the row's data
+    /// item (null on a group header row) unless <see cref="UnoRowMenuItem.CommandParameter"/> is set.
+    /// <see cref="RowMenuOpening"/> can still edit the result.
     /// </summary>
-    public IList<DrawnMenuItem> RowMenuItems => _inputController.RowMenuItems;
+    public ObservableCollection<UnoRowMenuItem> RowMenuItems => _rowMenuItems;
 
     /// <summary>
     /// Raised before a row menu opens, with the row and its items (see <see cref="KumikoRowMenuItems"/> for the keys of
@@ -51,5 +68,30 @@ public partial class KumikoDataGrid
     {
         add => _inputController.RowMenuOpening += value;
         remove => _inputController.RowMenuOpening -= value;
+    }
+
+    // ── Wiring ──
+
+    /// <summary>Gives every declared item this grid's <c>DataContext</c> (items are not in the visual tree).</summary>
+    private void SyncRowMenuItemContexts()
+    {
+        var context = DataContext;
+        foreach (var item in _rowMenuItems)
+        {
+            if (!ReferenceEquals(item.DataContext, context)) item.DataContext = context;
+        }
+    }
+
+    private void OnRowMenuItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => SyncRowMenuItemContexts();
+
+    private void OnRowMenuDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) =>
+        SyncRowMenuItemContexts();
+
+    private void OnRowMenuOpeningAddDeclaredItems(object? sender, KumikoRowMenuOpeningEventArgs e)
+    {
+        if (_rowMenuItems.Count == 0) return;
+        SyncRowMenuItemContexts();
+        if (e.Items.Count > 0 && !e.Items[^1].IsSeparator) e.Items.Add(DrawnMenuItem.Separator());
+        foreach (var item in _rowMenuItems) e.Items.Add(item.ToDrawnMenuItem(e.DataItem));
     }
 }

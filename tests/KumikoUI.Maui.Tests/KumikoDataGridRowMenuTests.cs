@@ -54,7 +54,7 @@ public class KumikoDataGridRowMenuTests
         var grid = Grid();
         grid.IsRowMenuEnabled = true;
         grid.Clipboard = new TestClipboard();
-        grid.RowMenuItems.Add(new DrawnMenuItem("Mine", "Mine"));
+        grid.InputController.RowMenuItems.Add(new DrawnMenuItem("Mine", "Mine"));
         object? opened = null;
         grid.RowMenuOpening += (_, e) => opened = e.DataItem;
 
@@ -77,6 +77,82 @@ public class KumikoDataGridRowMenuTests
         RightClickRow(grid, 1);
 
         Assert.Null(grid.InputController.ActivePopup);
+    }
+
+    private sealed class MenuViewModel
+    {
+        public List<object?> Received { get; } = new();
+
+        public bool CanRun { get; set; } = true;
+
+        public System.Windows.Input.ICommand Command { get; }
+
+        public MenuViewModel() => Command = new Microsoft.Maui.Controls.Command<object?>(p => Received.Add(p), _ => CanRun);
+    }
+
+    [Fact]
+    public void DeclaredItems_GetTheGridsBindingContext_AndTheirCommandGetsTheRowsItem()
+    {
+        var grid = Grid();
+        var viewModel = new MenuViewModel();
+        var item = new MauiRowMenuItem { Key = "Mine", Text = "Mine" };
+        item.SetBinding(MauiRowMenuItem.CommandProperty, nameof(MenuViewModel.Command));
+        var explicitItem = new MauiRowMenuItem { Key = "Fixed", Text = "Fixed", CommandParameter = "x" };
+        explicitItem.SetBinding(MauiRowMenuItem.CommandProperty, nameof(MenuViewModel.Command));
+        grid.RowMenuItems.Add(item);
+        grid.RowMenuItems.Add(explicitItem);
+        grid.BindingContext = viewModel; // after the items were added: the context still reaches them
+        grid.IsRowMenuEnabled = true;
+        grid.Clipboard = new TestClipboard();
+
+        RightClickRow(grid, 2);
+        var menu = Assert.IsType<DrawnMenu>(grid.InputController.ActivePopup);
+        var mine = menu.Items.Single(i => i.Key == "Mine");
+        var fixedItem = menu.Items.Single(i => i.Key == "Fixed");
+        Assert.True(mine.IsEnabled);
+        Assert.Equal("x", fixedItem.CommandParameter);
+
+        mine.Action?.Invoke();
+        mine.Command!.Execute(mine.CommandParameter);
+        fixedItem.Command!.Execute(fixedItem.CommandParameter);
+
+        Assert.Equal(new Person("P2", 22), viewModel.Received[0]);
+        Assert.Equal("x", viewModel.Received[1]);
+    }
+
+    [Fact]
+    public void ADeclaredItem_IsDisabled_WhenItsCommandCannotExecute_OrItIsNotEnabled()
+    {
+        var grid = Grid();
+        var viewModel = new MenuViewModel { CanRun = false };
+        var blocked = new MauiRowMenuItem { Key = "Blocked", Text = "Blocked" };
+        blocked.SetBinding(MauiRowMenuItem.CommandProperty, nameof(MenuViewModel.Command));
+        grid.RowMenuItems.Add(blocked);
+        grid.RowMenuItems.Add(new MauiRowMenuItem { Key = "Off", Text = "Off", IsEnabled = false });
+        grid.BindingContext = viewModel;
+        grid.IsRowMenuEnabled = true;
+        grid.Clipboard = new TestClipboard();
+
+        RightClickRow(grid, 1);
+
+        var menu = Assert.IsType<DrawnMenu>(grid.InputController.ActivePopup);
+        Assert.False(menu.Items.Single(i => i.Key == "Blocked").IsEnabled);
+        Assert.False(menu.Items.Single(i => i.Key == "Off").IsEnabled);
+    }
+
+    [Fact]
+    public void DeclaredItems_ComeBeforeTheHandlersOfRowMenuOpening()
+    {
+        var grid = Grid();
+        grid.RowMenuItems.Add(new MauiRowMenuItem { Key = "Mine", Text = "Mine" });
+        grid.IsRowMenuEnabled = true;
+        grid.Clipboard = new TestClipboard();
+        bool seen = false;
+        grid.RowMenuOpening += (_, e) => seen = e.Items.Any(i => i.Key == "Mine");
+
+        RightClickRow(grid, 1);
+
+        Assert.True(seen);
     }
 
     private sealed class TestClipboard : IKumikoClipboard

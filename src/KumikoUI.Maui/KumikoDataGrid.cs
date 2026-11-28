@@ -149,6 +149,7 @@ public partial class KumikoDataGrid : ContentView
         InitializeDeleting(); // KumikoDataGrid.Deleting.cs
         InitializePullToRefresh(); // KumikoDataGrid.PullToRefresh.cs
         InitializeSwipe(); // KumikoDataGrid.Swipe.cs (#329)
+        InitializeRowMenu(); // KumikoDataGrid.RowMenu.cs (#331)
 
         // Wire edit session to input controller
         _inputController.EditSession = _editSession;
