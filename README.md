@@ -1430,7 +1430,7 @@ To keep the edited cell visible above the soft keyboard on Android, set the acti
 
 ### Copying rows
 
-Ctrl/Cmd+C copies the selected rows to the clipboard as tab-separated text that Excel and other spreadsheets paste into cells: one line per row, the visible columns in their on-screen order, values formatted as the cells show them. Set `ClipboardCopyIncludesHeaders` to start the text with a row of column headers. Copy, cut, paste and select-all also work inside cell editors and the filter popup's search box. A cut deletes the text only after the clipboard accepted it. The on-screen keyboard has no Ctrl key, so there is no copy from touch alone.
+Ctrl/Cmd+C copies the selected rows to the clipboard as tab-separated text that Excel and other spreadsheets paste into cells: one line per row, the visible columns in their on-screen order, values formatted as the cells show them. Set `ClipboardCopyIncludesHeaders` to start the text with a row of column headers. Copy, cut, paste and select-all also work inside cell editors and the filter popup's search box. A cut deletes the text only after the clipboard accepted it. The on-screen keyboard has no Ctrl key, so for touch turn on the [row menu](#row-menu): a long press on a row offers Copy and Copy with headers. Copy with headers always writes the header row, whatever `ClipboardCopyIncludesHeaders` says, and both produce the text Ctrl/Cmd+C would.
 
 `Clipboard` (an `IKumikoClipboard`) defaults to the platform clipboard; assign another implementation to redirect copy and paste, or `null` to turn them off:
 
@@ -1851,7 +1851,7 @@ kumiko.ContextMenuRequested += (sender, e) =>
 };
 ```
 
-MAUI cannot open a native menu at a point, so for rows the sample app shows an action sheet (`DisplayActionSheetAsync`); for column headers it turns on the grid's drawn [column menu](#column-menu), which opens at the pointer on every platform. Right clicks are reported on Windows, Mac Catalyst and iPad (with a mouse or trackpad), and Android (with a mouse); `CellTapped` and `HeaderTapped` report primary taps with the column and the position.
+MAUI cannot open a native menu at a point, so the sample app turns on the grid's drawn menus, which open at the pointer on every platform: the [column menu](#column-menu) for column headers and the [row menu](#row-menu) for rows (an action sheet, `DisplayActionSheetAsync`, answers the empty area). Right clicks are reported on Windows, Mac Catalyst and iPad (with a mouse or trackpad), and Android (with a mouse); `CellTapped` and `HeaderTapped` report primary taps with the column and the position.
 
 ### Column menu
 
@@ -1886,6 +1886,33 @@ kumiko.ColumnMenuOpening += (sender, e) =>
 ```
 
 While the menu is open it takes the keyboard (see [What each key does](#what-each-key-does)); a click or a tap outside it closes it without doing anything else, and a finger drag scrolls a menu taller than the grid. An item the menu chose runs after the menu closed, so an item can open another popup (as Filter does).
+
+### Row menu
+
+Set `IsRowMenuEnabled` and a right click, or a long press with a finger or a pen, on a data cell, a row's drag handle or a group header row opens the grid's own menu, drawn like the rest of the grid and opening at the pointer. On a data row it holds, in this order and as far as the grid allows: **Copy** and **Copy with headers** (disabled without a clipboard, see [Copying rows](#copying-rows)); **Edit**, which opens the editor of the cell you clicked (hidden for a read-only column or grid, a column whose edit triggers are `None`, and cells that are not edited, such as progress bars, selection boxes and action buttons); **Delete**, with `AllowDeleting` on in a writable grid, which runs the same path as the Delete key, `RowsDeleting` included, and reads "Delete 3 rows" when several are selected; the items of `LeadingSwipeItems` and `TrailingSwipeItems`, so swipe actions are reachable with a keyboard, a mouse and a screen reader; and the app's own `RowMenuItems`. A group header row offers **Expand all groups** and **Collapse all groups**. Every item acts on the selection, which the click already updated (a row that is not selected becomes the selection; a selected row keeps the whole selection).
+
+The right click or long press raises `ContextMenuRequested` first, and the menu opens only when no handler set `e.Handled`. The Menu key or Shift+F10 opens it for the current row, with the first item highlighted; with `IsColumnMenuEnabled` on too, the key opens the row menu while a row is current and the column menu otherwise. On a touch row where a long press starts a row drag (`AllowRowDragDrop`, or the drag handle), lift the finger without moving to open the menu; moving drags the row as before.
+
+`RowMenuItems` are shown after a separator; a command's parameter is the row's data item unless the item sets `CommandParameter`. `RowMenuOpening` runs last with the row (`DataItem`, null on a group header row; `RowIndex`, `Column`, `Region`) and the final items, which it can remove, reorder or add to, or it can set `Cancel`. The default items have the stable keys in `KumikoRowMenuItems`, and the swipe items start with `KumikoRowMenuItems.SwipeItemKeyPrefix`.
+
+```csharp
+kumiko.IsRowMenuEnabled = true;
+kumiko.AllowDeleting = true;
+kumiko.RowMenuItems.Add(new DrawnMenuItem("Refresh", "Refresh the list", () => kumiko.DataSource.Refresh()));
+kumiko.RowMenuOpening += (sender, e) =>
+{
+    // Rows of one employee only: the app's own item for them, and no Edit on the first row
+    if (e.DataItem is not Employee employee) return;
+    if (e.RowIndex == 0)
+    {
+        for (int i = e.Items.Count - 1; i >= 0; i--)
+            if (e.Items[i].Key == KumikoRowMenuItems.Edit) e.Items.RemoveAt(i);
+    }
+    e.Items.Add(new DrawnMenuItem("Mail", $"Email {employee.Name}", () => Console.WriteLine($"Email {employee.Name}")));
+};
+```
+
+The texts come from `KumikoStrings` (`RowMenuCopy`, `RowMenuCopyWithHeaders`, `RowMenuEdit`, `RowMenuDelete`, `RowMenuDeleteRows`, `RowMenuExpandAllGroups`, `RowMenuCollapseAllGroups`), and a screen reader hears "Row menu, 5 items" when it opens, each item the keyboard moves to, and "3 rows copied" after a copy. An app that shows its own menu for some rows from `ContextMenuRequested` sets `e.Handled` for them and leaves the rest to the built-in menu.
 
 ### Precedence: explicit properties versus style and theme
 

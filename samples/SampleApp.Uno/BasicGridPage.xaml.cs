@@ -52,7 +52,11 @@ public sealed partial class BasicGridPage : Page
         kumiko.ShowColumnMenuButton = true;
         kumiko.ColumnMenuOpening += OnColumnMenuOpening;
 
-        // Right click (or a long press on touch) on a row or the empty area opens a context menu at the pointer
+        // Right click (or a long press on touch) on a row opens the grid's own row menu: copy, copy with headers, edit and
+        // delete, plus the app's items below. The empty area has no built-in menu, so the app answers it with a MenuFlyout.
+        kumiko.AllowDeleting = true;
+        kumiko.IsRowMenuEnabled = true;
+        kumiko.RowMenuOpening += OnRowMenuOpening;
         kumiko.ContextMenuRequested += OnGridContextMenuRequested;
 
         // The grid follows the app theme until a theme is picked: the theme button starts from the one it shows
@@ -76,41 +80,35 @@ public sealed partial class BasicGridPage : Page
         });
     }
 
+    // ── Row menu ──
+
+    // The app's own items follow the grid's, for a data row only (a group header row has no employee)
+    private void OnRowMenuOpening(object? sender, KumikoRowMenuOpeningEventArgs e)
+    {
+        if (e.DataItem is not Employee employee) return;
+
+        e.Items.Add(DrawnMenuItem.Separator());
+        e.Items.Add(new DrawnMenuItem("Raise", "Give a 5% raise", () => employee.Salary = Math.Round(employee.Salary * 1.05m, 0)));
+        e.Items.Add(new DrawnMenuItem("Duplicate", "Duplicate", () =>
+        {
+            OnAddRowClicked(this, new RoutedEventArgs());
+            var copy = _viewModel.Employees[^1];
+            copy.Name = $"{employee.Name} (copy)";
+            copy.Department = employee.Department;
+            copy.Salary = employee.Salary;
+        }));
+    }
+
     // ── Context menu ──
-    // Column headers use the grid's drawn column menu (see above); rows and the empty area get a MenuFlyout.
+    // Column headers and rows use the grid's drawn menus (see above); the empty area gets a MenuFlyout.
 
     private void OnGridContextMenuRequested(object? sender, KumikoContextRequestedEventArgs e)
     {
-        if (e.IsHeader) return; // the built-in column menu opens
+        if (e.Region != HitRegion.EmptyArea) return;
 
         var menu = new MenuFlyout();
-        if (e.DataItem is Employee employee)
-        {
-            // The grid selected the row first (unless it was already part of the selection)
-            var selected = kumiko.Selection.SelectedItems.OfType<Employee>().ToList();
-            if (selected.Count == 0) selected.Add(employee);
-            AddItem(menu, "Give a 5% raise", () => employee.Salary = Math.Round(employee.Salary * 1.05m, 0));
-            AddItem(menu, "Duplicate", () =>
-            {
-                OnAddRowClicked(this, new RoutedEventArgs());
-                var copy = _viewModel.Employees[^1];
-                copy.Name = $"{employee.Name} (copy)";
-                copy.Department = employee.Department;
-                copy.Salary = employee.Salary;
-            });
-            menu.Items.Add(new MenuFlyoutSeparator());
-            AddItem(menu, selected.Count > 1 ? $"Delete {selected.Count} rows" : "Delete row", () =>
-            {
-                foreach (var item in selected) _viewModel.Employees.Remove(item);
-            });
-        }
-        else if (e.Region == HitRegion.EmptyArea)
-        {
-            AddItem(menu, "Add row", () => OnAddRowClicked(this, new RoutedEventArgs()));
-        }
-
-        if (menu.Items.Count > 0)
-            menu.ShowAt(kumiko, new FlyoutShowOptions { Position = new Point(e.X, e.Y) });
+        AddItem(menu, "Add row", () => OnAddRowClicked(this, new RoutedEventArgs()));
+        menu.ShowAt(kumiko, new FlyoutShowOptions { Position = new Point(e.X, e.Y) });
     }
 
     private static void AddItem(MenuFlyout menu, string text, Action action)
