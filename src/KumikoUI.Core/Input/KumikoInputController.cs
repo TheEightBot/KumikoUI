@@ -58,7 +58,7 @@ public sealed partial class KumikoInputController
     /// Whether a transition is running (see <see cref="AnimationsEnabled"/>). Hosts check it after each pointer event
     /// and after each frame they draw, and while it is true call <see cref="UpdateAnimations"/> once per frame.
     /// </summary>
-    public bool IsAnimating => _animations.IsActive;
+    public bool IsAnimating => _animations.IsActive || IsPullToRefreshAnimating; // KumikoInputController.PullToRefresh.cs
 
     /// <summary>
     /// Advance the running transitions by <paramref name="frameIntervalMs"/> and redraw. Call it once per frame from
@@ -68,10 +68,11 @@ public sealed partial class KumikoInputController
     /// <returns>Whether a transition is still running.</returns>
     public bool UpdateAnimations(float frameIntervalMs = 16f)
     {
-        if (!_animations.IsActive) return false;
+        bool pulling = StepPullToRefresh(frameIntervalMs); // the pull-to-refresh indicator (#330)
+        if (!_animations.IsActive) return pulling;
         bool running = _animations.Update(frameIntervalMs);
         if (_animations.ChangedVisibly) Redraw(); // a scroll bar's hold draws nothing new
-        return running;
+        return running || pulling;
     }
 
     /// <summary>Whether transitions play for <paramref name="style"/>: the host drives them and the style allows them.</summary>
@@ -506,6 +507,7 @@ public sealed partial class KumikoInputController
         _feedback.ClearHover();
         _feedback.EndPress();
         _animations.StopAll();
+        StopPullGesture(); // KumikoInputController.PullToRefresh.cs
         ResetScrollBars();
         if (_popupManager.HasActivePopups) _popupManager.CloseAll();
         if (_editSession is { IsEditing: true }) _editSession.CancelEdit();
@@ -1149,6 +1151,7 @@ public sealed partial class KumikoInputController
             if (distance > PanThreshold)
             {
                 _isPanning = true;
+                BeginPullGesture(e, scroll, style); // KumikoInputController.PullToRefresh.cs
                 // Reset last-pan to current position to avoid a big jump
                 // on the first frame of panning
                 _lastPanX = e.X;
@@ -1160,6 +1163,7 @@ public sealed partial class KumikoInputController
         {
             float panDx = _lastPanX - e.X;
             float panDy = _lastPanY - e.Y;
+            ApplyPullToRefresh(ref panDx, ref panDy, scroll); // a pull at the top takes the downward movement
             _inertialScroller.TrackVelocity(panDx, panDy, e.TimestampMs);
             scroll.ScrollBy(panDx, panDy);
             _lastPanX = e.X;
@@ -1359,7 +1363,7 @@ public sealed partial class KumikoInputController
         if (_isPanning)
         {
             _isPanning = false;
-            _inertialScroller.StartFling(e.TimestampMs);
+            if (!EndPullGesture(released: true)) _inertialScroller.StartFling(e.TimestampMs); // a pull refreshes instead
             e.Handled = true;
             return;
         }
@@ -1630,7 +1634,7 @@ public sealed partial class KumikoInputController
         {
             // Touch left bounds — start inertial scroll with current velocity
             _isPanning = false;
-            _inertialScroller.StartFling(e.TimestampMs);
+            if (!EndPullGesture(released: false)) _inertialScroller.StartFling(e.TimestampMs); // a pull goes back
             e.Handled = true;
             return;
         }

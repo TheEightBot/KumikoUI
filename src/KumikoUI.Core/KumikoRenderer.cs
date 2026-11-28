@@ -581,6 +581,7 @@ public sealed partial class KumikoRenderer : IDisposable
 
         // Scroll bars over the rows (#316), in viewport coordinates
         _scrollBars.Draw(ctx, dataSource, scroll, style, _inputController);
+        DrawPullToRefresh(ctx, scroll, style, groupPanelOffset); // the pull-to-refresh indicator (#330), over the rows
 
         // Keep the editor on its cell (it moves when the grid scrolls, sorts or regroups), hidden while
         // the cell is scrolled out of view, then draw it on top of everything (absolute coordinates).

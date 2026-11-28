@@ -32,6 +32,10 @@ KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabled.get -> bool
 KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabled.set -> void
 KumikoUI.Uno.KumikoDataGrid.IsLoadingMore.get -> bool
 KumikoUI.Uno.KumikoDataGrid.IsLoadingMore.set -> void
+KumikoUI.Uno.KumikoDataGrid.IsPullToRefreshEnabled.get -> bool
+KumikoUI.Uno.KumikoDataGrid.IsPullToRefreshEnabled.set -> void
+KumikoUI.Uno.KumikoDataGrid.IsRefreshing.get -> bool
+KumikoUI.Uno.KumikoDataGrid.IsRefreshing.set -> void
 KumikoUI.Uno.KumikoDataGrid.LoadMoreAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSize.get -> int
 KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSize.set -> void
@@ -52,6 +56,11 @@ KumikoUI.Uno.KumikoDataGrid.MaxRowHeight.get -> double
 KumikoUI.Uno.KumikoDataGrid.MaxRowHeight.set -> void
 KumikoUI.Uno.KumikoDataGrid.MinRowHeight.get -> double
 KumikoUI.Uno.KumikoDataGrid.MinRowHeight.set -> void
+KumikoUI.Uno.KumikoDataGrid.RefreshCommand.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.KumikoDataGrid.RefreshCommand.set -> void
+KumikoUI.Uno.KumikoDataGrid.RefreshCommandParameter.get -> object?
+KumikoUI.Uno.KumikoDataGrid.RefreshCommandParameter.set -> void
+KumikoUI.Uno.KumikoDataGrid.Refreshing -> System.EventHandler?
 KumikoUI.Uno.KumikoDataGrid.ResetLoadMore() -> void
 KumikoUI.Uno.KumikoDataGrid.RowHeightMode.get -> KumikoUI.Core.Models.KumikoRowHeightMode
 KumikoUI.Uno.KumikoDataGrid.RowHeightMode.set -> void
@@ -93,6 +102,8 @@ static readonly KumikoUI.Uno.KumikoDataGrid.IncrementalSourceProperty -> Microso
 static readonly KumikoUI.Uno.KumikoDataGrid.IsBusyProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabledProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.IsLoadingMoreProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.IsPullToRefreshEnabledProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.IsRefreshingProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSizeProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandParameterProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
@@ -102,6 +113,8 @@ static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreStateProperty -> Microsoft.U
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreThresholdProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.MaxRowHeightProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.MinRowHeightProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.RefreshCommandParameterProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.RefreshCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.RowHeightModeProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.RowHeightResolverProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.RowsDeletingCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
