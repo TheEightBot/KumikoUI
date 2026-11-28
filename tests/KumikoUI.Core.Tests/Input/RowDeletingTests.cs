@@ -400,6 +400,26 @@ public class RowDeletingTests
         Assert.Equal("N04", CurrentName(g)); // the row that took its place
     }
 
+    [Fact]
+    public void DeleteRows_RemovesTheGivenItems_AfterRowsDeleting_WhichCanCancel()
+    {
+        var g = Grid();
+        SelectRows(g, 9);
+        var victim = g.Items[3];
+        bool cancel = true;
+        var deleted = new List<object>();
+        g.Input.RowsDeleting += (_, e) => e.Cancel = cancel;
+        g.Input.RowsDeleted += (_, e) => deleted.AddRange(e.Items);
+
+        Assert.False(g.Input.DeleteRows(new object[] { victim }, g.Scroll, g.Selection, g.Style, g.Source));
+        Assert.Contains(victim, g.Items);
+
+        cancel = false;
+        Assert.True(g.Input.DeleteRows(new object[] { victim }, g.Scroll, g.Selection, g.Style, g.Source));
+        Assert.DoesNotContain(victim, g.Items);
+        Assert.Same(victim, Assert.Single(deleted));
+    }
+
     // ── Collections and views ──
 
     [Fact]

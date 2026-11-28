@@ -127,6 +127,7 @@ public partial class KumikoDataGrid : UserControl
         InitializeColumnMenu(); // KumikoDataGrid.ColumnMenu.cs
         InitializeDeleting(); // KumikoDataGrid.Deleting.cs
         InitializePullToRefresh(); // KumikoDataGrid.PullToRefresh.cs
+        InitializeSwipe(); // KumikoDataGrid.Swipe.cs (#329)
 
         // IsEnabled=false stops all input in Core (KumikoDataGrid.Input.cs). Own event: wired once, no leak.
         IsEnabledChanged += OnIsEnabledChanged;

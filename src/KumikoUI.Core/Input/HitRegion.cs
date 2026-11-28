@@ -47,5 +47,10 @@ public enum HitRegion
     /// The load-more row after the last row (#318): loading, "Load more" or a failed load's retry. It is not a row of
     /// the view, so the hit's row index is -1.
     /// </summary>
-    LoadMoreRow
+    LoadMoreRow,
+    /// <summary>
+    /// An item revealed beside a row swiped open (#329, see <see cref="KumikoInputController.AllowSwiping"/>); the hit's
+    /// row index is the swiped row.
+    /// </summary>
+    SwipeItem
 }

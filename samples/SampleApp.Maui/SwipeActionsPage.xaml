@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dg="clr-namespace:KumikoUI.Maui;assembly=KumikoUI.Maui"
+             xmlns:core="clr-namespace:KumikoUI.Core.Models;assembly=KumikoUI.Core"
+             xmlns:local="clr-namespace:SampleApp.Maui"
+             x:Class="SampleApp.Maui.SwipeActionsPage"
+             x:DataType="local:SwipeActionsViewModel"
+             Title="Swipe actions">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+        <Label Text="Swipe a row: right to flag it, left to archive or delete it. Swipe all the way across to run the outermost item."
+               FontSize="13"
+               Padding="16,12,16,4"
+               Grid.Row="0" />
+
+        <!--
+            Swipes are a touch shortcut that a keyboard, a mouse and a screen reader cannot reach, so the same actions
+            are also offered here, for the selected message.
+        -->
+        <HorizontalStackLayout Grid.Row="1" Padding="16,0,16,4" Spacing="8">
+            <Button Text="Flag" Command="{Binding FlagCommand}" CommandParameter="{Binding SelectedMessage}" />
+            <Button Text="Archive" Command="{Binding ArchiveCommand}" CommandParameter="{Binding SelectedMessage}" />
+            <Button Text="Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedMessage}" />
+        </HorizontalStackLayout>
+
+        <Label Text="{Binding Status}" FontSize="12" TextColor="Gray" Padding="16,0,16,8" Grid.Row="2" />
+
+        <!--
+            The swipe items are MauiActionButtonDefinitions: the grid hands them its BindingContext (the view model), and
+            each command receives the swiped row's message. Item 0 is the outermost one, against the row's edge; with
+            FullSwipeMode="Both" a full swipe runs it.
+        -->
+        <dg:KumikoDataGrid x:Name="kumiko"
+                           Grid.Row="3"
+                           ItemsSource="{Binding Messages}"
+                           SelectedItem="{Binding SelectedMessage, Mode=TwoWay}"
+                           AllowSwiping="True"
+                           FullSwipeMode="Both"
+                           EnableHaptics="True"
+                           RowHeight="52"
+                           SwipeEnded="OnSwipeEnded">
+            <dg:KumikoDataGrid.LeadingSwipeItems>
+                <dg:MauiActionButtonDefinition Label="Flag" BackgroundColor="#FF9500" Command="{Binding FlagCommand}" />
+            </dg:KumikoDataGrid.LeadingSwipeItems>
+            <dg:KumikoDataGrid.TrailingSwipeItems>
+                <dg:MauiActionButtonDefinition Label="Delete" BackgroundColor="#FF3B30" Command="{Binding DeleteCommand}" />
+                <dg:MauiActionButtonDefinition Label="Archive" BackgroundColor="#007AFF" Command="{Binding ArchiveCommand}" />
+            </dg:KumikoDataGrid.TrailingSwipeItems>
+            <dg:KumikoDataGrid.Columns>
+                <core:KumikoColumn Header="Flagged" PropertyName="IsFlagged" ColumnType="Boolean" Width="80" IsReadOnly="True" />
+                <core:KumikoColumn Header="From" PropertyName="Sender" Width="140" />
+                <core:KumikoColumn Header="Subject" PropertyName="Subject" Width="240" SizeMode="Star" />
+            </dg:KumikoDataGrid.Columns>
+        </dg:KumikoDataGrid>
+    </Grid>
+
+</ContentPage>

@@ -1,0 +1,59 @@
+<Page x:Class="SampleApp.Uno.SwipeActionsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:kumiko="using:KumikoUI.Uno"
+      xmlns:core="using:KumikoUI.Core.Models"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Padding="16,12,16,4" FontSize="13" TextWrapping="Wrap"
+                   Text="Swipe a row (touch): right to flag it, left to archive or delete it. Swipe all the way across to run the outermost item." />
+
+        <!--
+            Swipes are a touch shortcut that a keyboard, a mouse and a screen reader cannot reach, so the same actions
+            are also offered here, for the selected message.
+        -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Padding="16,0,16,4" Spacing="8">
+            <Button Content="Flag" Command="{Binding FlagCommand}" CommandParameter="{Binding SelectedMessage}" />
+            <Button Content="Archive" Command="{Binding ArchiveCommand}" CommandParameter="{Binding SelectedMessage}" />
+            <Button Content="Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedMessage}" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="2" Padding="16,0,16,8" FontSize="12" Foreground="Gray" Text="{Binding Status}" />
+
+        <!--
+            The swipe items are UnoActionButtonDefinitions: the grid hands them its DataContext (the view model), and
+            each command receives the swiped row's message. Item 0 is the outermost one, against the row's edge; with
+            FullSwipeMode="Both" a full swipe runs it.
+        -->
+        <kumiko:KumikoDataGrid x:Name="kumiko"
+                               Grid.Row="3"
+                               ItemsSource="{Binding Messages}"
+                               SelectedItem="{Binding SelectedMessage, Mode=TwoWay}"
+                               AllowSwiping="True"
+                               FullSwipeMode="Both"
+                               EnableHaptics="True"
+                               RowHeight="52"
+                               SwipeEnded="OnSwipeEnded"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch">
+            <kumiko:KumikoDataGrid.LeadingSwipeItems>
+                <kumiko:UnoActionButtonDefinition Label="Flag" BackgroundColor="#FFFF9500" Command="{Binding FlagCommand}" />
+            </kumiko:KumikoDataGrid.LeadingSwipeItems>
+            <kumiko:KumikoDataGrid.TrailingSwipeItems>
+                <kumiko:UnoActionButtonDefinition Label="Delete" BackgroundColor="#FFFF3B30" Command="{Binding DeleteCommand}" />
+                <kumiko:UnoActionButtonDefinition Label="Archive" BackgroundColor="#FF007AFF" Command="{Binding ArchiveCommand}" />
+            </kumiko:KumikoDataGrid.TrailingSwipeItems>
+            <core:KumikoColumn Header="Flagged" PropertyName="IsFlagged" ColumnType="Boolean" Width="80" IsReadOnly="True" />
+            <core:KumikoColumn Header="From" PropertyName="Sender" Width="140" />
+            <core:KumikoColumn Header="Subject" PropertyName="Subject" Width="240" SizeMode="Star" />
+        </kumiko:KumikoDataGrid>
+    </Grid>
+</Page>

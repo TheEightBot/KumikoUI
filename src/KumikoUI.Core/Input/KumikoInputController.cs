@@ -406,6 +406,8 @@ public sealed partial class KumikoInputController
             return;
         }
 
+        if (HandleSwipePointer(e, action, scroll, selection, style, dataSource)) return; // KumikoInputController.Swipe.cs
+
         var columns = dataSource.Columns;
         int totalRows = dataSource.RowCount;
         _selectionMode = selection.Mode;
@@ -509,6 +511,7 @@ public sealed partial class KumikoInputController
         _animations.StopAll();
         StopPullGesture(); // KumikoInputController.PullToRefresh.cs
         ResetScrollBars();
+        AbortSwipe(); // KumikoInputController.Swipe.cs
         if (_popupManager.HasActivePopups) _popupManager.CloseAll();
         if (_editSession is { IsEditing: true }) _editSession.CancelEdit();
         SetCursor(KumikoCursor.Default);

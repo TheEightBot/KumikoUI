@@ -44,6 +44,7 @@
             <NavigationViewItem Content="Auto Columns" Tag="AutoColumns" />
             <NavigationViewItem Content="Empty View" Tag="EmptyView" />
             <NavigationViewItem Content="Export" Tag="Export" />
+            <NavigationViewItem Content="Swipe Actions" Tag="SwipeActions" />
         </NavigationView.MenuItems>
 
         <Frame x:Name="ContentFrame" />

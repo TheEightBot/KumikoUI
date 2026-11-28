@@ -765,6 +765,59 @@ kumiko.Columns.Add(actionsColumn);
 
 `ActionButtonsCellRenderer` also has `CornerRadius` (default 5), `ButtonSpacing` (6) and `CellPadding` (4). To open the buttons as an editor instead, set `EditorFactory` to create a `DrawnActionButtons` with the same `Buttons` (`Bounds = context.Bounds`, `RowItem = context.Value`); that editor raises the edit events.
 
+### Swipe row actions
+
+On a phone, swiping a row to reveal a few actions is quicker than a menu and costs no column width. With `AllowSwiping` on, a finger that drags a data row sideways moves the row and uncovers drawn buttons beside it: `LeadingSwipeItems` at the start edge (swipe toward the end edge, to the right in a left-to-right layout) and `TrailingSwipeItems` at the end edge. The items are the same `IActionButtonDefinition`s as an action column's buttons (`MauiActionButtonDefinition`, `UnoActionButtonDefinition` or `ActionButtonDefinition`): a tap runs the item's `Command`, with the row's item as the parameter unless `CommandParameter` is set, then its `Action`. An item whose command cannot execute is drawn in the disabled colors and does nothing.
+
+- **Opening and closing.** The row follows the finger, up to its items' width (`SwipeItemWidth`, 72 per item, at most the row's width) and a little past it. On release it opens when it is past half an item or was flung open, and closes otherwise. One row is open at a time. A tap on one of its items runs it and closes the row; a tap on its cells closes it without selecting; a press anywhere else, a scroll, or a change of the rows (a sort, a filter, rows added or removed) closes it. `CloseSwipe()` closes it from code. The row slides open and shut unless animations are off.
+- **Full swipe.** With `FullSwipeMode` (`Leading`, `Trailing` or `Both`), dragging the row past 60% of its width and lifting runs the outermost item of that side (item 0, against the edge), which then takes all the uncovered space. With `EnableHaptics`, a short vibration marks the point.
+- **Gestures.** Only a finger swipes; a mouse or pen drag works as before. A touch drag swipes when it moves more than twice as far sideways as up or down, toward a side that has items; any other drag scrolls. So a grid wider than its screen still scrolls sideways from the header row, by a pan that starts vertical or diagonal, by the wheel or trackpad and by the scroll bars. A long press before moving still drags the row (`AllowRowDragDrop`) or asks for the context menu. An open edit is committed before a row swipes (a refused commit keeps the editor, and the drag scrolls instead), and swiping never changes the selection.
+- **Events.** `SwipeStarting` is raised before a row moves: set `Cancel` to keep that row from swiping (`DataItem`, `RowIndex` and `Direction` say which). `SwipeEnded` is raised once when the row closes again, with the item that ran in `InvokedItem`, or null when none did. A delete item runs the app's own command; have it call `kumiko.DeleteRows(new object[] { item })` (see [Deleting rows](#deleting-rows)) rather than remove the item itself, so `RowsDeleting`, and a confirmation in it, covers swipes the same way it covers the Delete key.
+- **Reach them another way too.** A keyboard, a mouse and a screen reader cannot swipe, so offer every swipe action elsewhere as well: an action-button column on a wide screen, the context menu (`ContextMenuRequested`), or buttons that act on the selected row.
+
+<!-- snippet: maui -->
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Messages}" AllowSwiping="True" FullSwipeMode="Trailing">
+    <kumiko:KumikoDataGrid.LeadingSwipeItems>
+        <kumiko:MauiActionButtonDefinition Label="Flag" BackgroundColor="#FF9500" Command="{Binding FlagCommand}" />
+    </kumiko:KumikoDataGrid.LeadingSwipeItems>
+    <kumiko:KumikoDataGrid.TrailingSwipeItems>
+        <kumiko:MauiActionButtonDefinition Label="Delete" BackgroundColor="#FF3B30" Command="{Binding DeleteCommand}" />
+        <kumiko:MauiActionButtonDefinition Label="Archive" BackgroundColor="#007AFF" Command="{Binding ArchiveCommand}" />
+    </kumiko:KumikoDataGrid.TrailingSwipeItems>
+    <core:KumikoColumn Header="Subject" PropertyName="Subject" />
+</kumiko:KumikoDataGrid>
+```
+
+As with action columns, the grid hands the definitions its `BindingContext` (MAUI) or `DataContext` (Uno), so the commands bind to the page's view model. On Uno, declare `kumiko:UnoActionButtonDefinition`s with `#AARRGGBB` colors:
+
+<!-- snippet: uno -->
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Messages}" AllowSwiping="True" FullSwipeMode="Trailing">
+    <kumiko:KumikoDataGrid.TrailingSwipeItems>
+        <kumiko:UnoActionButtonDefinition Label="Delete" BackgroundColor="#FFFF3B30" Command="{Binding DeleteCommand}" />
+    </kumiko:KumikoDataGrid.TrailingSwipeItems>
+    <core:KumikoColumn Header="Subject" PropertyName="Subject" />
+</kumiko:KumikoDataGrid>
+```
+
+In code, on either host:
+
+```csharp
+kumiko.AllowSwiping = true;
+kumiko.FullSwipeMode = KumikoFullSwipeMode.Trailing;
+kumiko.TrailingSwipeItems.Add(new ActionButtonDefinition
+{
+    Label = "Delete",
+    BackgroundColor = new KumikoColor(255, 59, 48),
+    Command = vm.DeleteCommand,   // runs with the swiped row's item
+});
+kumiko.SwipeStarting += (_, e) => e.Cancel = e.DataItem is Employee { IsActive: false };
+kumiko.SwipeEnded += (_, e) => Console.WriteLine(e.InvokedItem?.Label ?? "closed");
+```
+
+The same members are on `KumikoInputController` in Core (`HitRegion.SwipeItem` is the hit-test region of an uncovered item). Swipes follow the left-to-right layout for now; right-to-left mirroring comes with #349.
+
 ---
 
 ## Sorting and Filtering
@@ -1075,7 +1128,7 @@ An open edit belongs to its item and column, not a row number. If rows move unde
 
 ### Deleting rows
 
-Set `AllowDeleting` and the Delete key removes the selected rows from `ItemsSource` (on a Mac keyboard the key labeled Delete arrives as Backspace, so Command+Backspace does the same; plain Backspace never deletes rows). The key works while no editor is open, in a grid that is not read-only, and with at least one selected row: with no selection it stays with the page. `DeleteSelectedRows()` does the same from code or a button, whatever `AllowDeleting` says.
+Set `AllowDeleting` and the Delete key removes the selected rows from `ItemsSource` (on a Mac keyboard the key labeled Delete arrives as Backspace, so Command+Backspace does the same; plain Backspace never deletes rows). The key works while no editor is open, in a grid that is not read-only, and with at least one selected row: with no selection it stays with the page. `DeleteSelectedRows()` does the same from code or a button, whatever `AllowDeleting` says, and `DeleteRows(items)` removes given items, selected or not (a swipe item's or a row button's one row), through the same flow.
 
 ```csharp
 kumiko.AllowDeleting = true;                 // the Delete key (Command+Backspace on a Mac)
@@ -1743,6 +1796,7 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `SearchText` | `string` | empty | The grid-wide search; two-way, it follows the search panel ([Searching](#searching)). |
 | `SearchFiltersRows` | `bool` | false | The search also hides the rows with no match. |
 | `AllowSearchPanel` | `bool` | false | Ctrl/Cmd+F opens the drawn search panel. |
+| `AllowSwiping`, `FullSwipeMode`, `SwipeItemWidth` | `bool`, `KumikoFullSwipeMode`, `double` | false, `None`, 72 | A finger swipes a row to reveal `LeadingSwipeItems` and `TrailingSwipeItems` ([Swipe row actions](#swipe-row-actions)). |
 
 Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)), `ShowColumnMenu(column)` ([Column menu](#column-menu)), `FindNext`, `FindPrevious`, `ShowSearchPanel` and `CloseSearchPanel` ([Searching](#searching)), `GetLayoutState` and `ApplyLayoutState` ([Saving and restoring the layout](#saving-and-restoring-the-layout)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
 
@@ -2077,7 +2131,7 @@ kumiko.ScrollSettings = new ScrollSettings
 | `FlingHoldCutoffMs` | 100 | A finger that rests this long before release does not fling |
 | `AutoScrollEdgeSize`, `AutoScrollMaxSpeed` | 40, 1200 | Autoscroll during a row drag ([Row Drag and Drop](#row-drag-and-drop)) |
 
-A drag that starts on a column header and moves sideways reorders the column rather than scrolling, and with `AllowRowDragDrop` a long press on touch (a mostly vertical drag with a mouse) on a cell moves the row. Trackpads scroll by pixels, Shift plus the wheel scrolls horizontally, and once the grid reaches its end the wheel scrolls the page instead. `IsEnabled="False"` stops all input.
+With `AllowSwiping` on, a mostly sideways touch drag on a row swipes it rather than scrolling ([Swipe row actions](#swipe-row-actions)). A drag that starts on a column header and moves sideways reorders the column rather than scrolling, and with `AllowRowDragDrop` a long press on touch (a mostly vertical drag with a mouse) on a cell moves the row. Trackpads scroll by pixels, Shift plus the wheel scrolls horizontally, and once the grid reaches its end the wheel scrolls the page instead. `IsEnabled="False"` stops all input.
 
 ### Scroll bars
 

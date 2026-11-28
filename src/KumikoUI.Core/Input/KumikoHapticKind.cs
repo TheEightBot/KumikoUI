@@ -14,4 +14,7 @@ public enum KumikoHapticKind
 
     /// <summary>A pull-to-refresh crossed its threshold: releasing now refreshes (#330).</summary>
     RefreshThreshold,
+
+    /// <summary>A swiped row crossed the full-swipe point, so lifting the finger now runs its outermost item (#329).</summary>
+    SwipeThreshold,
 }

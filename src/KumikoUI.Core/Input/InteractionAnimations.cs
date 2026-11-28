@@ -30,10 +30,14 @@ internal sealed class InteractionAnimations
     /// <summary>How long an <see cref="KumikoScrollBarVisibility.Auto"/> scroll bar takes to fade out after the hold, in milliseconds.</summary>
     public const float ScrollBarFadeMs = 250f;
 
+    /// <summary>Duration of a swiped row settling open or sliding shut after the finger lifts (#329), in milliseconds.</summary>
+    public const float SwipeSnapMs = 200f;
+
     // The animation clock: milliseconds advanced by Update. Each transition records when it started.
     private float _now;
     private float _groupStart = float.NaN, _liftStart = float.NaN, _dropStart = float.NaN, _selectionStart = float.NaN;
     private float _verticalBarStart = float.NaN, _horizontalBarStart = float.NaN;
+    private float _swipeStart = float.NaN;
 
     /// <summary>The group header row whose rows are sliding (the rows after it move), or -1.</summary>
     public int GroupAnchorRow { get; private set; } = -1;
@@ -58,7 +62,7 @@ internal sealed class InteractionAnimations
 
     /// <summary>Whether a transition other than a scroll bar's hold and fade is running.</summary>
     private bool IsTransitioning => !float.IsNaN(_groupStart) || !float.IsNaN(_liftStart) || !float.IsNaN(_dropStart) ||
-                                    !float.IsNaN(_selectionStart);
+                                    !float.IsNaN(_selectionStart) || !float.IsNaN(_swipeStart);
 
     /// <summary>
     /// Whether the last <see cref="Update"/> changed what is drawn: a transition moved, or a scroll bar started or went
@@ -77,6 +81,18 @@ internal sealed class InteractionAnimations
 
     /// <summary>The highlight's eased progress (0 just selected, 1 fully shown).</summary>
     public float SelectionProgress => Progress(_selectionStart, SelectionFadeMs);
+
+    /// <summary>The swiped row's snap's eased progress (0 just released, 1 settled), or 1 when none is running.</summary>
+    public float SwipeSnapProgress => Progress(_swipeStart, SwipeSnapMs);
+
+    /// <summary>Whether a swiped row is settling open or sliding shut.</summary>
+    public bool IsSwipeSnapping => !float.IsNaN(_swipeStart);
+
+    /// <summary>A swiped row starts settling (open or shut); the row reads its offsets, this only keeps the time.</summary>
+    public void StartSwipeSnap() => _swipeStart = _now;
+
+    /// <summary>Ends a swiped row's snap at once (a new swipe starts, or the row closes without a transition).</summary>
+    public void StopSwipeSnap() => _swipeStart = float.NaN;
 
     /// <summary>Whether the group slide is running.</summary>
     public bool IsGroupSliding => !float.IsNaN(_groupStart);
@@ -162,6 +178,7 @@ internal sealed class InteractionAnimations
         if (Done(_liftStart, ColumnLiftMs)) _liftStart = float.NaN;
         if (Done(_dropStart, ColumnDropMs)) StopDrop();
         if (Done(_selectionStart, SelectionFadeMs)) { _selectionStart = float.NaN; SelectionItem = null; }
+        if (Done(_swipeStart, SwipeSnapMs)) _swipeStart = float.NaN;
         if (Done(_verticalBarStart, ScrollBarHoldMs + ScrollBarFadeMs)) _verticalBarStart = float.NaN;
         if (Done(_horizontalBarStart, ScrollBarHoldMs + ScrollBarFadeMs)) _horizontalBarStart = float.NaN;
 
@@ -174,7 +191,7 @@ internal sealed class InteractionAnimations
     /// <summary>Ends every transition at once (the grid was disabled, or animations were turned off).</summary>
     public void StopAll()
     {
-        _groupStart = _liftStart = _selectionStart = float.NaN;
+        _groupStart = _liftStart = _selectionStart = _swipeStart = float.NaN;
         _verticalBarStart = _horizontalBarStart = float.NaN;
         GroupAnchorRow = -1;
         GroupRowDelta = 0;
