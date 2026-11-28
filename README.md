@@ -546,6 +546,57 @@ Keep `Render` free of allocations, as the built-in renderers are: draw with `cel
 
 A renderer that also implements `ICellEditorProvider` supplies the editor of its `Template` column; one that implements `IInteractiveCellRenderer` handles taps itself, as the action buttons do.
 
+#### Custom header renderers
+
+A header cell is the header text, the sort arrow, the filter icon and, when the column menu button is on, its button. To draw something else with the text (an icon before it, a unit or subtitle line, a "required" marker, a colored strip), implement `IHeaderCellRenderer` and set it as the column's `CustomHeaderRenderer`, or for every column without one as the grid's `HeaderCellRenderer`. A column's own renderer wins over the grid-wide one, which wins over the built-in `TextHeaderCellRenderer`. The grid calls `Render` for every visible header on every frame, passing a `HeaderCellRenderContext` by reference and clipping to its `Bounds`:
+
+| Member | Meaning |
+|---|---|
+| `Bounds` | The rectangle to draw in: the header cell minus its padding and the room of the sort, filter and menu glyphs |
+| `CellBounds` | The whole header cell |
+| `Column`, `ColumnIndex` | The column and its index in the source's column list |
+| `SortDirection`, `SortOrder`, `IsFiltered` | The column's sort and filter state |
+| `Style`, `HeaderCellStyle` | The grid style, and the column's header style overrides or `null` |
+| `Paints` | The grid's shared `PaintCache` |
+| `TextPaint`, `TextAlignment` | The paint and alignment for the header text, with the column's `HeaderCellStyle` overrides applied |
+
+<!-- snippet: shared -->
+```csharp
+public sealed class SubtitleHeaderRenderer : IHeaderCellRenderer
+{
+    // Created once and reused
+    private readonly KumikoPaint _subtitle = new() { IsAntiAlias = true, Font = new KumikoFont("Default", 10) };
+
+    public string Subtitle { get; set; } = "";
+
+    public void Render(IDrawingContext ctx, in HeaderCellRenderContext context)
+    {
+        var b = context.Bounds;
+        ctx.DrawTextInRect(context.Column.Header, new KumikoRect(b.X, b.Y + 4, b.Width, 18),
+            context.TextPaint, context.TextAlignment, KumikoVerticalAlignment.Center);
+        _subtitle.Color = context.TextPaint.Color.WithAlpha(160);
+        ctx.DrawTextInRect(Subtitle, new KumikoRect(b.X, b.Y + 22, b.Width, 14),
+            _subtitle, context.TextAlignment, KumikoVerticalAlignment.Center);
+    }
+
+    // The width the content needs, for header auto-fit; the grid adds the padding and the glyph space.
+    public float? MeasureWidth(IDrawingContext ctx, in HeaderCellRenderContext context) =>
+        Math.Max(ctx.MeasureText(context.Column.Header, context.TextPaint).Width,
+            ctx.MeasureText(Subtitle, _subtitle).Width);
+}
+```
+
+```csharp
+var column = new KumikoColumn { Header = "Salary", PropertyName = "Salary" };
+column.CustomHeaderRenderer = new SubtitleHeaderRenderer { Subtitle = "USD per year" };
+```
+
+- The grid keeps everything outside `Bounds`: the background, the hover and pressed feedback, the sort and filter glyphs, their hit regions and the resize grips, so sorting, filtering, resizing and reordering behave as with the text. The ghost of a dragged header is drawn through the same renderer.
+- `MeasureWidth` returns the width the content needs, or `null` for the width of `Column.Header` in the header font. The grid adds the padding, the glyph space and a margin, and measures again only when the header text, the header font or the renderer changes. Its context has zero-width `Bounds`.
+- `GetAccessibleText` returns the plain text for the accessibility tree, or `null` for `Column.Header`.
+- Header interaction stays with the grid: a clickable glyph inside the content is not supported.
+- Keep `Render` free of allocations, as for cell renderers; derive from `TextHeaderCellRenderer` to draw something around the text.
+
 ### Column sizing
 
 | `SizeMode` | Behavior |
@@ -980,6 +1031,47 @@ style.StickyGroupHeaders = false;
 kumiko.GridStyle = style;
 ```
 
+### Custom group headers
+
+By default a group header reads "Header: Key (count)" followed by the caption summary, drawn as text. To draw more in it (a count badge, a colored key, a progress bar for the group), implement `IGroupHeaderRenderer`. The grid keeps the row background, the chevron and its tap, keyboard and screen-reader behavior; the renderer draws the part right of the chevron, clipped to `Bounds`. It runs for every visible and sticky header on every frame, with a `GroupHeaderRenderContext` passed by reference:
+
+| Member | Meaning |
+|---|---|
+| `Bounds` | The rectangle to draw in: right of the chevron up to the row's right padding |
+| `RowBounds`, `Row` | The whole header row, and its visible row index |
+| `IsPinned` | Whether the header is drawn as a sticky header over the rows |
+| `Group` | The `GroupHeaderInfo`: `Level`, `Key`, `DisplayText`, `ItemCount`, `IsExpanded` and `GetCaptionValue(property, type)` for the raw caption aggregate |
+| `Description` | The `GroupDescription` of the header's level |
+| `Title`, `CountText`, `CaptionText` | The texts the default header draws: "Header: Key", " (n)" and the caption summary (`null` without one) |
+| `Style`, `Paints` | The grid style and its shared paints, including `GroupHeaderText`, `GroupHeaderCount` and `CaptionSummaryText` |
+
+Set a renderer for one group level with `GroupDescription.CustomHeaderRenderer`, or for every header that has none with the grid's `GroupHeaderRenderer` property (a bindable property on both hosts). The order is the level's renderer, then the grid's, then the built-in `TextGroupHeaderRenderer`, which a renderer can also call to draw the default text and then add to it:
+
+```csharp
+kumiko.GroupHeaderRenderer = new CountBadgeRenderer();
+kumiko.GroupDescriptions.Add(new GroupDescription("Department") { CustomHeaderRenderer = new CountBadgeRenderer() });
+
+public sealed class CountBadgeRenderer : IGroupHeaderRenderer
+{
+    // Created once and reused: only the color changes per header
+    private readonly KumikoPaint _badge = new() { IsAntiAlias = true };
+
+    public void Render(IDrawingContext ctx, in GroupHeaderRenderContext context)
+    {
+        var b = context.Bounds;
+        _badge.Color = context.Style.AccentColor;
+        float titleWidth = ctx.MeasureText(context.Title, context.Paints.GroupHeaderText).Width;
+        ctx.DrawTextInRect(context.Title, b, context.Paints.GroupHeaderText,
+            KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+        ctx.FillRoundRect(new KumikoRect(b.X + titleWidth + 8, b.Y + b.Height / 2 - 9, 36, 18), 9, _badge);
+        ctx.DrawTextInRect(context.CountText, new KumikoRect(b.X + titleWidth + 8, b.Y, 36, b.Height),
+            context.Paints.GroupHeaderCount, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
+    }
+}
+```
+
+Keep `Render` free of allocations, as the built-in renderer is: draw with `context.Paints` or with paints and fonts the renderer creates once, and don't create a `KumikoPaint`, `KumikoFont` or string per call. The context's group, paints and texts may be replaced when the view is rebuilt, so read them during the call and don't keep them. A renderer gets no input; to react to taps use the grid's group events. `GetAccessibleText` is an optional member for the screen reader text of the header; the grid does not read it yet.
+
 ---
 
 ## Summaries
@@ -1042,6 +1134,45 @@ kumiko.DataSource.CaptionSummary = new CaptionSummaryDescription
     Columns = { new SummaryColumnDescription("Salary", SummaryType.Sum, "C0") },
 };
 ```
+
+### Custom summary cells
+
+A summary value is drawn as text by default. To draw it yourself (a red negative total, a bar for a group's share, an icon next to a count), implement `ISummaryCellRenderer` and set it on a `SummaryColumnDescription` (`CustomCellRenderer`) or on the whole grid (`SummaryCellRenderer`, on `KumikoDataGrid`). A cell uses the first aggregate of its property that has a renderer, then the grid-wide renderer, then the built-in `TextSummaryCellRenderer`.
+
+```csharp
+using KumikoUI.Core.Models;
+using KumikoUI.Core.Rendering;
+
+public sealed class RedWhenNegative : ISummaryCellRenderer
+{
+    private readonly KumikoPaint _red = new() { Color = new KumikoColor(220, 38, 38), IsAntiAlias = true };
+
+    public void Render(IDrawingContext ctx, in SummaryCellRenderContext context)
+    {
+        bool negative = context.RawValue is decimal d && d < 0;
+        if (negative) _red.Font = context.TextPaint.Font;
+        ctx.DrawTextInRect(context.DisplayText, context.Bounds, negative ? _red : context.TextPaint,
+            context.TextAlignment, KumikoVerticalAlignment.Center);
+    }
+}
+
+public static class SummaryCellSetup
+{
+    public static void Apply(KumikoDataGrid kumiko)
+    {
+        kumiko.DataSource.AddTableSummaryRow(new TableSummaryRow("Totals", SummaryPosition.Bottom)
+        {
+            Title = "Totals",
+            Columns =
+            {
+                new SummaryColumnDescription("Salary", SummaryType.Sum, "C0") { CustomCellRenderer = new RedWhenNegative() },
+            },
+        });
+    }
+}
+```
+
+`Render` runs for every visible summary cell on every frame, so create paints once and reuse them; it must not allocate. The context gives the cell's `Bounds` (padded, clipped to the visible part of the column and never under the row's title), `CellBounds` (the whole column slot), `Kind` (`Table` or `Group`), `Group` (for a group summary row), `Summary` (`Values`, `RawValues` and `Aggregates`; filter `Aggregates` by `PropertyName` when several share the column), `DisplayText`, `RawValue`, `Style`, `Paints` (the summary paints `SummaryText`, `SummaryLabel`, `GroupSummaryText` and `GroupSummaryBackground` match the theme) and `TextAlignment`. Do not keep the context's objects between calls: a background rebuild replaces the `ComputedSummaryRow`. A cell drawn by a custom renderer is never moved to the text after the row's title, which the built-in text is when its column is narrower than 70 px. Caption summaries sit in the group header and are not summary cells. `GetAccessibleText` (default `null`, so `DisplayText`) is reserved for screen-reader support.
 
 ### Values
 
@@ -1430,7 +1561,7 @@ To keep the edited cell visible above the soft keyboard on Android, set the acti
 
 ### Copying rows
 
-Ctrl/Cmd+C copies the selected rows to the clipboard as tab-separated text that Excel and other spreadsheets paste into cells: one line per row, the visible columns in their on-screen order, values formatted as the cells show them. Set `ClipboardCopyIncludesHeaders` to start the text with a row of column headers. Copy, cut, paste and select-all also work inside cell editors and the filter popup's search box. A cut deletes the text only after the clipboard accepted it. The on-screen keyboard has no Ctrl key, so there is no copy from touch alone.
+Ctrl/Cmd+C copies the selected rows to the clipboard as tab-separated text that Excel and other spreadsheets paste into cells: one line per row, the visible columns in their on-screen order, values formatted as the cells show them. Set `ClipboardCopyIncludesHeaders` to start the text with a row of column headers. Copy, cut, paste and select-all also work inside cell editors and the filter popup's search box. A cut deletes the text only after the clipboard accepted it. The on-screen keyboard has no Ctrl key, so for touch turn on the [row menu](#row-menu): a long press on a row offers Copy and Copy with headers. Copy with headers always writes the header row, whatever `ClipboardCopyIncludesHeaders` says, and both produce the text Ctrl/Cmd+C would.
 
 `Clipboard` (an `IKumikoClipboard`) defaults to the platform clipboard; assign another implementation to redirect copy and paste, or `null` to turn them off:
 
@@ -1851,7 +1982,7 @@ kumiko.ContextMenuRequested += (sender, e) =>
 };
 ```
 
-MAUI cannot open a native menu at a point, so for rows the sample app shows an action sheet (`DisplayActionSheetAsync`); for column headers it turns on the grid's drawn [column menu](#column-menu), which opens at the pointer on every platform. Right clicks are reported on Windows, Mac Catalyst and iPad (with a mouse or trackpad), and Android (with a mouse); `CellTapped` and `HeaderTapped` report primary taps with the column and the position.
+MAUI cannot open a native menu at a point, so the sample app turns on the grid's drawn menus, which open at the pointer on every platform: the [column menu](#column-menu) for column headers and the [row menu](#row-menu) for rows (an action sheet, `DisplayActionSheetAsync`, answers the empty area). Right clicks are reported on Windows, Mac Catalyst and iPad (with a mouse or trackpad), and Android (with a mouse); `CellTapped` and `HeaderTapped` report primary taps with the column and the position.
 
 ### Column menu
 
@@ -1886,6 +2017,54 @@ kumiko.ColumnMenuOpening += (sender, e) =>
 ```
 
 While the menu is open it takes the keyboard (see [What each key does](#what-each-key-does)); a click or a tap outside it closes it without doing anything else, and a finger drag scrolls a menu taller than the grid. An item the menu chose runs after the menu closed, so an item can open another popup (as Filter does).
+
+### Row menu
+
+Set `IsRowMenuEnabled` and a right click, or a long press with a finger or a pen, on a data cell, a row's drag handle or a group header row opens the grid's own menu, drawn like the rest of the grid and opening at the pointer. On a data row it holds, in this order and as far as the grid allows: **Copy** and **Copy with headers** (disabled without a clipboard, see [Copying rows](#copying-rows)); **Edit**, which opens the editor of the cell you clicked (hidden for a read-only column or grid, a column whose edit triggers are `None`, and cells that are not edited, such as progress bars, selection boxes and action buttons); **Delete**, with `AllowDeleting` on in a writable grid, which runs the same path as the Delete key, `RowsDeleting` included, and reads "Delete 3 rows" when several are selected; the items of `LeadingSwipeItems` and `TrailingSwipeItems`, so swipe actions are reachable with a keyboard, a mouse and a screen reader; and the app's own `RowMenuItems`. A group header row offers **Expand all groups** and **Collapse all groups**. Every item acts on the selection, which the click already updated (a row that is not selected becomes the selection; a selected row keeps the whole selection).
+
+The right click or long press raises `ContextMenuRequested` first, and the menu opens only when no handler set `e.Handled`. The Menu key or Shift+F10 opens it for the current row, with the first item highlighted; with `IsColumnMenuEnabled` on too, the key opens the row menu while a row is current and the column menu otherwise. On a touch row where a long press starts a row drag (`AllowRowDragDrop`, or the drag handle), lift the finger without moving to open the menu; moving drags the row as before.
+
+The app's items follow a separator. In XAML declare `RowMenuItems` as `MauiRowMenuItem`s (MAUI) or `UnoRowMenuItem`s (Uno) with `Text`, `Command`, `CommandParameter` and `IsEnabled`: like swipe items, they get the grid's `BindingContext` (MAUI) or `DataContext` (Uno), so commands bind to the page's view model. A command's parameter is the row's data item (null on a group header row) unless the item sets `CommandParameter`, and an item is disabled while its command cannot execute. In code, `InputController.RowMenuItems` takes `DrawnMenuItem`s.
+
+<!-- snippet: maui -->
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Employees}" IsRowMenuEnabled="True">
+    <kumiko:KumikoDataGrid.RowMenuItems>
+        <kumiko:MauiRowMenuItem Text="Duplicate" Command="{Binding DuplicateCommand}" />
+        <kumiko:MauiRowMenuItem Text="Give a 5% raise" Command="{Binding RaiseCommand}" />
+    </kumiko:KumikoDataGrid.RowMenuItems>
+    <core:KumikoColumn Header="Name" PropertyName="Name" />
+</kumiko:KumikoDataGrid>
+```
+
+<!-- snippet: uno -->
+```xml
+<kumiko:KumikoDataGrid ItemsSource="{Binding Employees}" IsRowMenuEnabled="True">
+    <kumiko:KumikoDataGrid.RowMenuItems>
+        <kumiko:UnoRowMenuItem Text="Duplicate" Command="{Binding DuplicateCommand}" />
+    </kumiko:KumikoDataGrid.RowMenuItems>
+    <core:KumikoColumn Header="Name" PropertyName="Name" />
+</kumiko:KumikoDataGrid>
+``` `RowMenuOpening` runs last with the row (`DataItem`, null on a group header row; `RowIndex`, `Column`, `Region`) and the final items, which it can remove, reorder or add to, or it can set `Cancel`. The default items have the stable keys in `KumikoRowMenuItems`, and the swipe items start with `KumikoRowMenuItems.SwipeItemKeyPrefix`.
+
+```csharp
+kumiko.IsRowMenuEnabled = true;
+kumiko.AllowDeleting = true;
+kumiko.InputController.RowMenuItems.Add(new DrawnMenuItem("Refresh", "Refresh the list", () => kumiko.DataSource.Refresh()));
+kumiko.RowMenuOpening += (sender, e) =>
+{
+    // Rows of one employee only: the app's own item for them, and no Edit on the first row
+    if (e.DataItem is not Employee employee) return;
+    if (e.RowIndex == 0)
+    {
+        for (int i = e.Items.Count - 1; i >= 0; i--)
+            if (e.Items[i].Key == KumikoRowMenuItems.Edit) e.Items.RemoveAt(i);
+    }
+    e.Items.Add(new DrawnMenuItem("Mail", $"Email {employee.Name}", () => Console.WriteLine($"Email {employee.Name}")));
+};
+```
+
+The texts come from `KumikoStrings` (`RowMenuCopy`, `RowMenuCopyWithHeaders`, `RowMenuEdit`, `RowMenuDelete`, `RowMenuDeleteRows`, `RowMenuExpandAllGroups`, `RowMenuCollapseAllGroups`), and a screen reader hears "Row menu, 5 items" when it opens, each item the keyboard moves to, and "3 rows copied" after a copy. An app that shows its own menu for some rows from `ContextMenuRequested` sets `e.Handled` for them and leaves the rest to the built-in menu.
 
 ### Precedence: explicit properties versus style and theme
 

@@ -66,6 +66,29 @@ public sealed class GroupHeaderInfo
     /// <summary>The summary settings <see cref="SummaryAggregates"/> are indexed by.</summary>
     internal GroupSummarySettings? SummaryOwner { get; set; }
 
+    /// <summary>
+    /// The group's raw value of one of the caption summary's columns, for a header renderer that lays the caption out
+    /// itself (the number behind "Total: $1,200"). Returns null when the caption has no column for
+    /// <paramref name="propertyName"/> (ignoring case) with this <paramref name="type"/>, when the grid has no caption
+    /// summary, or when the group has no values yet.
+    /// </summary>
+    /// <param name="propertyName">The summarized column's property name.</param>
+    /// <param name="type">The aggregate to read: the same one the caption column asks for.</param>
+    /// <returns>The aggregate: the count for Count, a number for Sum and Average, the smallest or largest value for Min and Max.</returns>
+    public object? GetCaptionValue(string propertyName, SummaryType type)
+    {
+        if (SummaryOwner?.Caption is not { } caption || SummaryAggregates is not { } aggregates) return null;
+        int k = SummaryOwner.IndexOf(propertyName);
+        if (k < 0 || k >= aggregates.Length || aggregates[k] is not { } aggregate) return null;
+
+        foreach (var column in caption.Columns)
+        {
+            if (column.SummaryType == type && string.Equals(column.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase))
+                return aggregate.Result(column);
+        }
+        return null;
+    }
+
     private string ComposePath()
     {
         if (KeyPath == null) return ""; // not built by a source, and no path given

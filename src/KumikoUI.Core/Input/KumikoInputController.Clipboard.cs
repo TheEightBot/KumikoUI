@@ -35,11 +35,18 @@ public sealed partial class KumikoInputController
     /// <param name="selection">The selection to copy.</param>
     /// <param name="dataSource">The data source the selection belongs to.</param>
     /// <returns><c>true</c> when the text was handed over; <c>false</c> with no selected rows, no taker or no data.</returns>
-    public bool CopySelection(KumikoSelectionModel selection, KumikoSource dataSource)
+    public bool CopySelection(KumikoSelectionModel selection, KumikoSource dataSource) =>
+        CopyRows(selection, dataSource, CopyIncludesHeaders);
+
+    /// <summary>
+    /// <see cref="CopySelection"/> with the header row decided by the caller (the row menu's two copy items), whatever
+    /// <see cref="CopyIncludesHeaders"/> says.
+    /// </summary>
+    internal bool CopyRows(KumikoSelectionModel selection, KumikoSource dataSource, bool includeHeaders)
     {
         if (selection.SelectedRows.Count == 0) return false;
 
-        string text = KumikoTsvFormatter.Format(dataSource, selection.SelectedRows, CopyIncludesHeaders);
+        string text = KumikoTsvFormatter.Format(dataSource, selection.SelectedRows, includeHeaders);
         if (text.Length == 0) return false;
 
         var args = new ClipboardTextEventArgs(text);

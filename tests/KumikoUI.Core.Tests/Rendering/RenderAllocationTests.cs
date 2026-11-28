@@ -75,12 +75,103 @@ public class RenderAllocationTests
         Assert.Equal(0, MeasureSteadyState(grid.Render));
     }
 
+    private sealed class BadgeGroupHeaderRenderer : IGroupHeaderRenderer
+    {
+        private readonly KumikoPaint _badge = new() { Color = new KumikoColor(30, 120, 220) };
+        private readonly TextGroupHeaderRenderer _text = new();
+
+        public void Render(IDrawingContext ctx, in GroupHeaderRenderContext context)
+        {
+            var bounds = context.Bounds;
+            ctx.FillRoundRect(new KumikoRect(bounds.Right - 40f, bounds.Y + 8f, 36f, bounds.Height - 16f), 6f, _badge);
+            ctx.DrawTextInRect(context.CountText, bounds, context.Paints.GroupHeaderCount,
+                KumikoTextAlignment.Right, KumikoVerticalAlignment.Center);
+            if (context.IsPinned) ctx.DrawLine(bounds.X, bounds.Bottom, bounds.Right, bounds.Bottom, context.Paints.GroupHeaderText);
+            _text.Render(ctx, in context);
+        }
+    }
+
+    [Fact]
+    public void SteadyState_CustomGroupHeaderRenderer_AllocatesNothing()
+    {
+        // A grid-wide renderer, then one on the group level too (#332), with a scrolled grid so a sticky header is
+        // drawn over the rows: neither the context nor the renderer allocates.
+        var grid = CreateGrid(featured: true);
+        grid.Style.StickyGroupHeaders = true;
+        grid.Scroll.OffsetY = 300;
+        grid.Renderer.GroupHeaderRenderer = new BadgeGroupHeaderRenderer();
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+
+        grid.Source.GroupDescriptions[0].CustomHeaderRenderer = new BadgeGroupHeaderRenderer();
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
     [Fact]
     public void SteadyState_GridUsingEveryPerFrameFeature_AllocatesNothing()
     {
         var grid = CreateGrid(featured: true);
 
         Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    private sealed class BarSummaryRenderer : ISummaryCellRenderer
+    {
+        private readonly KumikoPaint _bar = new() { Color = new KumikoColor(200, 0, 0) };
+
+        public void Render(IDrawingContext ctx, in SummaryCellRenderContext context)
+        {
+            ctx.FillRect(new KumikoRect(context.Bounds.X, context.Bounds.Y, context.Bounds.Width / 2, 4), _bar);
+            ctx.DrawTextInRect(context.DisplayText, context.Bounds, context.TextPaint, context.TextAlignment,
+                KumikoVerticalAlignment.Center);
+        }
+    }
+
+    [Fact]
+    public void SteadyState_CustomSummaryCellRenderers_AllocateNothing()
+    {
+        // Table (top and bottom) and group summary cells drawn through the grid-wide renderer and a per-summary one (#334).
+        var grid = CreateGrid(featured: true);
+        grid.Renderer.SummaryCellRenderer = new BarSummaryRenderer();
+        grid.Source.TableSummaryRows[0].Columns[0].CustomCellRenderer = new BarSummaryRenderer();
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
+    [Fact]
+    public void SteadyState_CustomHeaderRenderer_AllocatesNothingInAllThreePanes()
+    {
+        // A custom header renderer (#333) on a left-frozen, a scrolling and a right-frozen column, one more through the
+        // grid-wide renderer, and a dragged header ghost drawn through it: none of it allocates per frame.
+        var grid = CreateGrid(featured: true);
+        var renderer = new MarkerHeaderRenderer();
+        grid.Source.Columns[0].CustomHeaderRenderer = renderer;
+        grid.Source.Columns[4].CustomHeaderRenderer = renderer;
+        grid.Source.Columns[9].CustomHeaderRenderer = renderer;
+        grid.Renderer.HeaderCellRenderer = renderer;
+        grid.Render(new NoOpDrawingContext());
+        Assert.True(renderer.Renders > 0);
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+        Assert.Equal(0, MeasureSteadyState(ctx => grid.Renderer.Render(ctx, grid.Source, grid.Scroll, grid.Selection,
+            grid.Style, dragColumnIndex: 4, dragColumnScreenX: 300)));
+    }
+
+    /// <summary>A header renderer that draws a marker and its header text, with paints it creates once.</summary>
+    private sealed class MarkerHeaderRenderer : IHeaderCellRenderer
+    {
+        private readonly KumikoPaint _marker = new() { Color = new KumikoColor(200, 40, 40) };
+        public int Renders { get; private set; }
+
+        public void Render(IDrawingContext ctx, in HeaderCellRenderContext context)
+        {
+            Renders++;
+            var b = context.Bounds;
+            ctx.FillRect(new KumikoRect(b.X, b.Y + 8, 4, 4), _marker);
+            ctx.DrawTextInRect(context.Column.Header, new KumikoRect(b.X + 8, b.Y, Math.Max(0, b.Width - 8), b.Height),
+                context.TextPaint, context.TextAlignment, KumikoVerticalAlignment.Center);
+        }
+
+        public float? MeasureWidth(IDrawingContext ctx, in HeaderCellRenderContext context) => 60f;
     }
 
     [Fact]
