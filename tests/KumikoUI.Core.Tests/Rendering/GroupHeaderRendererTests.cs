@@ -297,11 +297,12 @@ public class GroupHeaderRendererTests
 
         var fill = ctx.Fills.First(o => o.Color == new KumikoColor(1, 2, 3));
         Assert.NotNull(fill.Clip);
+        var clip = fill.Clip.GetValueOrDefault();
         var bounds = spy.Calls[0].Bounds;
-        Assert.Equal(bounds.X, fill.Clip!.Value.X, 0.01f);
-        Assert.Equal(bounds.Y + h.Style.GroupPanelHeight, fill.Clip.Value.Y, 0.01f);
-        Assert.Equal(bounds.Width, fill.Clip.Value.Width, 0.01f);
-        Assert.Equal(bounds.Height, fill.Clip.Value.Height, 0.01f);
+        Assert.Equal(bounds.X, clip.X, 0.01f);
+        Assert.Equal(bounds.Y + h.Style.GroupPanelHeight, clip.Y, 0.01f);
+        Assert.Equal(bounds.Width, clip.Width, 0.01f);
+        Assert.Equal(bounds.Height, clip.Height, 0.01f);
         Assert.Equal(0, ctx.UnbalancedRestores);
         Assert.Equal(0, ctx.SaveDepth);
     }
