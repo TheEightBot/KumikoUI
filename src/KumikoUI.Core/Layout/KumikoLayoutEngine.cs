@@ -339,21 +339,46 @@ public sealed class KumikoLayoutEngine
         float padding = headerStyle?.Padding ?? style.HeaderPadding;
         string header = column.Header ?? string.Empty;
 
+        var customRenderer = column.CustomHeaderRenderer ?? HeaderCellRenderer;
         var measured = column.HeaderMeasure;
-        if (!measured.IsCurrentFor(header, font))
+        if (!measured.IsCurrentFor(header, font, customRenderer))
         {
-            float textWidth = 0f;
-            if (header.Length > 0)
-            {
-                _headerMeasurePaint.Font = font;
-                textWidth = measuringContext.MeasureText(header, _headerMeasurePaint).Width;
-            }
-            measured.Store(header, font, textWidth);
+            _headerMeasurePaint.Font = font;
+            float? custom = customRenderer == null
+                ? null
+                : MeasureCustomHeader(customRenderer, column, measuringContext, style, headerStyle);
+            float textWidth = custom ?? (header.Length > 0
+                ? measuringContext.MeasureText(header, _headerMeasurePaint).Width
+                : 0f);
+            if (float.IsNaN(textWidth) || textWidth < 0f) textWidth = 0f;
+            measured.Store(header, font, textWidth, customRenderer);
         }
 
         float glyphs = (column.AllowSorting ? SortGlyphSpace : 0f) + (column.AllowFiltering ? FilterGlyphSpace : 0f)
             + HeaderMenuButtonSpace;
         return MathF.Ceiling(measured.TextWidth) + padding * 2 + glyphs + HeaderFitMargin;
+    }
+
+    /// <summary>The grid-wide header renderer (#333), consulted when a column has no renderer of its own.</summary>
+    internal IHeaderCellRenderer? HeaderCellRenderer { get; set; }
+
+    /// <summary>The grid's paints, handed to a header renderer that measures (#333); null uses a private set.</summary>
+    internal PaintCache? HeaderPaints { get; set; }
+
+    private PaintCache? _fallbackHeaderPaints;
+
+    // The width a custom header renderer asks for; null when it asks for none. Runs when the header is measured, not per frame.
+    private float? MeasureCustomHeader(IHeaderCellRenderer renderer, KumikoColumn column,
+        IDrawingContext measuringContext, KumikoStyle style, KumikoCellStyle? headerStyle)
+    {
+        var paints = HeaderPaints ?? (_fallbackHeaderPaints ??= new PaintCache());
+        paints.Update(style);
+        _headerMeasurePaint.Color = headerStyle?.TextColor ?? style.HeaderTextColor;
+        var empty = new KumikoRect(0f, 0f, 0f, style.HeaderHeight);
+        var context = new HeaderCellRenderContext(
+            empty, empty, column, -1, column.SortDirection, column.SortOrder, column.ActiveFilter != null,
+            style, headerStyle, paints, _headerMeasurePaint, headerStyle?.TextAlignment ?? KumikoTextAlignment.Left);
+        return renderer.MeasureWidth(measuringContext, in context);
     }
 
     /// <summary>

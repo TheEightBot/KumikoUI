@@ -216,7 +216,8 @@ internal static class SummaryText
                 SummaryType = colDesc.SummaryType,
                 Label = label,
                 Value = rawResult,
-                Text = text
+                Text = text,
+                Description = colDesc
             });
 
             if (values.TryGetValue(colDesc.PropertyName, out var existing))

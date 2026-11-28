@@ -215,7 +215,9 @@ public class StickyGroupHeaderTests
         Assert.Equal(h.Scroll.ViewportWidth, background.Rect.Width, 2);
         Assert.Equal(h.Scroll.ViewportWidth, background.Visible!.Value.Width, 2);
         // After every pane's rows: the frozen panes are drawn after the scrolling one.
-        int lastRowOp = ctx.Ops.Where(o => o.Clip is { } c && c.Width < h.Scroll.ViewportWidth && o.Rect.Bottom > RowsTop && o.Rect.Y < RowsTop + Row)
+        // (the header's own text runs are clipped to the header content, so they are not row ops)
+        int lastRowOp = ctx.Ops.Where(o => o.Clip is { } c && c.Width < h.Scroll.ViewportWidth && o.Rect.Bottom > RowsTop && o.Rect.Y < RowsTop + Row
+                && o.Color != h.Style.GroupHeaderTextColor && o.Color != h.Style.GroupHeaderCountColor)
             .Max(o => o.Index);
         Assert.True(background.Index > lastRowOp);
     }

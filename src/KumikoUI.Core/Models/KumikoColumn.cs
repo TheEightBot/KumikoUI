@@ -679,6 +679,20 @@ public class KumikoColumn : INotifyPropertyChanged
     }
     private Rendering.ICellRenderer? _customCellRenderer;
 
+    /// <summary>
+    /// Optional renderer for the content of this column's header, instead of the grid-wide
+    /// <see cref="KumikoRenderer.HeaderCellRenderer"/> and the built-in <see cref="Rendering.TextHeaderCellRenderer"/>.
+    /// Use it to add an icon, a subtitle or a marker to the header text. The grid keeps the background, the hover
+    /// feedback, the sort and filter glyphs, the resize grip and the reorder ghost. Can be set declaratively in XAML.
+    /// Changing it re-measures the header for auto-fit and redraws the grid.
+    /// </summary>
+    public Rendering.IHeaderCellRenderer? CustomHeaderRenderer
+    {
+        get => _customHeaderRenderer;
+        set => SetField(ref _customHeaderRenderer, value);
+    }
+    private Rendering.IHeaderCellRenderer? _customHeaderRenderer;
+
     // ── Per-column editing behaviour ───────────────────────────────
 
     /// <summary>

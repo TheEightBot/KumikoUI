@@ -23,6 +23,9 @@ public sealed partial class StylingPage : Page
     {
         this.InitializeComponent();
         kumiko.ItemsSource = ShowcaseData.CreateRows(500, n => $"Assets/Avatars/avatar-{n}.png");
+        // A custom header renderer (IHeaderCellRenderer): a badge before the header text and a subtitle line below it
+        kumiko.Columns.First(c => c.PropertyName == nameof(ShowcaseRow.Salary)).CustomHeaderRenderer =
+            new SubtitleHeaderRenderer { Symbol = "$", Subtitle = "USD per year" };
         ApplyStyle();
     }
 

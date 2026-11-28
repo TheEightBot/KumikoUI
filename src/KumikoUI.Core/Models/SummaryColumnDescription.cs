@@ -1,3 +1,5 @@
+using KumikoUI.Core.Rendering;
+
 namespace KumikoUI.Core.Models;
 
 /// <summary>
@@ -28,6 +30,14 @@ public sealed class SummaryColumnDescription
     /// and returns the aggregate result. Only used when SummaryType == Custom.
     /// </summary>
     public Func<IReadOnlyList<object?>, object?>? CustomAggregate { get; set; }
+
+    /// <summary>
+    /// Draws this summary's cell in place of the built-in text (#334). When several aggregates share a property, the
+    /// first one with a renderer draws the whole cell and reads the others from
+    /// <see cref="SummaryCellRenderContext.Summary"/>. Takes precedence over the grid-wide
+    /// <see cref="KumikoRenderer.SummaryCellRenderer"/>. Null (the default) uses the grid-wide renderer, then the text.
+    /// </summary>
+    public ISummaryCellRenderer? CustomCellRenderer { get; set; }
 
     /// <summary>Creates an empty description; set <see cref="PropertyName"/> before use.</summary>
     public SummaryColumnDescription() { }
