@@ -26,6 +26,10 @@ KumikoUI.Maui.KumikoDataGrid.FindNext() -> bool
 KumikoUI.Maui.KumikoDataGrid.FindPrevious() -> bool
 KumikoUI.Maui.KumikoDataGrid.FullSwipeMode.get -> KumikoUI.Core.Input.KumikoFullSwipeMode
 KumikoUI.Maui.KumikoDataGrid.FullSwipeMode.set -> void
+KumikoUI.Maui.KumikoDataGrid.GroupHeaderRenderer.get -> KumikoUI.Core.Rendering.IGroupHeaderRenderer?
+KumikoUI.Maui.KumikoDataGrid.GroupHeaderRenderer.set -> void
+KumikoUI.Maui.KumikoDataGrid.HeaderCellRenderer.get -> KumikoUI.Core.Rendering.IHeaderCellRenderer?
+KumikoUI.Maui.KumikoDataGrid.HeaderCellRenderer.set -> void
 KumikoUI.Maui.KumikoDataGrid.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Maui.KumikoDataGrid.HorizontalScrollBarVisibility.set -> void
 KumikoUI.Maui.KumikoDataGrid.IncrementalSource.get -> KumikoUI.Core.Data.IKumikoIncrementalSource?
@@ -111,6 +115,8 @@ static readonly KumikoUI.Maui.KumikoDataGrid.CellVerticalPaddingProperty -> Micr
 static readonly KumikoUI.Maui.KumikoDataGrid.EmptyViewRendererProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.EmptyViewTextProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.FullSwipeModeProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.GroupHeaderRendererProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.HeaderCellRendererProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.HorizontalScrollBarVisibilityProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.IncrementalSourceProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.IsBusyProperty -> Microsoft.Maui.Controls.BindableProperty!

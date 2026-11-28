@@ -25,6 +25,7 @@
             <Button Text="Add Group Summary" Clicked="OnAddGroupSummaryClicked" Margin="4,0,0,4" />
             <Button Text="Toggle Filtering" Clicked="OnToggleFilteringClicked" Margin="4,0,0,4" />
             <Button Text="Toggle Grid Lines" Clicked="OnToggleGridLinesClicked" Margin="4,0,0,4" />
+            <Button Text="Toggle Badge Headers" Clicked="OnToggleBadgeHeadersClicked" Margin="4,0,0,4" />
         </FlexLayout>
         </ScrollView>
 

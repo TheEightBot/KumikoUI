@@ -34,6 +34,7 @@
                 <Button x:Name="groupSummaryToggle" Content="Add Group Summary" Click="OnAddGroupSummaryClicked" />
                 <Button x:Name="filterToggle" Content="Filtering: ON" Click="OnToggleFilteringClicked" />
                 <Button Content="Toggle Grid Lines" Click="OnToggleGridLinesClicked" />
+                <Button Content="Toggle Badge Headers" Click="OnToggleBadgeHeadersClicked" />
             </StackPanel>
         </ScrollViewer>
 

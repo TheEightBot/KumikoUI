@@ -26,6 +26,10 @@ KumikoUI.Uno.KumikoDataGrid.FindNext() -> bool
 KumikoUI.Uno.KumikoDataGrid.FindPrevious() -> bool
 KumikoUI.Uno.KumikoDataGrid.FullSwipeMode.get -> KumikoUI.Core.Input.KumikoFullSwipeMode
 KumikoUI.Uno.KumikoDataGrid.FullSwipeMode.set -> void
+KumikoUI.Uno.KumikoDataGrid.GroupHeaderRenderer.get -> KumikoUI.Core.Rendering.IGroupHeaderRenderer?
+KumikoUI.Uno.KumikoDataGrid.GroupHeaderRenderer.set -> void
+KumikoUI.Uno.KumikoDataGrid.HeaderCellRenderer.get -> KumikoUI.Core.Rendering.IHeaderCellRenderer?
+KumikoUI.Uno.KumikoDataGrid.HeaderCellRenderer.set -> void
 KumikoUI.Uno.KumikoDataGrid.HorizontalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Uno.KumikoDataGrid.HorizontalScrollBarVisibility.set -> void
 KumikoUI.Uno.KumikoDataGrid.IncrementalSource.get -> KumikoUI.Core.Data.IKumikoIncrementalSource?
@@ -111,6 +115,8 @@ static readonly KumikoUI.Uno.KumikoDataGrid.CellVerticalPaddingProperty -> Micro
 static readonly KumikoUI.Uno.KumikoDataGrid.EmptyViewRendererProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.EmptyViewTextProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.FullSwipeModeProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.GroupHeaderRendererProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.HeaderCellRendererProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.HorizontalScrollBarVisibilityProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.IncrementalSourceProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.IsBusyProperty -> Microsoft.UI.Xaml.DependencyProperty!
