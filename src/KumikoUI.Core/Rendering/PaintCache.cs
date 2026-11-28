@@ -149,12 +149,16 @@ public sealed class PaintCache
     internal KumikoPaint GroupChipRemoveBackground { get; private set; } = new();
     internal KumikoPaint GroupChipRemove { get; private set; } = new();
     internal KumikoPaint GroupChipSeparator { get; private set; } = new();
-    internal KumikoPaint GroupHeaderBackground { get; private set; } = new();
+    /// <summary>The fill of a group header row.</summary>
+    public KumikoPaint GroupHeaderBackground { get; private set; } = new();
     internal KumikoPaint GroupChevronBackground { get; private set; } = new();
     internal KumikoPaint GroupChevron { get; private set; } = new();
-    internal KumikoPaint GroupHeaderText { get; private set; } = new();
-    internal KumikoPaint GroupHeaderCount { get; private set; } = new();
-    internal KumikoPaint CaptionSummaryText { get; private set; } = new();
+    /// <summary>The paint of a group header's title text.</summary>
+    public KumikoPaint GroupHeaderText { get; private set; } = new();
+    /// <summary>The paint of a group header's item count text.</summary>
+    public KumikoPaint GroupHeaderCount { get; private set; } = new();
+    /// <summary>The paint of a group header's caption summary text.</summary>
+    public KumikoPaint CaptionSummaryText { get; private set; } = new();
     internal KumikoPaint SelectedCellText { get; private set; } = new();
     internal KumikoPaint SummaryBorder { get; private set; } = new();
     internal KumikoPaint SummaryLabel { get; private set; } = new();

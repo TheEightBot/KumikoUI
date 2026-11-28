@@ -529,7 +529,7 @@ public sealed partial class KumikoRenderer : IDisposable
             for (int i = _pinnedGroupHeaders.Count - 1; i >= 0; i--)
             {
                 var pinned = _pinnedGroupHeaders[i];
-                DrawGroupHeaderRow(ctx, dataSource, pinned.Row, pinned.Y, allCols, scroll, style, frozenWidth, handleOffset);
+                DrawGroupHeaderRow(ctx, dataSource, pinned.Row, pinned.Y, allCols, scroll, style, frozenWidth, handleOffset, isPinned: true);
             }
             ctx.Restore();
         }
@@ -1258,7 +1258,8 @@ public sealed partial class KumikoRenderer : IDisposable
         ScrollState scroll,
         KumikoStyle style,
         float frozenWidth,
-        float handleOffset = 0)
+        float handleOffset = 0,
+        bool isPinned = false)
     {
         var groupInfo = dataSource.GetGroupHeaderInfo(row);
         if (groupInfo == null) return;
@@ -1294,32 +1295,12 @@ public sealed partial class KumikoRenderer : IDisposable
             new KumikoRect(chevronX, chevronCenterY - chevronSize / 2, chevronSize, chevronSize),
             _paintCache.GroupChevron);
 
-        // Draw group text in up to three runs: "Header: DisplayText", " (count)" and the caption summary, each
-        // with its own paint (group header text, count, caption summary).
+        // The content right of the chevron is drawn by the group header renderer, clipped to its bounds
         float textX = indent + chevronSize + style.CellPadding;
         float textRight = areaWidth - style.CellPadding;
-
-        string? captionLabel = groupInfo.GetCaptionLabel(KumikoSource.GetCaptionSummaryText(groupInfo));
-
-        textX = DrawGroupHeaderRun(ctx, groupInfo.GetTitle(), _paintCache.GroupHeaderText, textX, textRight, rowY, style);
-        textX = DrawGroupHeaderRun(ctx, groupInfo.GetCountText(), _paintCache.GroupHeaderCount, textX, textRight, rowY, style);
-        if (captionLabel != null)
-            DrawGroupHeaderRun(ctx, captionLabel, _paintCache.CaptionSummaryText, textX, textRight, rowY, style);
-    }
-
-    /// <summary>
-    /// Draw one run of a group header's text starting at <paramref name="x"/> and return where the next run
-    /// starts; returns <paramref name="right"/> when the run did not fit, so nothing is drawn after it.
-    /// </summary>
-    private static float DrawGroupHeaderRun(
-        IDrawingContext ctx, string text, KumikoPaint paint, float x, float right, float rowY, KumikoStyle style)
-    {
-        if (x >= right) return right;
-
-        float width = ctx.MeasureText(text, paint).Width;
-        var rect = new KumikoRect(x, rowY, right - x, style.RowHeight);
-        ctx.DrawTextInRect(text, rect, paint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
-        return x + width;
+        DrawGroupHeaderContent(ctx, dataSource, groupInfo, row, isPinned,
+            new KumikoRect(areaLeft, rowY, areaWidth, style.RowHeight),
+            new KumikoRect(textX, rowY, Math.Max(0f, textRight - textX), style.RowHeight), style);
     }
 
     private void DrawGridLines(

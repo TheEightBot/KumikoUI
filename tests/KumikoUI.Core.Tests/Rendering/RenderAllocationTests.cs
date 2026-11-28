@@ -75,6 +75,37 @@ public class RenderAllocationTests
         Assert.Equal(0, MeasureSteadyState(grid.Render));
     }
 
+    private sealed class BadgeGroupHeaderRenderer : IGroupHeaderRenderer
+    {
+        private readonly KumikoPaint _badge = new() { Color = new KumikoColor(30, 120, 220) };
+        private readonly TextGroupHeaderRenderer _text = new();
+
+        public void Render(IDrawingContext ctx, in GroupHeaderRenderContext context)
+        {
+            var bounds = context.Bounds;
+            ctx.FillRoundRect(new KumikoRect(bounds.Right - 40f, bounds.Y + 8f, 36f, bounds.Height - 16f), 6f, _badge);
+            ctx.DrawTextInRect(context.CountText, bounds, context.Paints.GroupHeaderCount,
+                KumikoTextAlignment.Right, KumikoVerticalAlignment.Center);
+            if (context.IsPinned) ctx.DrawLine(bounds.X, bounds.Bottom, bounds.Right, bounds.Bottom, context.Paints.GroupHeaderText);
+            _text.Render(ctx, in context);
+        }
+    }
+
+    [Fact]
+    public void SteadyState_CustomGroupHeaderRenderer_AllocatesNothing()
+    {
+        // A grid-wide renderer, then one on the group level too (#332), with a scrolled grid so a sticky header is
+        // drawn over the rows: neither the context nor the renderer allocates.
+        var grid = CreateGrid(featured: true);
+        grid.Style.StickyGroupHeaders = true;
+        grid.Scroll.OffsetY = 300;
+        grid.Renderer.GroupHeaderRenderer = new BadgeGroupHeaderRenderer();
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+
+        grid.Source.GroupDescriptions[0].CustomHeaderRenderer = new BadgeGroupHeaderRenderer();
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
     [Fact]
     public void SteadyState_GridUsingEveryPerFrameFeature_AllocatesNothing()
     {

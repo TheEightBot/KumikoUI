@@ -121,6 +121,7 @@
 	<!-- Code shared with SampleApp.Uno, so both samples draw the same grid (the Grouping page's style). -->
 	<ItemGroup>
 		<Compile Include="../Shared/GroupingTheme.cs" Link="Shared/GroupingTheme.cs" />
+		<Compile Include="../Shared/CountBadgeGroupHeaderRenderer.cs" Link="Shared/CountBadgeGroupHeaderRenderer.cs" />
 		<Compile Include="../Shared/ShowcaseData.cs" Link="Shared/ShowcaseData.cs" />
 		<Compile Include="../Shared/RemoteOrders.cs" Link="Shared/RemoteOrders.cs" />
 		<Compile Include="../Shared/AutoColumnsData.cs" Link="Shared/AutoColumnsData.cs" />
