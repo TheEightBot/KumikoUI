@@ -6,8 +6,8 @@ namespace KumikoUI.Core.Components;
 /// </summary>
 /// <remarks>
 /// The default menu holds, in this order and as far as the column and the grid allow: sort ascending, sort
-/// descending and clear sort; filter; group by this column or ungroup; hide and auto-fit width. Separators sit
-/// between the groups and have an empty key.
+/// descending and clear sort; filter; group by this column or ungroup; hide, auto-fit width and columns (the column
+/// chooser). Separators sit between the groups and have an empty key.
 /// </remarks>
 public static class KumikoColumnMenuItems
 {
@@ -34,4 +34,7 @@ public static class KumikoColumnMenuItems
 
     /// <summary>Sizes the column to fit its header and its cells, as a double click on its resize grip does.</summary>
     public const string AutoFit = "AutoFit";
+
+    /// <summary>Opens the column chooser below the column's header, to show, hide and reorder every column.</summary>
+    public const string Columns = "Columns";
 }

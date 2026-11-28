@@ -243,7 +243,7 @@ public class ColumnMenuTests
         {
             KumikoColumnMenuItems.SortAscending, KumikoColumnMenuItems.SortDescending, KumikoColumnMenuItems.ClearSort,
             "-", KumikoColumnMenuItems.Filter, "-", KumikoColumnMenuItems.GroupBy, "-",
-            KumikoColumnMenuItems.Hide, KumikoColumnMenuItems.AutoFit,
+            KumikoColumnMenuItems.Hide, KumikoColumnMenuItems.AutoFit, KumikoColumnMenuItems.Columns,
         }, Keys(menu));
         Assert.Equal("Sort Smallest to Largest", ItemOf(menu, KumikoColumnMenuItems.SortAscending).Text);
         Assert.Equal("Sort Largest to Smallest", ItemOf(menu, KumikoColumnMenuItems.SortDescending).Text);
@@ -263,7 +263,7 @@ public class ColumnMenuTests
 
         var menu = OpenAgeMenu(g);
 
-        Assert.Equal(new[] { KumikoColumnMenuItems.Hide }, Keys(menu));
+        Assert.Equal(new[] { KumikoColumnMenuItems.Hide, KumikoColumnMenuItems.Columns }, Keys(menu));
     }
 
     [Fact]
@@ -538,7 +538,7 @@ public class ColumnMenuTests
 
         Assert.Equal(new[]
         {
-            "Age column menu, 7 items",          // ten entries less three separators
+            "Age column menu, 8 items",          // eleven entries less three separators
             "Sort Smallest to Largest, checked",
             "Sort Largest to Smallest",
             "Clear Sort",

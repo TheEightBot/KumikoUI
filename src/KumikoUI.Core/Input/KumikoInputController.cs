@@ -283,7 +283,7 @@ public sealed partial class KumikoInputController
     /// </summary>
     public ITextInputSession? ActiveTextInput => _activeFilterPopup != null
         ? _activeFilterPopup.ActiveTextInput
-        : SearchPanelTextInput ?? _editSession?.ActiveTextInput;
+        : ColumnChooserTextInput ?? SearchPanelTextInput ?? _editSession?.ActiveTextInput;
 
     /// <summary>
     /// Raised when a column edge is double-clicked, requesting auto-fit width. The built-in hosts answer it with
@@ -539,6 +539,8 @@ public sealed partial class KumikoInputController
         if (_popupManager.HandleKey(e))
             return;
         if (TryHandleSearchKey(e, scroll, selection, style, dataSource)) // Ctrl/Cmd+F (#317)
+            return;
+        if (TryHandleColumnChooserKey(e, scroll, selection, style, dataSource)) // ColumnChooserShortcut (#335)
             return;
 
         int totalRows = dataSource.RowCount;
@@ -2065,6 +2067,7 @@ public sealed partial class KumikoInputController
         // Close any existing popup
         EnsurePopupRedrawWired();
         CloseFilterPopup();
+        CloseColumnChooser(); // one of the two at a time (#335)
 
         var popup = new DrawnFilterPopup(column, dataSource);
         popup.ApplyTheme(style);
@@ -2312,7 +2315,7 @@ public sealed partial class KumikoInputController
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(dataSource);
         if (_editSession != null && _editSession.IsEditing) return true;
-        if (_activeFilterPopup != null) return true; // Tab moves through the filter popup (#325)
+        if (_activeFilterPopup != null || _columnChooser != null) return true; // Tab moves through the popup (#325, #335)
         return FindNextTabStop(selection.CurrentCell, dataSource, backwards ? -1 : 1).IsValid;
     }
 

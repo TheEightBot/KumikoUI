@@ -418,6 +418,13 @@ public sealed partial class KumikoSelectionModel
             column = Math.Clamp(_currentCell.Column, 0, Math.Max(0, Source.Columns.Count - 1));
             _currentColumn = column < Source.Columns.Count ? Source.Columns[column] : null;
         }
+        // A hidden column cannot hold the current cell: the nearest visible one, right first, takes it (#335)
+        if (column >= 0 && column < Source.Columns.Count && !Source.Columns[column].IsVisible &&
+            Source.NearestVisibleColumnIndex(column) is var visible and >= 0)
+        {
+            column = visible;
+            _currentColumn = Source.Columns[visible];
+        }
         _currentCell = new CellPosition(currentRow, column);
         if (!previousCell.Equals(_currentCell)) CurrentCellChanged?.Invoke(this, EventArgs.Empty);
     }
