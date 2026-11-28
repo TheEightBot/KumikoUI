@@ -125,6 +125,7 @@ public partial class KumikoDataGrid : UserControl
         _inputController.CursorChanged += OnInputControllerCursorChanged;
         _inputController.HapticFeedbackRequested += OnHapticFeedbackRequested; // KumikoDataGrid.Haptics.cs
         InitializeColumnMenu(); // KumikoDataGrid.ColumnMenu.cs
+        InitializeColumnChooser(); // KumikoDataGrid.ColumnChooser.cs (#335)
         InitializeDeleting(); // KumikoDataGrid.Deleting.cs
         InitializePullToRefresh(); // KumikoDataGrid.PullToRefresh.cs
         InitializeSwipe(); // KumikoDataGrid.Swipe.cs (#329)

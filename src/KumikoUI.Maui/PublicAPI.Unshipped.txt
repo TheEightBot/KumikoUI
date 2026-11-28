@@ -13,9 +13,17 @@ KumikoUI.Maui.KumikoDataGrid.BusyIndicatorDelay.get -> System.TimeSpan
 KumikoUI.Maui.KumikoDataGrid.BusyIndicatorDelay.set -> void
 KumikoUI.Maui.KumikoDataGrid.CellVerticalPadding.get -> double
 KumikoUI.Maui.KumikoDataGrid.CellVerticalPadding.set -> void
+KumikoUI.Maui.KumikoDataGrid.CloseColumnChooser() -> void
 KumikoUI.Maui.KumikoDataGrid.CloseSearchPanel() -> void
 KumikoUI.Maui.KumikoDataGrid.CloseSwipe() -> void
+KumikoUI.Maui.KumikoDataGrid.ColumnChooserClosed -> System.EventHandler?
+KumikoUI.Maui.KumikoDataGrid.ColumnChooserOnHeaderContext.get -> bool
+KumikoUI.Maui.KumikoDataGrid.ColumnChooserOnHeaderContext.set -> void
+KumikoUI.Maui.KumikoDataGrid.ColumnChooserOpened -> System.EventHandler?
+KumikoUI.Maui.KumikoDataGrid.ColumnChooserShortcut.get -> KumikoUI.Core.Input.KumikoShortcut?
+KumikoUI.Maui.KumikoDataGrid.ColumnChooserShortcut.set -> void
 KumikoUI.Maui.KumikoDataGrid.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
+KumikoUI.Maui.KumikoDataGrid.ColumnsChanged -> System.EventHandler<KumikoUI.Core.Models.KumikoColumnsChangedEventArgs!>?
 KumikoUI.Maui.KumikoDataGrid.DeleteRows(System.Collections.Generic.IEnumerable<object!>! items) -> bool
 KumikoUI.Maui.KumikoDataGrid.DeleteSelectedRows() -> bool
 KumikoUI.Maui.KumikoDataGrid.EmptyViewRenderer.get -> KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer?
@@ -34,6 +42,7 @@ KumikoUI.Maui.KumikoDataGrid.InvalidateRowHeight(object! item) -> void
 KumikoUI.Maui.KumikoDataGrid.InvalidateRowHeights() -> void
 KumikoUI.Maui.KumikoDataGrid.IsBusy.get -> bool
 KumikoUI.Maui.KumikoDataGrid.IsBusy.set -> void
+KumikoUI.Maui.KumikoDataGrid.IsColumnChooserOpen.get -> bool
 KumikoUI.Maui.KumikoDataGrid.IsColumnMenuEnabled.get -> bool
 KumikoUI.Maui.KumikoDataGrid.IsColumnMenuEnabled.set -> void
 KumikoUI.Maui.KumikoDataGrid.IsLoadingMore.get -> bool
@@ -87,6 +96,9 @@ KumikoUI.Maui.KumikoDataGrid.SelectOnRowClick.get -> bool
 KumikoUI.Maui.KumikoDataGrid.SelectOnRowClick.set -> void
 KumikoUI.Maui.KumikoDataGrid.ShowBusyDuringViewUpdate.get -> bool
 KumikoUI.Maui.KumikoDataGrid.ShowBusyDuringViewUpdate.set -> void
+KumikoUI.Maui.KumikoDataGrid.ShowColumnChooser() -> void
+KumikoUI.Maui.KumikoDataGrid.ShowColumnChooser(Microsoft.Maui.Graphics.Rect anchor) -> void
+KumikoUI.Maui.KumikoDataGrid.ShowColumnChooserCommand.get -> System.Windows.Input.ICommand!
 KumikoUI.Maui.KumikoDataGrid.ShowColumnMenu(KumikoUI.Core.Models.KumikoColumn! column) -> bool
 KumikoUI.Maui.KumikoDataGrid.ShowColumnMenuButton.get -> bool
 KumikoUI.Maui.KumikoDataGrid.ShowColumnMenuButton.set -> void
@@ -108,6 +120,7 @@ static readonly KumikoUI.Maui.KumikoDataGrid.AllowSwipingProperty -> Microsoft.M
 static readonly KumikoUI.Maui.KumikoDataGrid.AutoGenerateColumnsProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.BusyIndicatorDelayProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.CellVerticalPaddingProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.ColumnChooserOnHeaderContextProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.EmptyViewRendererProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.EmptyViewTextProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.FullSwipeModeProperty -> Microsoft.Maui.Controls.BindableProperty!
