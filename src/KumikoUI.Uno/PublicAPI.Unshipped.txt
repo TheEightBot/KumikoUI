@@ -46,6 +46,8 @@ KumikoUI.Uno.KumikoDataGrid.IsPullToRefreshEnabled.get -> bool
 KumikoUI.Uno.KumikoDataGrid.IsPullToRefreshEnabled.set -> void
 KumikoUI.Uno.KumikoDataGrid.IsRefreshing.get -> bool
 KumikoUI.Uno.KumikoDataGrid.IsRefreshing.set -> void
+KumikoUI.Uno.KumikoDataGrid.IsRowMenuEnabled.get -> bool
+KumikoUI.Uno.KumikoDataGrid.IsRowMenuEnabled.set -> void
 KumikoUI.Uno.KumikoDataGrid.LeadingSwipeItems.get -> System.Collections.Generic.IList<KumikoUI.Core.Rendering.IActionButtonDefinition!>!
 KumikoUI.Uno.KumikoDataGrid.LoadMoreAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSize.get -> int
@@ -77,6 +79,8 @@ KumikoUI.Uno.KumikoDataGrid.RowHeightMode.get -> KumikoUI.Core.Models.KumikoRowH
 KumikoUI.Uno.KumikoDataGrid.RowHeightMode.set -> void
 KumikoUI.Uno.KumikoDataGrid.RowHeightResolver.get -> KumikoUI.Core.Models.KumikoRowHeightResolver?
 KumikoUI.Uno.KumikoDataGrid.RowHeightResolver.set -> void
+KumikoUI.Uno.KumikoDataGrid.RowMenuItems.get -> System.Collections.ObjectModel.ObservableCollection<KumikoUI.Uno.UnoRowMenuItem!>!
+KumikoUI.Uno.KumikoDataGrid.RowMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoRowMenuOpeningEventArgs!>?
 KumikoUI.Uno.KumikoDataGrid.RowsDeleted -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletedEventArgs!>?
 KumikoUI.Uno.KumikoDataGrid.RowsDeleting -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletingEventArgs!>?
 KumikoUI.Uno.KumikoDataGrid.RowsDeletingCommand.get -> System.Windows.Input.ICommand?
@@ -108,6 +112,20 @@ KumikoUI.Uno.KumikoDataGrid.SwipeStarting -> System.EventHandler<KumikoUI.Core.I
 KumikoUI.Uno.KumikoDataGrid.TrailingSwipeItems.get -> System.Collections.Generic.IList<KumikoUI.Core.Rendering.IActionButtonDefinition!>!
 KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility
 KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibility.set -> void
+KumikoUI.Uno.UnoRowMenuItem
+KumikoUI.Uno.UnoRowMenuItem.Action.get -> System.Action?
+KumikoUI.Uno.UnoRowMenuItem.Action.set -> void
+KumikoUI.Uno.UnoRowMenuItem.Command.get -> System.Windows.Input.ICommand?
+KumikoUI.Uno.UnoRowMenuItem.Command.set -> void
+KumikoUI.Uno.UnoRowMenuItem.CommandParameter.get -> object?
+KumikoUI.Uno.UnoRowMenuItem.CommandParameter.set -> void
+KumikoUI.Uno.UnoRowMenuItem.IsEnabled.get -> bool
+KumikoUI.Uno.UnoRowMenuItem.IsEnabled.set -> void
+KumikoUI.Uno.UnoRowMenuItem.Key.get -> string!
+KumikoUI.Uno.UnoRowMenuItem.Key.set -> void
+KumikoUI.Uno.UnoRowMenuItem.Text.get -> string!
+KumikoUI.Uno.UnoRowMenuItem.Text.set -> void
+KumikoUI.Uno.UnoRowMenuItem.UnoRowMenuItem() -> void
 static readonly KumikoUI.Uno.KumikoDataGrid.AllowDeletingProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.AllowSearchPanelProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.AllowSwipingProperty -> Microsoft.UI.Xaml.DependencyProperty!
@@ -126,6 +144,7 @@ static readonly KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabledProperty -> Micro
 static readonly KumikoUI.Uno.KumikoDataGrid.IsLoadingMoreProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.IsPullToRefreshEnabledProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.IsRefreshingProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.IsRowMenuEnabledProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSizeProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandParameterProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
@@ -150,3 +169,7 @@ static readonly KumikoUI.Uno.KumikoDataGrid.ShowSelectionColumnProperty -> Micro
 static readonly KumikoUI.Uno.KumikoDataGrid.SummaryCellRendererProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.SwipeItemWidthProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibilityProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.UnoRowMenuItem.CommandParameterProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.UnoRowMenuItem.CommandProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.UnoRowMenuItem.IsEnabledProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.UnoRowMenuItem.TextProperty -> Microsoft.UI.Xaml.DependencyProperty!

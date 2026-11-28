@@ -179,6 +179,12 @@
                 </core:TableSummaryRow>
             </dg:KumikoDataGrid.TableSummaryRows>
 
+            <!-- The app's items of the row menu: the grid hands them its BindingContext, and the command receives the row's item -->
+            <dg:KumikoDataGrid.RowMenuItems>
+                <dg:MauiRowMenuItem Key="Duplicate" Text="Duplicate" Command="{Binding DuplicateCommand}" />
+                <dg:MauiRowMenuItem Key="Raise" Text="Give a 5% raise" Command="{Binding RaiseCommand}" />
+            </dg:KumikoDataGrid.RowMenuItems>
+
         </dg:KumikoDataGrid>
     </Grid>
 

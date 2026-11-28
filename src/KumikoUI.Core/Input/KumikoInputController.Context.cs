@@ -126,6 +126,7 @@ public sealed partial class KumikoInputController
             trigger, hit.Region, row, hit.ColumnIndex, hit.Column, item, e.X, e.Y, e.DeviceType);
         ContextRequested?.Invoke(this, args);
         OpenColumnMenuForContextRequest(args, scroll, selection, style, dataSource);
+        OpenRowMenuForContextRequest(args, scroll, selection, style, dataSource); // #331
         return true;
     }
 }
