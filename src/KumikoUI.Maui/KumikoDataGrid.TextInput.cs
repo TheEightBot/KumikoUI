@@ -38,6 +38,8 @@ public partial class KumikoDataGrid
             CanHandleTab = backwards => _inputController.WouldHandleTab(_selection, _dataSource, backwards),
             // Command+F opens the search panel only when the grid allows it (#317)
             CanHandleFind = () => _inputController.AllowSearchPanel || _inputController.IsSearchPanelOpen,
+            // Command+Backspace deletes the selected rows only when the grid allows it and no editor is open (#328)
+            CanHandleDelete = () => _inputController.AllowDeleting && _selection.SelectedRows.Count > 0 && !_editSession.IsEditing,
         };
         return responder;
     }

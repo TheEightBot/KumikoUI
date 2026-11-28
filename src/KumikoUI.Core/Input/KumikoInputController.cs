@@ -787,6 +787,10 @@ public sealed partial class KumikoInputController
             case KumikoKey.ContextMenu:
                 e.Handled = TryOpenColumnMenuFromKeyboard(scroll, selection, style, dataSource);
                 break;
+            case KumikoKey.Delete:
+            case KumikoKey.Backspace:
+                e.Handled = TryHandleDeleteKey(e, scroll, selection, style, dataSource); // #328
+                break;
             case KumikoKey.C when e.HasCommand:
                 // Ctrl/Cmd+C copies the selected rows; with nothing selected the key is left to the host.
                 if (CopySelection(selection, dataSource))

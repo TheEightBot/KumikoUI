@@ -43,6 +43,23 @@ public partial class MainPage : ContentPage
 
 		// Right click (or a long press on touch) on a row or the empty area opens a context menu
 		kumiko.ContextMenuRequested += OnGridContextMenuRequested;
+
+		// The Delete key (Command+Backspace on a Mac keyboard) removes the selected rows, after a confirmation for several
+		kumiko.AllowDeleting = true;
+		kumiko.RowsDeleting += OnRowsDeleting;
+	}
+
+	// ── Deleting rows ──
+
+	// RowsDeleting is synchronous, so a confirmation cancels the delete, asks, and removes the items itself
+	private async void OnRowsDeleting(object? sender, KumikoRowsDeletingEventArgs e)
+	{
+		if (e.Trigger != KumikoRowsDeleteTrigger.Key || e.Items.Count < 2) return;
+
+		e.Cancel = true;
+		var items = e.Items;
+		if (await DisplayAlertAsync("Delete rows", $"Delete {items.Count} rows?", "Delete", "Cancel"))
+			kumiko.DataSource.RemoveItems(items);
 	}
 
 	// ── Column menu ──
@@ -74,8 +91,9 @@ public partial class MainPage : ContentPage
 			var choice = await DisplayActionSheetAsync(employee.Name, "Cancel", delete, duplicate, raise);
 			if (choice == delete)
 			{
-				foreach (var item in selected.Count > 0 ? selected : new List<Employee> { employee })
-					_viewModel.Employees.Remove(item);
+				// The same path as the Delete key: RowsDeleting, one view rebuild, then the next row is selected
+				if (!kumiko.Selection.IsSelected(employee)) kumiko.Selection.Select(employee);
+				kumiko.DeleteSelectedRows();
 			}
 			else if (choice == duplicate)
 			{

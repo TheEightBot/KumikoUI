@@ -39,6 +39,12 @@ public sealed partial class EventsPage : Page
         kumiko.RowDoubleTapped += (_, e) => Log($"RowDoubleTapped: row {e.RowIndex}");
         kumiko.ValidationFailed += (_, e) => Log(ShowcaseData.Describe(e));
         kumiko.CellValueChanged += (_, e) => Log($"CellValueChanged: {e.Column.Header} = {e.NewValue}");
+
+        // The Delete key (Command+Backspace on a Mac keyboard) removes the selected rows from ItemsSource; RowsDeleting
+        // could cancel it, RowsDeleted reports what happened
+        kumiko.AllowDeleting = true;
+        kumiko.RowsDeleting += (_, e) => Log($"RowsDeleting: {e.Items.Count} row(s), trigger {e.Trigger}");
+        kumiko.RowsDeleted += (_, e) => Log($"RowsDeleted: {e.Items.Count} row(s), {e.Result}");
         kumiko.SelectionChanged += (_, e) =>
         {
             Log(ShowcaseData.Describe(e));
