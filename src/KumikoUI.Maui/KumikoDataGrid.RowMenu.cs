@@ -75,10 +75,8 @@ public partial class KumikoDataGrid
     private void SyncRowMenuItemContexts()
     {
         var context = BindingContext;
-        foreach (var item in _rowMenuItems)
-        {
-            if (!ReferenceEquals(item.BindingContext, context)) item.BindingContext = context;
-        }
+        foreach (var item in _rowMenuItems.Where(i => !ReferenceEquals(i.BindingContext, context)))
+            item.BindingContext = context;
     }
 
     private void OnRowMenuItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => SyncRowMenuItemContexts();
