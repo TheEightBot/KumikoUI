@@ -126,16 +126,15 @@ public sealed partial class KumikoInputController
         chooser.SearchPasteRequested += (_, e) =>
             ReadClipboardForPaste(e, chooser, static (c, text) => c.PasteSearchText(text), static c => c.SearchTextInput);
 
-        // Below the anchor, or at the top right of the data area; never taller than the viewport, kept inside it.
+        // Below the anchor, or at the top right of the data area; no taller than the room on the roomier side of the
+        // anchor (the list scrolls), so it opens below or above it inside the viewport.
         KumikoRect Anchor()
         {
             var viewport = new KumikoRect(0, 0, scroll.ViewportWidth, scroll.ViewportHeight);
             _popupManager.Viewport = viewport;
             chooser.PopupViewport = viewport;
             var rect = anchor?.Invoke() ?? DefaultColumnChooserAnchor(scroll, style, dataSource);
-            float room = PopupLayout.HasArea(viewport)
-                ? Math.Max(PopupLayout.RoomFor(rect, viewport), viewport.Height - 2 * ColumnChooserMargin) - ColumnChooserMargin
-                : DrawnColumnChooser.DefaultMaxHeight;
+            float room = PopupLayout.RoomFor(rect, viewport) - ColumnChooserMargin;
             chooser.MaxHeight = Math.Min(DrawnColumnChooser.DefaultMaxHeight, room);
             return rect;
         }

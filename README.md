@@ -634,6 +634,31 @@ The JSON comes from a System.Text.Json source generator, so it works with Native
 
 Columns are matched by name: `KumikoColumn.Key` when you set it, otherwise `PropertyName`. Give a column a `Key` when it has no property name (a template or action column) or when two columns show the same property; a column with neither is not saved. Saved layouts survive changes to the columns: a saved column the grid no longer has is ignored, and a column the layout does not mention keeps its place and settings. The sort and the grouping are replaced as a whole. Restoring is one change (one rebuild); it raises the sort and filter events. A predicate set with `DataSource.SetFilter`, delegates such as `GroupDescription.KeySelector` and which groups are expanded are not saved; a saved group whose property is already grouped by keeps your `GroupDescription` with its selectors. Without a host control, `KumikoLayoutState.Capture(source)` and `state.ApplyTo(source)` do the same on a `KumikoSource`.
 
+### Choosing columns
+
+The column chooser is a drawn panel that lets the user show, hide and reorder the columns. It lists every column (hidden ones included) with a check box and a drag grip, in the order the grid draws its panes, and it has a search box, **Show all** and **Reset**. Changes apply at once and there is no OK or Cancel: **Reset** puts back the order and visibility the columns had when they were declared. It opens with `ShowColumnChooser()` (or `ShowColumnChooserCommand`, for a toolbar button), from the column menu's **Columns...** item, and optionally from a header right click or long press or a keyboard shortcut:
+
+```csharp
+// From a "Columns" button: opens at the top right of the rows (or pass the button's bounds to open below it)
+kumiko.ShowColumnChooser();
+
+// Optional entry points (both off by default)
+kumiko.ColumnChooserOnHeaderContext = true; // a header right click or long press, when the column menu is off
+kumiko.ColumnChooserShortcut = new KumikoShortcut(KumikoKey.C, InputModifiers.Control | InputModifiers.Alt);
+
+// Every show, hide, freeze and move, by the user or in code: a good moment to save the layout
+kumiko.ColumnsChanged += (_, e) =>
+    Console.WriteLine($"{e.Kind} {e.Column?.Header}: {kumiko.GetLayoutState().ToJson().Length} bytes of layout");
+```
+
+A tap on a row toggles its column (the whole row is the target, as tall as a grid row), and dragging the grip moves the column. A column moves only within its pane, as a header drag does: a frozen column shows a pin, and a drop on another pane is refused. Hidden columns keep their place and can be moved too. While a search is active the grips are dimmed and the list cannot be reordered. The last visible column cannot be hidden, and neither can a column with `AllowHide="False"`; `ShowInChooser="False"` leaves a column out of the list (a selection column never appears). A sorted or filtered column shows its sort or filter glyph, so a hidden column that still orders or filters the rows can be told apart; hiding a column keeps its sort and filter. Hiding the current cell's column moves the current cell to the nearest visible column, and an open edit is committed first.
+
+The chooser works from the keyboard alone: it opens with the keyboard in the search box; Down moves into the list, where Up, Down, Home, End, PageUp and PageDown move, Space or Enter toggles, and Alt+Up or Alt+Down moves the column; Tab and Shift+Tab cycle the search box, the list, **Show all**, **Reset** and the close button; Escape clears the search, then closes. A screen reader hears the panel and its size when it opens, each column the keyboard reaches ("Salary, checked, 3 of 12"), and every change ("Salary hidden", "Salary moved to position 3 of 12", "Column layout reset"); the texts are `KumikoStrings` members (`ColumnChooserTitle`, `AnnounceColumnHidden` and so on).
+
+The shortcut is off by default because Ctrl+Alt is AltGr on Windows, and AltGr+C types a character on some keyboard layouts. `KumikoShortcut` matches Control or Command, so the example is Command+Option+C on a Mac.
+
+`DataSource.ColumnsChanged` (re-surfaced by the grid as `ColumnsChanged`) is raised for every visibility, freeze and order change, from the chooser, a header drag, the column menu or code, and once for a reset; inside `BeginUpdate` the changes are raised once at the end. In code, `DataSource.SetColumnVisible(column, visible)` applies the chooser's rules and returns false when it refuses, `DataSource.ResetColumnLayout()` is the **Reset** button, and `DataSource.MarkDefaultColumnLayout()` makes the current layout the one Reset restores. Restoring a saved layout with `ApplyLayoutState` does not change that default.
+
 ### Frozen columns and rows
 
 ```xml
@@ -1793,12 +1818,13 @@ Everything below exists on both hosts with the same name and default: `KumikoUI.
 | `AllowSorting`, `AllowFiltering` | `bool` | true | False stops header-tap sorting, or hides and disables the header filter icons; a grid-level false wins over the column's setting. |
 | `IsColumnMenuEnabled` | `bool` | false | The grid's own column menu on a header right click or long press, the header menu button and the Menu key ([Column menu](#column-menu)). |
 | `ShowColumnMenuButton` | `bool` | false | A menu button (three dots) in every header that opens the column menu with a tap; shown while `IsColumnMenuEnabled` is on. |
+| `ColumnChooserOnHeaderContext`, `ColumnChooserShortcut` | `bool`, `KumikoShortcut?` | false, null | Open the column chooser from a header right click or long press, or a key ([Choosing columns](#choosing-columns)). |
 | `SearchText` | `string` | empty | The grid-wide search; two-way, it follows the search panel ([Searching](#searching)). |
 | `SearchFiltersRows` | `bool` | false | The search also hides the rows with no match. |
 | `AllowSearchPanel` | `bool` | false | Ctrl/Cmd+F opens the drawn search panel. |
 | `AllowSwiping`, `FullSwipeMode`, `SwipeItemWidth` | `bool`, `KumikoFullSwipeMode`, `double` | false, `None`, 72 | A finger swipes a row to reveal `LeadingSwipeItems` and `TrailingSwipeItems` ([Swipe row actions](#swipe-row-actions)). |
 
-Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)), `ShowColumnMenu(column)` ([Column menu](#column-menu)), `FindNext`, `FindPrevious`, `ShowSearchPanel` and `CloseSearchPanel` ([Searching](#searching)), `GetLayoutState` and `ApplyLayoutState` ([Saving and restoring the layout](#saving-and-restoring-the-layout)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
+Methods: `ScrollToRow`, `ScrollToItem`, `ScrollToColumn` ([Scrolling](#scrolling)), `ShowColumnMenu(column)` ([Column menu](#column-menu)), `FindNext`, `FindPrevious`, `ShowSearchPanel` and `CloseSearchPanel` ([Searching](#searching)), `ShowColumnChooser`, `CloseColumnChooser` and `IsColumnChooserOpen` ([Choosing columns](#choosing-columns)), `GetLayoutState` and `ApplyLayoutState` ([Saving and restoring the layout](#saving-and-restoring-the-layout)) and `SetCellRenderer(KumikoColumnType, ICellRenderer)`, which replaces the built-in renderer for every column of a type. Read-only members give access to the engine: `DataSource` (`KumikoSource`: data, sort, filter, grouping, summaries, culture, strings), `Selection` (`KumikoSelectionModel`), `EditSession` and `InputController` (`KumikoInputController`).
 
 ### Commands
 
@@ -1814,9 +1840,11 @@ Each command is executed with the event arguments as its parameter (`SelectionCh
 | `SortChangedCommand` | `SortColumnsChangedEventArgs` | The sort changed. |
 | `SelectionChangedCommand` | `KumikoSelectionChangedEventArgs` | The selection changed. |
 
+`ShowColumnChooserCommand` is a read-only command of the grid itself, for a button to bind to: it opens the column chooser.
+
 ### Events
 
-`RowTapped`, `RowDoubleTapped`, `CellTapped`, `HeaderTapped`, `ContextMenuRequested`, `ColumnMenuOpening`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `SearchChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `Scrolled`, `SelectionChanged`, `AutoGeneratingColumn` and `AutoGeneratedColumns` ([Generated columns](#generated-columns)). Most of them forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection` (`ColumnReordered` is raised by the grid once it has moved the column), which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
+`RowTapped`, `RowDoubleTapped`, `CellTapped`, `HeaderTapped`, `ContextMenuRequested`, `ColumnMenuOpening`, `CellBeginEdit`, `CellEndEdit`, `CellValueChanged`, `ValidationFailed`, `SortChanging`, `SortChanged`, `FilterChanging`, `FilterChanged`, `ViewChanged`, `GroupExpanding`, `GroupExpandedChanged`, `SearchChanged`, `RowReordered`, `RowReorderRejected`, `ColumnReordered`, `ColumnResized`, `ColumnsChanged`, `ColumnChooserOpened`, `ColumnChooserClosed`, `Scrolled`, `SelectionChanged`, `AutoGeneratingColumn` and `AutoGeneratedColumns` ([Generated columns](#generated-columns)). Most of them forward to the matching events on `DataSource`, `InputController`, `EditSession` and `Selection` (`ColumnReordered` is raised by the grid once it has moved the column), which stay available for anything not listed (for example `ScrollState.ScrollChanged` through a custom host, or `InputController.CursorChanged`).
 
 `DataSource.ViewChanged` reports every change of the view once, with its kind (`Redraw`, `Rebuild`, `Insert`, `Remove`); `MapRow(oldRow)` follows a row from before the change to after it, and `GetViewRow(item)` finds an item's row.
 
@@ -1855,7 +1883,7 @@ MAUI cannot open a native menu at a point, so for rows the sample app shows an a
 
 ### Column menu
 
-Set `IsColumnMenuEnabled` and a right click or a long press on a column header opens the grid's own menu, drawn like the rest of the grid, so it looks the same on every platform and opens at the pointer: sort ascending and descending (with the type-aware labels of the filter popup, the current direction checked), clear sort, filter (opens the column's filter popup), group by this column or ungroup, hide, and auto-fit width. Items follow the grid and the column: no sort items without `AllowSorting`, no filter item without `AllowFiltering`, no grouping item for a column without a `PropertyName`, no auto-fit for a column that cannot be resized, and hide is disabled for the last visible column. `ShowColumnMenuButton` adds a three-dot button to every header (left of the filter icon) that opens the menu with a tap, and the Menu key or Shift+F10 opens it for the current cell's column with its first item highlighted. `ShowColumnMenu(column)` opens it in code. The texts come from `KumikoStrings` (`ColumnMenuClearSort`, `ColumnMenuFilter`, `ColumnMenuGroupBy` and so on), and a screen reader hears the menu's name and item count when it opens and each item the keyboard moves to.
+Set `IsColumnMenuEnabled` and a right click or a long press on a column header opens the grid's own menu, drawn like the rest of the grid, so it looks the same on every platform and opens at the pointer: sort ascending and descending (with the type-aware labels of the filter popup, the current direction checked), clear sort, filter (opens the column's filter popup), group by this column or ungroup, hide, auto-fit width, and **Columns...**, which opens the [column chooser](#choosing-columns). Items follow the grid and the column: no sort items without `AllowSorting`, no filter item without `AllowFiltering`, no grouping item for a column without a `PropertyName`, no auto-fit for a column that cannot be resized, and hide is disabled for the last visible column. `ShowColumnMenuButton` adds a three-dot button to every header (left of the filter icon) that opens the menu with a tap, and the Menu key or Shift+F10 opens it for the current cell's column with its first item highlighted. `ShowColumnMenu(column)` opens it in code. The texts come from `KumikoStrings` (`ColumnMenuClearSort`, `ColumnMenuFilter`, `ColumnMenuGroupBy` and so on), and a screen reader hears the menu's name and item count when it opens and each item the keyboard moves to.
 
 A right click or a long press raises `ContextMenuRequested` first. The menu opens only when no handler set `e.Handled`, so an app that already shows its own header menu from that event sets it (for headers) before turning `IsColumnMenuEnabled` on:
 

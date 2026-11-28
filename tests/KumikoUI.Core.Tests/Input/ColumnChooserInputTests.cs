@@ -77,8 +77,8 @@ public class ColumnChooserInputTests
 
         var chooser = Open(g);
 
-        Assert.True(chooser.Bounds.Height <= 220 - 4);
-        Assert.True(chooser.Bounds.Y >= 0);
+        Assert.True(chooser.Bounds.Y >= g.Style.HeaderHeight);
+        Assert.True(chooser.Bounds.Bottom <= 220.01f);
     }
 
     [Fact]
