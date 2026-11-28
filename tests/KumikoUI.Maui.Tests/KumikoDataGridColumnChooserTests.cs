@@ -53,7 +53,7 @@ public class KumikoDataGridColumnChooserTests
         grid.CloseColumnChooser();
         Assert.False(grid.IsColumnChooserOpen);
 
-        Assert.Equal(new[] { ("opened", (object?)grid), ("closed", grid) }, events);
+        Assert.Equal(new (string, object?)[] { ("opened", grid), ("closed", grid) }, events);
     }
 
     [Fact]

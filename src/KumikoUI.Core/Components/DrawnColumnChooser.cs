@@ -649,7 +649,8 @@ public sealed class DrawnColumnChooser : DrawnComponent, IMeasuredPopup
         }
 
         float textX = box.Right + 8;
-        var textColor = isChecked || enabled ? TextColor : DisabledColor;
+        // The label stays readable even when the box is disabled (a column that cannot be hidden is still listed)
+        var textColor = TextColor;
         ctx.DrawTextInRect(_labels[entry], new KumikoRect(textX, row.Y, Math.Max(0, right - textX), row.Height),
             Paints.Get(color: textColor.WithAlpha(Scale(alpha, textColor.A)), font: Font),
             KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
