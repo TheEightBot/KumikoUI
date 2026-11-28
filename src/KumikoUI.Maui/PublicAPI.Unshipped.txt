@@ -95,6 +95,8 @@ KumikoUI.Maui.KumikoDataGrid.ShowEmptyView.set -> void
 KumikoUI.Maui.KumikoDataGrid.ShowSearchPanel() -> void
 KumikoUI.Maui.KumikoDataGrid.ShowSelectionColumn.get -> bool
 KumikoUI.Maui.KumikoDataGrid.ShowSelectionColumn.set -> void
+KumikoUI.Maui.KumikoDataGrid.SummaryCellRenderer.get -> KumikoUI.Core.Rendering.ISummaryCellRenderer?
+KumikoUI.Maui.KumikoDataGrid.SummaryCellRenderer.set -> void
 KumikoUI.Maui.KumikoDataGrid.SwipeEnded -> System.EventHandler<KumikoUI.Core.Input.KumikoSwipeEndedEventArgs!>?
 KumikoUI.Maui.KumikoDataGrid.SwipeItemWidth.get -> double
 KumikoUI.Maui.KumikoDataGrid.SwipeItemWidth.set -> void
@@ -139,5 +141,6 @@ static readonly KumikoUI.Maui.KumikoDataGrid.ShowBusyDuringViewUpdateProperty ->
 static readonly KumikoUI.Maui.KumikoDataGrid.ShowColumnMenuButtonProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.ShowEmptyViewProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.ShowSelectionColumnProperty -> Microsoft.Maui.Controls.BindableProperty!
+static readonly KumikoUI.Maui.KumikoDataGrid.SummaryCellRendererProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.SwipeItemWidthProperty -> Microsoft.Maui.Controls.BindableProperty!
 static readonly KumikoUI.Maui.KumikoDataGrid.VerticalScrollBarVisibilityProperty -> Microsoft.Maui.Controls.BindableProperty!

@@ -106,6 +106,15 @@ public sealed class PaintCache
     /// <summary>Paint for summary row text.</summary>
     public KumikoPaint SummaryText { get; private set; } = new();
 
+    /// <summary>Paint for a summary row's title.</summary>
+    public KumikoPaint SummaryLabel { get; private set; } = new();
+
+    /// <summary>Paint for the backgrounds of group summary rows.</summary>
+    public KumikoPaint GroupSummaryBackground { get; private set; } = new();
+
+    /// <summary>Paint for the text of group summary rows.</summary>
+    public KumikoPaint GroupSummaryText { get; private set; } = new();
+
     // ── Cell content ─────────────────────────────────────────────
     /// <summary>Paint for the border of a Boolean cell's checkbox.</summary>
     public KumikoPaint CheckBoxBorder { get; private set; } = new();
@@ -157,9 +166,6 @@ public sealed class PaintCache
     internal KumikoPaint CaptionSummaryText { get; private set; } = new();
     internal KumikoPaint SelectedCellText { get; private set; } = new();
     internal KumikoPaint SummaryBorder { get; private set; } = new();
-    internal KumikoPaint SummaryLabel { get; private set; } = new();
-    internal KumikoPaint GroupSummaryBackground { get; private set; } = new();
-    internal KumikoPaint GroupSummaryText { get; private set; } = new();
     internal KumikoPaint DragHandleHeaderBackground { get; private set; } = new();
     internal KumikoPaint DragHandleDivider { get; private set; } = new();
     internal KumikoPaint ColumnDragGhost { get; private set; } = new();

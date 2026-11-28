@@ -83,6 +83,29 @@ public class RenderAllocationTests
         Assert.Equal(0, MeasureSteadyState(grid.Render));
     }
 
+    private sealed class BarSummaryRenderer : ISummaryCellRenderer
+    {
+        private readonly KumikoPaint _bar = new() { Color = new KumikoColor(200, 0, 0) };
+
+        public void Render(IDrawingContext ctx, in SummaryCellRenderContext context)
+        {
+            ctx.FillRect(new KumikoRect(context.Bounds.X, context.Bounds.Y, context.Bounds.Width / 2, 4), _bar);
+            ctx.DrawTextInRect(context.DisplayText, context.Bounds, context.TextPaint, context.TextAlignment,
+                KumikoVerticalAlignment.Center);
+        }
+    }
+
+    [Fact]
+    public void SteadyState_CustomSummaryCellRenderers_AllocateNothing()
+    {
+        // Table (top and bottom) and group summary cells drawn through the grid-wide renderer and a per-summary one (#334).
+        var grid = CreateGrid(featured: true);
+        grid.Renderer.SummaryCellRenderer = new BarSummaryRenderer();
+        grid.Source.TableSummaryRows[0].Columns[0].CustomCellRenderer = new BarSummaryRenderer();
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+    }
+
     [Fact]
     public void SteadyState_RowDragGhostAndDropIndicator_AllocateNothing()
     {

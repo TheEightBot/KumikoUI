@@ -1684,7 +1684,8 @@ public sealed partial class KumikoRenderer : IDisposable
             // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
             // after the title
             DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.SummaryRowHeight, valuePaint,
-                SummaryTitleEnd(ctx, summary, titlePaint, handleOffset + style.CellPadding * 2, frozenWidth, style));
+                SummaryTitleEnd(ctx, summary, titlePaint, handleOffset + style.CellPadding * 2, frozenWidth, style),
+                KumikoSummaryRowKind.Table, null);
             DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.SummaryRowHeight,
                 handleOffset + style.CellPadding * 2, titlePaint, valuePaint);
 
@@ -1722,7 +1723,9 @@ public sealed partial class KumikoRenderer : IDisposable
         float rowY,
         float rowHeight,
         KumikoPaint valuePaint,
-        float titleEnd)
+        float titleEnd,
+        KumikoSummaryRowKind kind,
+        GroupHeaderInfo? group)
     {
         _overflowValues.Clear();
         foreach (var (col, colX, _) in allCols)
@@ -1733,8 +1736,11 @@ public sealed partial class KumikoRenderer : IDisposable
             float screenX = ColumnScreenX(colX, scroll, col.Pane);
             float usableWidth = col.Width - style.CellPadding * 2;
 
+            // A custom renderer draws in its own column at any width; only the built-in text overflows
+            var custom = ResolveSummaryRenderer(summary, col.PropertyName);
+
             // If the column is too narrow for the label+value, overflow it
-            if (usableWidth < 70)
+            if (custom == null && usableWidth < 70)
             {
                 _overflowValues.Add(displayText);
                 continue;
@@ -1753,13 +1759,16 @@ public sealed partial class KumikoRenderer : IDisposable
             left = Math.Max(left, titleEnd);
             left = Math.Max(left, paneLeft);
             right = Math.Min(right, paneLeft + paneWidth);
-            if (right - left < MinSummaryValueWidth) continue;
+            if (right - left < (custom == null ? MinSummaryValueWidth : 1f)) continue;
 
             var cellRect = new KumikoRect(left, rowY, right - left, rowHeight);
             ctx.Save();
             ctx.ClipRect(new KumikoRect(paneLeft, rowY, paneWidth, rowHeight));
-            ctx.DrawTextInRect(displayText, cellRect, valuePaint,
-                col.TextAlignment, KumikoVerticalAlignment.Center);
+            summary.RawValues.TryGetValue(col.PropertyName, out var rawValue);
+            var cell = new SummaryCellRenderContext(
+                cellRect, new KumikoRect(screenX, rowY, col.Width, rowHeight), kind, summary, group, col,
+                displayText, rawValue, style, _paintCache, valuePaint, col.TextAlignment);
+            (custom ?? TextSummaryCellRenderer.Default).Render(ctx, in cell);
             ctx.Restore();
         }
     }
@@ -1837,7 +1846,8 @@ public sealed partial class KumikoRenderer : IDisposable
         // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
         // after the title
         DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.RowHeight, textPaint,
-            SummaryTitleEnd(ctx, summary, textPaint, titleStartX, frozenWidth, style));
+            SummaryTitleEnd(ctx, summary, textPaint, titleStartX, frozenWidth, style),
+            KumikoSummaryRowKind.Group, dataSource.GetGroupOfSummaryRow(row));
         DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.RowHeight,
             titleStartX, textPaint, textPaint);
     }

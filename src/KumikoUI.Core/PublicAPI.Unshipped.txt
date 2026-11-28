@@ -409,6 +409,8 @@ KumikoUI.Core.KumikoRenderer.IsBusy.set -> void
 KumikoUI.Core.KumikoRenderer.IsBusyIndicatorAnimating.get -> bool
 KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.get -> bool
 KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.set -> void
+KumikoUI.Core.KumikoRenderer.SummaryCellRenderer.get -> KumikoUI.Core.Rendering.ISummaryCellRenderer?
+KumikoUI.Core.KumikoRenderer.SummaryCellRenderer.set -> void
 KumikoUI.Core.Layout.KumikoLayoutEngine.GetContentHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style) -> float
 KumikoUI.Core.Layout.KumikoLayoutEngine.GetFrozenRowHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style) -> float
 KumikoUI.Core.Layout.KumikoLayoutEngine.GetVisibleRowRangeWithOffset(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! source, float topOffset) -> (int First, int Last)
@@ -678,6 +680,8 @@ KumikoUI.Core.Models.KumikoStyleOptions.ShowEmptyView.get -> bool?
 KumikoUI.Core.Models.KumikoStyleOptions.ShowEmptyView.set -> void
 KumikoUI.Core.Models.KumikoStyleOptions.VerticalScrollBarVisibility.get -> KumikoUI.Core.Models.KumikoScrollBarVisibility?
 KumikoUI.Core.Models.KumikoStyleOptions.VerticalScrollBarVisibility.set -> void
+KumikoUI.Core.Models.SummaryColumnDescription.CustomCellRenderer.get -> KumikoUI.Core.Rendering.ISummaryCellRenderer?
+KumikoUI.Core.Models.SummaryColumnDescription.CustomCellRenderer.set -> void
 KumikoUI.Core.Rendering.CellRenderContext.IsCurrentSearchMatch.get -> bool
 KumikoUI.Core.Rendering.CellRenderContext.IsCurrentSearchMatch.init -> void
 KumikoUI.Core.Rendering.CellRenderContext.SearchMatchLength.get -> int
@@ -689,9 +693,35 @@ KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer
 KumikoUI.Core.Rendering.IKumikoEmptyViewRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, KumikoUI.Core.Rendering.KumikoRect bounds, KumikoUI.Core.Models.KumikoEmptyViewKind kind, string! text, KumikoUI.Core.Models.KumikoStyle! style) -> void
 KumikoUI.Core.Rendering.IMeasurableCellRenderer
 KumikoUI.Core.Rendering.IMeasurableCellRenderer.MeasureHeight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> float?
+KumikoUI.Core.Rendering.ISummaryCellRenderer
+KumikoUI.Core.Rendering.ISummaryCellRenderer.GetAccessibleText(in KumikoUI.Core.Rendering.SummaryCellRenderContext context) -> string?
+KumikoUI.Core.Rendering.ISummaryCellRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.SummaryCellRenderContext context) -> void
 KumikoUI.Core.Rendering.KumikoIcon.ColumnMenu = 20 -> KumikoUI.Core.Rendering.KumikoIcon
+KumikoUI.Core.Rendering.KumikoSummaryRowKind
+KumikoUI.Core.Rendering.KumikoSummaryRowKind.Group = 1 -> KumikoUI.Core.Rendering.KumikoSummaryRowKind
+KumikoUI.Core.Rendering.KumikoSummaryRowKind.Table = 0 -> KumikoUI.Core.Rendering.KumikoSummaryRowKind
+KumikoUI.Core.Rendering.PaintCache.GroupSummaryBackground.get -> KumikoUI.Core.Rendering.KumikoPaint!
+KumikoUI.Core.Rendering.PaintCache.GroupSummaryText.get -> KumikoUI.Core.Rendering.KumikoPaint!
 KumikoUI.Core.Rendering.PaintCache.SearchCurrentHighlight.get -> KumikoUI.Core.Rendering.KumikoPaint!
 KumikoUI.Core.Rendering.PaintCache.SearchHighlight.get -> KumikoUI.Core.Rendering.KumikoPaint!
+KumikoUI.Core.Rendering.PaintCache.SummaryLabel.get -> KumikoUI.Core.Rendering.KumikoPaint!
+KumikoUI.Core.Rendering.SummaryCellRenderContext
+KumikoUI.Core.Rendering.SummaryCellRenderContext.Bounds.get -> KumikoUI.Core.Rendering.KumikoRect
+KumikoUI.Core.Rendering.SummaryCellRenderContext.CellBounds.get -> KumikoUI.Core.Rendering.KumikoRect
+KumikoUI.Core.Rendering.SummaryCellRenderContext.Column.get -> KumikoUI.Core.Models.KumikoColumn!
+KumikoUI.Core.Rendering.SummaryCellRenderContext.DisplayText.get -> string!
+KumikoUI.Core.Rendering.SummaryCellRenderContext.Group.get -> KumikoUI.Core.Models.GroupHeaderInfo?
+KumikoUI.Core.Rendering.SummaryCellRenderContext.Kind.get -> KumikoUI.Core.Rendering.KumikoSummaryRowKind
+KumikoUI.Core.Rendering.SummaryCellRenderContext.Paints.get -> KumikoUI.Core.Rendering.PaintCache!
+KumikoUI.Core.Rendering.SummaryCellRenderContext.RawValue.get -> object?
+KumikoUI.Core.Rendering.SummaryCellRenderContext.Style.get -> KumikoUI.Core.Models.KumikoStyle!
+KumikoUI.Core.Rendering.SummaryCellRenderContext.Summary.get -> KumikoUI.Core.Models.ComputedSummaryRow!
+KumikoUI.Core.Rendering.SummaryCellRenderContext.SummaryCellRenderContext() -> void
+KumikoUI.Core.Rendering.SummaryCellRenderContext.SummaryCellRenderContext(KumikoUI.Core.Rendering.KumikoRect bounds, KumikoUI.Core.Rendering.KumikoRect cellBounds, KumikoUI.Core.Rendering.KumikoSummaryRowKind kind, KumikoUI.Core.Models.ComputedSummaryRow! summary, KumikoUI.Core.Models.GroupHeaderInfo? group, KumikoUI.Core.Models.KumikoColumn! column, string! displayText, object? rawValue, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Rendering.PaintCache! paints, KumikoUI.Core.Rendering.KumikoPaint! textPaint, KumikoUI.Core.Rendering.KumikoTextAlignment textAlignment) -> void
+KumikoUI.Core.Rendering.SummaryCellRenderContext.TextAlignment.get -> KumikoUI.Core.Rendering.KumikoTextAlignment
+KumikoUI.Core.Rendering.SummaryCellRenderContext.TextPaint.get -> KumikoUI.Core.Rendering.KumikoPaint!
+KumikoUI.Core.Rendering.TextSummaryCellRenderer
+KumikoUI.Core.Rendering.TextSummaryCellRenderer.TextSummaryCellRenderer() -> void
 const KumikoUI.Core.Components.DrawnMenu.DefaultItemHeight = 32 -> float
 const KumikoUI.Core.Components.DrawnMenu.TouchItemHeight = 44 -> float
 const KumikoUI.Core.Components.KumikoColumnMenuItems.AutoFit = "AutoFit" -> string!
@@ -756,5 +786,6 @@ static KumikoUI.Core.Models.KumikoColumnFactory.FromType(System.Type! itemType) 
 static KumikoUI.Core.Rendering.TextCellRenderer.DrawSearchHighlight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> void
 virtual KumikoUI.Core.Models.KumikoRowHeightResolver.Invoke(in KumikoUI.Core.Models.KumikoRowHeightContext context) -> float?
 virtual KumikoUI.Core.Rendering.TextCellRenderer.MeasureHeight(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.CellRenderContext cell) -> float?
+virtual KumikoUI.Core.Rendering.TextSummaryCellRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.SummaryCellRenderContext context) -> void
 ~override KumikoUI.Core.Export.KumikoExportProgress.Equals(object obj) -> bool
 ~override KumikoUI.Core.Export.KumikoExportProgress.ToString() -> string
