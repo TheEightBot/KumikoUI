@@ -353,6 +353,29 @@ public class KumikoColumn : INotifyPropertyChanged
     private bool _allowFiltering = true;
 
     /// <summary>
+    /// Whether the column chooser (<see cref="Components.DrawnColumnChooser"/>) lists this column. Default true. A
+    /// selection column is never listed, whatever this says.
+    /// </summary>
+    public bool ShowInChooser
+    {
+        get => _showInChooser;
+        set => SetField(ref _showInChooser, value);
+    }
+    private bool _showInChooser = true;
+
+    /// <summary>
+    /// Whether the user may hide the column: the column chooser draws its check box disabled while it is shown, and
+    /// <see cref="KumikoSource.SetColumnVisible"/> refuses to hide it. Default true. Setting <see cref="IsVisible"/> in
+    /// code is not affected.
+    /// </summary>
+    public bool AllowHide
+    {
+        get => _allowHide;
+        set => SetField(ref _allowHide, value);
+    }
+    private bool _allowHide = true;
+
+    /// <summary>
     /// Whether the filter popup offers condition filters (an operator and a typed value, #325) for this column. Default
     /// true. Only Text, ComboBox, Picker, Numeric, ProgressBar and Date columns have them; the others, and a column
     /// with this set to false, show only the value checklist. Conditions set from code still apply.

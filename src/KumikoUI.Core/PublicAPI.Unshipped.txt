@@ -1,4 +1,53 @@
 #nullable enable
+KumikoUI.Core.Components.DrawnColumnChooser
+KumikoUI.Core.Components.DrawnColumnChooser.AccentColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.AccentColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.ApplyTheme(KumikoUI.Core.Models.KumikoStyle! style) -> void
+KumikoUI.Core.Components.DrawnColumnChooser.BackgroundColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.BackgroundColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.BorderColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.BorderColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.CheckmarkColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.CheckmarkColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.CloseRequested -> System.EventHandler?
+KumikoUI.Core.Components.DrawnColumnChooser.CursorColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.CursorColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.DisabledColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.DisabledColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.DrawnColumnChooser(KumikoUI.Core.Models.KumikoSource! source) -> void
+KumikoUI.Core.Components.DrawnColumnChooser.Font.get -> KumikoUI.Core.Rendering.KumikoFont
+KumikoUI.Core.Components.DrawnColumnChooser.Font.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.HoverColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.HoverColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.ItemHeight.get -> float
+KumikoUI.Core.Components.DrawnColumnChooser.ItemHeight.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.KeyboardFocusColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.KeyboardFocusColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.KeyboardFocusRequested -> System.EventHandler?
+KumikoUI.Core.Components.DrawnColumnChooser.ListScrollOffset.get -> float
+KumikoUI.Core.Components.DrawnColumnChooser.MaxHeight.get -> float
+KumikoUI.Core.Components.DrawnColumnChooser.MaxHeight.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.PasteSearchText(string? text) -> void
+KumikoUI.Core.Components.DrawnColumnChooser.PlaceholderColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.PlaceholderColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.SearchBackgroundColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.SearchBackgroundColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.SearchBorderColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.SearchBorderColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.SearchCopyRequested -> System.EventHandler<KumikoUI.Core.Components.ClipboardTextEventArgs!>?
+KumikoUI.Core.Components.DrawnColumnChooser.SearchPasteRequested -> System.EventHandler<KumikoUI.Core.Components.ClipboardRequestEventArgs!>?
+KumikoUI.Core.Components.DrawnColumnChooser.SearchText.get -> string!
+KumikoUI.Core.Components.DrawnColumnChooser.SearchText.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.SearchTextInput.get -> KumikoUI.Core.Input.ITextInputSession!
+KumikoUI.Core.Components.DrawnColumnChooser.SeparatorColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.SeparatorColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.SmallFont.get -> KumikoUI.Core.Rendering.KumikoFont
+KumikoUI.Core.Components.DrawnColumnChooser.SmallFont.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.TextColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Components.DrawnColumnChooser.TextColor.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.TitleFont.get -> KumikoUI.Core.Rendering.KumikoFont
+KumikoUI.Core.Components.DrawnColumnChooser.TitleFont.set -> void
+KumikoUI.Core.Components.DrawnColumnChooser.VisibleEntries.get -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Models.KumikoColumn!>!
 KumikoUI.Core.Components.DrawnFilterPopup.Mode.get -> KumikoUI.Core.Components.KumikoFilterPopupMode
 KumikoUI.Core.Components.DrawnFilterPopup.Mode.set -> void
 KumikoUI.Core.Components.DrawnMenu
@@ -348,8 +397,15 @@ KumikoUI.Core.Input.KumikoInputController.AllowSearchPanel.set -> void
 KumikoUI.Core.Input.KumikoInputController.AllowSwiping.get -> bool
 KumikoUI.Core.Input.KumikoInputController.AllowSwiping.set -> void
 KumikoUI.Core.Input.KumikoInputController.CheckAllToggled -> System.EventHandler<bool>?
+KumikoUI.Core.Input.KumikoInputController.CloseColumnChooser() -> void
 KumikoUI.Core.Input.KumikoInputController.CloseSearchPanel() -> void
 KumikoUI.Core.Input.KumikoInputController.CloseSwipe() -> void
+KumikoUI.Core.Input.KumikoInputController.ColumnChooserClosed -> System.EventHandler?
+KumikoUI.Core.Input.KumikoInputController.ColumnChooserOnHeaderContext.get -> bool
+KumikoUI.Core.Input.KumikoInputController.ColumnChooserOnHeaderContext.set -> void
+KumikoUI.Core.Input.KumikoInputController.ColumnChooserOpened -> System.EventHandler?
+KumikoUI.Core.Input.KumikoInputController.ColumnChooserShortcut.get -> KumikoUI.Core.Input.KumikoShortcut?
+KumikoUI.Core.Input.KumikoInputController.ColumnChooserShortcut.set -> void
 KumikoUI.Core.Input.KumikoInputController.ColumnMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoColumnMenuOpeningEventArgs!>?
 KumikoUI.Core.Input.KumikoInputController.DeleteRows(System.Collections.Generic.IEnumerable<object!>! items, KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.DeleteSelectedRows(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
@@ -357,6 +413,7 @@ KumikoUI.Core.Input.KumikoInputController.FindNext(KumikoUI.Core.Models.ScrollSt
 KumikoUI.Core.Input.KumikoInputController.FindPrevious(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.FullSwipeMode.get -> KumikoUI.Core.Input.KumikoFullSwipeMode
 KumikoUI.Core.Input.KumikoInputController.FullSwipeMode.set -> void
+KumikoUI.Core.Input.KumikoInputController.IsColumnChooserOpen.get -> bool
 KumikoUI.Core.Input.KumikoInputController.IsColumnMenuEnabled.get -> bool
 KumikoUI.Core.Input.KumikoInputController.IsColumnMenuEnabled.set -> void
 KumikoUI.Core.Input.KumikoInputController.IsPullToRefreshEnabled.get -> bool
@@ -375,6 +432,7 @@ KumikoUI.Core.Input.KumikoInputController.RowMenuItems.get -> System.Collections
 KumikoUI.Core.Input.KumikoInputController.RowMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoRowMenuOpeningEventArgs!>?
 KumikoUI.Core.Input.KumikoInputController.RowsDeleted -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletedEventArgs!>?
 KumikoUI.Core.Input.KumikoInputController.RowsDeleting -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletingEventArgs!>?
+KumikoUI.Core.Input.KumikoInputController.ShowColumnChooser(KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource, KumikoUI.Core.Rendering.KumikoRect? anchor = null) -> void
 KumikoUI.Core.Input.KumikoInputController.ShowColumnMenu(KumikoUI.Core.Models.KumikoColumn! column, KumikoUI.Core.Models.ScrollState! scroll, KumikoUI.Core.Models.KumikoSelectionModel! selection, KumikoUI.Core.Models.KumikoStyle! style, KumikoUI.Core.Models.KumikoSource! dataSource) -> bool
 KumikoUI.Core.Input.KumikoInputController.ShowColumnMenuButton.get -> bool
 KumikoUI.Core.Input.KumikoInputController.ShowColumnMenuButton.set -> void
@@ -399,6 +457,16 @@ KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Cancel.set -> void
 KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Items.get -> System.Collections.Generic.IReadOnlyList<object!>!
 KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.KumikoRowsDeletingEventArgs(System.Collections.Generic.IReadOnlyList<object!>! items, KumikoUI.Core.Input.KumikoRowsDeleteTrigger trigger) -> void
 KumikoUI.Core.Input.KumikoRowsDeletingEventArgs.Trigger.get -> KumikoUI.Core.Input.KumikoRowsDeleteTrigger
+KumikoUI.Core.Input.KumikoShortcut
+KumikoUI.Core.Input.KumikoShortcut.Deconstruct(out KumikoUI.Core.Input.KumikoKey Key, out KumikoUI.Core.Input.InputModifiers Modifiers) -> void
+KumikoUI.Core.Input.KumikoShortcut.Equals(KumikoUI.Core.Input.KumikoShortcut other) -> bool
+KumikoUI.Core.Input.KumikoShortcut.Key.get -> KumikoUI.Core.Input.KumikoKey
+KumikoUI.Core.Input.KumikoShortcut.Key.init -> void
+KumikoUI.Core.Input.KumikoShortcut.KumikoShortcut() -> void
+KumikoUI.Core.Input.KumikoShortcut.KumikoShortcut(KumikoUI.Core.Input.KumikoKey Key, KumikoUI.Core.Input.InputModifiers Modifiers) -> void
+KumikoUI.Core.Input.KumikoShortcut.Matches(KumikoUI.Core.Input.KumikoKeyEventArgs! e) -> bool
+KumikoUI.Core.Input.KumikoShortcut.Modifiers.get -> KumikoUI.Core.Input.InputModifiers
+KumikoUI.Core.Input.KumikoShortcut.Modifiers.init -> void
 KumikoUI.Core.Input.KumikoSwipeDirection
 KumikoUI.Core.Input.KumikoSwipeDirection.Leading = 0 -> KumikoUI.Core.Input.KumikoSwipeDirection
 KumikoUI.Core.Input.KumikoSwipeDirection.Trailing = 1 -> KumikoUI.Core.Input.KumikoSwipeDirection
@@ -451,11 +519,15 @@ KumikoUI.Core.Models.KumikoBusyIndicatorKind.Bar = 0 -> KumikoUI.Core.Models.Kum
 KumikoUI.Core.Models.KumikoBusyIndicatorKind.Overlay = 1 -> KumikoUI.Core.Models.KumikoBusyIndicatorKind
 KumikoUI.Core.Models.KumikoColumn.AllowConditionFilter.get -> bool
 KumikoUI.Core.Models.KumikoColumn.AllowConditionFilter.set -> void
+KumikoUI.Core.Models.KumikoColumn.AllowHide.get -> bool
+KumikoUI.Core.Models.KumikoColumn.AllowHide.set -> void
 KumikoUI.Core.Models.KumikoColumn.AllowSearching.get -> bool
 KumikoUI.Core.Models.KumikoColumn.AllowSearching.set -> void
 KumikoUI.Core.Models.KumikoColumn.CustomHeaderRenderer.get -> KumikoUI.Core.Rendering.IHeaderCellRenderer?
 KumikoUI.Core.Models.KumikoColumn.CustomHeaderRenderer.set -> void
 KumikoUI.Core.Models.KumikoColumn.IsAutoGenerated.get -> bool
+KumikoUI.Core.Models.KumikoColumn.ShowInChooser.get -> bool
+KumikoUI.Core.Models.KumikoColumn.ShowInChooser.set -> void
 KumikoUI.Core.Models.KumikoColumn.TimeMinuteStep.get -> int
 KumikoUI.Core.Models.KumikoColumn.TimeMinuteStep.set -> void
 KumikoUI.Core.Models.KumikoColumn.Use24HourTime.get -> bool?
@@ -464,6 +536,17 @@ KumikoUI.Core.Models.KumikoColumnFactory
 KumikoUI.Core.Models.KumikoColumnType.DateTime = 11 -> KumikoUI.Core.Models.KumikoColumnType
 KumikoUI.Core.Models.KumikoColumnType.Selection = 9 -> KumikoUI.Core.Models.KumikoColumnType
 KumikoUI.Core.Models.KumikoColumnType.Time = 10 -> KumikoUI.Core.Models.KumikoColumnType
+KumikoUI.Core.Models.KumikoColumnsChangeKind
+KumikoUI.Core.Models.KumikoColumnsChangeKind.Freeze = 3 -> KumikoUI.Core.Models.KumikoColumnsChangeKind
+KumikoUI.Core.Models.KumikoColumnsChangeKind.Order = 1 -> KumikoUI.Core.Models.KumikoColumnsChangeKind
+KumikoUI.Core.Models.KumikoColumnsChangeKind.Reset = 2 -> KumikoUI.Core.Models.KumikoColumnsChangeKind
+KumikoUI.Core.Models.KumikoColumnsChangeKind.Visibility = 0 -> KumikoUI.Core.Models.KumikoColumnsChangeKind
+KumikoUI.Core.Models.KumikoColumnsChangedEventArgs
+KumikoUI.Core.Models.KumikoColumnsChangedEventArgs.Column.get -> KumikoUI.Core.Models.KumikoColumn?
+KumikoUI.Core.Models.KumikoColumnsChangedEventArgs.Kind.get -> KumikoUI.Core.Models.KumikoColumnsChangeKind
+KumikoUI.Core.Models.KumikoColumnsChangedEventArgs.KumikoColumnsChangedEventArgs(KumikoUI.Core.Models.KumikoColumnsChangeKind kind, KumikoUI.Core.Models.KumikoColumn? column, int oldIndex = -1, int newIndex = -1) -> void
+KumikoUI.Core.Models.KumikoColumnsChangedEventArgs.NewIndex.get -> int
+KumikoUI.Core.Models.KumikoColumnsChangedEventArgs.OldIndex.get -> int
 KumikoUI.Core.Models.KumikoEmptyViewKind
 KumikoUI.Core.Models.KumikoEmptyViewKind.NoItems = 0 -> KumikoUI.Core.Models.KumikoEmptyViewKind
 KumikoUI.Core.Models.KumikoEmptyViewKind.NoMatches = 1 -> KumikoUI.Core.Models.KumikoEmptyViewKind
@@ -494,6 +577,7 @@ KumikoUI.Core.Models.KumikoSelectionModel.HandleCheckBoxToggle(int row, bool shi
 KumikoUI.Core.Models.KumikoSelectionModel.SelectOnRowClick.get -> bool
 KumikoUI.Core.Models.KumikoSelectionModel.SelectOnRowClick.set -> void
 KumikoUI.Core.Models.KumikoSelectionModel.SetRangeSelected(int fromRow, int toRow, bool selected) -> void
+KumikoUI.Core.Models.KumikoSource.ColumnsChanged -> System.EventHandler<KumikoUI.Core.Models.KumikoColumnsChangedEventArgs!>?
 KumikoUI.Core.Models.KumikoSource.DataRowCount.get -> int
 KumikoUI.Core.Models.KumikoSource.IncrementalLoading.get -> KumikoUI.Core.Data.KumikoIncrementalLoader!
 KumikoUI.Core.Models.KumikoSource.IncrementalSource.get -> KumikoUI.Core.Data.IKumikoIncrementalSource?
@@ -503,20 +587,34 @@ KumikoUI.Core.Models.KumikoSource.InvalidateRowHeights() -> void
 KumikoUI.Core.Models.KumikoSource.IsFiltered.get -> bool
 KumikoUI.Core.Models.KumikoSource.IsSearchActive.get -> bool
 KumikoUI.Core.Models.KumikoSource.ItemCount.get -> int
+KumikoUI.Core.Models.KumikoSource.MarkDefaultColumnLayout() -> void
 KumikoUI.Core.Models.KumikoSource.RemoveItems(System.Collections.Generic.IReadOnlyList<object!>! items) -> KumikoUI.Core.Models.KumikoRemoveResult
+KumikoUI.Core.Models.KumikoSource.ResetColumnLayout() -> void
 KumikoUI.Core.Models.KumikoSource.SearchChanged -> System.EventHandler?
 KumikoUI.Core.Models.KumikoSource.SearchFiltersRows.get -> bool
 KumikoUI.Core.Models.KumikoSource.SearchFiltersRows.set -> void
 KumikoUI.Core.Models.KumikoSource.SearchMatchCount.get -> int
 KumikoUI.Core.Models.KumikoSource.SearchText.get -> string!
 KumikoUI.Core.Models.KumikoSource.SearchText.set -> void
+KumikoUI.Core.Models.KumikoSource.SetColumnVisible(KumikoUI.Core.Models.KumikoColumn! column, bool visible) -> bool
 KumikoUI.Core.Models.KumikoSource.ViewUpdatePendingChanged -> System.EventHandler?
+KumikoUI.Core.Models.KumikoSource.VisibleColumnCount.get -> int
 KumikoUI.Core.Models.KumikoStrings.AllRowsSelected.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AllRowsSelected.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceAllColumnsShown.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceAllColumnsShown.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceAllRowsLoaded.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AnnounceAllRowsLoaded.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceBusy.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AnnounceBusy.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceColumnHidden.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceColumnHidden.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceColumnLayoutReset.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceColumnLayoutReset.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceColumnMoved.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceColumnMoved.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceColumnShown.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceColumnShown.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreCompleted.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreCompleted.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreFailed.get -> string!
@@ -549,10 +647,28 @@ KumikoUI.Core.Models.KumikoStrings.CheckStateMixed.get -> string!
 KumikoUI.Core.Models.KumikoStrings.CheckStateMixed.init -> void
 KumikoUI.Core.Models.KumikoStrings.CheckStateUnchecked.get -> string!
 KumikoUI.Core.Models.KumikoStrings.CheckStateUnchecked.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserCannotHide.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserCannotHide.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserClose.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserClose.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserNoMatches.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserNoMatches.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserPosition.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserPosition.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserReset.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserReset.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserSearchPlaceholder.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserSearchPlaceholder.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserShowAll.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserShowAll.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserTitle.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnChooserTitle.init -> void
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuAutoFit.get -> string!
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuAutoFit.init -> void
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuClearSort.get -> string!
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuClearSort.init -> void
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuColumns.get -> string!
+KumikoUI.Core.Models.KumikoStrings.ColumnMenuColumns.init -> void
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuFilter.get -> string!
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuFilter.init -> void
 KumikoUI.Core.Models.KumikoStrings.ColumnMenuGroupBy.get -> string!
@@ -811,10 +927,14 @@ KumikoUI.Core.Rendering.TextHeaderCellRenderer
 KumikoUI.Core.Rendering.TextHeaderCellRenderer.TextHeaderCellRenderer() -> void
 KumikoUI.Core.Rendering.TextSummaryCellRenderer
 KumikoUI.Core.Rendering.TextSummaryCellRenderer.TextSummaryCellRenderer() -> void
+const KumikoUI.Core.Components.DrawnColumnChooser.DefaultMaxHeight = 340 -> float
+const KumikoUI.Core.Components.DrawnColumnChooser.DefaultWidth = 260 -> float
+const KumikoUI.Core.Components.DrawnColumnChooser.MinItemHeight = 28 -> float
 const KumikoUI.Core.Components.DrawnMenu.DefaultItemHeight = 32 -> float
 const KumikoUI.Core.Components.DrawnMenu.TouchItemHeight = 44 -> float
 const KumikoUI.Core.Components.KumikoColumnMenuItems.AutoFit = "AutoFit" -> string!
 const KumikoUI.Core.Components.KumikoColumnMenuItems.ClearSort = "ClearSort" -> string!
+const KumikoUI.Core.Components.KumikoColumnMenuItems.Columns = "Columns" -> string!
 const KumikoUI.Core.Components.KumikoColumnMenuItems.Filter = "Filter" -> string!
 const KumikoUI.Core.Components.KumikoColumnMenuItems.GroupBy = "GroupBy" -> string!
 const KumikoUI.Core.Components.KumikoColumnMenuItems.Hide = "Hide" -> string!
@@ -829,6 +949,13 @@ const KumikoUI.Core.Components.KumikoRowMenuItems.Edit = "Edit" -> string!
 const KumikoUI.Core.Components.KumikoRowMenuItems.ExpandAllGroups = "ExpandAllGroups" -> string!
 const KumikoUI.Core.Components.KumikoRowMenuItems.SwipeItemKeyPrefix = "Swipe:" -> string!
 const KumikoUI.Core.Models.KumikoSelectionColumn.DefaultSelectionWidth = 44 -> float
+override KumikoUI.Core.Components.DrawnColumnChooser.OnDraw(KumikoUI.Core.Rendering.IDrawingContext! ctx) -> void
+override KumikoUI.Core.Components.DrawnColumnChooser.OnKeyDown(KumikoUI.Core.Input.KumikoKeyEventArgs! e) -> bool
+override KumikoUI.Core.Components.DrawnColumnChooser.OnPointerCancel(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> void
+override KumikoUI.Core.Components.DrawnColumnChooser.OnPointerDown(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
+override KumikoUI.Core.Components.DrawnColumnChooser.OnPointerMove(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
+override KumikoUI.Core.Components.DrawnColumnChooser.OnPointerUp(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
+override KumikoUI.Core.Components.DrawnColumnChooser.OnScroll(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> bool
 override KumikoUI.Core.Components.DrawnMenu.OnDraw(KumikoUI.Core.Rendering.IDrawingContext! ctx) -> void
 override KumikoUI.Core.Components.DrawnMenu.OnKeyDown(KumikoUI.Core.Input.KumikoKeyEventArgs! e) -> bool
 override KumikoUI.Core.Components.DrawnMenu.OnPointerCancel(KumikoUI.Core.Input.KumikoPointerEventArgs! e) -> void
@@ -848,6 +975,7 @@ override KumikoUI.Core.Export.KumikoExportOptions.Equals(object? obj) -> bool
 override KumikoUI.Core.Export.KumikoExportOptions.GetHashCode() -> int
 override KumikoUI.Core.Export.KumikoExportOptions.ToString() -> string!
 override KumikoUI.Core.Export.KumikoExportProgress.GetHashCode() -> int
+override KumikoUI.Core.Input.KumikoShortcut.GetHashCode() -> int
 static KumikoUI.Core.Components.DrawnMenuItem.Separator() -> KumikoUI.Core.Components.DrawnMenuItem!
 static KumikoUI.Core.Data.KumikoColumnMetadataRegistry.GetColumns(System.Type! itemType) -> System.Collections.Generic.IReadOnlyList<KumikoUI.Core.Data.KumikoColumnMetadata!>!
 static KumikoUI.Core.Data.KumikoColumnMetadataRegistry.Register(System.Type! itemType, KumikoUI.Core.Data.IKumikoColumnMetadataProvider! provider) -> void
@@ -863,10 +991,16 @@ static KumikoUI.Core.Export.KumikoExportSelection.FromItems(System.Collections.G
 static KumikoUI.Core.Export.KumikoExportSelection.FromRows(System.Collections.Generic.IEnumerable<int>! visibleRows) -> KumikoUI.Core.Export.KumikoExportSelection!
 static KumikoUI.Core.Export.KumikoExportSelection.FromSelection(KumikoUI.Core.Models.KumikoSelectionModel! selection) -> KumikoUI.Core.Export.KumikoExportSelection!
 static KumikoUI.Core.Export.KumikoExportSnapshot.Create(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Export.KumikoExportOptions? options = null, KumikoUI.Core.Export.KumikoExportValueMode autoValueMode = KumikoUI.Core.Export.KumikoExportValueMode.DisplayText) -> KumikoUI.Core.Export.KumikoExportSnapshot!
+static KumikoUI.Core.Input.KumikoShortcut.operator !=(KumikoUI.Core.Input.KumikoShortcut left, KumikoUI.Core.Input.KumikoShortcut right) -> bool
+static KumikoUI.Core.Input.KumikoShortcut.operator ==(KumikoUI.Core.Input.KumikoShortcut left, KumikoUI.Core.Input.KumikoShortcut right) -> bool
 static KumikoUI.Core.Layout.KumikoScroller.GetRowHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style, int row) -> float
 static KumikoUI.Core.Models.KumikoAnnouncements.CheckAllBox(KumikoUI.Core.Models.KumikoStrings! strings, bool? state) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.CheckAllToggled(KumikoUI.Core.Models.KumikoStrings! strings, bool allSelected, int rowCount, System.Globalization.CultureInfo? culture = null) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.ColumnChooserEntry(KumikoUI.Core.Models.KumikoStrings! strings, string! columnLabel, bool visible, bool canToggle, int position, int count) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.ColumnLabel(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Models.KumikoColumn! column, int columnIndex) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.ColumnMenuName(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Models.KumikoColumn! column, int columnIndex) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.ColumnMoved(KumikoUI.Core.Models.KumikoStrings! strings, string! columnLabel, int position, int count) -> string!
+static KumikoUI.Core.Models.KumikoAnnouncements.ColumnVisibilityChanged(KumikoUI.Core.Models.KumikoStrings! strings, string! columnLabel, bool visible) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.EmptyView(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Models.KumikoEmptyViewKind kind, string? overrideText = null) -> string!
 static KumikoUI.Core.Models.KumikoAnnouncements.LoadMoreCompleted(KumikoUI.Core.Models.KumikoStrings! strings, KumikoUI.Core.Data.KumikoLoadMoreCompletedEventArgs! e, System.Globalization.CultureInfo? culture = null) -> string?
 static KumikoUI.Core.Models.KumikoAnnouncements.LoadMoreStarted(KumikoUI.Core.Models.KumikoStrings! strings) -> string!
@@ -887,3 +1021,5 @@ virtual KumikoUI.Core.Rendering.TextHeaderCellRenderer.Render(KumikoUI.Core.Rend
 virtual KumikoUI.Core.Rendering.TextSummaryCellRenderer.Render(KumikoUI.Core.Rendering.IDrawingContext! ctx, in KumikoUI.Core.Rendering.SummaryCellRenderContext context) -> void
 ~override KumikoUI.Core.Export.KumikoExportProgress.Equals(object obj) -> bool
 ~override KumikoUI.Core.Export.KumikoExportProgress.ToString() -> string
+~override KumikoUI.Core.Input.KumikoShortcut.Equals(object obj) -> bool
+~override KumikoUI.Core.Input.KumikoShortcut.ToString() -> string

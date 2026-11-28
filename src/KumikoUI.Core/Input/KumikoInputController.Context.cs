@@ -127,6 +127,7 @@ public sealed partial class KumikoInputController
         ContextRequested?.Invoke(this, args);
         OpenColumnMenuForContextRequest(args, scroll, selection, style, dataSource);
         OpenRowMenuForContextRequest(args, scroll, selection, style, dataSource); // #331
+        OpenColumnChooserForContextRequest(args, scroll, selection, style, dataSource); // #335
         return true;
     }
 }

@@ -20,7 +20,7 @@ public sealed partial class KumikoInputController
 
     /// <summary>
     /// Whether the grid shows its own column menu (sort ascending and descending, clear sort, filter, group by this
-    /// column or ungroup, hide, auto-fit) on a right click or a touch long press on a column header, from the header's
+    /// column or ungroup, hide, auto-fit, columns) on a right click or a touch long press on a column header, from the header's
     /// menu button (<see cref="ShowColumnMenuButton"/>) and from the context-menu key (the Menu key or Shift+F10, for
     /// the current cell's column). The click or long press raises <see cref="ContextRequested"/> first; the menu opens
     /// only when no handler set <see cref="KumikoContextRequestedEventArgs.Handled"/>. <see cref="ColumnMenuOpening"/>
@@ -313,6 +313,8 @@ public sealed partial class KumikoInputController
                 Redraw();
             }));
         }
+
+        items.Add(ColumnChooserMenuItem(column, scroll, selection, style, dataSource)); // the column chooser (#335)
 
         return items;
 

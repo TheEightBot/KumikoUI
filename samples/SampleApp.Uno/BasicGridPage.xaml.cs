@@ -52,6 +52,10 @@ public sealed partial class BasicGridPage : Page
         kumiko.ShowColumnMenuButton = true;
         kumiko.ColumnMenuOpening += OnColumnMenuOpening;
 
+        // The column chooser (#335): the Columns button, the column menu's Columns... item, or Ctrl+Alt+C
+        // (Command+Option+C on a Mac) show, hide and reorder the columns; Reset brings back the columns as declared
+        kumiko.ColumnChooserShortcut = new KumikoShortcut(KumikoKey.C, InputModifiers.Control | InputModifiers.Alt);
+
         // Right click (or a long press on touch) on a row opens the grid's own row menu: copy, copy with headers, edit and
         // delete, plus the app's items below. The empty area has no built-in menu, so the app answers it with a MenuFlyout.
         kumiko.AllowDeleting = true;
@@ -251,6 +255,8 @@ public sealed partial class BasicGridPage : Page
 
     // Column order, widths, visibility, sort, filters and grouping, kept across app runs (#98).
     private const string LayoutKey = "BasicGridPage.GridLayout";
+
+    private void OnColumnsClicked(object sender, RoutedEventArgs e) => kumiko.ShowColumnChooser();
 
     private void OnSaveLayoutClicked(object sender, RoutedEventArgs e)
     {
