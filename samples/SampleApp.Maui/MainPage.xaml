@@ -29,6 +29,7 @@
             <Button x:Name="iconsToggle" Text="Icons: Built-in" Clicked="OnToggleIconsClicked" Margin="4,0,0,4" />
             <Button x:Name="editTriggerToggle" Text="Edit: Double Tap" Clicked="OnToggleEditTriggerClicked" Margin="4,0,0,4" />
             <Button x:Name="selectionModeToggle" Text="Select: All" Clicked="OnToggleSelectionModeClicked" Margin="4,0,0,4" />
+            <Button Text="Columns" Clicked="OnColumnsClicked" Margin="4,0,0,4" />
             <Button Text="Save Layout" Clicked="OnSaveLayoutClicked" Margin="4,0,0,4" />
             <Button x:Name="restoreLayoutButton" Text="Restore Layout" Clicked="OnRestoreLayoutClicked" Margin="4,0,0,4" />
         </FlexLayout>
@@ -178,6 +179,12 @@
                     </core:TableSummaryRow.Columns>
                 </core:TableSummaryRow>
             </dg:KumikoDataGrid.TableSummaryRows>
+
+            <!-- The app's items of the row menu: the grid hands them its BindingContext, and the command receives the row's item -->
+            <dg:KumikoDataGrid.RowMenuItems>
+                <dg:MauiRowMenuItem Key="Duplicate" Text="Duplicate" Command="{Binding DuplicateCommand}" />
+                <dg:MauiRowMenuItem Key="Raise" Text="Give a 5% raise" Command="{Binding RaiseCommand}" />
+            </dg:KumikoDataGrid.RowMenuItems>
 
         </dg:KumikoDataGrid>
     </Grid>

@@ -26,6 +26,8 @@ public partial class MainPage : ContentPage
 
 	public MainPage()
 	{
+		_viewModel.DuplicateCommand = new Command<Employee>(DuplicateRow);
+		_viewModel.RaiseCommand = new Command<Employee>(employee => employee.Salary = Math.Round(employee.Salary * 1.05m, 0));
 		InitializeComponent();
 		BindingContext = _viewModel;
 		LoadSampleData();
@@ -41,7 +43,15 @@ public partial class MainPage : ContentPage
 		kumiko.ShowColumnMenuButton = true;
 		kumiko.ColumnMenuOpening += OnColumnMenuOpening;
 
-		// Right click (or a long press on touch) on a row or the empty area opens a context menu
+		// The column chooser (#335): the Columns button, the column menu's Columns... item, or Ctrl+Alt+C
+		// (Command+Option+C on a Mac) show, hide and reorder the columns; Reset brings back the columns as declared
+		kumiko.ColumnChooserShortcut = new KumikoShortcut(KumikoKey.C, InputModifiers.Control | InputModifiers.Alt);
+
+		// Right click (or a long press on touch) on a row opens the grid's own row menu: copy, copy with headers, edit and
+		// delete, plus the app's items (RowMenuItems in the XAML, bound to the view model's commands). The empty area has
+		// no built-in menu, so the app answers it itself.
+		kumiko.IsRowMenuEnabled = true;
+		kumiko.RowMenuOpening += OnRowMenuOpening;
 		kumiko.ContextMenuRequested += OnGridContextMenuRequested;
 
 		// The Delete key (Command+Backspace on a Mac keyboard) removes the selected rows, after a confirmation for several
@@ -74,46 +84,36 @@ public partial class MainPage : ContentPage
 		});
 	}
 
+	// ── Row menu ──
+
+	// The app's items make no sense on a group header row (it has no employee): leave only the grid's own there
+	private void OnRowMenuOpening(object? sender, KumikoRowMenuOpeningEventArgs e)
+	{
+		if (e.DataItem is Employee) return;
+		var own = e.Items.Where(i => i.Key is "Duplicate" or "Raise").ToList();
+		foreach (var item in own) e.Items.Remove(item);
+	}
+
+	private void DuplicateRow(Employee employee)
+	{
+		OnAddRowClicked(this, EventArgs.Empty);
+		var copy = _viewModel.Employees[^1];
+		copy.Name = $"{employee.Name} (copy)";
+		copy.Department = employee.Department;
+		copy.Salary = employee.Salary;
+	}
+
 	// ── Context menu ──
-	// MAUI has no API to open a MenuFlyout at a point, so the row menu is an action sheet: a sheet on phones and
-	// tablets, a dialog on the desktop. Column headers use the grid's drawn column menu instead (see above).
+	// MAUI has no API to open a MenuFlyout at a point, so the menu of the empty area is an action sheet: a sheet on
+	// phones and tablets, a dialog on the desktop. Column headers and rows use the grid's drawn menus instead (see above).
 
 	private async void OnGridContextMenuRequested(object? sender, KumikoContextRequestedEventArgs e)
 	{
-		if (e.IsHeader) return; // the built-in column menu opens
+		if (e.Region != HitRegion.EmptyArea) return;
 
-		if (e.DataItem is Employee employee)
-		{
-			// The grid selected the row first (unless it was already part of the selection)
-			var selected = kumiko.Selection.SelectedItems.OfType<Employee>().ToList();
-			string delete = selected.Count > 1 ? $"Delete {selected.Count} rows" : "Delete row";
-			const string duplicate = "Duplicate", raise = "Give a 5% raise";
-			var choice = await DisplayActionSheetAsync(employee.Name, "Cancel", delete, duplicate, raise);
-			if (choice == delete)
-			{
-				// The same path as the Delete key: RowsDeleting, one view rebuild, then the next row is selected
-				if (!kumiko.Selection.IsSelected(employee)) kumiko.Selection.Select(employee);
-				kumiko.DeleteSelectedRows();
-			}
-			else if (choice == duplicate)
-			{
-				OnAddRowClicked(this, EventArgs.Empty);
-				var copy = _viewModel.Employees[^1];
-				copy.Name = $"{employee.Name} (copy)";
-				copy.Department = employee.Department;
-				copy.Salary = employee.Salary;
-			}
-			else if (choice == raise)
-			{
-				employee.Salary = Math.Round(employee.Salary * 1.05m, 0);
-			}
-		}
-		else if (e.Region == HitRegion.EmptyArea)
-		{
-			const string add = "Add row";
-			if (await DisplayActionSheetAsync("Grid", "Cancel", null, add) == add)
-				OnAddRowClicked(this, EventArgs.Empty);
-		}
+		const string add = "Add row";
+		if (await DisplayActionSheetAsync("Grid", "Cancel", null, add) == add)
+			OnAddRowClicked(this, EventArgs.Empty);
 	}
 
 	private void LoadSampleData()
@@ -304,6 +304,8 @@ public partial class MainPage : ContentPage
 	// Column order, widths, visibility, sort, filters and grouping, kept across app runs (#98).
 	private const string LayoutKey = "MainPage.GridLayout";
 
+	private void OnColumnsClicked(object? sender, EventArgs e) => kumiko.ShowColumnChooser();
+
 	private void OnSaveLayoutClicked(object? sender, EventArgs e)
 	{
 		Preferences.Set(LayoutKey, kumiko.GetLayoutState().ToJson());
@@ -329,6 +331,12 @@ public partial class MainPage : ContentPage
 public class MainPageViewModel
 {
 	public ObservableCollection<Employee> Employees { get; } = new();
+
+	/// <summary>Duplicates a row; the row menu passes the row's employee.</summary>
+	public System.Windows.Input.ICommand? DuplicateCommand { get; set; }
+
+	/// <summary>Gives a row's employee a 5% raise; the row menu passes the row's employee.</summary>
+	public System.Windows.Input.ICommand? RaiseCommand { get; set; }
 }
 
 /// <summary>

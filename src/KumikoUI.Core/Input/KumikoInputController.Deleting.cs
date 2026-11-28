@@ -153,11 +153,7 @@ public sealed partial class KumikoInputController
     {
         var doomed = new HashSet<object>(deleted, ReferenceEqualityComparer.Instance);
         int rowCount = dataSource.RowCount;
-        int first = int.MaxValue;
-        foreach (int row in deleted.Select(dataSource.IndexOfRowKey))
-        {
-            if (row >= 0 && row < first) first = row;
-        }
+        int first = deleted.Select(dataSource.IndexOfRowKey).Where(row => row >= 0).DefaultIfEmpty(int.MaxValue).Min();
         if (first == int.MaxValue) return null;
 
         for (int row = first; row < rowCount; row++)

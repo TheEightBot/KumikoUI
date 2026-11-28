@@ -283,7 +283,7 @@ public sealed partial class KumikoInputController
     /// </summary>
     public ITextInputSession? ActiveTextInput => _activeFilterPopup != null
         ? _activeFilterPopup.ActiveTextInput
-        : SearchPanelTextInput ?? _editSession?.ActiveTextInput;
+        : ColumnChooserTextInput ?? SearchPanelTextInput ?? _editSession?.ActiveTextInput;
 
     /// <summary>
     /// Raised when a column edge is double-clicked, requesting auto-fit width. The built-in hosts answer it with
@@ -540,6 +540,8 @@ public sealed partial class KumikoInputController
             return;
         if (TryHandleSearchKey(e, scroll, selection, style, dataSource)) // Ctrl/Cmd+F (#317)
             return;
+        if (TryHandleColumnChooserKey(e, scroll, selection, style, dataSource)) // ColumnChooserShortcut (#335)
+            return;
 
         int totalRows = dataSource.RowCount;
         // One page = the number of scrollable rows that fit between the fixed bands (header, grouping
@@ -790,7 +792,8 @@ public sealed partial class KumikoInputController
                 }
                 break;
             case KumikoKey.ContextMenu:
-                e.Handled = TryOpenColumnMenuFromKeyboard(scroll, selection, style, dataSource);
+                e.Handled = TryOpenRowMenuFromKeyboard(scroll, selection, style, dataSource) // #331
+                    || TryOpenColumnMenuFromKeyboard(scroll, selection, style, dataSource);
                 break;
             case KumikoKey.Delete:
             case KumikoKey.Backspace:
@@ -952,6 +955,7 @@ public sealed partial class KumikoInputController
         _isResizingColumn = false;
         _isDraggingColumn = false;
         _isDraggingRow = false;
+        _rowDragHoldActive = false;
         _dragRowIndex = -1;
         _armedDragRow = -1;
         _headerLongPressColumn = -1;
@@ -1350,6 +1354,12 @@ public sealed partial class KumikoInputController
         }
 
         _armedDragRow = -1;
+        if (_isDraggingRow && TryOpenRowMenuOnDragHoldRelease(e, columns, totalRows, scroll, selection, style, dataSource))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (_isDraggingRow)
         {
             UpdateRowDrag(e.Y, scroll, style, dataSource);
@@ -1847,6 +1857,7 @@ public sealed partial class KumikoInputController
             BeginRowDrag(hit.RowIndex, e.Y, scroll, style, dataSource);
             UpdateRowDrag(e.Y, scroll, style, dataSource);
             _autoScrollVelocityY = 0; // a row held in an edge band scrolls once the finger moves
+            (_rowDragHoldActive, _rowDragHoldX, _rowDragHoldY) = (true, e.X, e.Y); // lifting here opens the row menu (#331)
         }
         return true;
     }
@@ -1898,6 +1909,7 @@ public sealed partial class KumikoInputController
     private void EndRowDrag()
     {
         _isDraggingRow = false;
+        _rowDragHoldActive = false;
         _dragRowIndex = -1;
         _autoScrollVelocityY = 0;
     }
@@ -2065,6 +2077,7 @@ public sealed partial class KumikoInputController
         // Close any existing popup
         EnsurePopupRedrawWired();
         CloseFilterPopup();
+        CloseColumnChooser(); // one of the two at a time (#335)
 
         var popup = new DrawnFilterPopup(column, dataSource);
         popup.ApplyTheme(style);
@@ -2312,7 +2325,7 @@ public sealed partial class KumikoInputController
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(dataSource);
         if (_editSession != null && _editSession.IsEditing) return true;
-        if (_activeFilterPopup != null) return true; // Tab moves through the filter popup (#325)
+        if (_activeFilterPopup != null || _columnChooser != null) return true; // Tab moves through the popup (#325, #335)
         return FindNextTabStop(selection.CurrentCell, dataSource, backwards ? -1 : 1).IsValid;
     }
 

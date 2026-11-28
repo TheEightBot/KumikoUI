@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using KumikoUI.Core.Models;
+using KumikoUI.Core.Rendering;
 using SampleApp.Shared;
 
 namespace SampleApp.Maui;
@@ -16,6 +17,7 @@ public partial class GroupingPage : ContentPage
 
     private readonly GroupingPageViewModel _viewModel = new();
     private readonly Random _random = new(123);
+    private readonly CountBadgeGroupHeaderRenderer _badgeHeaders = new();
     private bool _hasGroupSummary;
 
     public GroupingPage()
@@ -23,6 +25,7 @@ public partial class GroupingPage : ContentPage
         InitializeComponent();
         BindingContext = _viewModel;
         ApplyGridTheme();
+        kumiko.GroupHeaderRenderer = _badgeHeaders;
         LoadSampleData();
     }
 
@@ -148,6 +151,24 @@ public partial class GroupingPage : ContentPage
                 Label = "Avg: "
             });
             kumiko.GroupSummaryRows.Add(averageRow);
+
+            // A summary cell drawn by a custom renderer (#334): a group's pay against a 110,000 per head budget,
+            // in red when it is over. Salaries are whole numbers, so the aggregate adds them as decimals.
+            var budgetRow = new GroupSummaryRow
+            {
+                Name = "GroupBudget",
+                Title = "Vs. Budget"
+            };
+            budgetRow.Columns.Add(new SummaryColumnDescription
+            {
+                PropertyName = "Salary",
+                SummaryType = SummaryType.Custom,
+                CustomAggregate = values => values.Sum(v => Convert.ToDecimal(v)) - values.Count * 110000m,
+                Format = "+$#,##0;-$#,##0;$0",
+                Label = "Budget: ",
+                CustomCellRenderer = new SignedSummaryCellRenderer(),
+            });
+            kumiko.GroupSummaryRows.Add(budgetRow);
             _hasGroupSummary = true;
         }
     }
@@ -155,6 +176,12 @@ public partial class GroupingPage : ContentPage
     private void OnToggleFilteringClicked(object? sender, EventArgs e)
     {
         kumiko.AllowFiltering = !kumiko.AllowFiltering;
+    }
+
+    // The group headers' content is drawn by a custom renderer (#332): the item count in a badge. Null draws the text.
+    private void OnToggleBadgeHeadersClicked(object? sender, EventArgs e)
+    {
+        kumiko.GroupHeaderRenderer = kumiko.GroupHeaderRenderer == null ? _badgeHeaders : null;
     }
 
     private void OnToggleGridLinesClicked(object? sender, EventArgs e)

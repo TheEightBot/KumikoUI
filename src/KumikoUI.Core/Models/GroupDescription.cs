@@ -1,3 +1,5 @@
+using KumikoUI.Core.Rendering;
+
 namespace KumikoUI.Core.Models;
 
 /// <summary>
@@ -29,6 +31,12 @@ public sealed class GroupDescription
     /// Sort direction for groups. Default is ascending.
     /// </summary>
     public KumikoSortDirection GroupSortDirection { get; set; } = KumikoSortDirection.Ascending;
+
+    /// <summary>
+    /// Draws the content of the header of this level's groups (right of the chevron), instead of
+    /// <see cref="KumikoUI.Core.KumikoRenderer.GroupHeaderRenderer"/> or the built-in text. Null (the default) uses those.
+    /// </summary>
+    public IGroupHeaderRenderer? CustomHeaderRenderer { get; set; }
 
     /// <summary>Creates an empty description; set <see cref="PropertyName"/> before use.</summary>
     public GroupDescription() { }

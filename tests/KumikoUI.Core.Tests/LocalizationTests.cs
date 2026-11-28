@@ -134,6 +134,30 @@ public class LocalizationTests
         FilterDateAfterOrEqual = "Am oder nach dem",
         AnnounceRefreshing = "Wird aktualisiert",
         AnnounceRefreshed = "Aktualisiert",
+        RowMenuCopy = "Kopieren",
+        RowMenuCopyWithHeaders = "Mit Überschriften kopieren",
+        RowMenuEdit = "Bearbeiten",
+        RowMenuDelete = "Löschen",
+        RowMenuDeleteRows = "{0} Zeilen löschen",
+        RowMenuExpandAllGroups = "Alle Gruppen erweitern",
+        RowMenuCollapseAllGroups = "Alle Gruppen reduzieren",
+        RowMenuName = "Zeilenmenü",
+        AnnounceRowsCopied = "{0} Zeilen kopiert",
+        AnnounceRowCopied = "Zeile kopiert",
+        ColumnChooserTitle = "Spalten",
+        ColumnChooserSearchPlaceholder = "Spalten suchen",
+        ColumnChooserShowAll = "Alle einblenden",
+        ColumnChooserReset = "Standard wiederherstellen",
+        ColumnChooserClose = "Schließen",
+        ColumnChooserNoMatches = "Keine passenden Spalten",
+        ColumnChooserCannotHide = "Diese Spalte kann nicht ausgeblendet werden",
+        ColumnChooserPosition = "{0} von {1}",
+        ColumnMenuColumns = "Spalten...",
+        AnnounceColumnShown = "{0} eingeblendet",
+        AnnounceColumnHidden = "{0} ausgeblendet",
+        AnnounceColumnMoved = "{0} an Position {1} von {2} verschoben",
+        AnnounceAllColumnsShown = "Alle Spalten eingeblendet",
+        AnnounceColumnLayoutReset = "Spaltenlayout zurückgesetzt",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>
@@ -532,5 +556,43 @@ public class LocalizationTests
             new KumikoRect(0, 0, 200, 30), culture: German)!;
 
         Assert.Same(German, editor.Culture);
+    }
+
+    // ── Column chooser (#335) ─────────────────────────────────────
+
+    [Fact]
+    public void TheColumnChooser_DrawsAndAnnouncesInTheGridsLanguage()
+    {
+        var (source, title, count, _) = EventSource();
+        source.Strings = GermanStrings;
+        count.IsVisible = false;
+        var chooser = new DrawnColumnChooser(source);
+        var said = new List<string>();
+        chooser.AnnouncementRequested += said.Add;
+        var drawn = new List<string>();
+
+        var ctx = new RecordingDrawingContext();
+        chooser.OnDraw(ctx);
+        drawn.AddRange(ctx.Texts.Select(t => t.Text!));
+        chooser.SearchText = "zzz";
+        ctx = new RecordingDrawingContext();
+        chooser.OnDraw(ctx);
+        drawn.AddRange(ctx.Texts.Select(t => t.Text!));
+        chooser.SearchText = "";
+        var focus = new DrawnFocusManager();
+        focus.Register(chooser);
+        focus.SetFocus(chooser);
+        chooser.OnKeyDown(new KumikoKeyEventArgs { Key = KumikoKey.Down });
+        chooser.OnKeyDown(new KumikoKeyEventArgs { Key = KumikoKey.Space });
+        chooser.OnKeyDown(new KumikoKeyEventArgs { Key = KumikoKey.Down, Modifiers = InputModifiers.Alt });
+        drawn.AddRange(said);
+
+        Assert.Contains("Spalten", drawn);
+        Assert.Contains("Spalten suchen", drawn);
+        Assert.Contains("Keine passenden Spalten", drawn);
+        Assert.Contains("Titel ausgeblendet", said);
+        Assert.Contains("Titel an Position 2 von 3 verschoben", said);
+        Assert.False(title.IsVisible);
+        AssertNoEnglish(drawn);
     }
 }

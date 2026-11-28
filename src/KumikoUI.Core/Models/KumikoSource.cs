@@ -1032,6 +1032,7 @@ public sealed partial class KumikoSource : IDisposable
         _columns = columns.ToList();
         if (!_disposed && !_detached) SubscribeToColumns();
         UpdateSortCache();
+        OnColumnsReplaced(); // the default layout for ResetColumnLayout (KumikoSource.Columns.cs)
         RequestRebuild(); // the columns carry sort and filter state and feed summaries
     }
 
@@ -1056,6 +1057,7 @@ public sealed partial class KumikoSource : IDisposable
     {
         if (_disposed || _detached) return;
         VerifyAccess(); // column settings follow the source's UI-thread contract
+        if (sender is KumikoColumn changed) OnColumnLayoutPropertyChanged(changed, e.PropertyName); // ColumnsChanged
         if (SearchFilterAffectedBy(e.PropertyName)) // which rows the search keeps (#317)
         {
             RequestRebuild();
@@ -1092,6 +1094,7 @@ public sealed partial class KumikoSource : IDisposable
         _columns.RemoveAt(fromIndex);
         _columns.Insert(toIndex, col);
         ColumnOrderChanged?.Invoke(this, EventArgs.Empty);
+        OnColumnMoved(col, fromIndex, toIndex); // ColumnsChanged (KumikoSource.Columns.cs)
         NotifyRedraw();
     }
 
@@ -1878,6 +1881,7 @@ public sealed partial class KumikoSource : IDisposable
         if (_updateDepth == 0)
             throw new InvalidOperationException("EndUpdate was called without a matching BeginUpdate.");
         if (--_updateDepth > 0) return;
+        FlushColumnsChanged(); // the batch's ColumnsChanged (KumikoSource.Columns.cs)
 
         var oldRowKeys = _batchOldRowKeys;
         _batchOldRowKeys = null;

@@ -529,7 +529,7 @@ public sealed partial class KumikoRenderer : IDisposable
             for (int i = _pinnedGroupHeaders.Count - 1; i >= 0; i--)
             {
                 var pinned = _pinnedGroupHeaders[i];
-                DrawGroupHeaderRow(ctx, dataSource, pinned.Row, pinned.Y, allCols, scroll, style, frozenWidth, handleOffset);
+                DrawGroupHeaderRow(ctx, dataSource, pinned.Row, pinned.Y, allCols, scroll, style, frozenWidth, handleOffset, isPinned: true);
             }
             ctx.Restore();
         }
@@ -984,8 +984,8 @@ public sealed partial class KumikoRenderer : IDisposable
                 col.Width - padding * 2 - rightReserved,
                 style.HeaderHeight);
 
-            ctx.DrawTextInRect(col.Header, cellRect, colPaint,
-                hStyle?.TextAlignment ?? KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+            DrawHeaderContent(ctx, col, columnIndex, new KumikoRect(screenX, 0, col.Width, style.HeaderHeight),
+                cellRect, style, hStyle, colPaint);
         }
     }
 
@@ -1258,7 +1258,8 @@ public sealed partial class KumikoRenderer : IDisposable
         ScrollState scroll,
         KumikoStyle style,
         float frozenWidth,
-        float handleOffset = 0)
+        float handleOffset = 0,
+        bool isPinned = false)
     {
         var groupInfo = dataSource.GetGroupHeaderInfo(row);
         if (groupInfo == null) return;
@@ -1294,32 +1295,12 @@ public sealed partial class KumikoRenderer : IDisposable
             new KumikoRect(chevronX, chevronCenterY - chevronSize / 2, chevronSize, chevronSize),
             _paintCache.GroupChevron);
 
-        // Draw group text in up to three runs: "Header: DisplayText", " (count)" and the caption summary, each
-        // with its own paint (group header text, count, caption summary).
+        // The content right of the chevron is drawn by the group header renderer, clipped to its bounds
         float textX = indent + chevronSize + style.CellPadding;
         float textRight = areaWidth - style.CellPadding;
-
-        string? captionLabel = groupInfo.GetCaptionLabel(KumikoSource.GetCaptionSummaryText(groupInfo));
-
-        textX = DrawGroupHeaderRun(ctx, groupInfo.GetTitle(), _paintCache.GroupHeaderText, textX, textRight, rowY, style);
-        textX = DrawGroupHeaderRun(ctx, groupInfo.GetCountText(), _paintCache.GroupHeaderCount, textX, textRight, rowY, style);
-        if (captionLabel != null)
-            DrawGroupHeaderRun(ctx, captionLabel, _paintCache.CaptionSummaryText, textX, textRight, rowY, style);
-    }
-
-    /// <summary>
-    /// Draw one run of a group header's text starting at <paramref name="x"/> and return where the next run
-    /// starts; returns <paramref name="right"/> when the run did not fit, so nothing is drawn after it.
-    /// </summary>
-    private static float DrawGroupHeaderRun(
-        IDrawingContext ctx, string text, KumikoPaint paint, float x, float right, float rowY, KumikoStyle style)
-    {
-        if (x >= right) return right;
-
-        float width = ctx.MeasureText(text, paint).Width;
-        var rect = new KumikoRect(x, rowY, right - x, style.RowHeight);
-        ctx.DrawTextInRect(text, rect, paint, KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
-        return x + width;
+        DrawGroupHeaderContent(ctx, dataSource, groupInfo, row, isPinned,
+            new KumikoRect(areaLeft, rowY, areaWidth, style.RowHeight),
+            new KumikoRect(textX, rowY, Math.Max(0f, textRight - textX), style.RowHeight), style);
     }
 
     private void DrawGridLines(
@@ -1684,7 +1665,8 @@ public sealed partial class KumikoRenderer : IDisposable
             // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
             // after the title
             DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.SummaryRowHeight, valuePaint,
-                SummaryTitleEnd(ctx, summary, titlePaint, handleOffset + style.CellPadding * 2, frozenWidth, style));
+                SummaryTitleEnd(ctx, summary, titlePaint, handleOffset + style.CellPadding * 2, frozenWidth, style),
+                KumikoSummaryRowKind.Table, null);
             DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.SummaryRowHeight,
                 handleOffset + style.CellPadding * 2, titlePaint, valuePaint);
 
@@ -1722,7 +1704,9 @@ public sealed partial class KumikoRenderer : IDisposable
         float rowY,
         float rowHeight,
         KumikoPaint valuePaint,
-        float titleEnd)
+        float titleEnd,
+        KumikoSummaryRowKind kind,
+        GroupHeaderInfo? group)
     {
         _overflowValues.Clear();
         foreach (var (col, colX, _) in allCols)
@@ -1733,8 +1717,11 @@ public sealed partial class KumikoRenderer : IDisposable
             float screenX = ColumnScreenX(colX, scroll, col.Pane);
             float usableWidth = col.Width - style.CellPadding * 2;
 
+            // A custom renderer draws in its own column at any width; only the built-in text overflows
+            var custom = ResolveSummaryRenderer(summary, col.PropertyName);
+
             // If the column is too narrow for the label+value, overflow it
-            if (usableWidth < 70)
+            if (custom == null && usableWidth < 70)
             {
                 _overflowValues.Add(displayText);
                 continue;
@@ -1753,13 +1740,16 @@ public sealed partial class KumikoRenderer : IDisposable
             left = Math.Max(left, titleEnd);
             left = Math.Max(left, paneLeft);
             right = Math.Min(right, paneLeft + paneWidth);
-            if (right - left < MinSummaryValueWidth) continue;
+            if (right - left < (custom == null ? MinSummaryValueWidth : 1f)) continue;
 
             var cellRect = new KumikoRect(left, rowY, right - left, rowHeight);
             ctx.Save();
             ctx.ClipRect(new KumikoRect(paneLeft, rowY, paneWidth, rowHeight));
-            ctx.DrawTextInRect(displayText, cellRect, valuePaint,
-                col.TextAlignment, KumikoVerticalAlignment.Center);
+            summary.RawValues.TryGetValue(col.PropertyName, out var rawValue);
+            var cell = new SummaryCellRenderContext(
+                cellRect, new KumikoRect(screenX, rowY, col.Width, rowHeight), kind, summary, group, col,
+                displayText, rawValue, style, _paintCache, valuePaint, col.TextAlignment);
+            (custom ?? TextSummaryCellRenderer.Default).Render(ctx, in cell);
             ctx.Restore();
         }
     }
@@ -1837,7 +1827,8 @@ public sealed partial class KumikoRenderer : IDisposable
         // Draw summary values in their respective columns; values that don't fit narrow columns are drawn
         // after the title
         DrawSummaryValues(ctx, allCols, scroll, style, summary, rowY, style.RowHeight, textPaint,
-            SummaryTitleEnd(ctx, summary, textPaint, titleStartX, frozenWidth, style));
+            SummaryTitleEnd(ctx, summary, textPaint, titleStartX, frozenWidth, style),
+            KumikoSummaryRowKind.Group, dataSource.GetGroupOfSummaryRow(row));
         DrawSummaryOverflow(ctx, scroll, style, frozenWidth, summary, rowY, style.RowHeight,
             titleStartX, textPaint, textPaint);
     }
@@ -1880,8 +1871,8 @@ public sealed partial class KumikoRenderer : IDisposable
         var textRect = new KumikoRect(
             dragScreenX + style.CellPadding, 0,
             col.Width - style.CellPadding * 2, style.HeaderHeight);
-        ctx.DrawTextInRect(col.Header, textRect, _paintCache.HeaderText,
-            col.HeaderCellStyle?.TextAlignment ?? KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+        DrawHeaderContent(ctx, col, dragColumnIndex, ghostRect, textRect, style, col.HeaderCellStyle,
+            _paintCache.HeaderText);
     }
 
     /// <summary>

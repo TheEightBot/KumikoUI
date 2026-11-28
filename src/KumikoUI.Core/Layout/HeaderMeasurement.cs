@@ -11,6 +11,7 @@ internal sealed class HeaderMeasurement
 {
     private string? _text;
     private KumikoFont _font;
+    private IHeaderCellRenderer? _renderer;
 
     /// <summary>Whether a measurement has been stored.</summary>
     public bool HasValue { get; private set; }
@@ -18,17 +19,22 @@ internal sealed class HeaderMeasurement
     /// <summary>The measured text width, in pixels.</summary>
     public float TextWidth { get; private set; }
 
-    /// <summary>Whether the stored measurement is for <paramref name="text"/> drawn in <paramref name="font"/> as it is now.</summary>
-    public bool IsCurrentFor(string text, KumikoFont font) =>
+    /// <summary>
+    /// Whether the stored measurement is for <paramref name="text"/> drawn in <paramref name="font"/> by
+    /// <paramref name="renderer"/> (null for the built-in text) as it is now.
+    /// </summary>
+    public bool IsCurrentFor(string text, KumikoFont font, IHeaderCellRenderer? renderer = null) =>
         HasValue
         && string.Equals(_text, text, StringComparison.Ordinal)
+        && ReferenceEquals(_renderer, renderer)
         && _font == font; // value equality: exact family, size, weight and slant
 
-    /// <summary>Stores the width of <paramref name="text"/> measured in <paramref name="font"/>.</summary>
-    public void Store(string text, KumikoFont font, float textWidth)
+    /// <summary>Stores the width of <paramref name="text"/> measured in <paramref name="font"/> for <paramref name="renderer"/>.</summary>
+    public void Store(string text, KumikoFont font, float textWidth, IHeaderCellRenderer? renderer = null)
     {
         _text = text;
         _font = font;
+        _renderer = renderer;
         TextWidth = textWidth;
         HasValue = true;
     }
