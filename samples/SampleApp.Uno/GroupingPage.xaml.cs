@@ -23,6 +23,7 @@ public sealed partial class GroupingPage : Page
 
     private readonly GroupingViewModel _viewModel = new();
     private readonly Random _random = new(123);
+    private readonly CountBadgeGroupHeaderRenderer _badgeHeaders = new();
     private bool _hasGroupSummary;
 
     public GroupingPage()
@@ -32,6 +33,7 @@ public sealed partial class GroupingPage : Page
         ApplyGridTheme();
         Loaded += (_, _) => ApplyGridTheme();
         ActualThemeChanged += (_, _) => ApplyGridTheme();
+        kumiko.GroupHeaderRenderer = _badgeHeaders;
         LoadSampleData();
     }
 
@@ -153,6 +155,12 @@ public sealed partial class GroupingPage : Page
     {
         kumiko.AllowFiltering = !kumiko.AllowFiltering;
         filterToggle.Content = kumiko.AllowFiltering ? "Filtering: ON" : "Filtering: OFF";
+    }
+
+    // The group headers' content is drawn by a custom renderer (#332): the item count in a badge. Null draws the text.
+    private void OnToggleBadgeHeadersClicked(object sender, RoutedEventArgs e)
+    {
+        kumiko.GroupHeaderRenderer = kumiko.GroupHeaderRenderer == null ? _badgeHeaders : null;
     }
 
     private void OnToggleGridLinesClicked(object sender, RoutedEventArgs e)

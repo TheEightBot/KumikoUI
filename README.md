@@ -980,6 +980,47 @@ style.StickyGroupHeaders = false;
 kumiko.GridStyle = style;
 ```
 
+### Custom group headers
+
+By default a group header reads "Header: Key (count)" followed by the caption summary, drawn as text. To draw more in it (a count badge, a colored key, a progress bar for the group), implement `IGroupHeaderRenderer`. The grid keeps the row background, the chevron and its tap, keyboard and screen-reader behavior; the renderer draws the part right of the chevron, clipped to `Bounds`. It runs for every visible and sticky header on every frame, with a `GroupHeaderRenderContext` passed by reference:
+
+| Member | Meaning |
+|---|---|
+| `Bounds` | The rectangle to draw in: right of the chevron up to the row's right padding |
+| `RowBounds`, `Row` | The whole header row, and its visible row index |
+| `IsPinned` | Whether the header is drawn as a sticky header over the rows |
+| `Group` | The `GroupHeaderInfo`: `Level`, `Key`, `DisplayText`, `ItemCount`, `IsExpanded` and `GetCaptionValue(property, type)` for the raw caption aggregate |
+| `Description` | The `GroupDescription` of the header's level |
+| `Title`, `CountText`, `CaptionText` | The texts the default header draws: "Header: Key", " (n)" and the caption summary (`null` without one) |
+| `Style`, `Paints` | The grid style and its shared paints, including `GroupHeaderText`, `GroupHeaderCount` and `CaptionSummaryText` |
+
+Set a renderer for one group level with `GroupDescription.CustomHeaderRenderer`, or for every header that has none with the grid's `GroupHeaderRenderer` property (a bindable property on both hosts). The order is the level's renderer, then the grid's, then the built-in `TextGroupHeaderRenderer`, which a renderer can also call to draw the default text and then add to it:
+
+```csharp
+kumiko.GroupHeaderRenderer = new CountBadgeRenderer();
+kumiko.GroupDescriptions.Add(new GroupDescription("Department") { CustomHeaderRenderer = new CountBadgeRenderer() });
+
+public sealed class CountBadgeRenderer : IGroupHeaderRenderer
+{
+    // Created once and reused: only the color changes per header
+    private readonly KumikoPaint _badge = new() { IsAntiAlias = true };
+
+    public void Render(IDrawingContext ctx, in GroupHeaderRenderContext context)
+    {
+        var b = context.Bounds;
+        _badge.Color = context.Style.AccentColor;
+        float titleWidth = ctx.MeasureText(context.Title, context.Paints.GroupHeaderText).Width;
+        ctx.DrawTextInRect(context.Title, b, context.Paints.GroupHeaderText,
+            KumikoTextAlignment.Left, KumikoVerticalAlignment.Center);
+        ctx.FillRoundRect(new KumikoRect(b.X + titleWidth + 8, b.Y + b.Height / 2 - 9, 36, 18), 9, _badge);
+        ctx.DrawTextInRect(context.CountText, new KumikoRect(b.X + titleWidth + 8, b.Y, 36, b.Height),
+            context.Paints.GroupHeaderCount, KumikoTextAlignment.Center, KumikoVerticalAlignment.Center);
+    }
+}
+```
+
+Keep `Render` free of allocations, as the built-in renderer is: draw with `context.Paints` or with paints and fonts the renderer creates once, and don't create a `KumikoPaint`, `KumikoFont` or string per call. The context's group, paints and texts may be replaced when the view is rebuilt, so read them during the call and don't keep them. A renderer gets no input; to react to taps use the grid's group events. `GetAccessibleText` is an optional member for the screen reader text of the header; the grid does not read it yet.
+
 ---
 
 ## Summaries
