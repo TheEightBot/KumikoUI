@@ -146,6 +146,7 @@
     <Compile Include="../Shared/RemoteOrders.cs" Link="Shared/RemoteOrders.cs" />
     <Compile Include="../Shared/AutoColumnsData.cs" Link="Shared/AutoColumnsData.cs" />
     <Compile Include="../Shared/SubtitleHeaderRenderer.cs" Link="Shared/SubtitleHeaderRenderer.cs" />
+    <Compile Include="../Shared/SignedSummaryCellRenderer.cs" Link="Shared/SignedSummaryCellRenderer.cs" />
   </ItemGroup>
 
   <!--

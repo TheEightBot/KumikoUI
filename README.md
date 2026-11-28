@@ -1135,6 +1135,45 @@ kumiko.DataSource.CaptionSummary = new CaptionSummaryDescription
 };
 ```
 
+### Custom summary cells
+
+A summary value is drawn as text by default. To draw it yourself (a red negative total, a bar for a group's share, an icon next to a count), implement `ISummaryCellRenderer` and set it on a `SummaryColumnDescription` (`CustomCellRenderer`) or on the whole grid (`SummaryCellRenderer`, on `KumikoDataGrid`). A cell uses the first aggregate of its property that has a renderer, then the grid-wide renderer, then the built-in `TextSummaryCellRenderer`.
+
+```csharp
+using KumikoUI.Core.Models;
+using KumikoUI.Core.Rendering;
+
+public sealed class RedWhenNegative : ISummaryCellRenderer
+{
+    private readonly KumikoPaint _red = new() { Color = new KumikoColor(220, 38, 38), IsAntiAlias = true };
+
+    public void Render(IDrawingContext ctx, in SummaryCellRenderContext context)
+    {
+        bool negative = context.RawValue is decimal d && d < 0;
+        if (negative) _red.Font = context.TextPaint.Font;
+        ctx.DrawTextInRect(context.DisplayText, context.Bounds, negative ? _red : context.TextPaint,
+            context.TextAlignment, KumikoVerticalAlignment.Center);
+    }
+}
+
+public static class SummaryCellSetup
+{
+    public static void Apply(KumikoDataGrid kumiko)
+    {
+        kumiko.DataSource.AddTableSummaryRow(new TableSummaryRow("Totals", SummaryPosition.Bottom)
+        {
+            Title = "Totals",
+            Columns =
+            {
+                new SummaryColumnDescription("Salary", SummaryType.Sum, "C0") { CustomCellRenderer = new RedWhenNegative() },
+            },
+        });
+    }
+}
+```
+
+`Render` runs for every visible summary cell on every frame, so create paints once and reuse them; it must not allocate. The context gives the cell's `Bounds` (padded, clipped to the visible part of the column and never under the row's title), `CellBounds` (the whole column slot), `Kind` (`Table` or `Group`), `Group` (for a group summary row), `Summary` (`Values`, `RawValues` and `Aggregates`; filter `Aggregates` by `PropertyName` when several share the column), `DisplayText`, `RawValue`, `Style`, `Paints` (the summary paints `SummaryText`, `SummaryLabel`, `GroupSummaryText` and `GroupSummaryBackground` match the theme) and `TextAlignment`. Do not keep the context's objects between calls: a background rebuild replaces the `ComputedSummaryRow`. A cell drawn by a custom renderer is never moved to the text after the row's title, which the built-in text is when its column is narrower than 70 px. Caption summaries sit in the group header and are not summary cells. `GetAccessibleText` (default `null`, so `DisplayText`) is reserved for screen-reader support.
+
 ### Values
 
 `Sum` and `Average` of `decimal` values are exact (a `decimal` result); integers and floating-point numbers give a `double`. Values that are not numbers (text, dates, booleans, nulls) are skipped. `Min` and `Max` use the grid's comparer. Summary values are formatted in `DataSource.Culture`. Read computed values with `DataSource.ComputedTopSummaries`, `ComputedBottomSummaries` and `GetGroupSummaries(groupPath)`: `Values` (text) and `RawValues` are keyed by property, and `Aggregates` / `GetRawValue(property, type)` give each aggregate when a property has several.

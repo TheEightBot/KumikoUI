@@ -99,6 +99,8 @@ KumikoUI.Uno.KumikoDataGrid.ShowEmptyView.set -> void
 KumikoUI.Uno.KumikoDataGrid.ShowSearchPanel() -> void
 KumikoUI.Uno.KumikoDataGrid.ShowSelectionColumn.get -> bool
 KumikoUI.Uno.KumikoDataGrid.ShowSelectionColumn.set -> void
+KumikoUI.Uno.KumikoDataGrid.SummaryCellRenderer.get -> KumikoUI.Core.Rendering.ISummaryCellRenderer?
+KumikoUI.Uno.KumikoDataGrid.SummaryCellRenderer.set -> void
 KumikoUI.Uno.KumikoDataGrid.SwipeEnded -> System.EventHandler<KumikoUI.Core.Input.KumikoSwipeEndedEventArgs!>?
 KumikoUI.Uno.KumikoDataGrid.SwipeItemWidth.get -> double
 KumikoUI.Uno.KumikoDataGrid.SwipeItemWidth.set -> void
@@ -145,5 +147,6 @@ static readonly KumikoUI.Uno.KumikoDataGrid.ShowBusyDuringViewUpdateProperty -> 
 static readonly KumikoUI.Uno.KumikoDataGrid.ShowColumnMenuButtonProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.ShowEmptyViewProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.ShowSelectionColumnProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.SummaryCellRendererProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.SwipeItemWidthProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.VerticalScrollBarVisibilityProperty -> Microsoft.UI.Xaml.DependencyProperty!

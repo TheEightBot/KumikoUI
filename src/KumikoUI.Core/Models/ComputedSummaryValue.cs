@@ -20,4 +20,7 @@ public sealed class ComputedSummaryValue
 
     /// <summary>The label and the formatted value, as shown.</summary>
     public string Text { get; init; } = "";
+
+    /// <summary>The description this was computed from, so the renderer finds its custom cell renderer without a lookup.</summary>
+    internal SummaryColumnDescription? Description { get; init; }
 }
