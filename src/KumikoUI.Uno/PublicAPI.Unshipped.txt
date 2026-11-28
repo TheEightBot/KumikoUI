@@ -42,6 +42,8 @@ KumikoUI.Uno.KumikoDataGrid.IsPullToRefreshEnabled.get -> bool
 KumikoUI.Uno.KumikoDataGrid.IsPullToRefreshEnabled.set -> void
 KumikoUI.Uno.KumikoDataGrid.IsRefreshing.get -> bool
 KumikoUI.Uno.KumikoDataGrid.IsRefreshing.set -> void
+KumikoUI.Uno.KumikoDataGrid.IsRowMenuEnabled.get -> bool
+KumikoUI.Uno.KumikoDataGrid.IsRowMenuEnabled.set -> void
 KumikoUI.Uno.KumikoDataGrid.LeadingSwipeItems.get -> System.Collections.Generic.IList<KumikoUI.Core.Rendering.IActionButtonDefinition!>!
 KumikoUI.Uno.KumikoDataGrid.LoadMoreAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSize.get -> int
@@ -73,6 +75,8 @@ KumikoUI.Uno.KumikoDataGrid.RowHeightMode.get -> KumikoUI.Core.Models.KumikoRowH
 KumikoUI.Uno.KumikoDataGrid.RowHeightMode.set -> void
 KumikoUI.Uno.KumikoDataGrid.RowHeightResolver.get -> KumikoUI.Core.Models.KumikoRowHeightResolver?
 KumikoUI.Uno.KumikoDataGrid.RowHeightResolver.set -> void
+KumikoUI.Uno.KumikoDataGrid.RowMenuItems.get -> System.Collections.Generic.IList<KumikoUI.Core.Components.DrawnMenuItem!>!
+KumikoUI.Uno.KumikoDataGrid.RowMenuOpening -> System.EventHandler<KumikoUI.Core.Components.KumikoRowMenuOpeningEventArgs!>?
 KumikoUI.Uno.KumikoDataGrid.RowsDeleted -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletedEventArgs!>?
 KumikoUI.Uno.KumikoDataGrid.RowsDeleting -> System.EventHandler<KumikoUI.Core.Input.KumikoRowsDeletingEventArgs!>?
 KumikoUI.Uno.KumikoDataGrid.RowsDeletingCommand.get -> System.Windows.Input.ICommand?
@@ -118,6 +122,7 @@ static readonly KumikoUI.Uno.KumikoDataGrid.IsColumnMenuEnabledProperty -> Micro
 static readonly KumikoUI.Uno.KumikoDataGrid.IsLoadingMoreProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.IsPullToRefreshEnabledProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.IsRefreshingProperty -> Microsoft.UI.Xaml.DependencyProperty!
+static readonly KumikoUI.Uno.KumikoDataGrid.IsRowMenuEnabledProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreBatchSizeProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandParameterProperty -> Microsoft.UI.Xaml.DependencyProperty!
 static readonly KumikoUI.Uno.KumikoDataGrid.LoadMoreCommandProperty -> Microsoft.UI.Xaml.DependencyProperty!

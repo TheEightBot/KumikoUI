@@ -134,6 +134,16 @@ public class LocalizationTests
         FilterDateAfterOrEqual = "Am oder nach dem",
         AnnounceRefreshing = "Wird aktualisiert",
         AnnounceRefreshed = "Aktualisiert",
+        RowMenuCopy = "Kopieren",
+        RowMenuCopyWithHeaders = "Mit Überschriften kopieren",
+        RowMenuEdit = "Bearbeiten",
+        RowMenuDelete = "Löschen",
+        RowMenuDeleteRows = "{0} Zeilen löschen",
+        RowMenuExpandAllGroups = "Alle Gruppen erweitern",
+        RowMenuCollapseAllGroups = "Alle Gruppen reduzieren",
+        RowMenuName = "Zeilenmenü",
+        AnnounceRowsCopied = "{0} Zeilen kopiert",
+        AnnounceRowCopied = "Zeile kopiert",
     };
 
     private static IEnumerable<PropertyInfo> StringProperties =>
