@@ -84,6 +84,43 @@ public class RenderAllocationTests
     }
 
     [Fact]
+    public void SteadyState_CustomHeaderRenderer_AllocatesNothingInAllThreePanes()
+    {
+        // A custom header renderer (#333) on a left-frozen, a scrolling and a right-frozen column, one more through the
+        // grid-wide renderer, and a dragged header ghost drawn through it: none of it allocates per frame.
+        var grid = CreateGrid(featured: true);
+        var renderer = new MarkerHeaderRenderer();
+        grid.Source.Columns[0].CustomHeaderRenderer = renderer;
+        grid.Source.Columns[4].CustomHeaderRenderer = renderer;
+        grid.Source.Columns[9].CustomHeaderRenderer = renderer;
+        grid.Renderer.HeaderCellRenderer = renderer;
+        grid.Render(new NoOpDrawingContext());
+        Assert.True(renderer.Renders > 0);
+
+        Assert.Equal(0, MeasureSteadyState(grid.Render));
+        Assert.Equal(0, MeasureSteadyState(ctx => grid.Renderer.Render(ctx, grid.Source, grid.Scroll, grid.Selection,
+            grid.Style, dragColumnIndex: 4, dragColumnScreenX: 300)));
+    }
+
+    /// <summary>A header renderer that draws a marker and its header text, with paints it creates once.</summary>
+    private sealed class MarkerHeaderRenderer : IHeaderCellRenderer
+    {
+        private readonly KumikoPaint _marker = new() { Color = new KumikoColor(200, 40, 40) };
+        public int Renders { get; private set; }
+
+        public void Render(IDrawingContext ctx, in HeaderCellRenderContext context)
+        {
+            Renders++;
+            var b = context.Bounds;
+            ctx.FillRect(new KumikoRect(b.X, b.Y + 8, 4, 4), _marker);
+            ctx.DrawTextInRect(context.Column.Header, new KumikoRect(b.X + 8, b.Y, Math.Max(0, b.Width - 8), b.Height),
+                context.TextPaint, context.TextAlignment, KumikoVerticalAlignment.Center);
+        }
+
+        public float? MeasureWidth(IDrawingContext ctx, in HeaderCellRenderContext context) => 60f;
+    }
+
+    [Fact]
     public void SteadyState_RowDragGhostAndDropIndicator_AllocateNothing()
     {
         // A row drag redraws every frame (pointer moves, edge autoscroll): the ghost's texts are read once per drag.
