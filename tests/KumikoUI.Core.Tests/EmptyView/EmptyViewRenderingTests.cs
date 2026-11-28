@@ -52,6 +52,18 @@ public class EmptyViewRenderingTests
     }
 
     [Fact]
+    public void WhileBusy_DrawsNoEmptyView()
+    {
+        var h = Empty();
+        h.Renderer.IsBusy = true;
+
+        Assert.Empty(EmptyTexts(h.Render(), h.Style));
+
+        h.Renderer.IsBusy = false;
+        Assert.Equal(NoItems, Assert.Single(EmptyTexts(h.Render(), h.Style)).Text);
+    }
+
+    [Fact]
     public void EveryRowFilteredOut_DrawsTheNoMatchesText()
     {
         var h = RenderHarness.Create(rows: 5, configure: x => x.Source.SetFilter(_ => false));

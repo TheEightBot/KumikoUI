@@ -343,6 +343,9 @@ KumikoUI.Core.KumikoRenderer.EmptyViewRenderer.get -> KumikoUI.Core.Rendering.IK
 KumikoUI.Core.KumikoRenderer.EmptyViewRenderer.set -> void
 KumikoUI.Core.KumikoRenderer.EmptyViewText.get -> string?
 KumikoUI.Core.KumikoRenderer.EmptyViewText.set -> void
+KumikoUI.Core.KumikoRenderer.IsBusy.get -> bool
+KumikoUI.Core.KumikoRenderer.IsBusy.set -> void
+KumikoUI.Core.KumikoRenderer.IsBusyIndicatorAnimating.get -> bool
 KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.get -> bool
 KumikoUI.Core.KumikoRenderer.ShowColumnMenuButton.set -> void
 KumikoUI.Core.Layout.KumikoLayoutEngine.GetContentHeight(KumikoUI.Core.Models.KumikoSource! source, KumikoUI.Core.Models.KumikoStyle! style) -> float
@@ -359,6 +362,9 @@ KumikoUI.Core.Models.KumikoAutoGeneratingColumnEventArgs.Column.get -> KumikoUI.
 KumikoUI.Core.Models.KumikoAutoGeneratingColumnEventArgs.Column.set -> void
 KumikoUI.Core.Models.KumikoAutoGeneratingColumnEventArgs.KumikoAutoGeneratingColumnEventArgs(KumikoUI.Core.Data.KumikoColumnMetadata! metadata, KumikoUI.Core.Models.KumikoColumn! column) -> void
 KumikoUI.Core.Models.KumikoAutoGeneratingColumnEventArgs.Metadata.get -> KumikoUI.Core.Data.KumikoColumnMetadata!
+KumikoUI.Core.Models.KumikoBusyIndicatorKind
+KumikoUI.Core.Models.KumikoBusyIndicatorKind.Bar = 0 -> KumikoUI.Core.Models.KumikoBusyIndicatorKind
+KumikoUI.Core.Models.KumikoBusyIndicatorKind.Overlay = 1 -> KumikoUI.Core.Models.KumikoBusyIndicatorKind
 KumikoUI.Core.Models.KumikoColumn.AllowConditionFilter.get -> bool
 KumikoUI.Core.Models.KumikoColumn.AllowConditionFilter.set -> void
 KumikoUI.Core.Models.KumikoColumn.AllowSearching.get -> bool
@@ -413,10 +419,13 @@ KumikoUI.Core.Models.KumikoSource.SearchFiltersRows.set -> void
 KumikoUI.Core.Models.KumikoSource.SearchMatchCount.get -> int
 KumikoUI.Core.Models.KumikoSource.SearchText.get -> string!
 KumikoUI.Core.Models.KumikoSource.SearchText.set -> void
+KumikoUI.Core.Models.KumikoSource.ViewUpdatePendingChanged -> System.EventHandler?
 KumikoUI.Core.Models.KumikoStrings.AllRowsSelected.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AllRowsSelected.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceAllRowsLoaded.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AnnounceAllRowsLoaded.init -> void
+KumikoUI.Core.Models.KumikoStrings.AnnounceBusy.get -> string!
+KumikoUI.Core.Models.KumikoStrings.AnnounceBusy.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreCompleted.get -> string!
 KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreCompleted.init -> void
 KumikoUI.Core.Models.KumikoStrings.AnnounceLoadMoreFailed.get -> string!
@@ -533,6 +542,12 @@ KumikoUI.Core.Models.KumikoStrings.SortTimeAscending.get -> string!
 KumikoUI.Core.Models.KumikoStrings.SortTimeAscending.init -> void
 KumikoUI.Core.Models.KumikoStrings.SortTimeDescending.get -> string!
 KumikoUI.Core.Models.KumikoStrings.SortTimeDescending.init -> void
+KumikoUI.Core.Models.KumikoStyle.BusyIndicatorColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Models.KumikoStyle.BusyIndicatorColor.set -> void
+KumikoUI.Core.Models.KumikoStyle.BusyIndicatorKind.get -> KumikoUI.Core.Models.KumikoBusyIndicatorKind
+KumikoUI.Core.Models.KumikoStyle.BusyIndicatorKind.set -> void
+KumikoUI.Core.Models.KumikoStyle.BusyOverlayColor.get -> KumikoUI.Core.Rendering.KumikoColor
+KumikoUI.Core.Models.KumikoStyle.BusyOverlayColor.set -> void
 KumikoUI.Core.Models.KumikoStyle.CellVerticalPadding.get -> float
 KumikoUI.Core.Models.KumikoStyle.CellVerticalPadding.set -> void
 KumikoUI.Core.Models.KumikoStyle.EmptyViewFont.get -> KumikoUI.Core.Rendering.KumikoFont?

@@ -93,6 +93,7 @@ public partial class KumikoDataGrid : UserControl
         InitializeScrolling(); // KumikoDataGrid.Scrolling.cs
         InitializeImages(); // KumikoDataGrid.Images.cs
         InitializeLoadMore(); // KumikoDataGrid.LoadMore.cs
+        InitializeBusy(); // KumikoDataGrid.Busy.cs (#327)
         InitializeSearch(); // grid-wide search, its panel and announcements (KumikoDataGrid.Search.cs, #317)
 
         // Default accessible name + hint refresh (KumikoDataGrid.Accessibility.cs)
@@ -348,6 +349,7 @@ public partial class KumikoDataGrid : UserControl
         // collections the grid observes, then the app's SelectedItems list.
         _dataSource.Attach();
         ReconnectLoadMore(); // KumikoDataGrid.LoadMore.cs
+        ReconnectBusy(); // KumikoDataGrid.Busy.cs
         ResubscribeObservedCollections();
         _selectionBinder.Attach();
 
@@ -368,6 +370,7 @@ public partial class KumikoDataGrid : UserControl
         // OnLoaded re-attaches (the control can be reloaded, so the source is detached, not disposed).
         _dataSource.Detach();
         DisconnectLoadMore(); // KumikoDataGrid.LoadMore.cs
+        DisconnectBusy(); // KumikoDataGrid.Busy.cs
 
         // Unsubscribe the bound items, the Columns/summary/grouping collections and the app's SelectedItems
         // list, which can outlive the page; OnLoaded restores them.

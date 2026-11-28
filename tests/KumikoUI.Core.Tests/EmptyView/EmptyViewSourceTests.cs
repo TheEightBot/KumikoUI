@@ -212,13 +212,14 @@ public class EmptyViewSourceTests
     {
         var source = Create(Items(2));
         var style = new KumikoStyle();
-        Assert.Null(EmptyViewState.CurrentText(source, style, null));
+        Assert.Null(EmptyViewState.CurrentText(source, style, null, false));
 
         source.SetFilter(_ => false);
-        Assert.Equal(source.Strings.EmptyViewNoMatches, EmptyViewState.CurrentText(source, style, null));
+        Assert.Equal(source.Strings.EmptyViewNoMatches, EmptyViewState.CurrentText(source, style, null, false));
+        Assert.Null(EmptyViewState.CurrentText(source, style, null, true)); // busy: the data may still be coming
 
         style.ShowEmptyView = false;
-        Assert.Null(EmptyViewState.CurrentText(source, style, null));
+        Assert.Null(EmptyViewState.CurrentText(source, style, null, false));
     }
 
     // ── Announcer ──
@@ -229,16 +230,16 @@ public class EmptyViewSourceTests
         var source = Create(Items(3));
         var style = new KumikoStyle();
         var announcer = new EmptyViewAnnouncer();
-        Assert.Null(announcer.Observe(source, style, null)); // rows
+        Assert.Null(announcer.Observe(source, style, null, false)); // rows
 
         source.SetFilter(_ => false);
-        Assert.Equal(source.Strings.EmptyViewNoMatches, announcer.Observe(source, style, null));
-        Assert.Null(announcer.Observe(source, style, null)); // still empty: once
+        Assert.Equal(source.Strings.EmptyViewNoMatches, announcer.Observe(source, style, null, false));
+        Assert.Null(announcer.Observe(source, style, null, false)); // still empty: once
 
         source.SetFilter(null);
-        Assert.Null(announcer.Observe(source, style, null));
+        Assert.Null(announcer.Observe(source, style, null, false));
         source.SetFilter(_ => false);
-        Assert.NotNull(announcer.Observe(source, style, null)); // a new emptying speaks again
+        Assert.NotNull(announcer.Observe(source, style, null, false)); // a new emptying speaks again
     }
 
     [Fact]
@@ -248,15 +249,15 @@ public class EmptyViewSourceTests
         var source = Create(items);
         var style = new KumikoStyle();
         var announcer = new EmptyViewAnnouncer();
-        announcer.Observe(source, style, null);
+        announcer.Observe(source, style, null, false);
 
         items.Clear();
-        Assert.Null(announcer.Observe(source, style, null)); // no filter: nothing to explain
+        Assert.Null(announcer.Observe(source, style, null, false)); // no filter: nothing to explain
 
         source.SetItems(Items(2));
-        announcer.Observe(source, style, null);
+        announcer.Observe(source, style, null, false);
         style.ShowEmptyView = false;
         source.SetFilter(_ => false);
-        Assert.Null(announcer.Observe(source, style, null));
+        Assert.Null(announcer.Observe(source, style, null, false));
     }
 }

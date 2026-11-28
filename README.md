@@ -1626,6 +1626,12 @@ Every settable member of `KumikoStyle` (`KumikoUI.Core.Models`), with its value 
 | `EmptyViewTextColor` | `KumikoColor` | 110, 110, 110 | The message's color (150 on Dark, white on HighContrast) |
 | `EmptyViewFont` | `KumikoFont?` | null | The message's font; null uses `CellFont` |
 
+| Busy indicator | Type | Light | Meaning |
+|---|---|---|---|
+| `BusyIndicatorKind` | `KumikoBusyIndicatorKind` | `Bar` | `Bar`, a thin indeterminate bar under the header, or `Overlay`, a scrim over the rows with a spinner (see [Busy indicator](#busy-indicator)) |
+| `BusyIndicatorColor` | `KumikoColor` | 0, 120, 215 | The bar's sweep and the spinner (lighter blue on Dark, yellow on HighContrast) |
+| `BusyOverlayColor` | `KumikoColor` | 255, 255, 255, 160 | The `Overlay` scrim (dark on Dark and HighContrast); the bar ignores it |
+
 | Icons | Type | Light | Meaning |
 |---|---|---|---|
 | `IconProvider` | `IKumikoIconProvider` | `KumikoIconProvider.Default` | Draws every built-in glyph of the grid and of its editors and filter popup (see [Icons](#icons)); never null |
@@ -2236,7 +2242,7 @@ kumiko.ShowEmptyView = false;
 
 `ShowEmptyView` defaults to on, so a grid that had no rows in 1.0 now shows the message; set it to `false` to keep the blank area. Like the other style settings it survives a `Theme` or `GridStyle` change. The text's look comes from `KumikoStyle` (`EmptyViewTextColor`, a muted color in each built-in theme, and `EmptyViewFont`, which defaults to `CellFont`). `KumikoSource.ItemCount` (the non-null items of the bound collection, whatever the filters hide) and `IsFiltered` (a column filter, a predicate or a row-filtering search is active) let an app make the same distinction.
 
-The message is not drawn while a load-more row occupies the data area (the first batch of [incremental loading](#incremental-loading) is loading, or a "Load more" button or an error shows), nor while a background rebuild that started from a view with rows is still pending, so the message does not flash. A tap on the area still clears the selection, as a tap on any empty area does.
+The message is not drawn while a load-more row occupies the data area (the first batch of [incremental loading](#incremental-loading) is loading, or a "Load more" button or an error shows), nor while a background rebuild that started from a view with rows is still pending, so the message does not flash, nor while the grid is [busy](#busy-indicator). A tap on the area still clears the selection, as a tap on any empty area does.
 
 To draw something else, implement `IKumikoEmptyViewRenderer` and set `EmptyViewRenderer`. It gets the data area, why there are no rows and the text the built-in view would draw. As with a cell renderer, `Render` runs on every frame while the view is empty: create paints once and reuse them.
 
@@ -2318,6 +2324,27 @@ public sealed class MyGridSurface : IDisposable
 }
 ```
 
+The busy indicator is part of the renderer: set `KumikoRenderer.IsBusy` to draw it (the MAUI and Uno grids drive it from their `IsBusy` and from `KumikoSource.ViewUpdatePendingChanged`; a custom host does the same itself). While `KumikoRenderer.IsBusyIndicatorAnimating` is true after a frame, request another frame about every 33 ms; stop when it is false.
+
+```csharp
+using KumikoUI.Core;
+using KumikoUI.Core.Models;
+
+public sealed class MyBusyHost
+{
+    private readonly KumikoRenderer _renderer = new();
+
+    public void Follow(KumikoSource source)
+    {
+        // Show the indicator while a background rebuild is pending (add your own delay to avoid a flash)
+        source.ViewUpdatePendingChanged += (_, _) => _renderer.IsBusy = source.IsViewUpdatePending;
+    }
+
+    // After each frame: ask for the next one only while the indicator moves
+    public bool NeedsAnotherFrame => _renderer.IsBusyIndicatorAnimating;
+}
+```
+
 ---
 
 ## Live Data
@@ -2385,6 +2412,29 @@ For many changes at once, post one callback that makes them inside `using (kumik
 
 **Large sources rebuild in the background.** From `DataSource.BackgroundRebuildThreshold` items up (10,000 in the MAUI and Uno grids; a `KumikoSource` you create stays synchronous), sorting, filtering, grouping and summaries run on a worker. Requests made in one UI turn start one rebuild, and a newer one cancels a running one. The grid keeps drawing the current rows until the new view is swapped in on the UI thread (`ViewChanged`, then `ViewUpdated`); selection, the current cell and an open edit follow their items. `DataSource.IsViewUpdatePending` tells whether a rebuild is under way, and `await DataSource.WhenViewUpdatedAsync()` waits for the new order. While a rebuild runs, the worker reads item properties and calls your comparers, filter predicate, group selectors and custom aggregates, so these must only read.
 
+`DataSource.ViewUpdatePendingChanged` is raised on the UI thread each time `IsViewUpdatePending` changes: once when a rebuild is requested and once when its view is in (or a synchronous rebuild replaced it). A rebuild that is still pending after `BusyIndicatorDelay` shows the grid's [busy indicator](#busy-indicator) by itself.
+
+### Busy indicator
+
+The grid draws a themed indicator over its rows while it is busy, instead of an `ActivityIndicator` laid over the canvas that ignores the theme and covers the header. It is busy when the app sets `IsBusy`, and, with `ShowBusyDuringViewUpdate` (on by default), when a background rebuild (a sort, filter or grouping of a large source), or the first load of an empty [incrementally loaded](#incremental-loading) grid, has lasted `BusyIndicatorDelay` (300 ms by default), so a rebuild that finishes sooner never flashes it. `IsBusy` shows it at once. The indicator does not block input: scrolling, selection and editing keep working against the current rows. A batch loaded by the load-more row shows that row's own indicator, not this one.
+
+`KumikoStyle.BusyIndicatorKind` picks the look. `Bar` (the default) is a 3 px indeterminate bar at the top of the data area, under the header, the grouping panel and the top summaries, so the rows stay readable. `Overlay` is a translucent scrim over the data area (the header, the grouping panel and a pinned footer stay visible) with a spinner centered in it. `BusyIndicatorColor` and `BusyOverlayColor` are set by the themes. With `EnableAnimations` off, or when the platform asks for reduced motion, the bar and the spinner are drawn still, and the grid requests no frames for them. While the indicator animates the grid repaints about every 33 ms, and it stops when the indicator goes. The grid announces `KumikoStrings.AnnounceBusy` ("Loading") once when it becomes busy (see [Accessibility](#accessibility)).
+
+```xml
+<kumiko:KumikoDataGrid x:Name="kumiko"
+                       IsBusy="{Binding IsLoading}"
+                       BusyIndicatorDelay="0:0:0.5"
+                       ShowBusyDuringViewUpdate="True" />
+```
+
+```csharp
+using KumikoUI.Core.Models;
+
+var style = kumiko.GridStyle;
+style.BusyIndicatorKind = KumikoBusyIndicatorKind.Overlay;
+kumiko.GridStyle = style; // assigning the edited style repaints
+```
+
 ---
 
 ## Native AOT and Trimming
@@ -2443,7 +2493,7 @@ This is the current state, not the goal. The 1.0 target and the plan are in [doc
 - **Screen readers see one element.** Cells, headers, editors and popups are drawn on a canvas and are not exposed to assistive technology individually, so a screen reader can't read or navigate cell contents. A per-cell accessibility tree is planned for 1.x.
   - **MAUI:** the grid is in the accessibility tree with `GridDescription` (default: the localizable `KumikoStrings.AccessibleGridName`, "Data grid") as its semantic description and `GridHint` (default: a hint with the row and column counts and the current cell) as its hint (while the view has no rows and the empty view is on, the empty text instead).
   - **Uno:** the grid has a UI Automation peer with the DataGrid control type. Its name comes from `GridDescription` or `KumikoStrings.AccessibleGridName`, and its help text from `GridHint` or a computed description of the rows and columns. The peer shows up in the accessibility trees of WebAssembly (as a `role="grid"` element), Android and the Windows desktop head (UI Automation). On the macOS desktop head it is there only on the page the app opens with: Uno 6.7's macOS bridge loses the whole window's tree after a navigation, and in Debug builds that use Hot Design. The Linux desktop head (X11) had no AT-SPI bridge in Uno 6.7; Uno 7.0.65 adds one, and the grid appears in the AT-SPI tree as a single `panel` with its name and a static description, with no table, selection or action interfaces, so Orca will not navigate it as a grid yet ([docs/uno/verification.md](docs/uno/verification.md), F4 and F12). The device verification passes inspected these accessibility trees but did not drive a screen reader on any host, so test with VoiceOver, TalkBack or Narrator before relying on it.
-  - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, validation errors, the number of search matches and each match the search moves to, and the [column menu](#column-menu) (its name and item count when it opens, then each item the keyboard moves to) to a running screen reader. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
+  - **Announcements.** With `AnnounceChanges` on (the default), both hosts announce the current cell, sort changes, edit start and end, validation errors, the number of search matches and each match the search moves to, and the [column menu](#column-menu) (its name and item count when it opens, then each item the keyboard moves to) to a running screen reader, and "Loading" (`AnnounceBusy`) once when the [busy indicator](#busy-indicator) turns on. Column numbers count visible columns in on-screen order. The texts are `KumikoStrings` properties, so they localize with the rest of the grid.
 - **Keyboard.** The grid can be used without a pointer on Uno and on MAUI for every platform, and never traps Tab. See [Keys per platform](#keys-per-platform).
 - **Hidden input fields.** Most hosts keep an invisible native view to receive keyboard input: on MAUI, a `KeyInputResponder` on Apple platforms and an input view on Android (on Windows the grid itself takes the keyboard focus); on Uno, a `TextBox`. It is kept out of the accessibility tree and takes no pointer input.
 - **Right-to-left layout is not supported in 1.0.** Under a right-to-left ancestor (`FlowDirection`) the grid still draws left to right instead of mirroring; mirrored layout is tracked in #80.
