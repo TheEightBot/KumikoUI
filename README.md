@@ -546,6 +546,57 @@ Keep `Render` free of allocations, as the built-in renderers are: draw with `cel
 
 A renderer that also implements `ICellEditorProvider` supplies the editor of its `Template` column; one that implements `IInteractiveCellRenderer` handles taps itself, as the action buttons do.
 
+#### Custom header renderers
+
+A header cell is the header text, the sort arrow, the filter icon and, when the column menu button is on, its button. To draw something else with the text (an icon before it, a unit or subtitle line, a "required" marker, a colored strip), implement `IHeaderCellRenderer` and set it as the column's `CustomHeaderRenderer`, or for every column without one as the grid's `HeaderCellRenderer`. A column's own renderer wins over the grid-wide one, which wins over the built-in `TextHeaderCellRenderer`. The grid calls `Render` for every visible header on every frame, passing a `HeaderCellRenderContext` by reference and clipping to its `Bounds`:
+
+| Member | Meaning |
+|---|---|
+| `Bounds` | The rectangle to draw in: the header cell minus its padding and the room of the sort, filter and menu glyphs |
+| `CellBounds` | The whole header cell |
+| `Column`, `ColumnIndex` | The column and its index in the source's column list |
+| `SortDirection`, `SortOrder`, `IsFiltered` | The column's sort and filter state |
+| `Style`, `HeaderCellStyle` | The grid style, and the column's header style overrides or `null` |
+| `Paints` | The grid's shared `PaintCache` |
+| `TextPaint`, `TextAlignment` | The paint and alignment for the header text, with the column's `HeaderCellStyle` overrides applied |
+
+<!-- snippet: shared -->
+```csharp
+public sealed class SubtitleHeaderRenderer : IHeaderCellRenderer
+{
+    // Created once and reused
+    private readonly KumikoPaint _subtitle = new() { IsAntiAlias = true, Font = new KumikoFont("Default", 10) };
+
+    public string Subtitle { get; set; } = "";
+
+    public void Render(IDrawingContext ctx, in HeaderCellRenderContext context)
+    {
+        var b = context.Bounds;
+        ctx.DrawTextInRect(context.Column.Header, new KumikoRect(b.X, b.Y + 4, b.Width, 18),
+            context.TextPaint, context.TextAlignment, KumikoVerticalAlignment.Center);
+        _subtitle.Color = context.TextPaint.Color.WithAlpha(160);
+        ctx.DrawTextInRect(Subtitle, new KumikoRect(b.X, b.Y + 22, b.Width, 14),
+            _subtitle, context.TextAlignment, KumikoVerticalAlignment.Center);
+    }
+
+    // The width the content needs, for header auto-fit; the grid adds the padding and the glyph space.
+    public float? MeasureWidth(IDrawingContext ctx, in HeaderCellRenderContext context) =>
+        Math.Max(ctx.MeasureText(context.Column.Header, context.TextPaint).Width,
+            ctx.MeasureText(Subtitle, _subtitle).Width);
+}
+```
+
+```csharp
+var column = new KumikoColumn { Header = "Salary", PropertyName = "Salary" };
+column.CustomHeaderRenderer = new SubtitleHeaderRenderer { Subtitle = "USD per year" };
+```
+
+- The grid keeps everything outside `Bounds`: the background, the hover and pressed feedback, the sort and filter glyphs, their hit regions and the resize grips, so sorting, filtering, resizing and reordering behave as with the text. The ghost of a dragged header is drawn through the same renderer.
+- `MeasureWidth` returns the width the content needs, or `null` for the width of `Column.Header` in the header font. The grid adds the padding, the glyph space and a margin, and measures again only when the header text, the header font or the renderer changes. Its context has zero-width `Bounds`.
+- `GetAccessibleText` returns the plain text for the accessibility tree, or `null` for `Column.Header`.
+- Header interaction stays with the grid: a clickable glyph inside the content is not supported.
+- Keep `Render` free of allocations, as for cell renderers; derive from `TextHeaderCellRenderer` to draw something around the text.
+
 ### Column sizing
 
 | `SizeMode` | Behavior |
